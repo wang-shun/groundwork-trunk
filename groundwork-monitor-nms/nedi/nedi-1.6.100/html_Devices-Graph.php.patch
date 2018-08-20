@@ -1,0 +1,20 @@
+--- nedi/html/Devices-Graph.php.orig	2016-04-09 04:31:25.000000000 -0700
++++ nedi/html/Devices-Graph.php	2016-09-19 22:32:41.860253723 -0700
+@@ -38,7 +38,7 @@
+ if( $dv != "Totals" ){
+ 	$link = DbConnect($dbhost,$dbuser,$dbpass,$dbname);
+ 	$res  = DbQuery( $link,'devices','s','device,devip,snmpversion,readcomm,memcpu,temp,cuslabel,cusvalue,devopts','device','',array('snmpversion'),array('!='),array('0') );
+-	echo "\t\t<option value=\"\" style=\"color: blue\">- Devices -\n";
++	echo "\t\t<option disabled value=\"\" style=\"color: blue\">- Devices -\n";
+ 	while( ($d = DbFetchRow($res)) ){
+ 		echo "\t\t<option value=\"$d[0]\"";
+ 		if($dv == $d[0]){
+@@ -117,7 +117,7 @@
+ <?php
+ }
+ ?>
+-		<option value="" style="color: blue">- Interfaces -
++		<option disabled value="" style="color: blue">- Interfaces -
+ <?php
+ 	$res = DbQuery( $link,'interfaces','s','ifname,alias,ifstat,comment','ifidx','',array('device'),array('='),array($dv) );
+ 	if($res){

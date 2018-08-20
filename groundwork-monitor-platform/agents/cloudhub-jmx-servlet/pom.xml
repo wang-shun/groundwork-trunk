@@ -1,0 +1,152 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.groundwork</groupId>
+        <artifactId>gw-agents-pom</artifactId>
+        <version>2.5-SNAPSHOT</version>
+    </parent>
+    <groupId>org.groundwork</groupId>
+    <artifactId>cloudhub-jmx-servlet</artifactId>
+    <version>2.5-SNAPSHOT</version>
+    <name>CloudHub JMX Servlet</name>
+    <packaging>war</packaging>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.groundwork</groupId>
+            <artifactId>cloudhub-jmx-support</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-mapper-asl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+        </dependency>
+
+        <dependency>
+	        <groupId>javax.management.j2ee</groupId>
+	        <artifactId>management-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>servlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+ 
+    <build>
+        <finalName>cloudhub-jmx-servlet</finalName>
+        <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <inherited>true</inherited>
+                <configuration>
+                    <source>1.6</source>
+                    <target>1.6</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <configuration>
+                    <webResources>
+                        <resource>
+                            <filtering>true</filtering>
+                            <directory>${webappPath}</directory>
+                            <includes>
+                                <include>**/web.xml</include>
+                            </includes>
+                        </resource>
+                    </webResources>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>jbossas7</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <webappPath>${project.basedir}/src/main/profiles/jbossas7/webapp</webappPath>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <profile>
+            <id>tomcat</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <webappPath>${project.basedir}/src/main/profiles/tomcat/webapp</webappPath>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>jboss</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <webappPath>${project.basedir}/src/main/profiles/jboss/webapp</webappPath>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <profile>
+            <id>weblogic</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <webappPath>${project.basedir}/src/main/profiles/weblogic/webapp</webappPath>
+                <jmxUsername>admin</jmxUsername>
+                <jmxPassword>admin123</jmxPassword>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>websphere</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <webappPath>${project.basedir}/src/main/profiles/websphere/webapp</webappPath>
+                <jmxUsername>admin</jmxUsername>
+                <jmxPassword>admin123</jmxPassword>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>org.groundwork</groupId>
+                    <artifactId>cloudhub-jmx-ws-admin-client</artifactId>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+</project>

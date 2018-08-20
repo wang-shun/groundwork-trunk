@@ -1,0 +1,365 @@
+=======================================================
+What is the GroundWork Cloud Connector?
+=======================================================
+
+The Cloud Connector is an automatic provisioning system, making it easy to
+monitor your clouds as machines appear and disappear within that portion
+of your infrastructure.  The cloud management system for each region
+is probed on a periodic basis, to find new instances and provision their
+monitoring setup, and to discover which instances have been terminated
+and removing them from active monitoring.
+
+The set of services monitored on each instance can be customized to
+reflect the type of instance which is running.  That is done by creating
+host profiles named after the machine images.  If present, those host
+profiles will be automatically applied when new instances of those images
+are provisioned.
+
+
+-------------------------------------------------------
+How it works
+-------------------------------------------------------
+
+To monitor your clouds, you must first tell GroundWork Monitor where they
+are and provide access credentials for them.  This will allow the monitoring
+to probe the cloud managers and find which instances are active.
+
+To do this, visit the Clouds -> Cloud Configuration screen.  Add regions
+that represent your clouds; upload the corresponding credentials; then
+enable cloud processing at both the global level (top of screen) and for
+each region (in the list of configured regions).  Save.
+
+Once the cloud regions are configured, a batch job run every 15 minutes
+via cron will pick up those region definitions and adjust the monitoring
+configuration.
+
+If you wish to monitor particular services associated with your cloud machines,
+the easiest way to do so is to create host profiles named after machine images:
+
+    cloud-machine-ami-xxxxxx    (for an EC2 cloud machine image)
+    cloud-machine-emi-xxxxxx    (for a Eucalyptus cloud machine image)
+
+These host profiles will be used by matching "ami-xxxxxx" or "emi-xxxxxx"
+against the image used for an instance, and the profile will be applied to
+each new instance of that machine.  Also, a host group will be created for
+these images, with a name based on the Description field for that host
+profile.
+
+For anyone monitoring a cloud, the overall infrastructure status view which
+is available in the Dashboards -> Enterprise View is highly recommended.
+This provides a coarsely quantized thermal map of your infrastructure, with
+the thresholds for the quantization determined by the warning and critical
+thresholds set for your objects.  The boxes in the Snapshot view are active
+links that will get you directly to the status pages for the respective
+hosts, to see more detail.
+
+
+=======================================================
+Cloud Connector 2.1.0 Release Notes
+=======================================================
+
+The 2.1.0 release mirrors the 2.0.0 release, but is compatible with the
+JOSSO authentication framework used in the GroundWork Monitor 6.4 release.
+
+Secondarily, the naming of associated JBoss portal objects has been
+changed in this release, to follow a pattern more consistent with other
+objects which are supplied by GroundWork Monitor Enterprise Edition.
+
+
+=======================================================
+Cloud Connector 2.0.0 Release Notes
+=======================================================
+
+The following capabilities are now available with this release:
+
+1.  The GroundWork Monitor Enterprise Edition 6.3 release is supported.
+
+2.  Amazon EC2 is now supported, in addition to Eucalyptus clouds that
+    were supported in the 1.0.0 release.
+
+3.  The full commit-action transcript from a manually-initiated run of
+    the Cloud Configuration batch processing script is now presented in
+    the UI, both so that it is more obvious when the operation starts and
+    finishes, and so that errors and other conditions are readily visible.
+
+4.  The orphaned-host disposition mechanisms which were sketched out
+    in the 1.0.0 release are now fully implemented.
+
+5.  A variety of bug fixes have been applied to the code.
+
+
+=======================================================
+Setting up the GroundWork Cloud Connector
+=======================================================
+
+* Cloud Connector 2.1.0 is only compatible with GroundWork Monitor 6.4
+  or later.
+* Cloud Connector 2.0.0 is only compatible with GroundWork Monitor 6.3.
+* Cloud Connector 1.0.0 will no longer be supported.
+
+Users who previously installed the 1.0.0 release MUST follow the SPECIAL
+NOTES below to upgrade the Cloud Connector.
+
+
+-------------------------------------------------------
+SPECIAL NOTES FOR UPGRADING FROM CLOUD CONNECTOR BEFORE
+RELEASE 2.1.0
+-------------------------------------------------------
+
+The naming of the JBoss Portal objects has been changed in the Cloud
+Connector 2.1.0 release.  The "groundwork-monitor.cloud-config" page
+has been replaced by a "groundwork-monitor.cloud-connector" page in
+the 2.1.0 release, and other object names have been changed as well.
+To avoid confusion, the old objects should be deleted from your system
+before the new RPM is installed.  So follow this extra step before
+installing or upgrading to the new RPM:
+
+1.  Navigate to "Administration -> Portal Objects -> groundwork-monitor",
+    and then Delete the cloud-config Page.
+
+-------------------------------------------------------
+SPECIAL NOTES FOR UPGRADING FROM CLOUD CONNECTOR 1.0.0
+-------------------------------------------------------
+
+The Cloud Connector 1.0.0 RPM was mistakenly created using code that
+will drop the jbossportal database when the RPM is uninstalled or
+upgraded.  This database contains information on local users, their
+permissions, locally defined dashboards, and so forth.  To avoid
+critical data loss, follow the instructions below.
+
+Steps to upgrade from Cloud Connector 1.0.0:
+
+1.  Navigate to "Administration -> Portal Objects -> groundwork-monitor",
+    and then Delete the cloud-config Page.
+
+2.  Uninstall the old RPM, very carefully so as not to lose the content
+    of the jbossportal database.  The --noscripts option is critical here:
+
+	rpm -e --noscripts groundwork-cloud-connector
+
+3.  Upgrade your system to GWMEE 6.3 or later (see instructions below).
+
+4.  Install the new Cloud Connector RPM (see instructions below).
+
+5.  You will then have to re-establish the clouds you wish to monitor,
+    and upload their respective access credentials.  (A future release
+    of GroundWork Monitor will preserve this information across an
+    upgrade of the base product.)
+
+
+--------------------------------------------------------
+Install GroundWork Monitor Enterprise Edition 6.3 or 6.4
+--------------------------------------------------------
+
+The Cloud Connector 2.1.0 release requires GroundWork Monitor 6.4 or later.
+The Cloud Connector 2.0.0 release requires GroundWork Monitor 6.3.
+
+Follow standard instructions for installing or upgrading the base GroundWork
+Monitor product.  You must have the product installed before attempting
+to install the Cloud Connector integration because it relies on having a
+Java Runtime Environment (JRE) that comes with GroundWork Monitor.  Do not
+install a different JRE.
+
+KNOWN ISSUES:
+
+1.  run.conf for Foundation (JVM size may need to be reduced in some VM
+    deployments with limited memory; compare these two files:
+
+	/usr/local/groundwork/foundation/container/run.conf
+	/usr/local/groundwork/foundation/container/run.conf.small
+
+    and perhaps make similar adjustments)
+
+
+--------------------------------------------------------
+Install the Cloud Connector
+--------------------------------------------------------
+
+NOTE:  Installing the Cloud Connector RPM will bounce the GroundWork
+Services (gwservices), so it can safely adjust one datatype in Foundation.
+So you should only install this RPM when such a bounce will not interfere
+with your production operations.
+
+Once you have installed GroundWork Monitor Enterprise 6.3 or 6.4, perform
+the following steps in a terminal window as user root:
+
+1.  First make sure that the MySQL daemon is running, since the Cloud
+    Connector RPM must make some direct adjustments to the database:
+
+        service groundwork start mysql
+
+2.  If you are installing on an Ubuntu system, make sure that "alien" is
+    installed on your system:
+
+	apt-get install alien
+
+3.  Install the Cloud Connector RPM, using a command similar to one of
+    these on RPM-based systems:
+
+	rpm -Uvh groundwork-cloud-connector-2.1.0-17804.el5.i386.rpm
+	rpm -Uvh groundwork-cloud-connector-2.1.0-17804.el5.x86_64.rpm
+
+    or like one of these on Ubuntu systems:
+
+	alien -c -k -i groundwork-cloud-connector-2.1.0-17804.el5.i386.rpm
+	alien -c -k -i groundwork-cloud-connector-2.1.0-17804.el5.x86_64.rpm
+
+4.  Note:  The installation process automatically establishes the following
+    crontab entry for the nagios user:
+
+	*/15 * * * * /usr/local/groundwork/cloud/scripts/cloud_config.pl > /dev/null 2>&1
+
+    An uninstall of the groundwork-cloud-connector package will automatically
+    remove this entry.
+
+Then log into GroundWork Monitor as an administrator and perform the
+following steps.
+
+1.  If you wish to monitor particular services associated with your cloud
+    machines, the easiest way to do so is to create host profiles named
+    after machine images:
+
+	cloud-machine-ami-xxxxxx    (for an EC2 cloud machine image)
+	cloud-machine-emi-xxxxxx    (for a Eucalyptus cloud machine image)
+
+    These host profiles will be used by matching "ami-xxxxxx" or "emi-xxxxxx"
+    against the image used for an instance, and the profile will be applied to
+    each new instance of that machine.  Also, a host group will be created for
+    these instances, with a name based on the Description field for that host
+    profile.
+
+2.  Do the following for each "cloud" you will monitor.  A Eucalyptus
+    cloud here refers to a particular machine which is running the
+    Eucalyptus Cloud Controller.  It will be treated by our monitoring
+    as though it were an EC2 region.  An EC2 cloud here refers to an
+    EC2 region.
+
+    Navigate to the Clouds -> Cloud Configuration screen.  Adjust the
+    options as needed for your site.  Add the cloud regions you wish to
+    monitor.  Note that region names in the monitoring system are not
+    allowed to contain spaces or shell metacharacters.  You will probably
+    want to follow the same principle when you name your regions within
+    Eucalyptus or EC2.
+
+    (a) For each Eucalyptus cloud:
+
+	Obtain the euca2-admin-x509.zip file that can be generated from
+	the Eucalyptus system admin scripts via the Eucalyptus web page
+	download facility.  (Typically, access https://yourserver:8443/
+	to log in, then click "Download Credentials".)  Using the Cloud
+	Configuration screen, upload this file as the credentials for
+	that region.
+
+    (b) For each EC2 cloud:
+
+        Obtain the public and private key files (cert-{gobbledegook}.pem
+        and pk-{gobbledegook}.pem, respectively) which are downloadable
+        as X.509 Certificates from your Amazon Web Services account
+        (http://aws.amazon.com/account/).  Using the Cloud Configuration
+        screen, upload these files as the credentials for that region.
+
+    (c) For either type of cloud:
+
+	Once the credentials are uploaded, enable the individual cloud,
+	in the list of Monitored Clouds in the Cloud Configuration screen.
+
+    Finally, also make sure the cloud processing as a whole is enabled.
+    This selection is made at the top of the Cloud Configuration screen.
+
+3.  Should you wish to use the EC2 API tools from a shell to interact with
+    a particular cloud, you will need to set up your shell's environment
+    variables to make such access convenient.  To do so, you will need to
+    source a particular file to get those values changed every time you
+    need to switch from one cloud (region) to another, sometime after the
+    credentials for the cloud have been uploaded in the Cloud Configuration
+    screen:
+
+	source /usr/local/groundwork/cloud/scripts/setenv-cloud {region}
+
+    That will work from either bash or tcsh.  Specify the name of the
+    region you are interested in accessing, exactly as you listed it in
+    the Cloud Configuration screen.
+
+
+-------------------------------------------------------
+NOTES
+-------------------------------------------------------
+
+1.  Installation of the Cloud Connector RPM will create a hostgroup named
+    "Inactive Cloud Hosts", to be used to contain cloud hosts that have
+    terminated.  If you wish, you may choose some other hostgroup for this
+    purpose and delete this particular standard hostgroup name.  See the
+    Orphaned Host Disposition section of the Cloud Configuration screen.
+
+2.  The following host and service profiles will be automatically imported
+    by this RPM, so they are immediately available without additional
+    manual installation steps:
+
+	host profile:     host-profile-cloud-machine-default.xml
+	host profile:     host-profile-ec2-availability-zone.xml
+	host profile:     host-profile-eucalyptus-availability-zone.xml
+	service profile:  service-profile-ec2-availability-zone.xml
+	service profile:  service-profile-eucalyptus-availability-zone.xml
+	service profile:  service-profile-ssh-hadoop.xml
+
+
+=======================================================
+KNOWN ISSUES
+=======================================================
+
+1.  All hosts with hostnames of the form /^i-[0-9A-Fa-f]{8}$/ (e.g.,
+    i-3C24075A) are assumed to have originated in a cloud.  Such hosts
+    will be automatically orphaned if no currently configured cloud claims
+    them as its own.  This provides a mechanism to clean up monitoring
+    of such hosts if the cloud server gets bounced and loses track of
+    which instances it was formerly running.
+
+2.  EC2 API tools will fail, and the monitoring of EC2 regions will return
+    bad results, if the system time on the monitoring server is too
+    far off from Internet time.  (A typical message in this case is
+    "Client.InvalidSecurity: Request has expired".)  You should use
+    NTP or some similar mechanism to keep the time on your monitoring
+    system and your cloud controllers properly synchronized.
+
+3.  The handling of regions assumes their names are unique across all
+    endpoints/controllers.  This is unlikely to be a practical problem.
+
+4.  The current handling of instance names does not deal with possible
+    collisions between instance names from different regions.  Thus there
+    is a small but non-zero chance of confusion if multiple clouds are
+    monitored.
+
+5.  This release of the Cloud Connector includes the 1.3-46266 release of
+    the EC2 API Tools.  The newer 1.3-57419 release has proven problematic
+    in testing, at least against Eucalyptus 1.6.2 servers.  Use of the
+    older release means that some desirable features, such as instance
+    tags, are not yet available via the Cloud Connector.  Future versions
+    of the Cloud Connector will revisit the release level to see if the
+    issues seen have been resolved.
+
+6.  When instances are orphaned and eventually deleted from Monarch, they
+    will still be listed as devices in Foundation, to provide a remaining
+    link to historical operations data.  This will impact the device
+    count examined for licensing constraints.  You may wish to use the
+    /usr/local/groundwork/tools/devclean.pl script to manage such old
+    devices.  This script is already provided as part of the GroundWork
+    Monitor 6.3 release.  See the GroundWork KnowledgeBase articles
+    "How-to Determine and adjust your device count" and "Deleting hosts
+    from Monarch without a web interface" for details.
+
+7.  The default host profile for Eucalyptus monitored availability zones
+    includes a ping check for endpoint virtual hosts.  In Eucalyptus,
+    it is reasonable to assume these pings will work without any changes
+    to the environment.  But in EC2, the default security settings will
+    probably prevent ICMP to the cloud hosts, and EC2 endpoint hosts do
+    not support ICMP.  In order for the default host and ping service
+    checks to work in EC2 cloud hosts, you will need to enable ICMP into
+    the cloud from at least the source network of your monitoring system.
+    The inbound and outbound ICMP echo requests are ICMP type 0, code 0,
+    and the echo replies are ICMPtype 8, code 0.  If you add two rules
+    to your security group in EC2, allowing this traffic, the default
+    profiles will work.  If you prefer not to enable ICMP, you may modify
+    the profiles or create your own.  For instance, you may decide to
+    use SSH (tcp/22) as a host-alive check, and simply remove the ping
+    service.  The host profile for EC2 endpoint hosts does not include
+    a ping check, and uses HTTP as a host alive check for the endpoint.

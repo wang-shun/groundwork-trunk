@@ -1,0 +1,84 @@
+John,
+
+I have attached the patch file I described in the ADODB forum.
+This patches ADODB 5.14 to better support PostgreSQL 9 (in
+our case, tested against 9.1.1).
+
+    cd /tmp
+    tar xfz /tmp/adodb5.14-patch-for-postgres9.tar.gz
+    cd {wherever}/adodb5
+    patch -b -p1 < /tmp/adodb5.14-patch-for-postgres9
+
+For simplicity, we derived our postgres9 class from the
+postgres7 class.  That seemed more sensible than deriving
+from the postgres64 class.
+
+This patch is being used to support a version of Cacti which
+has been ported from MySQL to PostgreSQL.  We have informed the
+Cacti team of this port, and they are very interested in it.
+We will be working with them to fold our changes into their
+next main-line release, so having these ADODB changes be part
+of the standard ADODB release is in everyone's best interest.
+
+Regards,
+
+Glenn Herteg
+GroundWork Open Source, Inc.
+www.groundworkopensource.com
+
+The patch addresses the following issues:
+
+  * ADODB is not properly retrieving the last-insert
+    ID value from ordinary PostgreSQL tables, now that
+    OIDs are no longer by default a standard part of
+    PostgreSQL tables.  (That's been true since PostgreSQL
+    8.1 [Release Date: 2005-11-08], and even PostgreSQL
+    8.2 is now EOL.)  Plus, an OID probably isn't what
+    an application wants back as the ID value, anyway;
+    an application-level ID value is generally more
+    appropriate.
+
+    This capability is packaged in a new "postgres9"
+    driver, so it won't affect any existing applications
+    using older "postgres64", "postgres7", and "postgres8"
+    drivers, or the generic "postgres" driver.
+
+    For perspective, the PostgreSQL manual says in various
+    places:
+
+        The oid type is currently implemented as an
+        unsigned four-byte integer. Therefore, it is not
+        large enough to provide database-wide uniqueness
+        in large databases, or even in large individual
+        tables. So, using a user-created table's OID
+        column as a primary key is discouraged. OIDs are
+        best used only for references to system tables.
+
+        The preferred way of uniquely identifying rows is
+        via sequences and the SERIAL type, which have been
+        supported since PostgreSQL 6.4.
+
+        Using OIDs in new applications is not recommended:
+        where possible, using a SERIAL or other
+        sequence generator as the table's primary key is
+        preferred. However, if your application does make
+        use of OIDs to identify specific rows of a table,
+        it is recommended to create a unique constraint
+        on the oid column of that table, to ensure that
+        OIDs in the table will indeed uniquely identify
+        rows even after counter wraparound.
+
+  * The matching of database error messages to identify
+    particular error codes has been extended to better
+    match messages seen in the PostgreSQL 9.1.1 release,
+    in addition to the message forms previously matched.
+
+  * ADODB does not currently distinguish several critical
+    types of errors that can require special handling in
+    the application code to recover from.  The ones we
+    cared about and added were for deadlock detection,
+    statement timeout, and serialization failure.
+
+With regard to the latter, we have only provided English
+translations of the new error codes.
+

@@ -1,0 +1,65 @@
+#!/bin/bash -e
+
+#
+# Copyright 2016-2017 GroundWork Open Source, Inc. (GroundWork)
+# All rights reserved. This program is free software; you can redistribute
+# it and/or modify it under the terms of the GNU General Public License
+# version 2 as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+
+# This is a trivial emulation of the GroundWork Monitor BitRock installer,
+# for test purposes while developing a Fuel plugin.
+
+# First, redirect output from this script to a known logfile.
+exec > /tmp/groundwork-installer-test.log 2>&1
+
+echo "NOTICE:  Running the GroundWork Monitor BitRock installer emulator"
+echo "         from within the fuel-plugin-groundwork-monitor Fuel plugin."
+
+echo
+echo "Running as:"
+id
+
+echo
+echo "Current working directory is:"
+pwd
+
+echo
+echo "Current full script path is:"
+echo $0
+
+echo
+echo "Current full script arguments are:"
+echo "$@"
+
+# We know this is likely to fail if we're not running as root,
+# because the script won't have adequate permissions on the
+# relevant directories.  So to support other test scenarios,
+# we check that condition before attempting these operations.
+if [ "`id -u`" -eq 0 ]; then
+    echo
+    echo "Making the /usr/local/groundwork directory ..."
+    mkdir /usr/local/groundwork
+
+    echo
+    echo "Making the /usr/local/groundwork/Info.txt file ..."
+    touch /usr/local/groundwork/Info.txt
+    echo "Dummy data for the GroundWork Monitor Info.txt file." >> /usr/local/groundwork/Info.txt
+fi
+
+# Test how a long-running plugin install appears in the Fuel UI
+# progress bar.  Answer:  It doesn't show up at all, as such.
+# sleep 60
+
+# We can make this "exit 1" for testing failure recognition
+# by the calling deployment script.
+exit 0

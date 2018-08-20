@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.groundwork</groupId>
+        <artifactId>gw-collage-impl-pom</artifactId>
+        <version>7.2.2-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>collage-common</artifactId>
+    <version>7.2.2-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>Collage Common Implementation</name>
+    <description>Groundwork Collage Common Implementation</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.groundwork</groupId>
+            <artifactId>collage-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.groundwork</groupId>
+            <artifactId>collagenet-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.groundwork</groupId>
+            <artifactId>collagenet-impl</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-orm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.josso</groupId>
+            <artifactId>josso-agent</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jasypt</groupId>
+            <artifactId>jasypt</artifactId>
+        </dependency>
+        
+        <dependency>
+	      	<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpcore</artifactId>
+			<version>4.2.3</version>      
+    	</dependency>    
+    
+    	<dependency>
+	      	<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpclient</artifactId>
+			<version>4.2.3</version>      
+    	</dependency> 
+
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.influxdb</groupId>
+            <artifactId>influxdb-java</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-jvm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.davidb</groupId>
+            <artifactId>metrics-influxdb</artifactId>
+        </dependency>
+
+        <!-- Test deps -->
+        <!-- TODO: once Maven-1 is deprecated, make scope test and move TestCase.java into src/main/test -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <!--<scope>test</scope>-->
+        </dependency>
+	    <dependency>
+	        <artifactId>sso-agent</artifactId>
+	        <groupId>org.gatein.sso</groupId>
+	        <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <artifactId>logback-classic</artifactId>
+                    <groupId>ch.qos.logback</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>hibernate-core</artifactId>
+                    <groupId>org.hibernate</groupId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.josso</groupId>
+                    <artifactId>josso-servlet-agent</artifactId>
+                </exclusion>
+            </exclusions>
+	    </dependency>
+        <dependency>
+            <groupId>joda-time</groupId>
+            <artifactId>joda-time</artifactId>
+            <version>2.3</version>
+        </dependency>
+
+    </dependencies>
+
+    <profiles />
+
+    <build>
+        <sourceDirectory>src/java</sourceDirectory>
+        <testSourceDirectory>src/test</testSourceDirectory>
+        <resources>
+            <resource>
+                <directory>src/java</directory>
+                <excludes>
+                    <exclude>**/*.java</exclude>
+                </excludes>
+            </resource>
+            <resource>
+                <directory>src/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+        <testResources>
+            <testResource>
+                <directory>src/test-resources</directory>
+            </testResource>
+        </testResources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <!-- TODO: schedule JIRA to make entire build m3 -->
+                        <include>**/com/groundwork/collage/test/TestCommon.java</include>
+                        <include>**/com/groundwork/collage/test/TestDateTime.java</include>
+                        <include>**/com/groundwork/collage/test/TestPropertyType.java</include>
+                        <include>**/com/groundwork/collage/model/impl/*.java</include>
+                        <include>**/com/groundwork/collage/test/TestActionService.java</include>
+                        <include>**/com/groundwork/collage/test/TestCategoryService.java</include>
+                        <include>**/com/groundwork/collage/test/TestConsolidationService.java</include>
+                        <include>**/com/groundwork/collage/test/TestDeviceService.java</include>
+                        <include>**/com/groundwork/collage/test/TestFoundationDAO.java</include>
+                        <include>**/com/groundwork/collage/test/TestHostGroupService.java</include>
+                        <include>**/com/groundwork/collage/test/TestHostService.java</include>
+                        <include>**/com/groundwork/collage/test/TestLogMessageService.java</include>
+                        <include>**/com/groundwork/collage/test/TestLogMessageWindowService.java</include>
+                        <include>**/com/groundwork/collage/test/TestMetadataService.java</include>
+                        <include>**/com/groundwork/collage/test/TestMonitorServerService.java</include>
+                        <include>**/com/groundwork/collage/test/TestPerformanceDataService.java</include>
+                        <include>**/com/groundwork/collage/test/TestStatisticsService.java</include>
+                        <include>**/com/groundwork/collage/test/TestStatusService.java</include>
+                    </includes>
+                    <!--<classpathDependencyExcludes>-->
+                        <!--<classpathDependencyExcludes>org.gatein.sso:sso-agent</classpathDependencyExcludes>-->
+                    <!--</classpathDependencyExcludes>-->
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <configuration>
+                    <delimiters>
+                        <!-- to keep the default behavior -->
+                        <delimiter>${*}</delimiter>
+                        <!-- to add Ant-like tokens style -->
+                        <delimiter>@</delimiter>
+                    </delimiters>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+

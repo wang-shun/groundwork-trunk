@@ -1,0 +1,83 @@
+--- nagios-4.3.1/cgi/extinfo.c.orig	2017-03-08 16:28:28.474064602 -0800
++++ nagios-4.3.1/cgi/extinfo.c	2017-03-08 16:28:28.494064606 -0800
+@@ -109,6 +109,9 @@
+ /* Establish that this patch is in place. */
+ char refresh_patch_ident[] = "$RefreshPatchCompileTime: " __TIME__ " on " __DATE__ " (" __FILE__ ") $";
+ 
++/* Establish that this patch is in place. */
++char no_tour_patch_ident[] = "$NoTourPatchCompileTime: " __TIME__ " on " __DATE__ " (" __FILE__ ") $";
++
+ int main(void) {
+ 	int found = FALSE;
+ 	char temp_buffer[MAX_INPUT_BUFFER] = "";
+@@ -562,7 +565,7 @@
+ 	else if(display_type == DISPLAY_SERVICE_INFO)
+ 		vidurl = "https://www.youtube.com/embed/f_knwQOS6FI";
+ 
+-	if (vidurl) {
++	if (0) {
+ 		printf("<script type='text/javascript' src='%s%s'></script>\n", url_js_path, JQUERY_JS);
+ 		printf("<script type='text/javascript' src='%s%s'></script>\n", url_js_path, NAGFUNCS_JS);
+ 		printf("<script type='text/javascript'>\n");
+--- nagios-4.3.1/cgi/status.c.orig	2017-03-08 16:28:28.476064602 -0800
++++ nagios-4.3.1/cgi/status.c	2017-03-08 16:28:28.496064606 -0800
+@@ -190,6 +190,9 @@
+ /* Establish that this patch is in place. */
+ char refresh_patch_ident[] = "$RefreshPatchCompileTime: " __TIME__ " on " __DATE__ " (" __FILE__ ") $";
+ 
++/* Establish that this patch is in place. */
++char no_tour_patch_ident[] = "$NoTourPatchCompileTime: " __TIME__ " on " __DATE__ " (" __FILE__ ") $";
++
+ int main(void) {
+ 	char *sound = NULL;
+ 	host *temp_host = NULL;
+@@ -535,10 +538,12 @@
+ 	printf("<script type='text/javascript' src='%s%s'></script>\n", url_js_path, NAGFUNCS_JS);
+ 	/* JS function to append content to elements on page */
+ 	printf("<script type='text/javascript'>\n");
++    if (0) {
+ 	printf("var vbox, vBoxId='status%d%d', vboxText = "
+ 			"'<a href=https://www.nagios.com/tours target=_blank>"
+ 			"Click here to watch the entire Nagios Core 4 Tour!</a>';\n",
+ 			display_type, group_style_type);
++    }
+ 	printf("$(document).ready(function() {\n"
+ 			"$('#top_page_numbers').append($('#bottom_page_numbers').html() );\n");
+ 	if (display_type == DISPLAY_HOSTS)
+@@ -554,7 +559,7 @@
+ 		else if (group_style_type == STYLE_HOST_DETAIL)
+ 			vidurl = "https://www.youtube.com/embed/nNiRr0hDZag";
+ 	}
+-	if (vidurl) {
++	if (0) {
+ 		printf("var user = '%s';\nvBoxId += ';' + user;",
+ 			 current_authdata.username);
+ 		printf("vbox = new vidbox({pos:'lr',vidurl:'%s',text:vboxText,"
+--- nagios-4.3.1/cgi/tac.c.orig	2017-03-08 16:28:28.477064603 -0800
++++ nagios-4.3.1/cgi/tac.c	2017-03-08 16:28:28.497064606 -0800
+@@ -181,6 +181,9 @@
+ /* Establish that this patch is in place. */
+ char refresh_patch_ident[] = "$RefreshPatchCompileTime: " __TIME__ " on " __DATE__ " (" __FILE__ ") $";
+ 
++/* Establish that this patch is in place. */
++char no_tour_patch_ident[] = "$NoTourPatchCompileTime: " __TIME__ " on " __DATE__ " (" __FILE__ ") $";
++
+ /*efine DEBUG 1*/
+ 
+ int main(void) {
+@@ -306,6 +309,7 @@
+ 	printf("<script type='text/javascript' src='%s%s'></script>\n", url_js_path, JQUERY_JS);
+ 	printf("<script type='text/javascript' src='%s%s'></script>\n", url_js_path, NAGFUNCS_JS);
+ 
++    if (0) {
+ 	printf("<script type='text/javascript'>\nvar vbox, vBoxId='tac', "
+ 			"vboxText = '<a href=https://www.nagios.com/tours target=_blank>"
+ 			"Click here to watch the entire Nagios Core 4 Tour!</a>';\n");
+@@ -315,6 +319,7 @@
+ 			"vidurl:'https://www.youtube.com/embed/l20YRDhbOfA',text:vboxText,"
+ 			"vidid:vBoxId});");
+ 	printf("\n});\n</script>\n");
++    }
+ 
+ 	printf("</HEAD>\n");
+ 	printf("<BODY CLASS='tac' marginwidth=2 marginheight=2 topmargin=0 leftmargin=0 rightmargin=0"

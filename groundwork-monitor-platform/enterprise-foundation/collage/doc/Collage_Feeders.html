@@ -1,0 +1,67 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en">
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2006  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+-->
+  <head>
+<title>GroundWork Foundation Feeders</title>
+    <link rel="stylesheet" type="text/css" href="bookshelf.css">
+  </head>
+  <body>
+
+<table border="0" cellpadding="1" cellspacing="0">
+  <tr>
+    <td valign="top">
+    <h1>GroundWork Foundation Feeders and Nagios Sample</h1>
+<!-- Start table -->
+<table class="data" cellpadding="5" cellspacing="1">
+  <tr class="tableHeader">
+    <td>Program Description</td>
+  </tr>
+  <tr>
+    <td class="tableFill04">
+    <h2>Overview</h2>
+    Collage reads data from feeders via a listener service. This service reads data posted to a TCP port and performs actions based on the message format. The XML data format to insert data into the Collage database is:
+<div class="function">&lt;{SERVICE_STATUS | HOST_STATUS | LOG_MESSAGE} database field=value | database field=value |...} /&gt;</div>
+    <h2>Examples</h2>
+    For example, the following message sets the status for a service.<br><br>
+<div class="function">&lt;SERVICE_STATUS HostName="zinal"  ServiceDescription="check_disk"  LastPluginOutput="OK  Service running" /&gt;</div>
+Another type of action is to change the monitoring system configuration by adding or removing data objects. This XML data format is:<br><br>
+<div class="function">&lt;SYSTEM_CONFIG action="{add|remove}" destination="{HostGroup|Device|MonitorServer}" destinationName= 
+"Name of entry" collection="{Host|Devices}" collectionNames="Comma separated list" /&gt;</div>
+For example, the following message adds hosts to a hostgroup;<br><br>
+<div class="function">&lt;SYSTEM_CONFIG action="add" destination="HostGroup" destinationName="demo-servers" collection="Host" 
+collectionNames="torino,geneva,asti" /&gt;</div>
+The Nagios Feeder is a set of Perl scripts which dynamically reads data from Nagios, formats the XML message and sends the message packet to the Collage listener.  There are two scripts.<br><br>
+
+<!-- Start Script table-->
+<table cellpadding="5" cellspacing="1">
+  <tr>
+    <td class="row1" width="25%">nagios2collage_socket.pl</td>
+    <td class="row2" width="75%">This script reads the Nagios status log (status.log) to get current host and service status.  It sends SERVICE_STATUS and HOST_STATUS message types to the Collage listener on a regular interval.</td>
+  </tr>
+  <tr>
+    <td class="row1">nagios2collage_eventlog.pl</td>
+    <td class="row2">This script is a log file monitor that reads the Nagios event log (nagios.log). Updates to the log are sent to as LOG_MESSAGE type messages.</td>
+     </tr>
+   </table>
+    </td>
+  </tr>
+</table>
+  </body>
+</html>

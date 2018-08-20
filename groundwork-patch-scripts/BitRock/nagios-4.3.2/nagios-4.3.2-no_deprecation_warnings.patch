@@ -1,0 +1,126 @@
+--- nagios-4.3.1/base/config.c.orig	2017-02-23 12:00:40.000000000 -0800
++++ nagios-4.3.1/base/config.c	2017-03-08 18:15:32.419272688 -0800
+@@ -29,6 +29,8 @@
+ #include "../include/nebmods.h"
+ #include "../include/nebmodules.h"
+ 
++/* Establish that this patch is in place. */
++char no_deprecation_patch_ident[] = "$NoDeprecationWarningsPatchCompileTime: " __TIME__ " on " __DATE__ " (" __FILE__ ") $";
+ 
+ /*** helpers ****/
+ /*
+@@ -1183,7 +1185,10 @@
+ 
+ 	if (deprecated) {
+ 		for (list = deprecated; list; list = list->next) {
+-			logit(NSLOG_CONFIG_WARNING, TRUE, "%s", (char *)list->object_ptr);
++			// In GroundWork Monitor, we suppress all deprecation warnings.
++			// We'll handle these issues via Monarch instead, so there's no
++			// point in worrying the end-user about them.
++			// logit(NSLOG_CONFIG_WARNING, TRUE, "%s", (char *)list->object_ptr);
+ 			free(list->object_ptr);
+ 			}
+ 		free_objectlist(&deprecated);
+--- nagios-4.3.1/xdata/xodtemplate.c.orig	2017-02-23 12:00:40.000000000 -0800
++++ nagios-4.3.1/xdata/xodtemplate.c	2017-03-08 19:41:32.993713166 -0800
+@@ -685,7 +685,10 @@
+ 					result = ERROR;
+ 					break;
+ 					}
+-					logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: Extinfo objects are deprecated and will be removed in future versions\n");
++					// In GroundWork Monitor, we suppress all deprecation warnings.
++					// We'll handle these issues via Monarch instead, so there's no
++					// point in worrying the end-user about them.
++					// logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: Extinfo objects are deprecated and will be removed in future versions\n");
+ 				}
+ 
+ 			/* we're already in an object definition... */
+@@ -2149,7 +2152,10 @@
+ 			else if(!strcmp(variable, "minimum_importance") ||
+ 					!strcmp(variable, "minimum_value")) {
+ 				if(!strcmp(variable, "minimum_value")) {
+-					logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: The minimum_value attribute is deprecated and will be removed in future versions. Please use minimum_importance instead.\n");
++					// In GroundWork Monitor, we suppress all deprecation warnings.
++					// We'll handle these issues via Monarch instead, so there's no
++					// point in worrying the end-user about them.
++					// logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: The minimum_value attribute is deprecated and will be removed in future versions. Please use minimum_importance instead.\n");
+ 					}
+ 				temp_contact->minimum_value = strtoul(value, NULL, 10);
+ 				temp_contact->have_minimum_value = TRUE;
+@@ -2392,21 +2398,32 @@
+ 				temp_host->have_initial_state = TRUE;
+ 				}
+ 			else if(!strcmp(variable, "check_interval") || !strcmp(variable, "normal_check_interval")) {
+-				if(!strcmp(variable, "normal_check_interval"))
+-					logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: The normal_check_interval attribute is deprecated and will be removed in future versions. Please use check_interval instead.\n");
++				if(!strcmp(variable, "normal_check_interval")) {
++					// In GroundWork Monitor, we suppress all deprecation warnings.
++					// We'll handle these issues via Monarch instead, so there's no
++					// point in worrying the end-user about them.
++					// logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: The normal_check_interval attribute is deprecated and will be removed in future versions. Please use check_interval instead.\n");
++					}
+ 				temp_host->check_interval = strtod(value, NULL);
+ 				temp_host->have_check_interval = TRUE;
+ 				}
+ 			else if(!strcmp(variable, "retry_interval") || !strcmp(variable, "retry_check_interval")) {
+-				if(!strcmp(variable, "retry_check_interval"))
+-					logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: The normal_retry_interval attribute is deprecated and will be removed in future versions. Please use retry_interval instead.\n");
++				if(!strcmp(variable, "retry_check_interval")) {
++					// In GroundWork Monitor, we suppress all deprecation warnings.
++					// We'll handle these issues via Monarch instead, so there's no
++					// point in worrying the end-user about them.
++					// logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: The normal_retry_interval attribute is deprecated and will be removed in future versions. Please use retry_interval instead.\n");
++					}
+ 				temp_host->retry_interval = strtod(value, NULL);
+ 				temp_host->have_retry_interval = TRUE;
+ 				}
+ 			else if(!strcmp(variable, "importance") ||
+ 					!strcmp(variable, "hourly_value")) {
+ 				if(!strcmp(variable, "hourly_value")) {
+-					logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: The hourly_value attribute is deprecated and will be removed in future versions. Please use importance instead.\n");
++					// In GroundWork Monitor, we suppress all deprecation warnings.
++					// We'll handle these issues via Monarch instead, so there's no
++					// point in worrying the end-user about them.
++					// logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: The hourly_value attribute is deprecated and will be removed in future versions. Please use importance instead.\n");
+ 					}
+ 				temp_host->hourly_value = (unsigned int)strtoul(value, NULL, 10);
+ 				temp_host->have_hourly_value = 1;
+@@ -2841,7 +2858,10 @@
+ 			else if(!strcmp(variable, "importance") ||
+ 					!strcmp(variable, "hourly_value")) {
+ 				if(!strcmp(variable, "hourly_value")) {
+-					logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: The hourly_value attribute is deprecated and will be removed in future versions. Please use importance instead.\n");
++					// In GroundWork Monitor, we suppress all deprecation warnings.
++					// We'll handle these issues via Monarch instead, so there's no
++					// point in worrying the end-user about them.
++					// logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: The hourly_value attribute is deprecated and will be removed in future versions. Please use importance instead.\n");
+ 					}
+ 				temp_service->hourly_value = (unsigned int)strtoul(value, NULL, 10);
+ 				temp_service->have_hourly_value = 1;
+@@ -2851,14 +2871,22 @@
+ 				temp_service->have_max_check_attempts = TRUE;
+ 				}
+ 			else if(!strcmp(variable, "check_interval") || !strcmp(variable, "normal_check_interval")) {
+-				if(!strcmp(variable, "normal_check_interval"))
+-					logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: The normal_check_interval attribute is deprecated and will be removed in future versions. Please use check_interval instead.\n");
++				if(!strcmp(variable, "normal_check_interval")) {
++					// In GroundWork Monitor, we suppress all deprecation warnings.
++					// We'll handle these issues via Monarch instead, so there's no
++					// point in worrying the end-user about them.
++					// logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: The normal_check_interval attribute is deprecated and will be removed in future versions. Please use check_interval instead.\n");
++					}
+ 				temp_service->check_interval = strtod(value, NULL);
+ 				temp_service->have_check_interval = TRUE;
+ 				}
+ 			else if(!strcmp(variable, "retry_interval") || !strcmp(variable, "retry_check_interval")) {
+-				if(!strcmp(variable, "retry_check_interval"))
+-					logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: The normal_retry_interval attribute is deprecated and will be removed in future versions. Please use retry_interval instead.\n");
++				if(!strcmp(variable, "retry_check_interval")) {
++					// In GroundWork Monitor, we suppress all deprecation warnings.
++					// We'll handle these issues via Monarch instead, so there's no
++					// point in worrying the end-user about them.
++					// logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: The normal_retry_interval attribute is deprecated and will be removed in future versions. Please use retry_interval instead.\n");
++					}
+ 				temp_service->retry_interval = strtod(value, NULL);
+ 				temp_service->have_retry_interval = TRUE;
+ 				}

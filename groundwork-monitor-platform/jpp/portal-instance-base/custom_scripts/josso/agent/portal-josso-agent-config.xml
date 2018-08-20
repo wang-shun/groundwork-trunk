@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="ISO-8859-1"  ?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:gen-svlt="urn:org:josso:agent:generic-servlet" xmlns:agent="urn:org:josso:agent:core"
+       xmlns:protocol="urn:org:josso:protocol:client" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+                           urn:org:josso:agent:core josso-agent.xsd
+                           urn:org:josso:agent:generic-servlet sso-agent.xsd
+                           urn:org:josso:protocol:client josso-protocol-client.xsd">
+  
+    <bean
+        class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <!-- This should point to GateIn configuration.properties file. so it 
+                could be read by JOSSO -->
+            <value>${gatein.sso.josso.properties.file}</value>
+        </property>
+    </bean>
+
+    <!-- gatein sso agent -->
+    <gen-svlt:agent sessionAccessMinInterval="1000"
+                    gatewayLoginUrl="${gatein.sso.josso.base.url}/login.do"
+                    gatewayLogoutUrl="${gatein.sso.josso.base.url}/logout.do" >
+
+        <gen-svlt:configuration>
+            <agent:agent-configuration>
+                <agent:partner-apps>
+                    <agent:partner-app id="portal" context="/portal" />
+                </agent:partner-apps>
+            </agent:agent-configuration>
+        </gen-svlt:configuration>
+        
+        <gen-svlt:gatewayServiceLocator>
+            <!-- edit transportSecurity from 'NONE' to 'CONFIDENTIAL' to use SSL transport in back channel -->
+            <protocol:ws-service-locator endpoint="${gatein.sso.josso.ws.host}" transportSecurity="NONE" />
+        </gen-svlt:gatewayServiceLocator>
+        
+        <gen-svlt:parametersBuilders>
+            <agent:vhost-parameters-builder />
+            <agent:appctx-parameters-builder />
+        </gen-svlt:parametersBuilders>
+    </gen-svlt:agent>
+</beans>

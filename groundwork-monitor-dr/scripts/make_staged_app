@@ -1,0 +1,85 @@
+#!/bin/bash -e
+
+# make_staged_app
+# make_shadow_app
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+PATH=/bin:/usr/bin
+
+script=`basename $0`
+if [ $script = make_staged_app ]; then
+    target_path_name=staged_path
+elif [ $script = make_shadow_app ]; then
+    target_path_name=shadow_path
+else
+    echo "ERROR:  $script was invoked under an unexpected name"
+    exit 1
+fi
+
+print_usage() {
+    echo "usage:  $script {working_path} {$target_path_name} {copy_pattern} ..."
+    echo "where:  copy_pattern is one of:"
+    echo "            +/dir/  include this entire file tree"
+    echo "            -/dir/  exclude this entire file tree"
+    echo "            +/file  include this file"
+    echo "            -/file  exclude this file"
+    echo "        and the patterns will be processed in the order given."
+    echo "        Each pattern must start with the working_path after the"
+    echo "        initial + or - character specifying inclusion or exclusion."
+}
+
+if [ $# -lt 3 ]; then
+    print_usage
+    exit 1
+fi
+
+# FIX MAJOR:  Probably the working_path should just be hardcoded here
+# rather than accepted as a command-line parameter.
+
+working_path="$1"
+target_path="$2"
+shift
+shift
+copy_patterns="$@"
+
+fixed_base_path='/usr/local/groundwork'
+
+# FIX MINOR:  This is an imperfect test in many ways.  It ought to check for symlinks,
+# and in general it ought not to allow anything outside of the formal /usr/local/groundwork/
+# tree to be copied.
+if [[ ! ("$working_path/" =~ "^$fixed_base_path/") ]]; then
+    echo "ERROR:  working_path must include \"$fixed_base_path\""
+    exit 1
+fi
+
+# We'd like to make this a condition, but some sites have /usr/local/groundwork itself
+# be a symlink to somewhere else.
+# Following a symlink would be a potential security risk, as it could point anywhere.
+#   if [ -L $working_path ]; then
+#       echo "ERROR:  cannot follow a symlink"
+#       exit 1
+#   fi
+
+if [ $script = make_staged_app ]; then
+    if [[ ! ("$target_path" =~ '/staged$') ]]; then
+       echo 'ERROR:  $target_path_name must end in "/staged"'
+       exit 1
+    fi
+else
+    if [[ ! ("$target_path" =~ '/shadow$') ]]; then
+       echo 'ERROR:  $target_path_name must end in "/shadow"'
+       exit 1
+    fi
+fi
+
+# FIX MAJOR:  the target directory must be cleaned up before we copy into it,
+# especially for the staged_path, lest we accumulate old files there that no
+# longer belong to the current configuration
+
+shopt -s nullglob
+rm -rf $target_path/*
+
+scripts_path=`dirname $0`
+$scripts_path/selective_copy "$working_path" "$target_path" $copy_patterns

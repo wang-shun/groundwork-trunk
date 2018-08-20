@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<ice:inputHidden id="CPipHiddn" value="#{commentsHandler.hiddenField}"></ice:inputHidden>
+		<ice:panelGroup rendered="#{!actionBean.error}"
+						id="commentsOuterPanel">
+		<!-- ERROR PANEL -->
+		<ice:panelGroup id="CPpanelgroupERROR"
+			rendered="#{commentsHandler.error}">
+			<ui:include src="/jsp/error.jspx">
+				<ui:param name="errorMessage"
+					value="#{commentsHandler.errorMessage}" />
+			</ui:include>
+			<ice:commandButton id="CPcmdRetryNow"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{commentsHandler.reloadPage}">
+			</ice:commandButton>
+		</ice:panelGroup>
+
+		<!-- PORTLET PANEL -->
+		<ice:panelGroup id="CPpanelgroupPORTLET"
+			rendered="#{!commentsHandler.error}" style="height:139px">
+			<!-- FRAME PANEL for Add Button -->
+			<div style="margin-bottom: 5px; margin-left: 5px;"><!-- ADD BUTTON -->
+			<ice:commandButton
+				value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_commandbutton_addComment']}"
+				id="CPaddNewComment"
+				actionListener="#{commentsHandler.showAddPopup}" type="submit"
+				styleClass="comments_btn">
+			</ice:commandButton></div>
+
+			<!-- COMMENTS TABLE GRID -->
+			<div id="CPdiv" style="#{commentsHandler.divTagStyle}"><!-- DATA TABLE -->
+			<ice:dataTable id="CPtblComments" var="commentItem"
+				value="#{commentsHandler.commentsList}"
+				style="width:90%;margin:0 auto;border:1px solid #999;"
+				rowClasses="iceDatTblRow1_typA_Comments,iceDatTblRow2_typA"
+				rendered="#{!commentsHandler.emptyList}"
+				styleClass="iceDatTblCommentsTbl">
+				<ice:column id="CPtblComments_column1">
+					<div style="width: 100%; margin-bottom: 15px;">
+					<!-- COMMENT HEADER - DATE & AUTHOR --> <ice:outputText
+						id="CPtxtCommentDateAuthor"
+						value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_message_on']} #{commentItem.date} #{message['com_groundwork_portal_statusviewer_commentsPortlet_message_byuser']} #{commentItem.user}">
+					</ice:outputText><br />
+					<!-- COMMENTS TEXT --> <ice:outputText escape="false"
+						style="font-weight:normal;" id="CPtxtCommentValue"
+						value="#{commentItem.comment}"></ice:outputText> <!-- DELETE BUTTON -->
+
+					<ice:commandButton id="CPcmdDeleteComment"
+						rendered="#{!commentItem.deletePending}" style="float:right;"
+						value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_commandbutton_deleteComment']}"
+						actionListener="#{commentsHandler.showDeletePopup}" type="submit">
+						<f:attribute name="commentID" value="#{commentItem}" />
+					</ice:commandButton> <ice:commandButton id="CPcmdDeleteCommentPending"
+						rendered="#{commentItem.deletePending}" style="float:right; "
+						value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_commandbutton_deleteCommentPending']}"
+						disabled="true" type="submit">
+					</ice:commandButton></div>
+				</ice:column>
+			</ice:dataTable></div>
+
+		</ice:panelGroup>
+
+		<!-- POP UP FOR ADD -->
+		<ice:panelPopup id="CPaddPopUp" modal="true" styleClass="icePnlPop"
+			autoPosition="manual" visible="#{commentsHandler.addPopupVisible}"
+			style="#{commentsHandler.popupStyle}">
+
+			<f:facet name="header">
+				<ice:panelGrid id="CPpanelgridAddHeader" cellpadding="0"
+					cellspacing="0" columns="3" style="text-align: left;" width="100%">
+					<ice:column id="CPColumnAddPopupTitle">
+						<ice:outputText id="CPtxtAddPopupTitle"
+							value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_popuptitle_addcomment']}">
+						</ice:outputText>
+					</ice:column>
+
+					<ice:column id="CPColumnAddPopupCloseLink">
+						<div class="cust_poupmodes"><span
+							title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}">
+						<ice:commandButton id="CPlinkCloseAdd" type="button" 
+						image="/css/css-images/popup_modeBtn_close.gif"
+							actionListener="#{commentsHandler.closePopup}"
+							title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+							alt="Close" /> </span></div>
+					</ice:column>
+
+				</ice:panelGrid>
+			</f:facet>
+
+			<f:facet name="body">
+				<ice:outputText id="CPtxtCmdOptions"
+					styleClass="icePnlGrdCol2 padbottom10"
+					value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_popup_commandoptions']}">
+				</ice:outputText>
+				<ice:panelGrid columns="1" id="CPpanelgridAddPopUpCmdOptsMAIN">
+					<ice:panelGrid columns="2" id="CPpanelgridAddPopUpCmdOpts">
+						<ice:column id="CPColumnAddPopupCmdOptsAllData">
+							<div style="width: 250px;"><!-- Command Options -->
+							<div style="padding-bottom: 12px;"><ice:outputLabel
+								style="font-family:Verdana, Arial, Helvetica, sans-serif;font-size: 14px;font-weight:bold;color:#585858;text-align:left;border-collapse:collapse;"
+								id="CPlblAddPopupCmdOpts"
+								value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_popup_commandoptions']}">
+							</ice:outputLabel></div>
+
+							<!-- Host Name --> <ice:panelGrid columns="2"
+								id="CPpanelgridAddPopUpCmdOptsHostName">
+								<ice:column id="CPColumnHstName">
+									<ice:outputLabel id="CPlblHostName"
+										value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_label_hostname']} : ">
+									</ice:outputLabel>
+								</ice:column>
+
+								<ice:outputText id="CPtxtHostName"
+									value="#{commentsHandler.hostName}">
+								</ice:outputText>
+
+								<ice:column id="CPColumnSpacerHstName">
+								</ice:column>
+							</ice:panelGrid> <!-- Service Description --> <ice:panelGrid
+								id="CPpanelgridAddPopUpCmdOptsServiceName" columns="2"
+								rendered="#{!commentsHandler.hostComment}">
+								<ice:column id="CPColumnSrvcDesc">
+									<ice:outputLabel id="CPlblServiceDescription"
+										value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_label_servicename']} : ">
+									</ice:outputLabel>
+								</ice:column>
+								<ice:outputText id="CPtxtHostName"
+									value="#{commentsHandler.nodeName}">
+								</ice:outputText>
+								<ice:column id="CPColumnSpacerSvcDesc">
+								</ice:column>
+							</ice:panelGrid> <!-- Persistent --> <ice:panelGrid columns="2"
+								id="CPpanelgridAddPopUpCmdOptsPersistent">
+								<ice:column id="CPColumnPersistentOpt">
+									<ice:outputLabel id="CPlblPersistent"
+										value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_label_persistent']} : ">
+									</ice:outputLabel>
+								</ice:column>
+								<ice:selectBooleanCheckbox id="CPchkBoxPersistent"									
+									value="#{commentsHandler.persistent}">
+								</ice:selectBooleanCheckbox>
+								<ice:column id="CPColumnSpacerPrstntOpt">
+								</ice:column>
+							</ice:panelGrid> <!-- Author --> <ice:panelGrid columns="2"
+								id="CPpanelgridAddPopUpCmdOptsAuthor">
+								<ice:column id="CPColumnAuthr1">
+									<ice:outputLabel id="CPlblAuthor"
+										value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_label_author']} : ">
+									</ice:outputLabel>
+								</ice:column>
+
+								<ice:column id="CPColumnAuthr2">
+									<ice:outputText id="CPtxtAuthor"
+										value="#{commentsHandler.userName}">
+									</ice:outputText>
+								</ice:column>
+							</ice:panelGrid> <!-- Comment --> <ice:panelGrid id="CPpanelgridCmtTxtValidation">
+								<ice:panelGrid columns="2"
+									id="CPpanelgridAddPopUpCmdOptsComment">
+									<!-- Removed the '*' from below: for http://jira/browse/GWMON-6950 -->
+									<ice:column id="CPCommentCol1">
+										<ice:outputLabel
+											value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_label_comment']} : ">
+										</ice:outputLabel>
+									</ice:column>
+
+									<ice:column id="CPCommentCol2">
+										<ice:inputTextarea id="CPtxtCommentArea"
+											value="#{commentsHandler.inputComment}" rows="3" cols="22">
+											<!-- <f:validator validatorId="commentsValidator" />-->
+										</ice:inputTextarea>
+									</ice:column>
+								</ice:panelGrid>
+
+								<h:message for="CPtxtCommentArea" showDetail="true"
+									showSummary="false" style="color: red; width: 100px" />
+							</ice:panelGrid></div>
+						</ice:column>
+
+						<ice:column id="CPColumnAddPopupCmdDescription">
+							<div style="border-left: 1px solid #d0d0d0;"><!-- Command Description -->
+							<ice:panelGrid columns="1" id="CPpanelgridAddPopUpCmdDesc">
+								<div style="padding-bottom: 52px; padding-left: 10px;"><ice:panelGrid
+									columns="1" id="CPpanelgridAddPopUpCmdDescTextLbl">
+									<ice:outputText id="CPlblComment_add"
+										style="font-family:Verdana, Arial, Helvetica, sans-serif;font-size: 14px;font-weight:bold;color:#585858;text-align:left;border-collapse:collapse;"
+										value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_popup_commanddescription']}">
+									</ice:outputText>
+									<br />
+								</ice:panelGrid> <ice:panelGrid columns="1"
+									id="CPpanelgridAddPopUpCmdDescTextData">
+									<ice:outputText id="CPtxtAddCommandDescription"
+										value="#{commentsHandler.commandDescription}">
+									</ice:outputText>
+								</ice:panelGrid></div>
+							</ice:panelGrid></div>
+						</ice:column>
+
+					</ice:panelGrid>
+
+					<!-- Buttons -->
+					<!-- COMMIT -->
+					<div><ice:commandButton id="CPcmdAddPopUpCommit"
+						partialSubmit="false"
+						value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_commandbutton_commit']}"
+						actionListener="#{commentsHandler.addComment}" type="submit"
+						styleClass="cust_portlet_filter_button">
+					</ice:commandButton> <!-- RESET --> <ice:commandButton type="submit" immediate="true"
+						id="CPcmdAddPopUpReset" action="#{commentsHandler.resetFields}"
+						value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_commandbutton_reset']}"
+						styleClass="cust_portlet_filter_button" /> <!-- CLOSE WINDOW -->
+
+					<ice:commandButton id="CPcmdAddPopUpClose"
+						value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_closeButtonLink_closewindow']}"
+						actionListener="#{commentsHandler.closePopup}" type="submit"
+						styleClass="cust_portlet_filter_button">
+					</ice:commandButton></div>
+				</ice:panelGrid>
+			</f:facet>
+		</ice:panelPopup>
+
+		<!-- POP UP FOR DELETE -->
+		<ice:panelPopup id="CPdeletePopUp"
+			visible="#{commentsHandler.deletePopupVisible}" autoPosition="manual"
+			styleClass="icePnlPop" modal="true"
+			style="#{commentsHandler.popupStyle}">
+
+			<f:facet name="header">
+				<ice:panelGrid id="CPpanelgridDeleteHeader" cellpadding="0"
+					cellspacing="0" columns="2" style="text-align: left;" width="100%">
+					<ice:column id="CPColumnDeletePopupTitle">
+						<ice:outputText id="CPtxtDeletePopupTitle"
+							value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_popuptitle_deletecomment']}">
+						</ice:outputText>
+					</ice:column>
+
+					<ice:column id="CPColumnDeletePopupCloseLink">
+						<div class="cust_poupmodes"><span
+							title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}">
+						<ice:commandButton id="CPlinkCloseDelete" type="button"
+							image="/css/css-images/popup_modeBtn_close.gif"
+							actionListener="#{commentsHandler.closePopup}"
+							title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+							alt="Close" /> </span></div>
+					</ice:column>
+				</ice:panelGrid>
+			</f:facet>
+
+			<f:facet name="body">
+				<ice:panelGrid columns="2" id="CPpanelgridDeletePopUpCmdOptsBODY">
+					<ice:column>
+						<div><!-- Command Options -->
+						<div style="padding-bottom: 12px;"><ice:outputLabel
+							id="CPlblDeletePopupCmdOpts"
+							style="font-family:Verdana, Arial, Helvetica, sans-serif;font-size: 14px;font-weight:bold;color:#585858;text-align:left;border-collapse:collapse;"
+							value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_popup_commandoptions']}">
+						</ice:outputLabel></div>
+
+						<!-- Comment ID -->
+						<div style="margin-bottom: 5px;"><ice:outputLabel
+							value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_label_commentid']} : ">
+						</ice:outputLabel> <ice:outputText value="#{commentsHandler.selectedCommentId}">
+						</ice:outputText></div>
+						<!-- Buttons -->
+						<div><!-- COMMIT --> <ice:commandButton
+							id="CPcmdDeletePopUpCommit"
+							value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_commandbutton_commit']}"
+							actionListener="#{commentsHandler.deleteComment}" type="submit"
+							styleClass="cust_portlet_filter_button">
+						</ice:commandButton> <!-- CLOSE WINDOW --> <ice:commandButton
+							id="CPcmdDeletePopUpClose"
+							value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_closeButtonLink_closewindow']}"
+							actionListener="#{commentsHandler.closePopup}" type="submit"
+							styleClass="cust_portlet_filter_button">
+						</ice:commandButton></div>
+						</div>
+					</ice:column>
+
+					<ice:column>
+						<div style="border-left: 1px solid #d0d0d0;"><!-- Command Description -->
+
+						<div style="padding-bottom: 12px; padding-left: 10px;"><ice:outputText
+							id="CPlblComment"
+							style="font-family:Verdana, Arial, Helvetica, sans-serif;font-size: 14px;font-weight:bold;color:#585858;text-align:left;border-collapse:collapse;"
+							value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_popup_commanddescription']}">
+						</ice:outputText></div>
+						<div style="padding-left: 10px;"><ice:outputText
+							id="CPtxtDeleteCommandDescription"
+							value="#{commentsHandler.commandDescription}">
+						</ice:outputText></div>
+						</div>
+					</ice:column>
+				</ice:panelGrid>
+			</f:facet>
+		</ice:panelPopup>
+		</ice:panelGroup>
+		<!-- Modal pop-up for info to be displayed when nagios is down-->
+		<ui:include src="/jsp/commentsNagiosDownPopup.jspx"></ui:include>
+		
+	</ui:define>
+</ui:composition>
+

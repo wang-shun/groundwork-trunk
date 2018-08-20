@@ -1,0 +1,90 @@
+#!/bin/bash -e
+
+# cacti.capture
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+# Here we try to disable cron jobs.  Unfortunately, some components (such as cacti/poller.php)
+# are not executed directly, but passed as arguments to command interpreters.  This makes it
+# much more difficult to disable them.
+
+block_cron_jobs() {
+    /bin/chmod 644 /usr/local/groundwork/common/bin/cacti_cron.sh
+    /bin/chmod 644 /usr/local/groundwork/foundation/feeder/find_cacti_graphs
+    /bin/chmod 644 /usr/local/groundwork/nms/tools/automation/scripts/extract_cacti.pl
+}
+
+unblock_cron_jobs() {
+    /bin/chmod 755 /usr/local/groundwork/common/bin/cacti_cron.sh
+    /bin/chmod 755 /usr/local/groundwork/foundation/feeder/find_cacti_graphs
+    /bin/chmod 755 /usr/local/groundwork/nms/tools/automation/scripts/extract_cacti.pl
+}
+
+# Blocking future cron jobs is not enough.  We also need to quiesce any existing running
+# copies of those programs.  That includes scripts that they may have internally called,
+# as it is not enough to kill the controlling parent script if the child stays running.
+#
+# Unfortunately, killing unparented, periodically-run jobs like this is inherently dangerous.
+# We might detect that the job is running, and then it might disappear immediately and its
+# PID could get get re-used right away by some other job, before we get a chance to send the
+# intended process a signal.  The signal would then be received by the wrong process.  For
+# the moment we will live with this danger, but we need to find some other way to implement
+# process interlocking that doesn't involve such race conditions.
+
+kill_cron_jobs() {
+    pids=`ps --no-headers -C cacti_cron.sh -o pid || true`
+    if [ -n "$pids" ]; then
+	kill -TERM $pids || true
+    fi
+    pids=`ps -o pid,args --no-headers -C .perl.bin | fgrep /usr/local/groundwork/foundation/feeder/find_cacti_graphs | awk '{print $1}'`
+    if [ -n "$pids" ]; then
+	kill -TERM $pids || true
+    fi
+    pids=`ps -o pid,args --no-headers -C php | fgrep /usr/local/groundwork/nms/applications/cacti/poller.php | awk '{print $1}'`
+    if [ -n "$pids" ]; then
+	kill -TERM $pids || true
+    fi
+    # It's probably not worth trying to kill the extract_cacti.pl script.  It's
+    # just straight-through logic selecting a few things from the database.  By
+    # the time we construct the command to kill it, it should be gone anyway.
+    # And sending a signal to a transient job is probably more dangerous than
+    # letting it run to completion, since the signal might find some other target.
+}
+
+# {staged_path} {replica_machine} {replica_user} {replica_path} {dump_command} {local_dump_prefix}
+
+if [ $# -ne 6 ]; then
+    program=`basename $0`
+    echo "usage:  $program {staged_path} {replica_machine} {replica_user} {replica_path} {dump_command} {local_dump_prefix}"
+    exit 1
+fi
+
+staged_path="$1"
+replica_machine="$2"
+replica_user="$3"
+replica_path="$4"
+dump_command="$5"
+local_dump_prefix="$6"
+
+script_directory=`dirname $0`
+scripts_path="$script_directory/../../../scripts"
+
+# Stop any applications program that might alter the content of the database.  That includes
+# any daemons, any cron jobs, and any other periodically-run programs.  Each must either be
+# brought down completely, or at least have its contents flushed and be prevented from making
+# further alterations for the time being, or be blocked from starting.  If it is a program
+# that is run periodically that might now be in progress, it must either be stopped or we
+# must wait for its current cycle to complete (with some timeout before killing it anyway).
+trap "unblock_cron_jobs" EXIT
+block_cron_jobs
+kill_cron_jobs
+
+$scripts_path/make_staged_db "$dump_command" "$staged_path" "$local_dump_prefix"
+
+# Start or unblock the application programs stopped or blocked above.  Reverse the actions we
+# took above to stop the application, so that daemons will begin anew or pick up again from
+# where they were paused, cron jobs get unblocked, and any other related programs may run again.
+unblock_cron_jobs
+
+$scripts_path/make_replica_db "$staged_path" "$replica_machine" "$replica_user" "$replica_path"

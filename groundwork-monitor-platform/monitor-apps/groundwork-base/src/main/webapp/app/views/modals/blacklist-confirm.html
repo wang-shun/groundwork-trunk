@@ -1,0 +1,17 @@
+<div class="modal-header">
+    <button type="button" class="close" aria-hidden="true" ng-click="close()">&times;</button>
+    <h4 class="modal-title">Confirm Deletion</h4>
+</div>
+<form role="form" novalidate class="css-form">
+    <div class="modal-body">
+        <p class="text-danger" ng-show="count == 0">No matching hosts were found.</p>
+        <p class="text-danger" ng-show="count == 1">{{count}} matching host was found. Are you really sure you want to delete it?</p>
+        <p class="text-danger" ng-show="count > 1">{{count}} matching hosts were found. Are you really sure you want to delete them?</p>
+        <p class="text-danger" ng-show="!!count">This cannot be undone.</p>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-default" ng-show="!count" ng-click="close()">Ok</button>
+        <button type="button" class="btn btn-default" ng-show="!!count" ng-click="close()">No</button>
+        <button type="submit" class="btn btn-primary" ng-show="!!count" ng-click="confirm()">Yes</button>
+    </div>
+</form>

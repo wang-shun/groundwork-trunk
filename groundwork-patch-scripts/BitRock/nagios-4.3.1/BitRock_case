@@ -1,0 +1,50 @@
+We were about to release the BitRock build of Nagios 4.2.4 as a patch
+to GWMEE 7.1.1, when we discovered that while we were busy with other
+tasks, the upstream maintainers had just released an even newer version.
+So we have brought that into view, applied and modified our patches,
+and made it ready for BitRock to fold into GWMEE 7.1.2.
+
+The procedure for the build of Nagios 4.3.1 is nearly identical to
+the procedure for building Nagios 4.2.4.  Similar patches now apply;
+they have been renamed (with updated version numbers) and reworked as
+necessary to correspond to the newer Nagios release.  There is one new
+patch (nagios-4.3.1-no_tour.patch) to apply, at the end of the patching
+sequence.  We also noticed that our earlier builds of Nagios 4.2.4 had
+been built without the usual level of compiler optimization; that has
+been corrected now.  As before, all the build steps are encapsulated in
+the GroundWork-supplied Makefile.
+
+To make it easier to understand what steps to take when building, all
+the build files, including the revised patches, are being kept distinct
+from the patch set used for Nagios 4.2.4.  You will find everything you
+need, including the upstream Nagios 4.3.1 tarball, under this directory
+in GroundWork's Subversion repository:
+
+    http://geneva/groundwork-professional/trunk/patch-scripts/BitRock/nagios-4.3.1/
+
+The structure is completely parallel to what we provided for the Nagios
+4.2.4 release.
+
+As before, the README file in that directory contains all the notes
+we took while developing the patches for the Nagios 4.2.4 and 4.3.1
+releases.  This includes details of the order in which the 4.3.1 patches
+must be applied.  There is still also a cgi/statuswml2.c file under that
+directory, to be added to the Nagios 4.3.1 release before building it.
+As before, that action is encapsulated in the Makefile that we supply.
+
+We will need Bronx to be re-built as well:
+
+    http://geneva/groundwork-professional/trunk/monitor-core/bronx/
+
+Nothing has changed in the Bronx code or its Makefile, but a new build
+will tag it internally as being compatible with Nagios 4.3.1, so we have
+an easy way to identify particular build versions.
+
+Since we want to release the Nagios update soon as a patch for 7.1.1,
+BitRock's build for 7.1.2 is of moderately high priority.  We have
+scripting here to gather up all the component pieces and create the
+necessary patch tarball and install/uninstall scripting, once we have
+fully tested it in the 7.1.2 context.
+
+Glenn
+

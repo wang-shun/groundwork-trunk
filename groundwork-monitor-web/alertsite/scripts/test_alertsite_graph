@@ -1,0 +1,114 @@
+#!/bin/bash
+
+# Copyright (c) 2011 GroundWork Open Source (www.groundworkopensource.com).
+# All rights reserved.  Use is subject to GroundWork commercial license terms.
+
+# This script contains an example RRD graph command for generating the types of graphs
+# we wish to see for the AlertSite Integration.  This script is not itself delivered as
+# part of the AlertSite Integration RPM.  Rather, an equivalent graph command is inserted
+# into the application configuration file, from where it will be transformed and sent to
+# Foundation so it can be used during RRD graph generation for customer resources being
+# monitored from AlertSite locations.
+
+# Stuffing this graph command into the monarch.performanceconfig table would be complicated
+# because there will be a variety of service names, all corresponding to AlertSite locations
+# but not sharing a common service-name pattern.  So we maintain a single copy of the graph
+# definition in the application configuration file instead, to avoid the maintenance
+# nightmare of needing to update many different copies of the definition should it ever need
+# to change.  It doesn't make a lot of sense anyway to stuff the definition into that table,
+# given that we have separated status and metric data into two different data streams, so
+# the process_service_perfdata_file script will never see this data.
+
+# NOTE:  In the context of establishing a full RRD graphing command that can be passed to
+# Foundation, we need to provide a new capability for Foundation to either directly replace
+# the $graph_start_time and $graph_end_time macros in the command passed to exec_rrdgraph.pl,
+# or to at least pass in values that can be extracted by that script and used to replace
+# similar macros within the RRD graphing command.  This is now being done by having some
+# standard macro names (namely, $GRAPH_START_TIME$ and $GRAPH_END_TIME$) recognized by a
+# replacement copy of the exec_rrdgraph.pl script, without any knowledge or involvement
+# of Foundation at all.  The script is then responsible for picking out the corresponding
+# --start and --end argument values, converting them to readable timestamps as shown below,
+# and substituting the generated strings into the graphing command before executing it.
+
+# When entering this command into the performanceconfig table, use these
+# definitions instead of ${resource} and ${location} references below.
+# resource='$HOST$'
+# location='$SERVICE$'
+resource=Grand-Traverse-County
+location=Minneapolis-Minnesota
+
+# The longest resource+location pair we currently see in the Active Network setup is:
+# Reserve-World-Visit-the-Capitol-Members Los-Angeles-California-Level3
+# I'd like to make the --title be "${resource} as seen from ${location}", but given
+# these long strings, we need to keep the extra verbiage down to a minimum so that
+# the complete title always fits within the graph.
+resource=Reserve-World-Visit-the-Capitol-Members
+location=Los-Angeles-California-Level3
+
+# When entering this command into the performanceconfig table, use 'rrd_source'
+# as the rrd_file value.
+rrd_file=${resource}_${location}.rrd
+
+# When entering this command into the performanceconfig table, use '-'
+# as the png_file value.
+png_file=${resource}_${location}.png
+
+start_time=1302730564
+  end_time=1302891784
+graph_start_time=`ctime $start_time | sed -e 's/.*= //' -e 's/ (.*//' -e 's/:/\\\\:/g'`
+  graph_end_time=`ctime   $end_time | sed -e 's/.*= //' -e 's/ (.*//' -e 's/:/\\\\:/g'`
+
+# The graph width is intentionally set wider than usual for service graphs, to
+# accommodate the longest title (resource+location string) seen in testing.
+graph_width=520
+graph_height=140
+
+# When entering this command into the performanceconfig table, use $RRDTOOL$
+# instead of /usr/local/groundwork/common/bin/rrdtool for proper generality.
+
+/usr/local/groundwork/common/bin/rrdtool graph ${png_file}			\
+    --start $start_time --end $end_time						\
+    --title "<b>${resource} from ${location}   </b>"				\
+    --pango-markup								\
+    --vertical-label "Probe Timings (seconds)"					\
+    --imgformat=PNG								\
+    --logarithmic								\
+    --units=si									\
+    --units-length 4								\
+    --width $graph_width --height $graph_height					\
+    --right-axis-label "Normalized Response"					\
+    --force-rules-legend							\
+    --legend-direction=topdown							\
+    DEF:Warning="$rrd_file":Warning:AVERAGE					\
+    DEF:Critical="$rrd_file":Critical:AVERAGE					\
+    DEF:ResponseLength="$rrd_file":ResponseLength:AVERAGE			\
+    DEF:Timings_Connect="$rrd_file":Timings_Connect:AVERAGE			\
+    DEF:Timings_Content="$rrd_file":Timings_Content:AVERAGE			\
+    DEF:Timings_Dns="$rrd_file":Timings_Dns:AVERAGE				\
+    DEF:Timings_Firstbyte="$rrd_file":Timings_Firstbyte:AVERAGE			\
+    DEF:Timings_Redirect="$rrd_file":Timings_Redirect:AVERAGE			\
+    DEF:Timings_Total="$rrd_file":Timings_Total:AVERAGE				\
+    VDEF:MaxResponseLength=ResponseLength,MAXIMUM				\
+    CDEF:ScaledWarning=Warning,300,*						\
+    CDEF:ScaledCritical=Critical,300,*						\
+    CDEF:ScaledResponse=ResponseLength,MaxResponseLength,/,100,*		\
+    AREA:ScaledWarning#FDB975							\
+    AREA:ScaledCritical#FF0000							\
+    AREA:Timings_Total#0088FF							\
+    AREA:Timings_Dns#C2AA8C							\
+    AREA:Timings_Connect#AAFFAA::STACK						\
+    AREA:Timings_Redirect#FF00FF::STACK						\
+    AREA:Timings_Firstbyte#5DCC5D::STACK					\
+    AREA:Timings_Content#009900::STACK						\
+    LINE2:ScaledResponse#000000							\
+    VRULE:0#000000:'Normalized Response Length '				\
+    VRULE:0#FF0000:'Critical State '						\
+    VRULE:0#FDB975:'Warning State '						\
+    VRULE:0#0088FF:'Total Time\j'						\
+    VRULE:0#009900:'Content Time '						\
+    VRULE:0#5DCC5D:'First-Byte Time '						\
+    VRULE:0#FF00FF:'Redirect Time '						\
+    VRULE:0#AAFFAA:'Connect Time '						\
+    VRULE:0#C2AA8C:'DNS Time\j'							\
+    COMMENT:"$graph_start_time through $graph_end_time\c"
+

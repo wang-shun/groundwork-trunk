@@ -1,0 +1,409 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions targetNamespace="urn:fws"
+	xmlns:fwsmodel="http://model.ws.foundation.groundwork.org"
+	xmlns:apachesoap="http://xml.apache.org/xml-soap" xmlns:impl="urn:fws"
+	xmlns:intf="urn:fws" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/"
+	xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:wsdlsoap="http://schemas.xmlsoap.org/wsdl/soap/"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<!--
+		Collage - The ultimate data integration framework. Copyright (C)
+		2004-2007 GroundWork Open Source Inc. info@groundworkopensource.com
+
+		This program is free software; you can redistribute it and/or modify
+		it under the terms of version 2 of the GNU General Public License as
+		published by the Free Software Foundation. This program is distributed
+		in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+		even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+		PARTICULAR PURPOSE. See the GNU General Public License for more
+		details. You should have received a copy of the GNU General Public
+		License along with this program; if not, write to the Free Software
+		Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+		USA
+	-->
+
+	<wsdl:import namespace="urn:fwsmodel"
+		xmlns:fwsmodel="http://model.ws.foundation.groundwork.org" location="../fwsmodel.wsdl" />
+
+	<wsdl:documentation>Host Group Web Service is a collection of APIs
+		that manages HostGroup entries in Foundation. HostGroup is a
+		collection of Host entities.</wsdl:documentation>
+	<wsdl:message name="getHostGroupsRequest">		
+		<wsdl:part name="type" type="fwsmodel:HostGroupQueryType">
+			<wsdl:documentation>HostGroupQueryType is an
+				enumeration of possible parameters to be used to retrieve host
+				groups. Type can be one of - ALL, MONITORSERVERNAME, HOSTGROUPID and
+				HOSTGROUPNAME</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="value" type="xsd:string">
+			<wsdl:documentation>Applicable for types except “ALL”.
+				Specify monitor server name Or host group name or host group Id as
+				per the type.</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="applicationType" type="xsd:string">
+			<wsdl:documentation>A type of application that has been configured
+				to be monitored through the collage system. E.g NAGIOS
+			</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="deep" type="xsd:boolean">
+			<wsdl:documentation>If deep is set to true, then API will fetch
+				details of Host Group like Host Group children (hosts under that
+				host group)</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="startRange" type="xsd:int">
+			<wsdl:documentation>beginning record number [first result –
+				pagination parameter]</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="endRange" type="xsd:int">
+			<wsdl:documentation>last record number [maximum results –
+				pagination parameter]</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="orderedBy" type="fwsmodel:SortCriteria">
+			<wsdl:documentation>Defines sorting order (ascending or
+				descending) and field on which sorting to be performed.
+			</wsdl:documentation>
+		</wsdl:part>
+
+	</wsdl:message>
+
+	<wsdl:message name="getHostGroupsResponse">
+		<wsdl:part name="getHostGroupsReturn" type="fwsmodel:WSFoundationCollection">
+			<wsdl:documentation>Returns WSFoundationCollection: collection
+				of Host Groups as per the input parameters specified.
+			</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+
+
+	<wsdl:message name="WSFoundationException">
+
+		<wsdl:part name="fault" element="fwsmodel:WSFoundationException" />
+
+	</wsdl:message>
+
+	<wsdl:message name="getHostGroupsByStringRequest">
+		<wsdl:documentation>All parameters are exactly same as
+			getHostGroups() API. String type specified gets mapped to
+			HostGroupQueryType internally.
+			Also SortOrder and SortFileld String
+			parameters are converted to
+			SortCriteria internally.
+		</wsdl:documentation>
+
+		<wsdl:part name="type" type="xsd:string">
+			<wsdl:documentation>HostGroupQueryType is an
+				enumeration of possible parameters to be used to retrieve host
+				groups. Type can be one of - ALL, MONITORSERVERNAME, HOSTGROUPID and
+				HOSTGROUPNAME</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="value" type="xsd:string">
+			<wsdl:documentation>Applicable for types except “ALL”.
+				Specify monitor server name Or host group name or host group Id as
+				per the type.</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="applicationType" type="xsd:string">
+			<wsdl:documentation>A type of application that has been configured
+				to
+				be monitored through the collage system. E.g NAGIOS
+			</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="deep" type="xsd:string">
+			<wsdl:documentation>If deep is set to true, then API will fetch
+				details of Host Group like Host Group children (hosts under that
+				host
+				group)</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="startRange" type="xsd:string">
+			<wsdl:documentation>beginning record number [first result –
+				pagination parameter]</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="endRange" type="xsd:string">
+			<wsdl:documentation>last record number [maximum results –
+				pagination parameter]</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="sortOrder" type="xsd:string">
+			<wsdl:documentation>Defines sorting order (ascending or
+				descending)</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="sortField" type="xsd:string">
+			<wsdl:documentation>Defines the field on which sorting to be
+				performed.
+			</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+
+	<wsdl:message name="getHostGroupInfoResponse">
+
+		<wsdl:part name="getHostGroupInfoReturn" type="fwsmodel:WSFoundationCollection">
+			<wsdl:documentation>Returns WSFoundationCollection: collection
+				of Host Groups containing the information.</wsdl:documentation>
+		</wsdl:part>
+
+	</wsdl:message>
+
+	<wsdl:message name="getHostGroupInfoRequest">
+
+		<wsdl:part name="type" type="xsd:string">
+			<wsdl:documentation>HostGroupInfoQueryType is
+				an enumeration of possible parameters to be used to retrieve host
+				group information. Type can be one of - ALL, APPLICATIONTYPEID and
+				HOSTGROUPID.</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="value" type="xsd:string">
+			<wsdl:documentation>Applicable for types except “ALL”.
+				Specify application type id (Refer ApplicationType table in
+				GWCollageDB) or host group Id as per the type.</wsdl:documentation>
+		</wsdl:part>
+
+	</wsdl:message>
+
+	<wsdl:message name="getHostGroupsByStringResponse">
+
+		<wsdl:part name="getHostGroupsByStringReturn" type="fwsmodel:WSFoundationCollection">
+			<wsdl:documentation>Returns WSFoundationCollection: collection
+				of Host Groups as per the input parameters specified.
+			</wsdl:documentation>
+		</wsdl:part>
+
+	</wsdl:message>
+
+	<wsdl:message name="getHostGroupsByCriteriaRequest">
+		<wsdl:part name="filter" type="fwsmodel:Filter">
+			<wsdl:documentation>A filter is provided to build the criteria for
+				doing the required queries on the model (Foundation). Filters can be
+				composed with the help of disjunctions (AND) and conjunctions (OR).
+				For example, to fetch all Host Groups which are "Scheduled Down"
+				(means hosts in that host group are scheduled down), use following
+				Filter criteria:
+				new Filter ("hostStatus. hostMonitorStatus.name",
+				FilterOperator.EQ,
+				"Scheduled Down");</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="sort" type="fwsmodel:Sort">
+			<wsdl:documentation>Defines sorting order (ascending or
+				descending) and filed on which sorting to be performed .
+			</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="firstResult" type="xsd:int">
+			<wsdl:documentation>beginning record number [first result –
+				pagination parameter]</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="maxResults" type="xsd:int">
+			<wsdl:documentation>last record number [maximum results –
+				pagination parameter]</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="deep" type="xsd:boolean">
+			<wsdl:documentation>If deep is set to true, then API will fetch
+				details of Host Group like Host Group children (hosts under that
+				host group)</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+
+	<wsdl:message name="getHostGroupsByCriteriaResponse">
+		<wsdl:part name="getHostGroupsByCriteriaReturn" type="fwsmodel:WSFoundationCollection">
+			<wsdl:documentation>Returns WSFoundationCollection: collection
+				of Host Groups as per the input parameters specified.
+			</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+
+	<wsdl:portType name="WSHostGroup">
+
+		<wsdl:operation name="getHostGroups"
+			parameterOrder="type value applicationType deep startRange endRange orderedBy">
+			<wsdl:documentation>Retrieves list of Host Groups as per the
+				specified type and other parameters. For example, it will return all
+				host groups in the system if “Type” is specified as “ALL”.
+			</wsdl:documentation>
+
+			<wsdl:input message="impl:getHostGroupsRequest" name="getHostGroupsRequest" />
+
+			<wsdl:output message="impl:getHostGroupsResponse" name="getHostGroupsResponse" />
+
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+
+		</wsdl:operation>
+
+		<wsdl:operation name="getHostGroupsByString"
+			parameterOrder="type value applicationType deep startRange endRange sortOrder sortField">
+			<wsdl:documentation>This API is String parameter version of
+				getHostGroups() API.</wsdl:documentation>
+			<wsdl:input message="impl:getHostGroupsByStringRequest"
+				name="getHostGroupsByStringRequest" />
+
+			<wsdl:output message="impl:getHostGroupsByStringResponse"
+				name="getHostGroupsByStringResponse" />
+
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+
+		</wsdl:operation>
+
+		<wsdl:operation name="getHostGroupInfo" parameterOrder="type value">
+			<wsdl:documentation>Returns information about Hosts (Host Id,
+				Name) in that HostGroup along with HostGroup information (Id, Name).
+			</wsdl:documentation>
+			<wsdl:input message="impl:getHostGroupInfoRequest" name="getHostGroupInfoRequest" />
+
+			<wsdl:output message="impl:getHostGroupInfoResponse"
+				name="getHostGroupInfoResponse" />
+
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+
+		</wsdl:operation>
+
+		<wsdl:operation name="getHostGroupsByCriteria"
+			parameterOrder="filter sort firstResult maxResults deep">
+			<wsdl:documentation>Returns Host Groups by Criteria – Viz. as
+				per the specified Filter condition.</wsdl:documentation>
+			<wsdl:input message="impl:getHostGroupsByCriteriaRequest"
+				name="getHostGroupsByCriteriaRequest" />
+
+			<wsdl:output message="impl:getHostGroupsByCriteriaResponse"
+				name="getHostGroupsByCriteriaResponse" />
+
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+
+		</wsdl:operation>
+	</wsdl:portType>
+
+	<wsdl:binding name="hostgroupSoapBinding" type="impl:WSHostGroup">
+
+		<wsdlsoap:binding style="rpc"
+			transport="http://schemas.xmlsoap.org/soap/http" />
+
+		<wsdl:operation name="getHostGroups">
+
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wshostgroup" />
+
+			<wsdl:input name="getHostGroupsRequest">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:input>
+
+			<wsdl:output name="getHostGroupsResponse">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:output>
+
+			<wsdl:fault name="WSFoundationException">
+
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+
+			</wsdl:fault>
+
+		</wsdl:operation>
+
+		<wsdl:operation name="getHostGroupsByString">
+
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wshostgroup" />
+
+			<wsdl:input name="getHostGroupsByStringRequest">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:input>
+
+			<wsdl:output name="getHostGroupsByStringResponse">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:output>
+
+			<wsdl:fault name="WSFoundationException">
+
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+
+			</wsdl:fault>
+
+		</wsdl:operation>
+
+		<wsdl:operation name="getHostGroupInfo">
+
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wshostgroup" />
+
+			<wsdl:input name="getHostGroupInfoRequest">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:input>
+
+			<wsdl:output name="getHostGroupInfoResponse">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:output>
+
+			<wsdl:fault name="WSFoundationException">
+
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+
+			</wsdl:fault>
+
+		</wsdl:operation>
+
+		<wsdl:operation name="getHostGroupsByCriteria">
+
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wshostgroup" />
+
+			<wsdl:input name="getHostGroupsByCriteriaRequest">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:input>
+
+			<wsdl:output name="getHostGroupsByCriteriaResponse">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:output>
+
+			<wsdl:fault name="WSFoundationException">
+
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+
+			</wsdl:fault>
+
+		</wsdl:operation>
+	</wsdl:binding>
+
+	<wsdl:service name="WSHostGroupService">
+		<wsdl:documentation>Host Group Web Service is a collection of APIs
+			that manages HostGroup entries in Foundation. HostGroup is a
+			collection of Host entities.</wsdl:documentation>
+		<wsdl:port binding="impl:hostgroupSoapBinding" name="wshostgroup">
+
+			<wsdlsoap:address
+				location="http://localhost:8080/foundation-webapp/services/wshostgroup" />
+
+		</wsdl:port>
+
+	</wsdl:service>
+
+</wsdl:definitions>

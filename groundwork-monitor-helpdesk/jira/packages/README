@@ -1,0 +1,17 @@
+=================================
+Notes on particular Perl packages
+=================================
+
+(*) The VMS::Stdio package is referenced from File::Temp (which is part
+    of ExtUtils::MakeMaker), but it is only require'd (on a VMS platform),
+    not use'd.  Since we aren't running this code under VMS, we don't have
+    the necessary header files to compile this package and include it in
+    our distribution.  So we simply suppress the RPM requirement for this
+    package, in our specfile.
+
+(*) Similarly, the VMS::Filespec package is also referenced from within
+    the ExtUtils::MakeMaker package, but only in VMS contexts, so there
+    is no danger that we will need to include this package in our builds.
+    (Compiling it demands the presence of VMS header files, so we can't
+    build it anyway.)  So as with VMS::Stdio, we simply suppress the RPM
+    requirement for this package, in our specfile.

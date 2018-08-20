@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+    Copyright (c) 2009-2013 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved.  This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+
+<project xmlns:ant="jelly:ant"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven">
+
+	<goal name="war" description="Build war file">
+		<attainGoal name="war:war" />
+	</goal>
+
+	<goal name="clean">
+		<!-- remove deployed war file and configuration -->
+		<delete file="${portal.apps.deploy.root}/${pom.artifactId}.war" />
+		<delete dir="${portal.apps.deploy.root}/${monarch.export.war.name}" />
+		<maven:reactor basedir="${basedir}" includes="**/project.xml" goals="clean:clean" />
+
+	</goal>
+
+	<goal name="deploy" prereqs="war">
+		<ant:copy file="${maven.build.dir}/${pom.artifactId}.war" todir="${portal.apps.deploy.root}" verbose="true"/>
+		<echo>Creating symlink ${portal.apps.deploy.root}/${monarch.export.war.name} to ${monarch.export.directory}</echo>
+		<exec dir="./" executable="ln">
+			<arg line="-s ${monarch.export.directory} ${portal.apps.deploy.root}/${monarch.export.war.name}" />
+		</exec>
+		<exec dir="./" executable="touch">
+			<arg line="${portal.apps.deploy.root}/${monarch.export.war.name}.dodeploy" />
+		</exec>
+	</goal>
+</project>

@@ -1,0 +1,1738 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<style type="text/css">
+p {
+    margin-left: 2.5em;
+}
+li {
+    margin-left: 1.75em;
+}
+hr {
+    margin-top: 1.5em;
+    margin-bottom: 1.5em;
+}
+</style>
+<body>
+<h1>
+dassmonarch Externals Routine Calling Sequences
+</h1>
+
+<tt>
+<table>
+<tr><td>$outcome</td><td>=</td><td>$dm-&gt;<a href="#apply_external_to_host">apply_external_to_host</a>($host_name, $external_name, $modified);</td></tr>
+<tr><td>$outcome</td><td>=</td><td>$dm-&gt;<a href="#apply_external_to_hostservice">apply_external_to_hostservice</a>($host_name, $service_name, $external_name, $modified);</td></tr>
+<tr><td>$outcome</td><td>=</td><td>$dm-&gt;<a href="#assign_external_to_hostprofile">assign_external_to_hostprofile</a>($hostprofile_name, $external_name);</td></tr>
+<tr><td>$outcome</td><td>=</td><td>$dm-&gt;<a href="#assign_external_to_service">assign_external_to_service</a>($service_name, $external_name);</td></tr>
+<tr><td></td><td></td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#clone_free_external">clone free external</a></td></tr>
+<tr><td>$external_id</td><td>=</td><td>$dm-&gt;<a href="#create_external">create_external</a>($external_name, $description, $type, $content);</td></tr>
+<tr><td>$outcome</td><td>=</td><td>$dm-&gt;<a href="#delete_external">delete_external</a>($external_name);</td></tr>
+<tr><td>$e_ref</td><td>=</td><td>$dm-&gt;<a href="#get_external">get_external</a>($external_name);</td></tr>
+<tr><td>$external_id</td><td>=</td><td>$dm-&gt;<a href="#get_externalid">get_externalid</a>($external_name);</td></tr>
+<tr><td>$external_name</td><td>=</td><td>$dm-&gt;<a href="#get_externalname">get_externalname</a>($external_id);</td></tr>
+<tr><td>$e_ref</td><td>=</td><td>$dm-&gt;<a href="#get_host_external">get_host_external</a>($host_name, $external_name);</td></tr>
+<tr><td>$e_ref</td><td>=</td><td>$dm-&gt;<a href="#get_hostservice_external">get_hostservice_external</a>($host_name, $service_name, $external_name);</td></tr>
+<tr><td>$external_names</td><td>=</td><td>$dm-&gt;<a href="#list_externals">list_externals</a>($type);</td></tr>
+<tr><td>$external_names</td><td>=</td><td>$dm-&gt;<a href="#list_host_externals">list_host_externals</a>($host_name);</td></tr>
+<tr><td>$external_names</td><td>=</td><td>$dm-&gt;<a href="#list_hostprofile_externals">list_hostprofile_externals</a>($hostprofile_name);</td></tr>
+<tr><td>$hostprofile_names</td><td>=</td><td>$dm-&gt;<a href="#list_hostprofiles_with_external">list_hostprofiles_with_external</a>($external_name);</td></tr>
+<tr><td>$host_names</td><td>=</td><td>$dm-&gt;<a href="#list_hosts_with_external">list_hosts_with_external</a>($external_name);</td></tr>
+<tr><td>$external_names</td><td>=</td><td>$dm-&gt;<a href="#list_hostservice_externals">list_hostservice_externals</a>($host_name, $service_name);</td></tr>
+<tr><td>$hostservices</td><td>=</td><td>$dm-&gt;<a href="#list_hostservices_with_external">list_hostservices_with_external</a>($external_name);</td></tr>
+<tr><td>$external_names</td><td>=</td><td>$dm-&gt;<a href="#list_service_externals">list_service_externals</a>($service_name);</td></tr>
+<tr><td>$service_names</td><td>=</td><td>$dm-&gt;<a href="#list_services_with_external">list_services_with_external</a>($external_name);</td></tr>
+<tr><td>$outcome</td><td>=</td><td>$dm-&gt;<a href="#modify_external">modify_external</a>($external_name, $description, $content);</td></tr>
+<tr><td>$outcome</td><td>=</td><td>$dm-&gt;<a href="#modify_host_external">modify_host_external</a>($host_name, $external_name, $content, $modified);</td></tr>
+<tr><td>$outcome</td><td>=</td><td>$dm-&gt;<a href="#modify_hostservice_external">modify_hostservice_external</a>($host_name, $service_name, $external_name, $content, $modified);</td></tr>
+<tr><td>$outcome</td><td>=</td><td>$dm-&gt;<a href="#propagate_external">propagate_external</a>($external_name, $replace);</td></tr>
+<tr><td>$outcome</td><td>=</td><td>$dm-&gt;<a href="#remove_external_from_host">remove_external_from_host</a>($host_name, $external_name);</td></tr>
+<tr><td>$outcome</td><td>=</td><td>$dm-&gt;<a href="#remove_external_from_hostprofile">remove_external_from_hostprofile</a>($hostprofile_name, $external_name);</td></tr>
+<tr><td>$outcome</td><td>=</td><td>$dm-&gt;<a href="#remove_external_from_hostservice">remove_external_from_hostservice</a>($host_name, $service_name, $external_name);</td></tr>
+<tr><td>$outcome</td><td>=</td><td>$dm-&gt;<a href="#remove_external_from_service">remove_external_from_service</a>($service_name, $external_name);</td></tr>
+<tr><td>$outcome</td><td>=</td><td>$dm-&gt;<a href="#rename_external">rename_external</a>($old_external_name, $new_external_name);</td></tr>
+</table>
+</tt>
+
+<a name="apply_external_to_host"><hr></a>
+<h2>NAME</h2>
+<p>
+    apply_external_to_host - apply (copy) free host external to host
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $outcome = $dm->apply_external_to_host($host_name, $external_name,
+	$modified);
+
+    if (not $outcome) {
+	## error ...
+    }
+    else {
+        ## success; continue processing
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Apply the specified free host external to the specified host.
+    If the external was not previously applied to this host, either
+    through applying a host profile, or directly in some other action,
+    create the separate applied host external.  If the external was
+    previously applied to this host, ignore its existing "modified"
+    flag and overwrite the applied external content with that from the
+    free host external.  In either case, set the "modified" flag of
+    the resulting applied host external according to the value of the
+    $modified parameter.
+</p>
+<p>
+    $modified is a boolean flag, indicating whether or not this applied
+    external is to be marked as having been modified since it was first
+    copied from the associated free external.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $outcome will be true if the applying the external succeeded,
+    false otherwise.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$host_name is not the name of any existing host.
+<li>$external_name is not the name of any existing host external.
+<li>A database error was encountered.
+</ul>
+
+<h2>NOTES</h2>
+<p>
+    This routine ignores the existing value of the applied external's
+    "modified" flag.  If you need to pay attention to that value, fetch
+    the applied external details (get_host_external()), look at the flag,
+    and decide whether to call the apply_external_to_host() routine.
+</p>
+<p>
+    The propagate_external() routine also has use in copying the content
+    of free externals to already-applied externals in bulk, optionally
+    paying attention to their respective "modified" flags.
+</p>
+
+<a name="apply_external_to_hostservice"><hr></a>
+<h2>NAME</h2>
+<p>
+    apply_external_to_hostservice - apply (copy) free service external
+    to host service
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $outcome = $dm->apply_external_to_hostservice($host_name,
+	$service_name, $external_name, $modified);
+
+    if (not $outcome) {
+	## error ...
+    }
+    else {
+        ## success; continue processing
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Apply the specified free service external to the specified host
+    service.  If the external was not previously applied to this host
+    service, either through a generic service when that service was
+    initially added to the host, or directly in some later action,
+    create the separate applied service external.  If the external
+    was previously applied to this host service, ignore its existing
+    "modified" flag and overwrite the applied external content with that
+    from the free service external.  In either case, set the "modified"
+    flag of the resulting applied service external according to the
+    value of the $modified parameter.
+</p>
+<p>
+    $modified is a boolean flag, indicating whether or not this applied
+    external is to be marked as having been modified since it was first
+    copied from the associated free external.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $outcome will be true if the applying the external succeeded,
+    false otherwise.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$host_name is not the name of any existing host.
+<li>$service_name is not the name of any existing service.
+<li>$external_name is not the name of any existing service external.
+<li>The specified service is not applied to the specified host.
+<li>A database error was encountered.
+</ul>
+
+<h2>NOTES</h2>
+<p>
+    This routine ignores the existing value of the applied external's
+    "modified" flag.  If you need to pay attention to that value, fetch
+    the applied external details (get_hostservice_external()), look at the
+    flag, and decide whether to call the apply_external_to_hostservice()
+    routine.
+</p>
+<p>
+    The propagate_external() routine also has use in copying the content
+    of free externals to already-applied externals in bulk, optionally
+    paying attention to their respective "modified" flags.
+</p>
+
+<a name="assign_external_to_hostprofile"><hr></a>
+<h2>NAME</h2>
+<p>
+    assign_external_to_hostprofile - assign external to host profile
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $outcome = $dm->assign_external_to_hostprofile($hostprofile_name,
+	$external_name);
+
+    if (not $outcome) {
+	## error ...
+    }
+    else {
+        ## success; continue processing
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Assign the specified free external to the specified host profile.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $outcome will be true if the assignment succeeded, false otherwise.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$hostprofile_name is not the name of any existing host profile.
+<li>$external_name is not the name of any existing host external.
+<li>A database error was encountered.
+</ul>
+
+<a name="assign_external_to_service"><hr></a>
+<h2>NAME</h2>
+<p>
+    assign_external_to_service - assign external to generic service
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $outcome = $dm->assign_external_to_service($service_name, $external_name);
+
+    if (not $outcome) {
+	## error ...
+    }
+    else {
+        ## success; continue processing
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Assign the specified free external to the specified generic service.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $outcome will be true if the assignment succeeded, false otherwise.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$service_name is not the name of any existing service.
+<li>$external_name is not the name of any existing service external.
+<li>A database error was encountered.
+</ul>
+
+<a name="clone_free_external"><hr></a>
+<h2>NAME</h2>
+<p>
+    clone free external
+</p>
+
+<h2>SYNOPSIS</h2>
+<p>
+    You can clone an existing free host or service external using the
+    following code:
+</p>
+
+<pre>
+    $e_ref = $dm->get_external($old_external_name);
+    if ( not defined $e_ref ) {
+	## error ...
+    }
+    else {
+	$description = $e_ref->{description};
+	$content     = $e_ref->{display};
+	## If you're going to clone an existing external, you may want to change
+	## the description, and you almost certainly want to change the content.
+	## You may as well do so now.
+	$description = ...;
+	$content     = ...;
+	$external_id = $dm->create_external( $new_external_name,
+	    $description, $e_ref->{type}, $content );
+	if ( !$external_id ) {
+	    ## error ...
+	}
+	else {
+	    ## continue processing with the new external
+	}
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    We don't supply any routines to clone free or applied externals,
+    as it makes little sense to do so when you can build whatever you
+    need out of the primitives that we do already supply.  This entry
+    gives example code to create a modified copy of a free external.
+</p>
+
+<a name="create_external"><hr></a>
+<h2>NAME</h2>
+<p>
+    create_external - create free host or service external
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $external_id = $dm->create_external($external_name, $description,
+	$type, $content);
+
+    if (! $external_id) {
+        ## error ...
+    }
+    else {
+        ## continue processing with the new external
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    This routine creates and stores a new free host or service external.
+</p>
+<p>
+    $external_name is the name of the new external.  It must not match
+    the name of any existing external.  Host and service externals share
+    the same namespace; a host external cannot share the same name with
+    a service external.
+</p>
+<p>
+    $description is a very brief (50 characters max) commentary about
+    the external.  In the current version of Monarch, this value is
+    stored but not displayed in the UI.  That will likely change in a
+    future release.  An undefined value can be passed as $description,
+    which will mean that no description is recorded for this external.
+</p>
+<p>
+    $type is either 'host' or 'service'.
+</p>
+<p>
+    $content is the body of the external, consisting of a series of
+    newline-terminated lines joined into one concatenated string.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    If the creation succeeded, $external_id is the Monarch internal
+    identifier of the newly created external, expressed as a positive
+    integer.  If the creation failed, $external_id is 0.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$external_name is undefined, an empty string, or otherwise inappropriate.
+<li>$description is too long.
+<li>$type is neither 'host' nor 'service'.
+<li>The specified content is undefined.
+<li>$external_name is already used by some other external.
+<li>A database error was encountered.
+</ul>
+
+<h2>NOTES</h2>
+<p>
+    Single-newline line termination is recommended even when externals
+    are targeted for Windows platforms (e.g., Windows GDMA), both to
+    make the editing of such externals consistent in the Monarch UI and
+    to make GDMA processing consistent across platforms.  If you need to
+    view a file containing such line termination on a Windows platform,
+    use WordPad to do so, not NotePad, so this type of line termination
+    is recognized and the line breaks will be honored in the text display.
+</p>
+<p>
+    The recommended object name constraints are to limit externals names
+    to alphanumerics plus these five characters:
+</p>
+<pre>
+	@ - . _ %
+</pre>
+
+<h2>BUGS</h2>
+<p>
+    This routine currently does no validation of the external name to
+    ensure that it follows our intended Monarch object name constraints.
+</p>
+<p>
+    There is a race condition in detection of whether an external name
+    is already in use, that will not be completely blocked until we put
+    a unique index on the externals.name column.  Until then, it is up
+    to the application designer to ensure that no two applications try
+    to create or rename externals at the same time.
+</p>
+
+<a name="delete_external"><hr></a>
+<h2>NAME</h2>
+<p>
+    delete_external - delete both free external and all applied copies
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $outcome = $dm->delete_external($external_name);
+
+    if (not $outcome) {
+	## error ...
+    }
+    else {
+        ## success; continue processing
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Delete a free host or service external, as well as all associated
+    applied copies, whether or not their respective "modified" flags
+    are set.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $outcome will be true if the deletion succeeded, false otherwise.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$external_name is not the name of any existing external.
+<li>A database error was encountered.
+</ul>
+
+<h2>NOTES</h2>
+<p>
+    Before you perform this destructive action, you might wish to call
+    the appropriate pair of the following routines:
+</p>
+<pre>
+	$dm->list_hostprofiles_with_external($external_name);
+	$dm->list_hosts_with_external       ($external_name);
+
+	$dm->list_services_with_external    ($external_name);
+	$dm->list_hostservices_with_external($external_name);
+</pre>
+<p>
+    to provide a user warning if applied externals exist.
+</p>
+<p>
+    The deletion will likely succeed if the external does not exist,
+    since all that matters is that it no longer exists.
+</p>
+
+<a name="get_external"><hr></a>
+<h2>NAME</h2>
+<p>
+    get_external - get free external (either host external or service
+    external; retrieve all content and metadata)
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $e_ref = $dm->get_external($external_name);
+
+    if ( not defined $e_ref ) {
+        ## serious internal failure ...
+    }
+    elsif (not %$e_ref) {
+        ## external not found ...
+    }
+    else {
+	$external_id   = $e_ref->{external_id};
+	$external_name = $e_ref->{name};
+	$description   = $e_ref->{description};
+	$type          = $e_ref->{type};
+	$content       = $e_ref->{display};
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Find all the details of the specified free external.
+</p>
+<p>
+    $e_ref->{external_id} is the Monarch internal identifier of the
+    indicated external ($external_name), expressed as a positive integer.
+</p>
+<p>
+    $e_ref->{name} is the same external name that you searched with.
+</p>
+<p>
+    $e_ref->{description} is a very brief (50 characters max) commentary
+    about the external.
+</p>
+<p>
+    $e_ref->{type} is either 'host' or 'service'.
+</p>
+<p>
+    $e_ref->{display} is the content of the external, generally
+    consisting of a series of newline-terminated lines joined into
+    one concatenated string.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    If the search succeeded and found the named external, $e_ref is a
+    hashref referring to the details of that external.  If the search
+    succeeded and failed to find the external, $e_ref is a hashref
+    pointing to an empty hash.  If the search failed (e.g., because of
+    a database error), $e_ref is undefined.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$external_name is not the name of any existing external.
+<li>A database error was encountered.
+</ul>
+
+<h2>NOTES</h2>
+<p>
+    We return different values (reference to empty hash vs. undefined)
+    for different types of search failure so the caller can distinguish
+    between a failure that happened because the external did not
+    exist (which might be the situation being probed for) and a
+    failure that happened because database access was not successful.
+    The application-logic response in these two cases should generally
+    be very different.
+</p>
+
+<h2>BUGS</h2>
+<p>
+    Because it requires improved support from the underlying Monarch code,
+    this routine is only safe to use with GWMEE 6.7 or later.
+</p>
+
+<a name="get_externalid"><hr></a>
+<h2>NAME</h2>
+<p>
+    get_externalid - find external ID (given an external name)
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $external_id = $dm->get_externalid($external_name);
+
+    if (not defined $external_id) {
+        ## serious internal failure ...
+    }
+    elsif (! $external_id) {
+        ## external not found ...
+    }
+    else {
+        ## continue processing with the found external
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Find the Monarch internal identifier of the specified external.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    If the search succeeded, $external_id is the Monarch internal
+    identifier of the indicated external ($external_name), expressed as
+    a positive integer.  If the search ran to completion but came up
+    empty, $external_id is 0.  If the search failed (e.g., because of
+    a database error), $external_id is undefined.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$external_name is not the name of any existing external.
+<li>A database error was encountered.
+</ul>
+
+<h2>NOTES</h2>
+<p>
+    We return different values (0 vs. undefined) for different types
+    of search failure so the caller can distinguish between a failure
+    that happened because the external did not exist (which might be
+    the situation being probed for) and a failure that happened because
+    database access was not successful.  The application-logic response
+    in these two cases should generally be very different.
+</p>
+
+<h2>BUGS</h2>
+<p>
+    Because it requires improved support from the underlying Monarch code,
+    this routine is only safe to use with GWMEE 6.7 or later.
+</p>
+
+<a name="get_externalname"><hr></a>
+<h2>NAME</h2>
+<p>
+    get_externalname - find external name (given an external ID)
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $external_name = $dm->get_externalname($external_id);
+
+    if (not defined $external_name) {
+        ## error ...
+    }
+    else {
+        ## continue processing with the found external
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Find the name of the specified external ($external_id).
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    If the search succeeded, $external_name is the name of the found
+    external.  If the search failed, $external_name is undefined.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$external_id does not refer to any existing external.
+<li>A database error was encountered.
+</ul>
+
+<h2>NOTES</h2>
+<p>
+    We do not distinguish lookup failures from database-access failures
+    in the return value from this routine, primarily because you should
+    have only gotten an $external_id from some previous call to another
+    routine, so its value should be valid and there is little reason
+    for application logic to distinguish different types of failure here.
+</p>
+
+<a name="get_host_external"><hr></a>
+<h2>NAME</h2>
+<p>
+    get_host_external - get applied host external (content and metadata
+    of the individual separate copy)
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $e_ref = $dm->get_host_external($host_name, $external_name);
+
+    if ( not defined $e_ref ) {
+        ## serious internal failure ...
+    }
+    elsif (not %$e_ref) {
+        ## external not found ...
+    }
+    else {
+	$external_id = $e_ref->{external_id};
+	$host_id     = $e_ref->{host_id};
+	$content     = $e_ref->{data};
+	$modified    = $e_ref->{modified};
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Find all details of the specified applied host external.
+</p>
+<p>
+    $e_ref->{external_id} is the Monarch internal identifier of the
+    indicated external ($external_name), expressed as a positive integer.
+</p>
+<p>
+    $e_ref->{host_id} is the Monarch internal identifier of the specified
+    host ($host_name), expressed as a positive integer.
+</p>
+<p>
+    $e_ref->{data} is the content of the external, generally consisting of
+    a series of newline-terminated lines joined into one concatenated
+    string.
+</p>
+<p>
+    $e_ref->{modified} is an integer acting as a boolean flag, indicating
+    whether or not this applied external has been marked as having been
+    modified since it was first copied from the associated free external.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    If the search succeeded and found the named host external,
+    $e_ref is a hashref referring to the details of that external.
+    If the search succeeded and failed to find the external, $e_ref is
+    a hashref pointing to an empty hash.  If the search failed (e.g.,
+    because of a database error), $e_ref is undefined.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$host_name is not the name of any existing host.
+<li>$external_name is not the name of any existing host external.
+<li>The specified external is not applied to the specified host.
+<li>A database error was encountered.
+</ul>
+
+<a name="get_hostservice_external"><hr></a>
+<h2>NAME</h2>
+<p>
+    get_hostservice_external - get applied service external (conent and
+    metadata of the individual separate copy)
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $e_ref = $dm->get_hostservice_external($host_name, $service_name,
+	$external_name);
+
+    if ( not defined $e_ref ) {
+        ## serious internal failure ...
+    }
+    elsif (not %$e_ref) {
+        ## external not found ...
+    }
+    else {
+	$external_id = $e_ref->{external_id};
+	$host_id     = $e_ref->{host_id};
+	$service_id  = $e_ref->{service_id};
+	$content     = $e_ref->{data};
+	$modified    = $e_ref->{modified};
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Find all details of the specified applied service external.
+</p>
+
+<p>
+    $e_ref->{external_id} is the Monarch internal identifier of the
+    indicated external ($external_name), expressed as a positive integer.
+</p>
+<p>
+    $e_ref->{host_id} is the Monarch internal identifier of the specified
+    $host_name, expressed as a positive integer.
+</p>
+<p>
+    $e_ref->{service_id} is the Monarch internal identifier of the
+    specified host service (combination of $host_name and $service_name),
+    expressed as a positive integer.
+</p>
+<p>
+    $e_ref->{data} is the content of the external, generally consisting of
+    a series of newline-terminated lines joined into one concatenated
+    string.
+</p>
+<p>
+    $e_ref->{modified} is an integer acting as a boolean flag, indicating
+    whether or not this applied external has been marked as having been
+    modified since it was first copied from the associated free external.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    If the search succeeded and found the named service external,
+    $e_ref is a hashref referring to the details of that external.
+    If the search succeeded and failed to find the external, $e_ref is
+    a hashref pointing to an empty hash.  If the search failed (e.g.,
+    because of a database error), $e_ref is undefined.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$host_name is not the name of any existing host.
+<li>$service_name is not the name of any existing service.
+<li>$external_name is not the name of any existing service external.
+<li>The specified service is not applied to the specified host.
+<li>The specified external is not applied to the specified host service.
+<li>A database error was encountered.
+</ul>
+
+<a name="list_externals"><hr></a>
+<h2>NAME</h2>
+<p>
+    list_externals - list free externals (either host externals or
+    service externals)
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $external_names = $dm->list_externals($type);
+
+    if (not defined $external_names) {
+	## error ...
+    }
+    else {
+	foreach my $external_name (@$external_names) {
+	    ## processing
+	}
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    List all free externals of the given type.
+</p>
+<p>
+    $type is either 'host' or 'service'.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $external_names will be defined as an arrayref if the search succeeded
+    (even if no externals were found), and undefined if the search failed
+    due to some kind of error.  Upon success, the array will list the
+    relevant externals, in arbitrary order.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$type is neither 'host' nor 'service'.
+<li>A database error was encountered.
+</ul>
+
+<a name="list_host_externals"><hr></a>
+<h2>NAME</h2>
+<p>
+    list_host_externals - list externals applied to host
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $external_names = $dm->list_host_externals($host_name);
+
+    if (not defined $external_names) {
+	## error ...
+    }
+    else {
+	foreach my $external_name (@$external_names) {
+	    ## processing
+	}
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Find the names of all host externals currently applied to the
+    specified host.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $external_names will be defined as an arrayref if the search succeeded
+    (even if no externals were found), and undefined if the search failed
+    due to some kind of error.  Upon success, the array will list the
+    relevant host externals, in arbitrary order.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$host_name is not the name of any existing host.
+<li>A database error was encountered.
+</ul>
+
+<a name="list_hostprofile_externals"><hr></a>
+<h2>NAME</h2>
+<p>
+    list_hostprofile_externals - list externals assigned to a specified
+    host profile
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $external_names = $dm->list_hostprofile_externals($hostprofile_name);
+
+    if (not defined $external_names) {
+	## error ...
+    }
+    else {
+	foreach my $external_name (@$external_names) {
+	    ## processing
+	}
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    List all host externals that are assigned to the given host profile.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $external_names will be defined as an arrayref if the search succeeded
+    (even if no externals were found), and undefined if the search failed
+    due to some kind of error.  Upon success, the array will list the
+    relevant host externals, in arbitrary order.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$hostprofile_name is not the name of any existing host profile.
+<li>A database error was encountered.
+</ul>
+
+<a name="list_hostprofiles_with_external"><hr></a>
+<h2>NAME</h2>
+<p>
+    list_hostprofiles_with_external - list host profiles with assigned external
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $hostprofile_names = $dm->list_hostprofiles_with_external($external_name);
+
+    if (not defined $hostprofile_names) {
+	## error ...
+    }
+    else {
+	foreach my $hostprofile_name (@$hostprofile_names) {
+	    ## processing
+	}
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    List all host profiles that have the given host external assigned to them.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $hostprofile_names will be defined as an arrayref if the search
+    succeeded (even if no host profiles were found), and undefined if
+    the search failed due to some kind of error.  Upon success, the
+    array will list the relevant host profiles, in arbitrary order.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$external_name is not the name of any existing host external.
+<li>A database error was encountered.
+</ul>
+
+<a name="list_hosts_with_external"><hr></a>
+<h2>NAME</h2>
+<p>
+    list_hosts_with_external - list hosts with applied external
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $host_names = $dm->list_hosts_with_external($external_name);
+
+    if (not defined $host_names) {
+	## error ...
+    }
+    else {
+	foreach my $host_name (@$host_names) {
+	    ## processing
+	}
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    List all hosts that have the given host external assigned to them.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $host_names will be defined as an arrayref if the search succeeded
+    (even if no hosts were found), and undefined if the search failed
+    due to some kind of error.  Upon success, the array will list the
+    relevant hosts, in arbitrary order.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$external_name is not the name of any existing host external.
+<li>A database error was encountered.
+</ul>
+
+<a name="list_hostservice_externals"><hr></a>
+<h2>NAME</h2>
+<p>
+    list_hostservice_externals - list externals applied to host service
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $external_names = $dm->list_hostservice_externals($host_name, $service_name);
+
+    if (not defined $external_names) {
+	## error ...
+    }
+    else {
+	foreach my $external_name (@$external_names) {
+	    ## processing
+	}
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Find the names of all service externals currently applied to the
+    specified host service.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $external_names will be defined as an arrayref if the search succeeded
+    (even if no externals were found), and undefined if the search failed
+    due to some kind of error.  Upon success, the array will list the
+    relevant service externals, in arbitrary order.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$host_name is not the name of any existing host.
+<li>$service_name is not the name of any existing service.
+<li>The specified service is not applied to the specified host.
+<li>A database error was encountered.
+</ul>
+
+<a name="list_hostservices_with_external"><hr></a>
+<h2>NAME</h2>
+<p>
+    list_hostservices_with_external - list host services with applied external
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $hostservices = $dm->list_hostservices_with_external($external_name);
+
+    if (not defined $hostservices) {
+	## error ...
+    }
+    else {
+	foreach my $host_name (keys %$hostservices) {
+	    my $service_names = $hostservices{$host_name};
+	    foreach my $service_name (@$service_names) {
+		## processing
+	    }
+	}
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    List all host services that have the given service external assigned
+    to them.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $hostservices will be defined as a hashref if the search succeeded
+    (even if no host services were found), and undefined if the search
+    failed due to some kind of error.  Upon success, each key of the
+    hash will be the name of a host that has at least one service with
+    the specified service external applied, and the corresponding hash
+    value will be an arrayref referring to an array listing tho relevant
+    services on that host, in arbitrary order.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$external_name is not the name of any existing service external.
+<li>A database error was encountered.
+</ul>
+
+<a name="list_service_externals"><hr></a>
+<h2>NAME</h2>
+<p>
+    list_service_externals - list externals assigned to a specified
+    generic service
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $external_names = $dm->list_service_externals($service_name);
+
+    if (not defined $external_names) {
+	## error ...
+    }
+    else {
+	foreach my $external_name (@$external_names) {
+	    ## processing
+	}
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    List all service externals that are assigned to the given generic service.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $external_names will be defined as an arrayref if the search succeeded
+    (even if no externals were found), and undefined if the search failed
+    due to some kind of error.  Upon success, the array will list the
+    relevant service externals, in arbitrary order.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$service_name is not the name of any existing service.
+<li>A database error was encountered.
+</ul>
+
+<a name="list_services_with_external"><hr></a>
+<h2>NAME</h2>
+<p>
+    list_services_with_external - list generic services with assigned external
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $service_names = $dm->list_services_with_external($external_name);
+
+    if (not defined $service_names) {
+	## error ...
+    }
+    else {
+	foreach my $service_name (@$service_names) {
+	    ## processing
+	}
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    List all generic services that have the given service external
+    assigned to them.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $service_names will be defined as an arrayref if the search succeeded
+    (even if no generic services were found), and undefined if the search
+    failed due to some kind of error.  Upon success, the array will list
+    the relevant generic services, in arbitrary order.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$external_name is not the name of any existing service external.
+<li>A database error was encountered.
+</ul>
+
+<a name="modify_external"><hr></a>
+<h2>NAME</h2>
+<p>
+    modify_external - modify free external (change content and/or metadata)
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $outcome = $dm->modify_external($external_name, $description, $content);
+
+    if (not $outcome) {
+	## error ...
+    }
+    else {
+        ## success; continue processing
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Change the content and/or metadata (description) of a free external.
+</p>
+<p>
+    If $description is defined, its value will replace the existing
+    external description.
+</p>
+<p>
+    If $content is defined, its value will replace the existing free
+    external content.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $outcome will be true if the modification succeeded, false otherwise.
+    If both $description and $content are undefined, the modification
+    will vacuously succeed.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$external_name is not the name of any existing external.
+<li>$description is too long.
+<li>A database error was encountered.
+</ul>
+
+<h2>NOTES</h2>
+<p>
+    To change the name of an external, use the separate rename_external()
+    function.
+</p>
+<p>
+    There is no mechanism provided to change a defined description in
+    the database to an undefined description.  If you want to destroy
+    an existing description without providing a useful replacement,
+    an empty string will serve that purpose.
+</p>
+<p>
+    It is not possible to change the type of a free external from 'host'
+    to 'service' or vice versa, as that would cause too much disruption.
+</p>
+
+<a name="modify_host_external"><hr></a>
+<h2>NAME</h2>
+<p>
+    modify_host_external - modify applied host external
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $outcome = $dm->modify_host_external($host_name, $external_name,
+	$content, $modified);
+
+    if (not $outcome) {
+	## error ...
+    }
+    else {
+        ## success; continue processing
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Change the content and/or metadata ("modified" flag) of an applied
+    host external.
+</p>
+<p>
+    If $content is defined, its value will replace the existing applied
+    external content.
+</p>
+<p>
+    If $modified is defined, its value will be used as a boolean flag
+    to replace the existing "modified" flag accordingly.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $outcome will be true if the modification succeeded, false otherwise.
+    If both $content and $modified are undefined, the modification
+    will vacuously succeed.
+</p>
+
+<h2>NOTES</h2>
+<p>
+    You can change the $modified flag for an applied host external
+    whether or not its content is different from the free host external
+    from which it was originally copied.  This allows you to control the
+    freezing and unfreezing of the content with respect to the actions of
+    propagate_external(), no matter whether you want to allow or prevent
+    overwriting of local customizations, or simply want to lock the
+    originally copied value.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$host_name is not the name of any existing host.
+<li>$external_name is not the name of any existing host external.
+<li>The specified external is not applied to the specified host.
+<li>A database error was encountered.
+</ul>
+
+<a name="modify_hostservice_external"><hr></a>
+<h2>NAME</h2>
+<p>
+    modify_hostservice_external - modify applied service external
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $outcome = $dm->modify_hostservice_external($host_name, $service_name,
+	$external_name, $content, $modified);
+
+    if (not $outcome) {
+	## error ...
+    }
+    else {
+        ## success; continue processing
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Change the content and/or metadata ("modified" flag) of an applied
+    service external.
+</p>
+<p>
+    If $content is defined, its value will replace the existing applied
+    external content.
+</p>
+<p>
+    If $modified is defined, its value will be used as a boolean flag
+    to replace the existing "modified" flag accordingly.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $outcome will be true if the modification succeeded, false otherwise.
+    If both $content and $modified are undefined, the modification
+    will vacuously succeed.
+</p>
+
+<h2>NOTES</h2>
+<p>
+    You can change the $modified flag for an applied service external
+    whether or not its content is different from the free service
+    external from which it was originally copied.  This allows you to
+    control the freezing and unfreezing of the content with respect to
+    the actions of propagate_external(), no matter whether you want to
+    allow or prevent overwriting of local customizations, or simply want
+    to lock the originally copied value.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$host_name is not the name of any existing host.
+<li>$service_name is not the name of any existing service.
+<li>$external_name is not the name of any existing service external.
+<li>The specified service is not applied to the specified host.
+<li>The specified external is not applied to the specified host service.
+<li>A database error was encountered.
+</ul>
+
+<a name="propagate_external"><hr></a>
+<h2>NAME</h2>
+<p>
+    propagate_external - propagate free external to applied externals
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $outcome = $dm->propagate_external($external_name, $replace);
+
+    if (not $outcome) {
+	## error ...
+    }
+    else {
+        ## success; continue processing
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Copy the content of a free external to corresponding applied
+    externals, optionally ignoring their individual "modified" (i.e.,
+    "I've been customized -- leave me alone") flags.
+</p>
+<p>
+    $replace is a boolean flag specifying whether the corresponding
+    applied externals with their "modified" flag set should have their
+    content overwritten.
+</p>
+<p>
+    If $replace is true, all the associated applied externals will have
+    their content overwritten with the content of the free external,
+    regardless of the existing states of their "modified" flags, and the
+    "modified" flag for each such external will be reset to indicate
+    that the applied external is once again an unmodified copy of the
+    free external.
+</p>
+<p>
+    If $replace is false, only the associated applied externals that
+    have their "modified" flag set to false will have their content
+    overwritten with the content of the free external.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $outcome will be true if the propagation succeeded, false otherwise.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$external_name is not the name of any existing external.
+<li>A database error was encountered.
+</ul>
+
+<h2>NOTES</h2>
+<p>
+    The "modified" flag provides a primitive mechanism for locking
+    applied externals against propagation of future changes from the
+    free external.  Setting this flag to a true value is most often done
+    when the applied-external content is customized after the external is
+    initially applied, but it can also be used simply to block changes
+    even if the original free-external content is perfectly suitable in
+    this context without any localization changes.
+</p>
+
+<a name="remove_external_from_host"><hr></a>
+<h2>NAME</h2>
+<p>
+    remove_external_from_host - remove external from host
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $outcome = $dm->remove_external_from_host($host_name, $external_name);
+
+    if (not $outcome) {
+	## error ...
+    }
+    else {
+        ## success; continue processing
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Remove the specified applied host external from the specified host.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $outcome will be true if the removal succeeded, false otherwise.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$host_name is not the name of any existing host.
+<li>$external_name is not the name of any existing host external.
+<li>A database error was encountered.
+</ul>
+
+<h2>NOTES</h2>
+<p>
+    The removal will likely succeed if the external was not previously
+    applied to the host, since all that matters is that the association
+    no longer exists.
+</p>
+
+<a name="remove_external_from_hostprofile"><hr></a>
+<h2>NAME</h2>
+<p>
+    remove_external_from_hostprofile - remove external assignment from
+    host profile
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $outcome = $dm->remove_external_from_hostprofile($hostprofile_name,
+	$external_name);
+
+    if (not $outcome) {
+	## error ...
+    }
+    else {
+        ## success; continue processing
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Remove the assignment of the specified host external from the
+    specified host profile.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $outcome will be true if the removal succeeded, false otherwise.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$hostprofile_name is not the name of any existing host profile.
+<li>$external_name is not the name of any existing host external.
+<li>A database error was encountered.
+</ul>
+
+<h2>NOTES</h2>
+<p>
+    The removal will likely succeed if the external was not previously
+    assigned to the host profile, since all that matters is that the
+    association no longer exists.
+</p>
+
+<a name="remove_external_from_hostservice"><hr></a>
+<h2>NAME</h2>
+<p>
+    remove_external_from_hostservice - remove external from host service
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $outcome = $dm->remove_external_from_hostservice($host_name,
+	$service_name, $external_name);
+
+    if (not $outcome) {
+	## error ...
+    }
+    else {
+        ## success; continue processing
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Remove the specified applied service external from the specified
+    host service.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $outcome will be true if the removal succeeded, false otherwise.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$host_name is not the name of any existing host.
+<li>$service_name is not the name of any existing service.
+<li>The specified service is not applied to the specified host.
+<li>$external_name is not the name of any existing service external.
+<li>A database error was encountered.
+</ul>
+
+<h2>NOTES</h2>
+<p>
+    The removal will likely succeed if the service is not applied to
+    the host, or if the external was not previously applied to the
+    host service, since all that matters is that the association no
+    longer exists.
+</p>
+
+<a name="remove_external_from_service"><hr></a>
+<h2>NAME</h2>
+<p>
+    remove_external_from_service - remove external assignment from
+    generic service
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $outcome = $dm->remove_external_from_service($service_name, $external_name);
+
+    if (not $outcome) {
+	## error ...
+    }
+    else {
+        ## success; continue processing
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Remove the assignment of the specified service external from the
+    specified generic service.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $outcome will be true if the removal succeeded, false otherwise.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$service_name is not the name of any existing service.
+<li>$external_name is not the name of any existing service external.
+<li>A database error was encountered.
+</ul>
+
+<h2>NOTES</h2>
+<p>
+    The removal will likely succeed if the external was not previously
+    applied to the generic service, since all that matters is that the
+    association no longer exists.
+</p>
+
+<a name="rename_external"><hr></a>
+<h2>NAME</h2>
+<p>
+    rename_external - rename free external (either host external or
+    service external)
+</p>
+
+<h2>SYNOPSIS</h2>
+<pre>
+    $outcome = $dm->rename_external($old_external_name, $new_external_name);
+
+    if (not $outcome) {
+	## error ...
+    }
+    else {
+        ## success; continue processing
+    }
+</pre>
+
+<h2>DESCRIPTION</h2>
+<p>
+    Change the name of a free external.  Since applied externals simply
+    refer to the name of the free externals from which they were copied,
+    this will change the names of all the associated applied externals
+    as well.
+</p>
+
+<h2>RETURN VALUE</h2>
+<p>
+    $outcome will be true if the rename succeeded, false otherwise.
+</p>
+
+<h2>ERRORS</h2>
+<p>
+    Failure can occur because of reasons such as:
+</p>
+
+<ul>
+<li>$old_external_name is not the name of any existing external.
+<li>$new_external_name is undefined, an empty string, or otherwise
+      inappropriate.
+<li>$new_external_name is already used by some other external.
+<li>A database error was encountered.
+</ul>
+
+<h2>BUGS</h2>
+<p>
+    This routine currently does no validation of the new external name to
+    ensure that it follows our intended Monarch object name constraints.
+</p>
+<p>
+    There is a race condition in detection of whether an external name
+    is already in use, that will not be completely blocked until we put
+    a unique index on the externals.name column.  Until then, it is up
+    to the application designer to ensure that no two applications try
+    to create or rename externals at the same time.
+</p>
+
+<hr>
+
+</body>
+</html>

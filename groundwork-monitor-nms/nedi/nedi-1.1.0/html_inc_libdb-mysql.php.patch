@@ -1,0 +1,19 @@
+--- nedi/html/inc/libdb-mysql.php.orig	2014-06-04 12:23:01.000000000 -0700
++++ nedi/html/inc/libdb-mysql.php	2014-07-18 13:21:38.000000000 -0700
+@@ -57,6 +57,16 @@
+         return mysql_real_escape_string($r);
+ }
+ 
++# We might get 'table.column' sent to this function, not just a bare column name.
++#
++# Do not further quote the result of this function.
++function DbEscapeIdentifier($i){
++	# PHP appears to have no standard MySQL-related function for this,
++	# so we approximate it as best we can. 
++	$c = explode(".", $i);
++	return "`" . implode("`.`", array_map(mysql_real_escape_string, $c)) . "`";
++}
++
+ function DbError($r){
+         return mysql_error($r);
+ }

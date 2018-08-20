@@ -1,0 +1,76 @@
+--- pg_migrate_jboss-idm.sql.orig	2017-05-19 20:20:14.000000000 -0700
++++ pg_migrate_jboss-idm.sql	2017-05-21 20:21:09.000000000 -0700
+@@ -1,8 +1,46 @@
+ 
+ --
+--- Copyright 2013 GroundWork, Inc. ("GroundWork")
++-- Copyright 2013-2017 GroundWork, Inc. ("GroundWork")
+ -- All rights reserved.
+ --
++
++CREATE FUNCTION idempotently_add_gw_resource(new_resource_id integer, new_resource_name text) RETURNS VOID AS $$
++BEGIN
++    insert into gw_resources
++	select
++	    new_resource_id,
++	    new_resource_name
++	where not exists (
++	    select name
++	    from gw_resources
++	    where name = new_resource_name
++	);
++END;
++$$ LANGUAGE plpgsql;
++
++CREATE FUNCTION idempotently_add_gw_ext_role_permission(new_resource_name text, new_permission text, new_jbp_name text) RETURNS VOID AS $$
++BEGIN
++    insert into gw_ext_role_permissions
++	select
++	    (select jbp_rid from gw_ext_role_attributes where jbp_name=new_jbp_name),
++	    (select resource_id from gw_resources where name=new_resource_name),
++	    (select perm_id from gw_permissions where action=new_permission)
++	where not exists (
++	    select
++		rp.jbp_rid
++	    from
++		gw_ext_role_permissions rp,
++		gw_ext_role_attributes ra,
++		gw_resources r
++	    where
++		rp.jbp_rid = ra.jbp_rid
++	    and ra.jbp_name = new_jbp_name
++	    and r.resource_id = rp.resource_id
++	    and r.name = new_resource_name
++	);
++END;
++$$ LANGUAGE plpgsql;
++
+ CREATE FUNCTION fn_migrate_jboss_idm() RETURNS VOID AS $$
+ DECLARE
+   perm_tables_exist char(1);
+@@ -203,9 +241,25 @@
+     insert into gw_ext_role_permissions select(select jbp_rid from gw_ext_role_attributes where jbp_name='ro-dashboard'),(select resource_id from gw_resources where name='Grafana'),(select perm_id from gw_permissions where action='deny') where not exists (select rp.jbp_rid from gw_ext_role_permissions rp, gw_ext_role_attributes ra, gw_resources r where rp.jbp_rid=ra.jbp_rid and ra.jbp_name='ro-dashboard' and r.resource_id=rp.resource_id and r.name='Grafana');
+     insert into gw_ext_role_permissions select(select jbp_rid from gw_ext_role_attributes where jbp_name='msp-sample'),(select resource_id from gw_resources where name='Grafana'),(select perm_id from gw_permissions where action='deny') where not exists (select rp.jbp_rid from gw_ext_role_permissions rp, gw_ext_role_attributes ra, gw_resources r where rp.jbp_rid=ra.jbp_rid and ra.jbp_name='msp-sample' and r.resource_id=rp.resource_id and r.name='Grafana');
+   END IF;
++
++  PERFORM idempotently_add_gw_resource(13, 'Ganglia');
++
++  -- FIX MAJOR:  The sensibility of the allow/deny decisions here must be verified.
++  -- The basic issue might be that we might want to restrict access to the Ganglia Administration
++  -- screen, while being less strict about access to the Ganglia Views screen.  But they are
++  -- currently assigned to the same resource, making it difficult to distinguish the two use cases.
++  PERFORM idempotently_add_gw_ext_role_permission('Ganglia', 'allow', 'gw-monitoring-administrator');
++  PERFORM idempotently_add_gw_ext_role_permission('Ganglia', 'allow', 'gw-monitoring-operator');
++  PERFORM idempotently_add_gw_ext_role_permission('Ganglia', 'deny',  'gw-portal-user');
++  PERFORM idempotently_add_gw_ext_role_permission('Ganglia', 'allow', 'gw-portal-administrator');
++  PERFORM idempotently_add_gw_ext_role_permission('Ganglia', 'deny',  'ro-dashboard');
++  PERFORM idempotently_add_gw_ext_role_permission('Ganglia', 'deny',  'msp-sample');
++
+ END; 
+ $$ LANGUAGE plpgsql;
+ 
+ SELECT fn_migrate_jboss_idm();
+ 
+ DROP FUNCTION IF EXISTS fn_migrate_jboss_idm();
++DROP FUNCTION IF EXISTS idempotently_add_gw_ext_role_permission(text, text, text);
++DROP FUNCTION IF EXISTS idempotently_add_gw_resource(integer, text);

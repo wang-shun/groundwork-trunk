@@ -1,0 +1,100 @@
+#!/bin/bash
+#
+#	/etc/rc.d/init.d/gdma
+#
+# Starts the gdma daemon
+#
+# chkconfig: 345 44 56
+# description: run Groundwork checks on an interval of seconds with results sent to Groundwork
+# processname: gdma
+
+program=/usr/local/groundwork/gdma/bin/gdma_check.pl
+#[ -x $program ] || exit 0
+
+#
+#	Utility Functions.
+#
+
+status_gdma()
+{
+        GDMAPID=`ps -ef |grep -v grep|grep "gdma_check"|awk '{print $2}'`
+
+	if ! [ -z "$GDMAPID" ] ; then
+		return 0
+        else
+        	return 1
+        fi
+}
+
+killproc_gdma ()
+{
+        GDMAPID=`ps -ef |grep -v grep|grep "gdma_check"|awk '{print $2}'`
+
+	# Kill gdma pid
+	kill $GDMAPID  >/dev/null 2>&1
+}
+
+start()
+{
+	# Check if it is already running
+	status_gdma;
+	if [ $? -eq 0 ] ; then
+		echo "GDMA Already Running"
+	else
+		echo "Starting GDMA"
+		nohup su gdma -c $program >/dev/null 2>&1 &
+	fi
+}
+
+stop()
+{
+	status_gdma;
+	if [ $? -eq 0 ] ; then
+		echo $"Stopping gdma daemon"
+		killproc_gdma;
+	else
+		echo "GDMA is Not Running"
+	fi
+}
+
+restart()
+{
+	stop
+	start
+}	
+
+##
+##	See how we were called
+##	And execute the appropriate action.
+##
+
+case "$1" in
+start)
+	start
+	;;
+stop)
+	stop
+	;;
+restart)
+	restart
+	;;
+condrestart)
+	status_gdma;
+	if [ $? -eq 0 ] ; then
+	    restart
+	fi
+	;;
+status)
+	status_gdma;
+	if [ $? -eq 0 ] ; then
+		echo "GDMA is Running"
+	else
+		echo "GDMA is Not Running"
+	fi
+	;;
+*)
+	echo $"Usage: $0 {start|stop|status|restart|condrestart}"
+	exit 1
+esac
+exit 0
+

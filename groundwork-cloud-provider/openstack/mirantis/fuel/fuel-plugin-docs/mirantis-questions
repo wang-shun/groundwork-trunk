@@ -1,0 +1,79 @@
+Oleksandr,
+
+I finally got some time available to fold in the changes to the
+fuel-plugin-groundwork-monitor documentation that you suggested.
+However, when it comes to tests to add/remove controller/compute
+nodes, I am very confused.  The template Test Plan says in the test
+case for removing/adding a controller node:
+
+    Remove 1 node with Controller role (i.e., remove the primary
+    Controller node which should have the lowest ID, where the
+    plugin's services are running, to ensure that all of the plugin's
+    resources are migrated to another Controller node).
+
+    ...
+
+    Expected result:  When removing/adding a Controller node (where
+    plugin-related services are run):  all plugin resources are
+    migrated to another Controller node.
+
+And in the test case for adding/removing a compute node:
+
+    Remove 1 node with Compute role (i.e., remove the node where
+    the plugin's services are running, to ensure that all of the
+    plugin's resources are migrated to another Compute node).
+
+    ...
+
+    Expected result:  When adding/removing a Compute node (where
+    plugin-related services are run):  all plugin resources are
+    migrated to another Compute node.
+
+In each test case, there is an implication that the plugin developer
+has somehow arranged to have some special new plugin code installed
+and run on the Controller or Compute node.  Perhaps it is just
+my general ignorance about the way that MOS operates, but neither
+of these test cases strikes a chord with our plugin.  There must
+of course be some Fuel-managed code running somewhere to track the
+overall status of each GroundWork Monitor node, but we do not supply
+any OpenStack-related code that is installed on anything other than
+the GroundWork Monitor node, other than the plugin itself and the
+GroundWork installer, which both get placed onto the Fuel Master.
+So I have no idea what type of system behavor that Mirantis believes
+would be covered by such test cases in our scenario.
+
+As an aside, there seems also to be an expectation in these test
+cases that Compute nodes are completely fungible, and that there is
+no software anywhere which is keeping track of exactly what jobs are
+running on individual Compute nodes.  That might be true for some
+types of deployments, but it's certainly not true for some of the
+large customers we have had, in the ways they manage their clusters
+and compute jobs which might last anywhere from minutes to months.
+So I have to question the general validity of such an expectation.
+
+In the case of a GroundWork node in particular, it knows its own
+fully-qualified hostname and IP address, and these cannot change
+without explicit reconfiguration.  Migrating the GroundWork software
+to some other node without some explicitly invoked migration steps
+is simply not possible.  We do not even have such an entry point
+in place to be called, and in any case a switchover would disrupt
+the actions of any other machines which are configured to report
+locally-acquired monitoring results to the GroundWork server,
+or perhaps to accept data on authenticated connections from a
+GroundWork server.
+
+The only way in which I see such tests as potentially applicable
+to the GroundWork situation would be if the GroundWork server were
+monitoring a node that got migrated by MOS.  Perhaps our CloudHub
+feature might recognize such a switchover as being the "same"
+node; Hans or Thomas would have to provide insight on that aspect.
+But any issues like that would really be application-level tests,
+not plugin-related tests.
+
+The point of all this discussion is that I don't see how either of
+the add/remove controller/compute-node tests applies to our plugin.
+You are asking that these test cases be considered as obligatory
+for all Fuel plugins, but I see no sense in that categorization.
+
+Glenn
+

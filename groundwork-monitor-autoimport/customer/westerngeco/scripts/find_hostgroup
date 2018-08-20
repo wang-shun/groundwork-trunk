@@ -1,0 +1,37 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+# This script is for testing the WesternGecoHostgroupName_Remote.pm package
+# in a standalone context.  It is designed to be run right from here where
+# it sits in our Subversion tree:
+#
+#    find_hostgroup qast001
+#    find_hostgroup hynm001
+
+use strict;
+
+use Cwd 'realpath';
+
+use lib ".";
+use WesternGecoHostgroupName_Remote;
+
+if (not @ARGV) {
+    print "usage:  find_hostgroup {hostname} ...\n";
+    exit 1;
+}
+
+my $site_path = "../config/Site_Code_Name.conf";
+my $abs_site_path = undef;
+$abs_site_path = realpath( $site_path );
+if (not defined $abs_site_path) {
+    print "$site_path cannot be found\n";
+    exit 1;
+}
+
+my $custom_hostgroups = WesternGecoHostgroupName_Remote->new();
+$custom_hostgroups->initialize_hostgroup_options ("-c -l -d -o -s $abs_site_path", 0);
+
+foreach my $host (@ARGV) {
+    my $hg_name = $custom_hostgroups->hostgroup_name($host);
+    print "hostgroup for \"$host\" is \"$hg_name\"\n";
+}
+

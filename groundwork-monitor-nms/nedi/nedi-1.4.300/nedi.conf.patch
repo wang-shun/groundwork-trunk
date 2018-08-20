@@ -1,0 +1,55 @@
+--- nedi.orig/nedi.conf	2014-10-27 13:12:24.000000000 -0700
++++ nedi/nedi.conf	2014-10-28 19:04:12.000000000 -0700
+@@ -124,7 +124,9 @@
+ 
+ # This value needs to be set to the discovery interval in seconds. Make sure it
+ # corresponds to the NeDi crontab entry (e.g. hourly 1 * * *  => 3600).
+-rrdstep		3600
++# 14400 matches the default 4-hour interval between nedi.pl cron jobs
++# established in a standard GroundWork installation.
++rrdstep		14400
+ 
+ # This value lets you adjust how many samples you want within an RRD. With the default of
+ # 1000 and hourly discoveries you get 1000h ~ 42 days worth of samples. Those will be aggregated
+@@ -136,7 +138,7 @@
+ #============================================================================
+ 
+ # Choose backend (mysql or Pg)
+-backend		mysql
++backend		Pg
+ 
+ # DB params
+ dbname		nedi
+@@ -145,25 +147,25 @@
+ dbhost		localhost
+ 
+ # Points to executable (leave empty to disable graphs)
+-rrdcmd		rrdtool
++rrdcmd		/usr/local/groundwork/common/bin/rrdtool
+ 
+ # Location of NeDi
+-nedipath	/var/nedi
++nedipath	/usr/local/groundwork/nedi
+ 
+ # Prefix to call Cacti CLI tools for adding graphs in Topology-Graph
+-;cacticli	/usr/bin/php /usr/share/cacti/site/cli
++;cacticli	/usr/local/groundwork/php/bin/php /usr/local/groundwork/cacti/htdocs/cli
+ 
+ # Cacti integration. Uncomment, if you want Devices-Status to link to Cacti.
+ # You will need to have the NeDi device names as host (or description) in cacti,
+ # with that a link can be established.
+ ;cactihost	localhost
+ ;cactidb	cacti
+-;cactiuser	cacti
+-;cactipass	cactipa55
+-;cactiurl	/cacti
++;cactiuser	cactiuser
++;cactipass	cactiuser
++;cactiurl	/portal/auth/portal/groundwork-monitor/nagios/Cacti
+ 
+ # Redirect NeDi events into nagios
+-;nagpipe	/Data/nagios/rw/nagios.cmd
++;nagpipe	/usr/local/groundwork/nagios/var/spool/nagios.cmd
+ 
+ #============================================================================
+ # Messaging & Monitoring

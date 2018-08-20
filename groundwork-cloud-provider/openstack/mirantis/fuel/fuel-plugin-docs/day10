@@ -1,0 +1,36 @@
+Hans,
+
+I spent considerable time this evening running lots of iterations
+with the plugin install, making tweaks, and resetting the system
+to try again.  In the end, I had the plugin essentially working,
+though all these trials have been with my installer emulator,
+not the real BitRock installer, for speed of testing turnaround.
+
+The Lab machines, however, were not cooperating.  They eventually
+stopped installing OpenStack correctly, and finally all deployment
+ground to a total halt.
+
+I took notes as I went, and now have a long list of anomalies --
+some of them minor, and some of them quite alarming.  But, this is
+(or was) Saturday -- enough work for today!  I'll leave you in
+suspense for the moment.
+
+I'll spend time writing up all my notes on Sunday and send them
+out to everyone then.
+
+Glenn
+
+Seen in the Fuel UI:
+
+    Error
+    Provision has failed. Check these nodes:
+    'Untitled (de:e7)', 'Untitled (e4:fa)', 'Untitled (d7:8e)', 'Untitled (ad:ed)', 'Untitled (4e:89)'
+
+See on the Fuel Master, lots of messages similar to these, in the /var/log/monit.log file:
+
+    [UTC May 22 07:33:05] error    : 'rootfs' space usage 19.9% matches resource limit [space usage<90.0%]
+    [UTC May 22 07:33:05] info     : 'rootfs' exec: /usr/bin/fuel_notify.py
+    [UTC May 22 07:33:05] error    : 'varfs' space usage 38.9% matches resource limit [space usage<90.0%]
+    [UTC May 22 07:33:05] info     : 'varfs' exec: /usr/bin/fuel_notify.py
+
+Why are those checks declared to be errors, when they are obviously well under the specified limits?

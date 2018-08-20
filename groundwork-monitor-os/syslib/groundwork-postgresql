@@ -1,0 +1,34 @@
+# logrotate configuration for GroundWork Monitor database files
+
+# PostgreSQL log file
+#
+# The directory and filename for this log file are configured in
+# /usr/local/groundwork/postgresql/data/postgresql.conf
+# and changes to those settings will only take effect upon restart of
+# the PostgreSQL server.  Here, we only handle periodic renaming of an
+# existing log file, rolling out to a limited number of old copies.
+# This mechanism provides a means of purging sufficiently-old data,
+# so we don't have infinite growth of the log file.  The PostgreSQL
+# server will itself take care of opening a new log file some time
+# relatively soon after we have renamed the existing file, depending on
+# the value of the log_rotation_age parameter in the postgresql.conf
+# config file.  Typically, we configure that switchover to happen within
+# an hour; in the meantime, PostgreSQL will continue to log into the
+# renamed file (postmaster.log.1), and there will be no postmaster.log
+# file around during that period.  We might have called the 'SELECT
+# pg_rotate_logfile()' function in a postrotate script called here to
+# force an immediate switchover after we roll the log files.  But even
+# ignoring the possibility of race conditions with respect to PostgreSQL
+# noticing on its own that it needs to open a new file, use of that
+# function is restricted to a database superuser, and we don't want to
+# invoke that level of privilege from within an automated script.
+#
+/usr/local/groundwork/postgresql/data/pg_log/postmaster.log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 4
+}

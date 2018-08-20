@@ -1,0 +1,81 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:ui="http://java.sun.com/jsf/facelets"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:c="http://java.sun.com/jstl/core"
+	xmlns:ice-cc="http://www.icesoft.com/icefaces-composite-comps">
+	<html>
+	<head>
+	<link rel="stylesheet" type="text/css"
+		href="/foundation-webapp/xmlhttp/css/rime/rime.css" />
+	<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"></meta>
+	<title>Plugin Management</title>
+	</head>
+	<body>
+	<ice:panelGroup>
+		<ice:messages layout="table"></ice:messages>
+		<ice:form id="addTablePluginForm" partialSubmit="true">
+			<ice:panelGrid columns="1">
+				<!-- progress bar, percent value is upated via progressListener-->
+				<ice:outputProgress value="#{pluginBean.fileProgress}"
+					styleClass="uploadProgressBar" />
+			</ice:panelGrid>
+			<ice-cc:roundCorners id="outerTop" bgcolor="#FFF" fgcolor="#94AECE"
+				corners="all">
+				<div
+					style="padding:6px 3px 3px 3px; background-color: #ff9933;">
+				<div style="margin-bottom: 2px;"><ice:outputText
+					value="Add Plugin"
+					style="font-size:larger;font-weight:bold;color:#FFF;" />&amp;nbsp;
+				</div>
+				<ice-cc:roundCorners id="innerTop" bgcolor="#94AECE" fgcolor="#FFF"
+					corners="all">
+					<div style="padding: 8px 8px 4px 8px; background-color: #FFF;">
+					<ice:panelGrid columns="2"
+						columnClasses="pnlGrdClass, pnlGrdClass, pnlGrdClassLong">						
+
+						<ice:outputLabel for="SlctParent" value="Dependencies"
+							style="line-height:200%" />
+						<ice:selectManyMenu id="SlctParent" style="height:200px;"
+							value="#{pluginBean.selectedDependencies}" partialSubmit="true"
+							required="true">
+							<f:selectItems id="SlctpluginIItms"
+								value="#{pluginBean.pluginItems}" />
+						</ice:selectManyMenu>
+						
+
+						<ice:outputLabel for="SlctPlatTyp" value="Platform" />
+						<ice:selectOneMenu id="SlctPlatTyp"
+							valueChangeListener="#{pluginBean.platformChanged}"
+							value="#{pluginBean.selectedPlatform}" partialSubmit="true">
+							<f:selectItems id="SlctplatformIItms"
+								value="#{pluginBean.platforms}" />
+						</ice:selectOneMenu>
+
+
+						<ice:outputLabel for="inputFileName" value="File" />
+						<!-- file upload usage with progress callback. -->
+						<ice:inputFile id="inputFileName" width="1000" autoUpload="false" uploadDirectory="#{pluginBean.uploadDirectory}"
+							progressListener="#{pluginBean.fileUploadProgress}"
+							actionListener="#{pluginBean.uploadFile}"
+							submitOnUpload="postUpload" />
+					</ice:panelGrid>
+					<ice:panelGrid columns="1">
+						<ice:message id="uploadMessage" for="inputFileName" />
+					</ice:panelGrid> 
+					<ice:panelGrid columns="1">
+					<ice:outputLink id="BLOutLnk" value="manage-plugins.iface"
+						target="_self">
+						<ice:graphicImage url="/images/plugin-list-icon.png" />
+					</ice:outputLink>
+					</ice:panelGrid>
+					</div>
+				</ice-cc:roundCorners></div>
+			</ice-cc:roundCorners>
+		</ice:form>
+
+	</ice:panelGroup>
+	</body>
+	</html>
+</ui:composition>

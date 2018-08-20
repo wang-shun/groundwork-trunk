@@ -1,0 +1,110 @@
+#!/bin/bash
+#
+# Init file for the NTOP network monitor
+#
+# chkconfig: - 93 83
+#
+# description: NTOP Network Monitor
+#
+# processname: ntop
+# config: /etc/ntop.conf
+# pidfile: /var/run/ntop
+### BEGIN INIT INFO
+# Provides: ntop
+# Required-Start: $local_fs $remote_fs
+# X-UnitedLinux-Should-Start: $named $syslog $time
+# Required-Stop:  $local_fs $remote_fs
+# X-UnitedLinux-Should-Stop: $named $syslog $time
+# Default-Start:  3 5
+# Default-Stop:   0 1 2 6
+# Short-Description: NTOP
+# Description: NTOP
+### END INIT INFO
+
+# Source function library.
+if [ -f /etc/rc.d/init.d/functions ]; then
+. /etc/rc.d/init.d/functions
+elif [ -f /etc/init.d/functions ]; then
+. /etc/init.d/functions
+elif [ -f /etc/rc.d/functions ]; then
+. /etc/rc.d/functions
+fi
+
+# Source networking configuration.
+if [ -f /etc/SuSE-release ] ; then
+. /etc/sysconfig/network/config
+else
+. /etc/sysconfig/network
+fi
+
+#
+#	APP Specific Definitions.
+#
+
+NMSPATH=/usr/local/groundwork/nms
+APPNAME=ntop
+APPPATH=$NMSPATH/applications/$APPNAME
+APPEXECUTABLE=$APPPATH/bin/$APPNAME
+APPPORT=82
+#APPARGS="--user nagios --db-file-path $APPPATH/db --interface eth0 --use-syslog --http-server $APPPORT --daemon"
+APPARGS="--user nagios --db-file-path $APPPATH/db --use-syslog --http-server $APPPORT --daemon"
+
+# Check that networking is up.
+[ "${NETWORKING}" == "no" ] && exit 0
+[ -x "$APPEXECUTABLE" ] || exit 1
+#[ -r "$APPPATH/db/ntop_pw.db" ] || exit 1
+RETVAL=0
+
+start () {
+	echo -n $"Starting $APPEXECUTABLE: "
+	$APPEXECUTABLE $APPARGS >/tmp/nms-ntop-internal.out
+
+	RETVAL=$?
+	echo
+	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/$APPNAME
+	return $RETVAL
+}
+
+stop () {
+	echo -n $"Stopping $APPEXECUTABLE: "
+	killproc $APPEXECUTABLE
+	RETVAL=$?
+	echo
+	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/$APPNAME
+	return $RETVAL
+}
+
+restart () {
+	stop
+	start
+}
+
+case "$1" in
+  start)
+	start
+	;;
+  stop)
+	stop
+	RETVAL=0
+	;;
+  restart|reload)
+	restart
+	;;
+  condrestart)
+	[ -e /var/lock/subsys/$APPEXECUTABLE ] && restart
+	RETVAL=$?
+	;;
+  status)
+	status $APPEXECUTABLE
+	RETVAL=$?
+	;;
+  init)
+	$APPEXECUTABLE -A 
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|restart|condrestart|status}"
+	RETVAL=1
+esac
+
+exit $RETVAL
+

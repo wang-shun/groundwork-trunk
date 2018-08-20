@@ -1,0 +1,40 @@
+--- nedi/html/index.php.orig	2014-06-04 12:23:04.000000000 -0700
++++ nedi/html/index.php	2014-07-18 16:16:22.000000000 -0700
+@@ -35,6 +35,37 @@
+ }else{
+ 	$goto = 'User-Profile.php';
+ }
++/* GWM: Check user and add if not present. */
++
++/* Use current authenticated tomcat user. */
++$remote_user = $_SERVER['REMOTE_USER'];
++$link   = DbConnect($dbhost,$dbuser,$dbpass,$dbname); # moved for SSO from below
++if (empty($_POST['user']) && $remote_user) {
++	$passwd = hash("sha256","NeDi".$remote_user.$remote_user);				# Salt & pw
++	$query = sprintf("SELECT password FROM users WHERE usrname='%s'", DbEscapeString($remote_user));
++	$res = DbQuery($query,$link);
++	if (!$res) {
++		die("ERROR:  Cannot access the $dbhost database.");
++	}
++	if (DbNumRows($res) == 0) {
++		$now = time();
++		# FIX LATER:  This query must be revisited with each NeDi release, to
++		# make sure all the inserted column names and values match up with the
++		# then-current definition of the "users" table.
++		# The groups value of 63 includes all known groups, as a bitmask.
++		# The miscopts value of 3 seems to mean "Medium" graphs.
++		# "146" at the end of the dateformat value refers to a listing of
++		# timezones in the nedi/html/inc/timezones.php file.
++		$u_query = sprintf("insert into users (usrname, password, groups, email, phone, ".DbEscapeIdentifier('time').", lastlogin, comment, language, theme, volume, columns, msglimit, miscopts, dateformat, viewdev) values('%s', '%s', 63, '', '', '" . $now . "', '" . $now . "', 'GWM User', 'english', default, default, default, default, 3, 'Y M j, H:i146', '')",DbEscapeString($remote_user), DbEscapeString($passwd));
++		$res = DbQuery($u_query,$link);
++		$_POST['user'] = $remote_user;
++		$_POST['pass'] = $remote_user;
++	} else {
++		$_POST['user'] = $remote_user;
++		$_POST['pass'] = $remote_user;
++	}
++}
++/* GWM: End of patch. */
+ $user  = isset($_GET['user'])  ? $_GET['user'] : '';
+ $user  = isset($_POST['user']) ? $_POST['user'] : $user;
+ 

@@ -1,0 +1,63 @@
+<!-- 
+$Id$
+GroundWork Monitor - The ultimate data integration framework.
+Copyright (C) 2004-2006  GroundWork Open Source Solutions info@itgroundwork.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+  --> 
+<!--  Main entry point for deploying profiles 
+   --> 
+<project default="allBuild"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+
+<goal name="allDeploy"
+        description="Deploy the master project and all subprojects">
+    <attainGoal name='profiles.deploy' />
+</goal>
+
+<goal name="allBuild"
+        description="Build the master project and all subprojects">
+</goal>
+
+<goal name="allClean"
+        description="Clean the master project and all subprojects">
+    <attainGoal name='profiles.clean' />
+</goal>
+
+<goal name="profiles.deploy" description="Deploys all components of profiles">
+ <mkdir dir="${org.groundwork.deploy.prefix}/profiles"/>
+ <mkdir dir="${org.groundwork.deploy.prefix}/monarch"/>
+ <mkdir dir="${org.groundwork.deploy.prefix}/monarch/automation"/>
+ <mkdir dir="${org.groundwork.deploy.prefix}/monarch/automation/conf"/>
+ <mkdir dir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/monarch"/>
+ <copy todir="${org.groundwork.deploy.prefix}/profiles">
+  <fileset dir="${basedir}/default" includes="**" excludes="*.svn"/>
+ </copy>
+ <copy todir="${org.groundwork.deploy.prefix}/profiles">
+  <fileset dir="${basedir}/other" includes="*" excludes="*.svn"/>
+ </copy>
+ <copy todir="${org.groundwork.deploy.prefix}/monarch/automation/conf">
+  <fileset dir="${basedir}/automation/conf" includes="*.xml *.cfg"/>
+ </copy>
+</goal>
+
+<goal name="profiles.clean" description="Cleans the build and the deployment section of profiles">
+ <delete dir="${org.groundwork.deploy.prefix}/profiles"/>
+ <delete dir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/monarch"/>
+</goal>
+</project>

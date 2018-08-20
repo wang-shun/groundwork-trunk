@@ -1,0 +1,179 @@
+*** cacti.orig/htdocs/lib/import.php	Fri Oct  5 02:24:47 2012
+--- cacti/htdocs/lib/import.php	Fri Nov  2 11:48:10 2012
+***************
+*** 122,130 ****
+  	/* import into: graph_templates_graph */
+  	unset($save);
+  	if (!empty($_graph_template_id)) {
+! 		$save["id"] = db_fetch_cell("select graph_templates_graph.id from graph_templates, graph_templates_graph where graph_templates.id=graph_templates_graph.graph_template_id and graph_templates.id=$graph_template_id and graph_templates_graph.local_graph_id=0");
+  	}
+  	$save["graph_template_id"] = $graph_template_id;
+  
+  	/* parse information from the hash */
+  	$parsed_hash = parse_xml_hash($hash);
+--- 122,138 ----
+  	/* import into: graph_templates_graph */
+  	unset($save);
+  	if (!empty($_graph_template_id)) {
+! 		$save_id = db_fetch_cell("select graph_templates_graph.id from graph_templates, graph_templates_graph where graph_templates.id=graph_templates_graph.graph_template_id and graph_templates.id=$graph_template_id and graph_templates_graph.local_graph_id=0");
+! 		if (!empty($save_id)) {
+! 			$save["id"] = $save_id;
+! 		}
+  	}
+  	$save["graph_template_id"] = $graph_template_id;
++ 	// Provide default values for all non-null database columns with no defaults defined there.
++ 	$save["title"] = '';
++ 	$save["title_cache"] = '';
++ 	$save["grouping"] = '';
++ 	$save["unit_exponent_value"] = '';
+  
+  	/* parse information from the hash */
+  	$parsed_hash = parse_xml_hash($hash);
+***************
+*** 209,214 ****
+--- 217,224 ----
+  			}
+  			$save["hash"] = $parsed_hash["hash"];
+  			$save["graph_template_id"] = $graph_template_id;
++ 			// FIX MINOR:  Perhaps need to provide empty-string default values for non-null database columns with no defaults defined there:
++ 			// name, column_name
+  
+  			reset($fields_graph_template_input_edit);
+  			while (list($field_name, $field_array) = each($fields_graph_template_input_edit)) {
+***************
+*** 277,285 ****
+  	/* import into: data_template_data */
+  	unset($save);
+  	if (!empty($_data_template_id)) {
+! 		$save["id"] = db_fetch_cell("select data_template_data.id from data_template, data_template_data where data_template.id=data_template_data.data_template_id and data_template.id=$data_template_id and data_template_data.local_data_id=0");
+  	}
+  	$save["data_template_id"] = $data_template_id;
+  
+  	reset($struct_data_source);
+  	while (list($field_name, $field_array) = each($struct_data_source)) {
+--- 287,301 ----
+  	/* import into: data_template_data */
+  	unset($save);
+  	if (!empty($_data_template_id)) {
+! 		$save_id = db_fetch_cell("select data_template_data.id from data_template, data_template_data where data_template.id=data_template_data.data_template_id and data_template.id=$data_template_id and data_template_data.local_data_id=0");
+! 		if (!empty($save_id)) {
+! 			$save["id"] = $save_id;
+! 		}
+  	}
+  	$save["data_template_id"] = $data_template_id;
++ 	// Provide default values for all non-null database columns with no defaults defined there.
++ 	$save["name"] = '';
++ 	$save["name_cache"] = '';
+  
+  	reset($struct_data_source);
+  	while (list($field_name, $field_array) = each($struct_data_source)) {
+***************
+*** 371,376 ****
+--- 387,394 ----
+  			}
+  			$save["hash"] = $parsed_hash["hash"];
+  			$save["data_template_id"] = $data_template_id;
++ 			// FIX MINOR:  Perhaps need to provide empty-string default values for non-null database columns with no defaults defined there:
++ 			// data_source_name
+  
+  			reset($struct_data_source_item);
+  			while (list($field_name, $field_array) = each($struct_data_source_item)) {
+***************
+*** 431,436 ****
+--- 449,456 ----
+  		$save["id"] = $_data_query_id;
+  	}
+  	$save["hash"] = $hash;
++ 	// FIX MINOR:  Perhaps need to provide empty-string default values for non-null database columns with no defaults defined there:
++ 	// xml_path, name
+  
+  	reset($fields_data_query_edit);
+  	while (list($field_name, $field_array) = each($fields_data_query_edit)) {
+***************
+*** 465,470 ****
+--- 485,492 ----
+  			}
+  			$save["hash"] = $parsed_hash["hash"];
+  			$save["snmp_query_id"] = $data_query_id;
++ 			// FIX MINOR:  Perhaps need to provide empty-string default values for non-null database columns with no defaults defined there:
++ 			// name
+  
+  			reset($fields_data_query_item_edit);
+  			while (list($field_name, $field_array) = each($fields_data_query_item_edit)) {
+***************
+*** 568,573 ****
+--- 590,597 ----
+  		$save["id"] = $_gprint_preset_id;
+  	}
+  	$save["hash"] = $hash;
++ 	// FIX MINOR:  Perhaps need to provide empty-string default values for non-null database columns with no defaults defined there:
++ 	// name
+  
+  	reset($fields_grprint_presets_edit);
+  	while (list($field_name, $field_array) = each($fields_grprint_presets_edit)) {
+***************
+*** 598,603 ****
+--- 622,629 ----
+  		$save["id"] = $_rra_id;
+  	}
+  	$save["hash"] = $hash;
++ 	// FIX MINOR:  Perhaps need to provide empty-string default values for non-null database columns with no defaults defined there:
++ 	// name
+  
+  	reset($fields_rra_edit);
+  	while (list($field_name, $field_array) = each($fields_rra_edit)) {
+***************
+*** 647,652 ****
+--- 673,680 ----
+  		$save["id"] = $_host_template_id;
+  	}
+  	$save["hash"] = $hash;
++ 	// FIX MINOR:  Perhaps need to provide empty-string default values for non-null database columns with no defaults defined there:
++ 	// name
+  
+  	reset($fields_host_template_edit);
+  	while (list($field_name, $field_array) = each($fields_host_template_edit)) {
+***************
+*** 737,742 ****
+--- 765,772 ----
+  		$save["id"] = $_cdef_id;
+  	}
+  	$save["hash"] = $hash;
++ 	// FIX MINOR:  Perhaps need to provide empty-string default values for non-null database columns with no defaults defined there:
++ 	// name
+  
+  	reset($fields_cdef_edit);
+  	while (list($field_name, $field_array) = each($fields_cdef_edit)) {
+***************
+*** 766,771 ****
+--- 796,803 ----
+  			}
+  			$save["hash"] = $parsed_hash["hash"];
+  			$save["cdef_id"] = $cdef_id;
++ 			// FIX MINOR:  Perhaps need to provide empty-string default values for non-null database columns with no defaults defined there:
++ 			// value
+  
+  			reset($fields_cdef_item_edit);
+  			while (list($field_name, $field_array) = each($fields_cdef_item_edit)) {
+***************
+*** 801,806 ****
+--- 833,840 ----
+  		$save["id"] = $_data_input_id;
+  	}
+  	$save["hash"] = $hash;
++ 	// FIX MINOR:  Perhaps need to provide empty-string default values for non-null database columns with no defaults defined there:
++ 	// name
+  
+  	reset($fields_data_input_edit);
+  	while (list($field_name, $field_array) = each($fields_data_input_edit)) {
+***************
+*** 835,840 ****
+--- 869,876 ----
+  			}
+  			$save["hash"] = $parsed_hash["hash"];
+  			$save["data_input_id"] = $data_input_id;
++ 			// FIX MINOR:  Perhaps need to provide empty-string default values for non-null database columns with no defaults defined there:
++ 			// name, data_name, input_output
+  
+  			reset($fields_data_input_field_edit);
+  			while (list($field_name, $field_array) = each($fields_data_input_field_edit)) {

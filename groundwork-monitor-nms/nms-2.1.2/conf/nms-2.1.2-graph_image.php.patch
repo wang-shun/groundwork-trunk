@@ -1,0 +1,19 @@
+--- graph_image.php.orig	2009-11-06 16:27:36.000000000 -0800
++++ graph_image.php	2009-11-06 16:29:24.000000000 -0800
+@@ -30,6 +30,16 @@
+ include("./include/auth.php");
+ include_once("./lib/rrd.php");
+ 
++if (strpos($_SERVER['QUERY_STRING'],'gwuid=guest')== true ) {
++   /* Store the user in a session and keep it around for the other pages */
++   $_SESSION['GWRK_USER'] = substr($_SERVER['QUERY_STRING'], strpos($_SERVER['QUERY_STRING'],"gwuid=")+6, 5);
++}
++
++if ( strlen( $_SESSION['GWRK_USER']) == 0 ) {
++         print "<br><br><center><font color=red>You do not have permission to access this page. Please log in first</font></color>";
++         exit;
++}
++
+ /* ================= input validation ================= */
+ input_validate_input_number(get_request_var("graph_start"));
+ input_validate_input_number(get_request_var("graph_end"));

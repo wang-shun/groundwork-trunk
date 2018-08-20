@@ -1,0 +1,172 @@
+<!DOCTYPE hibernate-configuration PUBLIC 
+	"-//Hibernate/Hibernate Configuration DTD//EN"
+	"http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd">
+
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+-->
+<hibernate-configuration>
+	<session-factory>
+		<!--
+		######################
+		### Query Language 
+		### Note: Use classic query parser during migration from hibernate 2.1.6 to 3.1
+		######################
+		-->
+		<property name="hibernate.query.substitutions">Y</property>
+		<!--  
+		<property name="hibernate.query.factory_class">org.hibernate.hql.classic.ClassicQueryTranslatorFactory</property>
+		-->
+		<property name="hibernate.query.factory_class">org.hibernate.hql.ast.ASTQueryTranslatorFactory</property>
+						
+		<!-- Settings for a remote MySQL database. -->
+		<!-- <property name="dialect">org.hibernate.dialect.MySQLInnoDBDialect</property> -->
+		
+		<!-- Settings for a remote PostgreSQL database, extended to register UUID columns type. -->
+		<property name="dialect">com.groundwork.collage.model.impl.PostgresUUIDDialect</property>
+
+		<!-- NOTE:  Database connection pool is configured in common-model-assembly.xml -->
+
+		<!-- 
+			Use EHCache but not the query cache;
+			the classes and collections to be cached are defined at the end of this file;
+			comment the following line in order to disable caching completely 
+			(for example, when it is desireable to ascertain whether caching issues are
+			 the cause of an anomaly) 
+		-->
+		<!-- <property name="cache.provider_class">org.hibernate.ehcache.hibernate.Provider</property> -->
+		<!--<property name="cache.provider_class">org.hibernate.cache.EhCacheProvider</property>-->
+		<property name="cache.provider_class">com.groundwork.collage.CollageEhCacheProvider</property>
+		<property name="cache.use_query_cache">false</property>
+		<property name="cache.use_minimal_puts">false</property>
+
+		<!-- Print SQL to stdout. -->
+		<property name="show_sql">false</property>
+
+		<!-- User alternative ehcache.xml -->
+		<!--<property name="hibernate.cache.provider_configuration_file_resource_path">ehcache-aggressive.xml</property>-->
+		<property name="hibernate.cache.provider_configuration_file_resource_path">ehcache.xml</property>
+
+		<!-- Collage mapping files. -->
+		<mapping resource="com/groundwork/collage/model/mapping/PostgresUUIDUserType.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/CheckType.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/Component.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/Device.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/Host.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/HostGroup.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/HostStatus.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/LogMessage.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/LogPerformanceData.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/PerformanceDataLabel.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/MonitorStatus.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/MonitorServer.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/OperationStatus.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/Priority.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/SchemaInfo.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/ServiceStatus.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/Severity.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/StateType.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/TypeRule.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/MessageFilter.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/ConsolidationCriteria.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/ApplicationType.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/EntityType.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/PropertyType.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/Category.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/CategoryEntity.hbm.xml"/>
+    	<mapping resource="com/groundwork/collage/model/mapping/EntityPropertyValue.hbm.xml"/>
+    	<mapping resource="com/groundwork/collage/model/mapping/HostStatusPropertyValue.hbm.xml"/>
+    	<mapping resource="com/groundwork/collage/model/mapping/LogMessagePropertyValue.hbm.xml"/>
+    	<mapping resource="com/groundwork/collage/model/mapping/ServiceStatusPropertyValue.hbm.xml"/>		
+		<mapping resource="com/groundwork/collage/model/mapping/ApplicationEntityProperty.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/Action.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/ActionType.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/ActionParameter.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/ActionProperty.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/PluginPlatform.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/Plugin.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/AuditLog.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/HostIdentity.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/HostBlacklist.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/DeviceTemplateProfile.hbm.xml"/>
+		<mapping resource="com/groundwork/collage/model/mapping/Comment.hbm.xml"/>
+
+		<!-- 
+		  The following section defines what classes will be cached by the eh caching mechanism - 
+		  the actual settings of the cache are defined in the ehcache.xml configuration file
+
+		  Hibernate distinguishes between 'class' caching and 'collection' caching
+
+		  - class caching caches the parent record, but associated one-to-many
+		    records will still be fetched from the database
+
+		  - collection-caching caches one-to-many collections associated with a class; collection
+        caching can cause integration tests to fail when modify associated collections
+		-->
+		<!-- these classes are immutable enumerations, to be cached aggressively -->
+		<class-cache class="com.groundwork.collage.model.impl.CheckType"       usage="read-only"/>
+		<class-cache class="com.groundwork.collage.model.impl.MonitorStatus"   usage="read-only"/>
+		<class-cache class="com.groundwork.collage.model.impl.OperationStatus" usage="read-only"/>
+		<class-cache class="com.groundwork.collage.model.impl.Priority"        usage="read-only"/>
+		<class-cache class="com.groundwork.collage.model.impl.Severity"        usage="read-only"/>
+		<class-cache class="com.groundwork.collage.model.impl.StateType"       usage="read-only"/>
+		<class-cache class="com.groundwork.collage.model.impl.TypeRule"        usage="read-only"/>
+		<class-cache class="com.groundwork.collage.model.impl.ActionType"      usage="read-only"/>
+		<class-cache class="com.groundwork.collage.model.impl.PluginPlatform"      usage="read-only"/>
+
+		<!-- the main mutable entities - cache as strict read-write -->
+		<class-cache class="com.groundwork.collage.model.impl.ApplicationType" usage="read-write"/>
+		<class-cache class="com.groundwork.collage.model.impl.EntityType"      usage="read-write"/>
+		<class-cache class="com.groundwork.collage.model.impl.PropertyType"    usage="read-write"/>
+
+		<class-cache class="com.groundwork.collage.model.impl.MonitorServer"   usage="read-write"/>
+		<class-cache class="com.groundwork.collage.model.impl.Device"          usage="read-write"/>
+		<class-cache class="com.groundwork.collage.model.impl.Host"            usage="read-write"/>
+		<class-cache class="com.groundwork.collage.model.impl.HostStatus"      usage="read-write"/>
+		<class-cache class="com.groundwork.collage.model.impl.ServiceStatus"   usage="read-write"/>
+		<class-cache class="com.groundwork.collage.model.impl.Plugin"   usage="read-write"/>
+		<class-cache class="com.groundwork.collage.model.impl.HostIdentity"    usage="read-write"/>
+		<class-cache class="com.groundwork.collage.model.impl.HostBlacklist"   usage="read-write"/>
+		<class-cache class="com.groundwork.collage.model.impl.DeviceTemplateProfile" usage="read-write"/>
+		<class-cache class="com.groundwork.collage.model.impl.Comment"         usage="read-write"/>
+		<!--<class-cache class="com.groundwork.collage.model.impl.HostGroup" usage="read-write"/>-->
+		<!--<class-cache class="com.groundwork.collage.model.impl.HostStatusPropertyValue" usage="read-write"/>-->
+		<!--<class-cache class="com.groundwork.collage.model.impl.ServiceStatusPropertyValue" usage="read-write"/>-->
+
+		<!-- collection caching, use with care -->
+		<collection-cache collection="com.groundwork.collage.model.impl.ApplicationType.applicationEntityProperties" usage="read-write"/>
+
+		<collection-cache collection="com.groundwork.collage.model.impl.MonitorServer.devices" usage="read-write"/>
+
+		<collection-cache collection="com.groundwork.collage.model.impl.Device.monitorServers" usage="read-write"/>
+		 <collection-cache collection="com.groundwork.collage.model.impl.Device.parents"        usage="read-write"/>
+		 <collection-cache collection="com.groundwork.collage.model.impl.Device.children"       usage="read-write"/>
+		<!--<collection-cache collection="com.groundwork.collage.model.impl.Device.hosts"          usage="read-write"/> -->
+		<collection-cache collection="com.groundwork.collage.model.impl.Device.propertyValues"     usage="read-write"/>
+		<!--<collection-cache collection="com.groundwork.collage.model.impl.HostGroup.hosts"       usage="read-write"/>-->
+		<collection-cache collection="com.groundwork.collage.model.impl.Host.comments"       usage="read-write"/>
+		<collection-cache collection="com.groundwork.collage.model.impl.ServiceStatus.comments"       usage="read-write"/>
+		<!--<collection-cache collection="com.groundwork.collage.model.impl.Host.hostGroups"       usage="read-write"/>-->
+		<!--<collection-cache collection="com.groundwork.collage.model.impl.Host.serviceStatuses"  usage="read-write"/>
+		--><!--<collection-cache collection="com.groundwork.collage.model.impl.HostStatus.propertyValues"     usage="read-write"/>
+		--><!--<collection-cache collection="com.groundwork.collage.model.impl.ServiceStatus.propertyValues"  usage="read-write"/>-->
+
+		<collection-cache collection="com.groundwork.collage.model.impl.HostIdentity.hostNames" usage="read-write"/>
+	</session-factory>
+
+</hibernate-configuration>

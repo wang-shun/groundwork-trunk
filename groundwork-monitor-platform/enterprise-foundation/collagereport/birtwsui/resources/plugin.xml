@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+-->
+<plugin>
+
+   <extension
+         point="org.eclipse.datatools.connectivity.connectionProfile">
+      <newWizard
+            name="%newwizard.name"
+            icon="icons/new_oda_dswiz.ico"
+            profile="%oda.data.source.id"
+            description="%newwizard.description"
+            class="org.eclipse.datatools.connectivity.oda.design.ui.wizards.NewDataSourceWizard"
+            id="%oda.data.source.id">
+      </newWizard>
+   </extension>
+   <extension
+         point="org.eclipse.ui.propertyPages">
+      <page            
+            name="%profile.propertypage.name"
+            class="org.eclipse.datatools.connectivity.oda.design.ui.pages.impl.DefaultDataSourcePropertyPage"
+            id="%oda.data.source.id">
+         <filter
+               name="org.eclipse.datatools.profile.property.id"
+               value="%oda.data.source.id">
+         </filter>
+      </page>
+   </extension>
+   <extension
+         point="org.eclipse.datatools.connectivity.oda.design.ui.dataSource">
+      <dataSourceUI
+            id="%oda.data.source.id">
+         <newDataSourceWizard
+               pageClass="org.eclipse.datatools.connectivity.oda.design.ui.pages.impl.DefaultDataSourceWizardPage"
+               includesProgressMonitor="false"
+               pageTitle="%wizard.data.source.page.title"
+               windowTitle="%wizard.window.title">
+         </newDataSourceWizard>
+      </dataSourceUI>
+      <dataSetUI
+            supportsOutParameters="false"
+            supportsInParameters="true"
+            initialPageId="org.groundwork.report.birt.data.oda.ws.dataSet.page1"
+            id="org.groundwork.report.birt.data.oda.ws.dataSet">
+         <dataSetWizard
+               class="org.eclipse.datatools.connectivity.oda.design.ui.wizards.DataSetWizard"
+               windowTitle="%wizard.data.set.window.title">
+         </dataSetWizard>
+         <dataSetPage
+               displayName="%wizard.data.set.page.title"
+               icon="icons/datasetpage.ico"
+               wizardPageClass="org.groundwork.report.birt.data.oda.ws.ui.impl.CustomDataSetWizardPage"
+               path="/"
+               id="org.groundwork.report.birt.data.oda.ws.dataSet.page1">
+         </dataSetPage>
+      </dataSetUI>
+   </extension>
+
+</plugin>

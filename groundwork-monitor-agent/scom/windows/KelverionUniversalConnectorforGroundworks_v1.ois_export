@@ -1,0 +1,62 @@
+\# &nbsp;This Powershell script converts the output of the SCOM 2012 IP &nbsp; &nbsp; &nbsp;#
+\# &nbsp;into an XML file. &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;#
+\# &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; #
+\# Created 1/21/2013 &nbsp;By: Kelverion &nbsp; &nbsp; &nbsp; &nbsp;For: Groundworks &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;#
+\###########################################
+\#Set Template and New XML file locations
+$TemplateLocation = "c:\Template.xml"
+$AlertLocation = "c:\Alerts"
+\# Load template file and hold as variable $AlertTemplate
+\[xml\]$AlertTemplate = Get-Content $TemplateLocation
+\# Special handling for the unstructured data from CompanyKnowledge
+$AlertProdKnowledge = @"
+\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.CompanyKnowledge\`d.T.~Ed/
+"@
+\# Assign the SCOM alert values to their cooresponding XML values
+$MonitoringObjectFullName = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.MonitoringObjectFullName\`d.T.~Ed/" \-split (":")
+$MonitoringClassName = $MonitoringObjectFullName\[0\]
+$AlertTemplate.UNVEvent.ConnectorVersion = "SCOM_2012_v0"
+$AlertTemplate.UNVEvent.AlertId = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.Id\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.Category = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.Category\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.ComputerDomain = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.Domain\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.ComputerName = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.NetbiosComputerName\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.Description = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.Description\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.EventType = "0"
+$AlertTemplate.UNVEvent.LastModifiedByNonConnector = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.LastModifiedByNonConnector\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.MaintenanceModeLastModified = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.MaintenanceModeLastModified\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.ManagementGroupName = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.ManagementGroup\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.ManagementPack = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.ManagementPackDisplayName\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.ManagementServer = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.Server\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.ModifiedBy = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.LastModifiedBy\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.MonitoringClassId = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.MonitoringClassId\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.MonitoringClassName = $MonitoringClassName
+$AlertTemplate.UNVEvent.MonitoringObjectDisplayName = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.MonitoringObjectDisplayName\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.MonitoringObjectFullName = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.MonitoringObjectFullName\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.MonitoringObjectHealthState = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.MonitoringObjectHealthState\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.MonitoringObjectId = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.MonitoringObjectId\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.MonitoringObjectInMaintenanceMode = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.MonitoringObjectInMaintenanceMode\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.MonitoringObjectPath = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.MonitoringObjectPath\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.MonitoringRuleId = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.MonitoringRuleId\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.Name = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.Name\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.PrincipalName = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.PrincipalName\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.Priority = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.Priority\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.ProblemId = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.ProblemId\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.ProductKnowledge = $AlertProdKnowledge
+$AlertTemplate.UNVEvent.RepeatCount = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.RepeatCount\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.ResolutionState = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.ResolutionState\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.RuleName = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.MonitoringRuleName\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.RuleTarget = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.MonitoringObjectName\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.Severity = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.Severity\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.StateLastModified = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.StateLastModified\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.TimeAdded = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.TimeAdded\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.TimeOfLastEvent = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.LastModifiedByNonConnector\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.TimeResolutionStateLastModified = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.TimeResolutionStateLastModified\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.TimeResolved = "\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.TimeResolved\`d.T.~Ed/"
+$AlertTemplate.UNVEvent.WebConsoleUrl = "http://localhost/OperationsManager/default.aspx?DisplayMode=Pivot&amp;AlertID=\`d.T.~Ed/{4AA1E683-B92D-43D9-B499-7DBAF4380438}.Id\`d.T.~Ed/"
+\# Function and loop to remove empty tags
+Function RemoveXmlItem ($XMLRoot,$ItemToRemove) {
+$XMLRoot.RemoveChild($ItemToRemove) }
+for ($i=1; $i \-le 40; $i++) {
+$AlertTemplate.UnVEvent.ChildNodes \| Where {$_.InnerText \-like ""} \| foreach-object {RemoveXmlItem $AlertTemplate.UnVEvent $_}
+}
+\# Save file

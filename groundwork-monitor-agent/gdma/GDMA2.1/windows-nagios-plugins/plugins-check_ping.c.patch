@@ -1,0 +1,103 @@
+*** nagios-plugins-1.4.16/plugins/check_ping.c.orig	2012-08-08 13:09:55.258156700 -0700
+--- nagios-plugins-1.4.16/plugins/check_ping.c	2012-08-09 12:10:51.843007000 -0700
+***************
+*** 118,124 ****
+  		rawcmd = strdup(PING_COMMAND);
+  #endif
+  
+! 		/* does the host address of number of packets argument come first? */
+  #ifdef PING_PACKETS_FIRST
+  # ifdef PING_HAS_TIMEOUT
+  		asprintf (&cmd, rawcmd, timeout_interval, max_packets, addresses[i]);
+--- 118,124 ----
+  		rawcmd = strdup(PING_COMMAND);
+  #endif
+  
+! 		/* does the host address or the number of packets argument come first? */
+  #ifdef PING_PACKETS_FIRST
+  # ifdef PING_HAS_TIMEOUT
+  		asprintf (&cmd, rawcmd, timeout_interval, max_packets, addresses[i]);
+***************
+*** 458,464 ****
+  			 (sscanf(buf,"%*d packets transmitted, %*d received, %d%% loss, time%n",&pl,&match) && match) ||
+  			 (sscanf(buf,"%*d packets transmitted, %*d received, %d%% packet loss, time%n",&pl,&match) && match) ||
+  			 (sscanf(buf,"%*d packets transmitted, %*d received, +%*d errors, %d%% packet loss%n",&pl,&match) && match) ||
+! 			 (sscanf(buf,"%*d packets transmitted %*d received, +%*d errors, %d%% packet loss%n",&pl,&match) && match)
+  			 )
+  			continue;
+  
+--- 458,465 ----
+  			 (sscanf(buf,"%*d packets transmitted, %*d received, %d%% loss, time%n",&pl,&match) && match) ||
+  			 (sscanf(buf,"%*d packets transmitted, %*d received, %d%% packet loss, time%n",&pl,&match) && match) ||
+  			 (sscanf(buf,"%*d packets transmitted, %*d received, +%*d errors, %d%% packet loss%n",&pl,&match) && match) ||
+! 			 (sscanf(buf,"%*d packets transmitted %*d received, +%*d errors, %d%% packet loss%n",&pl,&match) && match) ||
+! 			 (sscanf(buf," Packets: Sent = %*d, Received = %*d, Lost = %*d (%d%% loss)%n",&pl,&match) && match)
+  			 )
+  			continue;
+  
+***************
+*** 471,477 ****
+  				 (sscanf(buf,"round-trip min/avg/max/std-dev = %*f/%f/%*f/%*f%n",&rta,&match) && match) ||
+  				 (sscanf(buf,"round-trip (ms) min/avg/max = %*f/%f/%*f%n",&rta,&match) && match) ||
+  				 (sscanf(buf,"round-trip (ms) min/avg/max/stddev = %*f/%f/%*f/%*f%n",&rta,&match) && match) ||
+! 				 (sscanf(buf,"rtt min/avg/max/mdev = %*f/%f/%*f/%*f ms%n",&rta,&match) && match))
+  			continue;
+  	}
+  
+--- 472,479 ----
+  				 (sscanf(buf,"round-trip min/avg/max/std-dev = %*f/%f/%*f/%*f%n",&rta,&match) && match) ||
+  				 (sscanf(buf,"round-trip (ms) min/avg/max = %*f/%f/%*f%n",&rta,&match) && match) ||
+  				 (sscanf(buf,"round-trip (ms) min/avg/max/stddev = %*f/%f/%*f/%*f%n",&rta,&match) && match) ||
+! 				 (sscanf(buf,"rtt min/avg/max/mdev = %*f/%f/%*f/%*f ms%n",&rta,&match) && match) ||
+! 				 (sscanf(buf," Minimum = %*dms, Maximum = %*dms, Average = %fms%n",&rta,&match) && match))
+  			continue;
+  	}
+  
+***************
+*** 514,523 ****
+  error_scan (char buf[MAX_INPUT_BUFFER], const char *addr)
+  {
+  	if (strstr (buf, "Network is unreachable") ||
+! 		strstr (buf, "Destination Net Unreachable")
+  		)
+  		die (STATE_CRITICAL, _("CRITICAL - Network Unreachable (%s)\n"), addr);
+! 	else if (strstr (buf, "Destination Host Unreachable"))
+  		die (STATE_CRITICAL, _("CRITICAL - Host Unreachable (%s)\n"), addr);
+  	else if (strstr (buf, "Destination Port Unreachable"))
+  		die (STATE_CRITICAL, _("CRITICAL - Bogus ICMP: Port Unreachable (%s)\n"), addr);
+--- 516,527 ----
+  error_scan (char buf[MAX_INPUT_BUFFER], const char *addr)
+  {
+  	if (strstr (buf, "Network is unreachable") ||
+! 		strstr (buf, "Destination Net Unreachable") ||
+! 		strstr (buf, "Destination net unreachable")
+  		)
+  		die (STATE_CRITICAL, _("CRITICAL - Network Unreachable (%s)\n"), addr);
+! 	else if (strstr (buf, "Destination Host Unreachable") ||
+! 	         strstr (buf, "Destination host unreachable"))
+  		die (STATE_CRITICAL, _("CRITICAL - Host Unreachable (%s)\n"), addr);
+  	else if (strstr (buf, "Destination Port Unreachable"))
+  		die (STATE_CRITICAL, _("CRITICAL - Bogus ICMP: Port Unreachable (%s)\n"), addr);
+***************
+*** 529,537 ****
+  		die (STATE_CRITICAL, _("CRITICAL - Host Prohibited (%s)\n"), addr);
+  	else if (strstr (buf, "Packet filtered"))
+  		die (STATE_CRITICAL, _("CRITICAL - Packet Filtered (%s)\n"), addr);
+! 	else if (strstr (buf, "unknown host" ))
+  		die (STATE_CRITICAL, _("CRITICAL - Host not found (%s)\n"), addr);
+! 	else if (strstr (buf, "Time to live exceeded"))
+  		die (STATE_CRITICAL, _("CRITICAL - Time to live exceeded (%s)\n"), addr);
+  	else if (strstr (buf, "Destination unreachable: "))
+  		die (STATE_CRITICAL, _("CRITICAL - Destination Unreachable (%s)\n"), addr);
+--- 533,543 ----
+  		die (STATE_CRITICAL, _("CRITICAL - Host Prohibited (%s)\n"), addr);
+  	else if (strstr (buf, "Packet filtered"))
+  		die (STATE_CRITICAL, _("CRITICAL - Packet Filtered (%s)\n"), addr);
+! 	else if (strstr (buf, "unknown host" ) ||
+! 	         strstr (buf, "could not find host" ))
+  		die (STATE_CRITICAL, _("CRITICAL - Host not found (%s)\n"), addr);
+! 	else if (strstr (buf, "Time to live exceeded") ||
+! 	         strstr (buf, "TTL expired in transit"))
+  		die (STATE_CRITICAL, _("CRITICAL - Time to live exceeded (%s)\n"), addr);
+  	else if (strstr (buf, "Destination unreachable: "))
+  		die (STATE_CRITICAL, _("CRITICAL - Destination Unreachable (%s)\n"), addr);

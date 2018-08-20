@@ -1,0 +1,37 @@
+*** dummy/cacti-0.8.7g/plugins/thold/listthold.php	Sat Jul 17 08:04:22 2010
+--- cacti/htdocs/plugins/thold/listthold.php.orig	Thu Sep 16 15:58:55 2010
+***************
+*** 184,197 ****
+  			if($_REQUEST['state'] == 'Triggered') { $statefilter = 'thold_data.thold_alert!=0'; }
+  		}
+  	}
+  
+  	$alert_num_rows = read_config_option('alert_num_rows');
+  	if ($alert_num_rows < 1 || $alert_num_rows > 999) {
+! 		db_execute("REPLACE INTO settings VALUES ('alert_num_rows', 30)");
+  		/* pull it again so it updates the cache */
+  		$alert_num_rows = read_config_option('alert_num_rows', true);
+  	}
+  
+  	include($config['include_path'] . '/top_header.php');
+  
+  	$sql_where = '';
+--- 184,201 ----
+  			if($_REQUEST['state'] == 'Triggered') { $statefilter = 'thold_data.thold_alert!=0'; }
+  		}
+  	}
++ // Begin alert_num_rows fix
+  
+  	$alert_num_rows = read_config_option('alert_num_rows');
++ 
+  	if ($alert_num_rows < 1 || $alert_num_rows > 999) {
+! 		$alert_num_rows = set_config_option('alert_num_rows', 30);
+  		/* pull it again so it updates the cache */
+  		$alert_num_rows = read_config_option('alert_num_rows', true);
+  	}
+  
++ // End alert_num_rows fix
++ 
+  	include($config['include_path'] . '/top_header.php');
+  
+  	$sql_where = '';

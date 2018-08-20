@@ -1,0 +1,113 @@
+#!/bin/bash -e
+
+# prune_backups_obj
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+PATH=/bin:/usr/bin
+
+print_usage() {
+    echo "usage:  prune_backups_obj {prune_path} {min_kept_count} {min_kept_age}"
+    echo "where:  {min_kept_age} is specified in seconds, as the minimum age"
+    echo "        relative to the current time, of a directory-name timestamp"
+    echo "        which will be deleted; anything older, when there will still"
+    echo "        be {min_kept_count} backups left afterward, will be removed"
+}
+
+if [ $# -ne 3 ]; then
+    print_usage
+    exit 1
+fi
+
+prune_path="$1"
+min_kept_count="$2"
+min_kept_age="$3"
+
+if [[ ! ("$prune_path" =~ '/prune$') ]]; then
+    echo 'FATAL:  prune_path must end in "/prune"'
+    exit 1
+fi
+
+# "@" might not be a shell metacharacter, but it is so often interpreted by
+# programs as separating a username and a hostname that we treat it as such.
+if [[ "$prune_path" =~ '[]<>(){}|~;&!*?\	$ `"'"'"'%^@[]' ]]; then
+    echo 'FATAL:  prune_path cannot contain space, tab, any shell glob characters,'
+    echo '        or any other shell metacharacters'
+    exit 1
+fi
+
+# Following a symlink would be a potential security risk, as it could point anywhere.
+if [ -L $prune_path ]; then
+    echo "FATAL:  cannot follow a symlink"
+    exit 1
+fi
+
+if [ ! -d $prune_path ]; then
+    # The path is not a directory.  Perhaps the $prune_path doesn't exist, because we
+    # haven't carried out any prune operations before for this object.  In that case,
+    # we need to create the directory ourself (though carefully).  We intentionally
+    # only create the $prune_path directory itself, not any parent directories.  If
+    # that fails, we weren't really ready to run any prune operations anyway.
+    if [ -e $prune_path ]; then
+	echo "FATAL:  prune_path '$prune_path' is not a directory"
+	exit 1
+    fi
+    prune_parent=`dirname $prune_path`
+    if [ ! -e $prune_parent ]; then
+	echo "INFO:  prune_path parent directory '$prune_parent' does not exist; there is nothing to prune yet."
+	exit 0
+    fi
+    mkdir -m 755 $prune_path
+fi
+
+# If there is no "original" sibling of the $prune_path, then take the oldest of
+# the timestamped backup directories and rename it as the "original" directory.
+if [ ! -d $prune_path/../original ]; then
+    if [ -e "$prune_path/../original" ]; then
+        echo "FATAL:  $prune_path/../original already exists but is not a directory"
+	exit 1
+    else
+	# find the oldest timestamped backup, if there are any around
+	shopt -s nullglob
+	backups=($prune_path/../2[[:digit:]][[:digit:]][[:digit:]]-[[:digit:]][[:digit:]]-[[:digit:]][[:digit:]].[[:digit:]][[:digit:]]_[[:digit:]][[:digit:]]_[[:digit:]][[:digit:]]/)
+	if [ ${#backups[@]} -gt 0 ]; then
+	    mv ${backups[0]} "$prune_path/../original"
+	fi
+    fi
+fi
+
+# Removing everything all at once would be draconian.  Instead, we look at the timestamps
+# of the individual directories, and only remove directories whose timestamp is older
+# than a configured age.  Converting the timestamps back into a UNIX time for comparison
+# would be complicated.  Instead, we take the current time as a UNIX timestamp, subtract
+# the min_kept_age, then convert that result to a YYYY-MM-DD.hh_mm_ss format.  Then as
+# long as a directory name under consideration is lexically less than that string, and it
+# is not one of the most recent $min_kept_count directories, its tree should be removed.
+#
+# Effectively, we're going to do this to all the backup directories which fall beyond
+# both our count and age tests:
+# mv $prune_path/../YYYY-MM-DD.hh_mm_ss/ $prune_path
+# rm -rf $prune_path/YYYY-MM-DD.hh_mm_ss/
+
+earliest_timestamp=`/usr/local/groundwork/perl/bin/perl -e 'use POSIX ("strftime"); print strftime("%F.%H_%M_%S", localtime(time() - $ARGV[0])), "\n";' $min_kept_age`
+
+shopt -s nullglob
+dirs=($prune_path/../2[[:digit:]][[:digit:]][[:digit:]]-[[:digit:]][[:digit:]]-[[:digit:]][[:digit:]].[[:digit:]][[:digit:]]_[[:digit:]][[:digit:]]_[[:digit:]][[:digit:]])
+
+dirs_to_delete=$(( ${#dirs[@]} - min_kept_count ))
+if [ $dirs_to_delete -gt 0 ]; then
+    for dir in ${dirs[@]:0:$dirs_to_delete}
+    do
+	timestamp=`basename $dir`
+	if [[ $timestamp < $earliest_timestamp ]]; then
+	    mv $dir "$prune_path"
+	fi
+    done
+fi
+
+# Here we clean up all timestamped directories in the prune path.  Doing it this way
+# instead of in the loop as we moved individual directories to the prune directory
+# means we will also catch and clean up any directories left over from a previous
+# pass if the processing got interrupted while deletion was underway.
+rm -rf $prune_path/2[[:digit:]][[:digit:]][[:digit:]]-[[:digit:]][[:digit:]]-[[:digit:]][[:digit:]].[[:digit:]][[:digit:]]_[[:digit:]][[:digit:]]_[[:digit:]][[:digit:]]

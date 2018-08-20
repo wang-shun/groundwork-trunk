@@ -1,0 +1,436 @@
+<!--
+Copyright (C) 2008 GroundWork Open Source, Inc. ("GroundWork")  
+All rights reserved. This program is free software; you can redistribute it
+and/or modify it under the terms of the GNU General Public License version 2
+as published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU General Public License for 
+more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<!--
+	Top level build script for GroundWork smallbusiness
+	
+	Make sure that the build/prepare.sh run before invoking this build script
+
+-->
+<project default="allBuild"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+
+	<goal name='allBuild' 
+		description="Moves all components packages for monitor-smallbusiness into the deplyoment folders">
+		
+<!--		<attainGoal name="prepare" />-->
+ 		<attainGoal name="syslib" />
+		<attainGoal name="apache" />
+		<attainGoal name="monarch" />
+<!--		<attainGoal name="guava" /> -->
+		<attainGoal name="reports" /> 
+		<attainGoal name="performance" />
+<!--		<attainGoal name="perl.api" /> -->
+<!--		<attainGoal name="database.scripts" /> -->
+<!--		<attainGoal name="misc" /> -->
+<!-- OLD PHP Foundation API
+		    <attainGoal name="foundation.ws.php" /> -->
+<!--		<attainGoal name="snmp.build" />-->
+	</goal>
+	
+	<goal name="allClean"
+	        description="Clean the master project and all subprojects">
+	    <attainGoal name="subClean"/>
+	    <attainGoal name="clean"/>
+	 
+	  	
+	  	<!-- Remove Guava frameworks including all packages -->
+<!--	  	<delete dir="${org.groundwork.deploy.prefix}/guava" /> -->
+
+	    <!-- remove cgi, scripts -->
+	    <delete dir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/performance" />
+	  	<delete dir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/monarch" />
+	  	<delete dir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/reports" />
+	  	
+	  	<delete dir="${org.groundwork.deploy.prefix}/apache2/htdocs/performance" />
+	  	<delete dir="${org.groundwork.deploy.prefix}/apache2/htdocs/monarch" />
+	  	<delete dir="${org.groundwork.deploy.prefix}/apache2/htdocs/reports" />
+	  	
+	  	<!-- other tools directories -->
+	  	<delete dir="${org.groundwork.deploy.prefix}/monarch" />
+	  	<delete dir="${org.groundwork.deploy.prefix}/reports" />
+	  	<delete dir="${org.groundwork.deploy.prefix}/performance" />
+		<delete dir="${org.groundwork.deploy.prefix}/tools" />
+		
+	   </goal>
+	
+	<goal name="deploy" 
+		description="Deploy build into deploy area" >
+		
+  		
+	</goal>
+
+	<!-- 
+		All the components to build Monitor smallbusiness
+	 -->
+	<goal name="misc"
+		description="Copy misc file" >
+		<mkdir dir="${org.groundwork.deploy.prefix}/tmp" />
+		<copy file="${basedir}/../../groundwork-monitor/monitor-os/indexer.out" 
+			tofile="${org.groundwork.deploy.prefix}/var/indexer.out" overwrite="true">
+		</copy>
+	
+		<!-- Remove opensource docs-->
+		<delete dir="${org.groundwork.deploy.prefix}/docs" />
+	</goal> 	
+
+	<goal name="syslib" 
+		description="Copy the syslib scripts/libraries into the deploy area" >
+		
+		<!-- Cleanup -->
+		<delete dir="${org.groundwork.deploy.prefix}/services" />
+		<mkdir dir="${org.groundwork.deploy.prefix}/services" />
+
+		<!-- Bring in structure form PRO build -->
+		<copy todir="${org.groundwork.deploy.prefix}/services" file="${basedir}/syslib/gwservices" overwite="true" />
+		
+		<!-- Don't run mkservice since it is running by BitRock-->
+		<!-- Create services for status feeder and Foundation Container
+	    <exec dir="${org.groundwork.deploy.prefix}/bin" executable="mkservice" >
+	      <arg line="nagios nagios ${org.groundwork.deploy.prefix}/services/feeder-nagios-status"/>
+	     </exec>
+		
+		<exec dir="${org.groundwork.deploy.prefix}/bin" executable="mkservice" >
+			<arg line="nagios nagios ${org.groundwork.deploy.prefix}/services/foundation"/>
+		</exec>-->
+				
+		<!-- Monitor smallbusiness configs for supervise -->
+        <delete file="${org.groundwork.deploy.prefix}/services/foundation/run" />
+        <delete file="${org.groundwork.deploy.prefix}/services/feeder-nagios-status/run" />
+		
+		<copy tofile="${org.groundwork.deploy.prefix}/services/foundation/run" file="${basedir}/syslib/foundation-webapp" overwite="true" />
+		<copy tofile="${org.groundwork.deploy.prefix}/services/feeder-nagios-status/run" file="${basedir}/syslib/nagios-status-feeder" overwite="true" />
+				
+		<!-- Groundwork Logrotate install -->
+		<echo>Groundwork Logrotate install</echo>
+		<delete file="${org.groundwork.deploy.prefix}/etc/groundwork.logrotate" />
+		<mkdir dir="${org.groundwork.deploy.prefix}/etc" />
+		
+		<copy file="${basedir}/syslib/groundwork.logrotate" todir="${org.groundwork.deploy.prefix}/etc" overwrite="true" />	
+		
+		<!-- Groundwork Profiles install -->
+		<echo>Groundwork Profiles install</echo>
+		<mkdir dir="${org.groundwork.deploy.prefix}/profiles" />
+<!--		
+		<copy todir="${org.groundwork.deploy.prefix}/profiles">
+			<fileset dir="${basedir}/profiles/default" includes="**/**" excludes="automation, **/.svn"/>
+	 	</copy>
+-->		
+		<!-- Groundwork Automation install -->
+		<echo>Groundwork Automation install</echo>
+		<mkdir dir="${org.groundwork.deploy.prefix}/monarch" />
+		<mkdir dir="${org.groundwork.deploy.prefix}/monarch/automation" />
+		<mkdir dir="${org.groundwork.deploy.prefix}/monarch/automation/conf" />
+		
+		<copy todir="${org.groundwork.deploy.prefix}/monarch/automation/conf">
+			<fileset dir="${basedir}/profiles/automation/conf" includes="*.xml *.cfg"/>
+	 	</copy>
+		
+	</goal>
+		
+	<goal name="apache" 
+		description="Update the Apache configuration so that it matches the Monitor-Professinal Layout" >
+		
+		<!-- Copy the correct config file into the Apache distribution -->
+		<delete file="${org.groundwork.deploy.prefix}/apache2/conf/httpd.conf"/>
+		<copy todir="${org.groundwork.deploy.prefix}/apache2/conf" file="${basedir}/apache/httpd.conf" overwite="true" />
+
+		<!-- Copy the icon into Apache GWMOS-39 -->
+		<copy todir="${org.groundwork.deploy.prefix}/apache2/htdocs" file="${basedir}/favicon.ico" overwrite="true" />
+
+	</goal>
+	
+	
+<!--	<goal name="guava" 
+		description="PHP framework" > -->
+
+		<!-- Guava environment -->
+<!--		<mkdir dir="${org.groundwork.deploy.prefix}/guava"/>
+
+                <copy todir="${org.groundwork.deploy.prefix}/guava">
+                                <fileset dir="${basedir}/guava" includes="**/**" excludes="**/.svn, **/project.xml, **/maven.xml"/>
+                </copy>
+
+
+
+		<copy todir="${org.groundwork.deploy.prefix}/guava">
+		    <fileset dir="${basedir}/../../groundwork-monitor/guava/"  includes="*/**" excludes="**/.svn" />
+		</copy>
+		
+				
+	</goal> -->
+	
+	<goal name="monarch"
+	        description="Copy all monarch files into deploy area">
+	
+		<!-- Scripts -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/monarch"/>
+		<copy todir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/monarch" overwrite="true" >
+			<fileset dir="${basedir}/../../groundwork-monitor/monarch">
+				<include name="*.cgi" />
+			</fileset>
+		</copy>
+		
+			<mkdir dir="${org.groundwork.deploy.prefix}/apache2/htdocs/monarch"/>
+        <copy todir="${org.groundwork.deploy.prefix}/apache2/htdocs/monarch" overwrite="true">
+            <fileset dir="${basedir}/../../groundwork-monitor/monarch">
+              <include name="*.css" />
+                <include name="*.js" />
+            </fileset>
+        </copy>
+		
+		<!-- Images -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/apache2/htdocs/monarch/images"/>
+		<copy todir="${org.groundwork.deploy.prefix}/apache2/htdocs/monarch/images" overwrite="true">
+		    <fileset dir="${basedir}/../../groundwork-monitor/monarch/images">
+		      <include name="**/*"/>
+		    </fileset>
+		</copy>
+		
+		<!-- Binaries from GroundWork Private -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/monarch/bin"/>
+		<mkdir dir="${org.groundwork.deploy.prefix}/monarch/backup"/>
+		<mkdir dir="${org.groundwork.deploy.prefix}/monarch/workspace"/>
+
+		 <copy todir="${org.groundwork.deploy.prefix}/monarch/bin">
+		  <fileset dir="${basedir}/../../groundwork-monitor/monarch" includes="nmap_scan_one.pl"/>
+		 </copy>
+
+		<copy todir="${org.groundwork.deploy.prefix}/monarch/bin">
+		  <fileset dir="${basedir}/../../groundwork-monitor/monarch" includes="monarch_as_nagios.pl"/>
+		 </copy>
+
+		<exec dir="${basedir}/../../groundwork-monitor/monarch" executable="cp" >
+                	<arg line="nmap_scan_one ${org.groundwork.deploy.prefix}/monarch/bin/nmap_scan_one"/>
+   		</exec>
+
+		<exec dir="${basedir}/../../groundwork-monitor/monarch" executable="cp" >
+                	<arg line="nmap_scan_one.pl ${org.groundwork.deploy.prefix}/monarch/bin/nmap_scan_one.pl"/>
+   		</exec>
+		
+		<!-- Libraries -->
+		<delete dir="${org.groundwork.deploy.prefix}/monarch/lib}" />
+		<mkdir dir="${org.groundwork.deploy.prefix}/monarch/lib"/>
+		<copy todir="${org.groundwork.deploy.prefix}/monarch/lib" overwrite="true">
+		    <fileset dir="${basedir}/../../groundwork-monitor/monarch">
+		      <include name="**/*.pm"/>
+		      <exclude name="nagios2collage*.pm" />
+		    </fileset>
+		</copy>		
+		
+	</goal>
+
+	<goal name="reports" >
+		<!-- Scripts -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/reports"/>
+		<copy todir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/reports" overwrite="true">
+			<fileset dir="${basedir}/../../groundwork-monitor/reports/perl">
+		      <include name="**/*.pl"/>
+				<exclude name="**/*.cfg"/>
+		    </fileset>
+		</copy>
+
+		<!-- Config file -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/etc"/>
+		<copy todir="${org.groundwork.deploy.prefix}/etc" overwrite="true">
+			<fileset dir="${basedir}/../../groundwork-monitor/reports/perl">
+		      <include name="**/*.cfg"/>
+		    </fileset>
+		</copy>
+		
+		<mkdir dir="${org.groundwork.deploy.prefix}/reports/utils/log"/>
+		<copy todir="${org.groundwork.deploy.prefix}/reports/utils" overwrite="true">
+		    <fileset dir="${basedir}/../../groundwork-monitor/reports">
+		      <include name="**/*.pl"/>
+		    </fileset>
+		</copy>
+	
+		<mkdir dir="${org.groundwork.deploy.prefix}/apache2/htdocs/reports"/>
+		<copy todir="${org.groundwork.deploy.prefix}/apache2/htdocs/reports" overwrite="true">
+		    <fileset dir="${basedir}/../../groundwork-monitor/reports/perl">
+		      <include name="**/*"/>
+		    	<exclude name="**/*.pl"/>
+		    </fileset>
+		</copy>
+	
+		<!-- Libraries -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/reports/lib"/>
+		<copy todir="${org.groundwork.deploy.prefix}/reports/lib">
+		    <fileset dir="${basedir}/../../groundwork-monitor/reports/perl" overwrite="true" >
+		      <include name="**/*.pm"/>
+		    </fileset>
+		</copy>
+
+	</goal>
+	
+	<goal name="performance"
+		        description="Copy all performance files into deplyment">
+		
+		<!-- Empty folders -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/performance/performance_views"/>
+		<mkdir dir="${org.groundwork.deploy.prefix}/apache2/htdocs/performance/rrd_img"/>
+		
+		<!-- Scripts -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/performance"/>
+		<copy todir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/performance" file="${basedir}/performance/perfchart.cgi" overwrite="true" />
+		
+		
+		<mkdir dir="${org.groundwork.deploy.prefix}/apache2/htdocs/performance"/>
+		<copy todir="${org.groundwork.deploy.prefix}/apache2/htdocs/performance" overwrite="true">
+		    <fileset dir="${basedir}/performance">
+		      <include name="**/*"/>
+		    	<exclude name="**/*.pm,**/*.cgi" />
+		    </fileset>
+		</copy>
+		
+		<!-- Event Handler -->
+		<copy todir="${org.groundwork.deploy.prefix}/nagios/eventhandlers" file="${basedir}/performance-core/eventhandler/process_service_perf_db.pl" overwrite="true" />
+		<copy todir="${org.groundwork.deploy.prefix}/nagios/eventhandlers" file="${basedir}/performance-core/eventhandler/process_service_perf_db_file.pl" overwrite="true" />
+		<copy todir="${org.groundwork.deploy.prefix}/nagios/eventhandlers" file="${basedir}/performance-core/eventhandler/start_nmon.pl" overwrite="true" />
+		<copy todir="${org.groundwork.deploy.prefix}/nagios/eventhandlers" file="${basedir}/performance-core/eventhandler/writenmonrrd.pl" overwrite="true" />
+		
+		<!-- Libraries -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/performance/lib"/>
+		<copy todir="${org.groundwork.deploy.prefix}/performance/lib" file="${basedir}/performance/PerfChartsForms.pm" overwrite="true" />
+		
+		<!-- Performance Config --> 
+		<copy todir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/performance" file="${basedir}/performance-core/admin/PerfConfigAdmin.pl" overwite="true" />
+		
+		<!-- Databases for Performance -->
+		<copy todir="${org.groundwork.deploy.prefix}/databases"  overwite="true" >
+			<fileset dir="${basedir}/performance-core/database">
+				<include name="**/*.sql"/>
+			</fileset>
+		</copy>
+	
+	</goal>
+	
+	
+	<goal name="perl.api" >
+		<!-- Copy the Foundation perl API -->
+		<copy todir="${org.groundwork.perl.site}" file="${basedir}/../../groundwork-monitor/foundation/collage/api/Perl/CollageQuery/lib/CollageQuery.pm" overwrite="true" />
+			</goal>
+		
+	<!-- Copy all the database scripts into the deploy directory -->
+	
+	<goal name="database.scripts">
+		<mkdir dir="${com.groundwork.database.scripts}"/>
+		
+		<!-- database scripts -->
+		<copy todir="${com.groundwork.database.scripts}" file="${basedir}/database/create-monitor-sb-db.sql" overwrite="true" />
+ 
+		<!-- OpenSource Database -->
+		<copy todir="${com.groundwork.database.scripts}" file="${basedir}/../monarch/database/monarch.sql" overwrite="true" />
+		
+<!--		<copy todir="${com.groundwork.database.scripts}" file="${basedir}/sqldata/guava.sql" overwrite="true" /> 
+        <copy tofile="${com.groundwork.database.scripts}/insightreports.sql" file="${basedir}/database/dashboard.sql" overwrite="true" /> -->       
+
+		<!-- Minimal configuartion -->
+<!--		<copy todir="${com.groundwork.database.scripts}" file="${basedir}/database/foundation-pro-extension.sql" overwrite="true" /> -->
+		<!-- Database migration scripts -->
+<!--		<copy tofile="${org.groundwork.deploy.prefix}/migration/migrate-guava-sb.php" file="${basedir}/migration/migrate-guava.php" overwrite="true" /> -->
+		
+		<copy todir="${org.groundwork.deploy.prefix}/migration">
+				    <fileset dir="${basedir}/migration">
+				      <include name="**/*.sql"/>
+				    </fileset>
+			</copy>
+	</goal>
+	
+
+  <goal name="subClean"
+        description="Clean all subprojects"
+        >
+    <maven:reactor
+               basedir="${basedir}"
+               includes="apache/*/project.xml, performance/*/project.xml, performance-core/*/project.xml, profiles/*/project.xml,reports/*/project.xml"
+               goals="allClean"
+               banner="Cleaning"
+               ignoreFailures="false"/>
+  </goal>
+	
+	<!-- prepare srcipts and spec file with settings -->
+		<goal name="prepare" 
+				description="Generates spec file for Monitor-PRO">
+			
+			<!-- RPM build script -->
+			<copy file="${basedir}/../../groundwork-monitor/build/buildRPM.sh"   todir="spec" overwrite="true">
+	          <filterset begintoken="@" endtoken="@">
+	            <filter token="DEPENDENCY"     value="${org.groundwork.rpm.dependencies}"/>
+	             <filter token="RELEASE_NUMBER"   value="${org.groundwork.rpm.release.number}"/>
+	             <filter token="PREFIX"   value="${org.groundwork.deploy.prefix}"/>
+	          	 <filter token="PACKAGE_NAME" value="${org.groundwork.rpm.package.name}" />
+	          	 <filter token="PACKAGE_VERSION"   value="${org.groundwork.rpm.package.version}"/>
+				 <filter token="EXPORT_FILELIST"   value="${org.groundwork.rpm.filelist}"/>
+	          	 <filter token="SPEC_FILE_NAME" value="${org.groundwork.rpm.specfile}" />
+	          	<filter token="RPM_ROOT" value="/" />
+	          </filterset>
+	       </copy>
+
+			<!-- Spec file -->
+			<copy file="${basedir}/resources/${org.groundwork.rpm.specfile}"   todir="spec" overwrite="true">
+	          <filterset begintoken="@" endtoken="@">
+	             <filter token="DEPENDENCY"     value="${org.groundwork.rpm.dependencies}"/>
+	             <filter token="RELEASE_NUMBER"   value="${org.groundwork.rpm.release.number}"/>
+	             <filter token="PREFIX"   value="${org.groundwork.deploy.prefix}"/>
+	          	 <filter token="PACKAGE_NAME" value="${org.groundwork.rpm.package.name}" />
+	          	 <filter token="PACKAGE_VERSION"   value="${org.groundwork.rpm.package.version}"/>
+				 <filter token="EXPORT_FILELIST"   value="${org.groundwork.rpm.filelist}"/>
+	          	 <filter token="SPEC_FILE_NAME" value="${org.groundwork.rpm.specfile}" />
+	          </filterset>
+	       </copy>
+			
+			<!-- Deploy config file -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/config" />
+			<delete file="${org.groundwork.deploy.prefix}/config/db.properties.os" />
+			<copy file="${basedir}/resources/db.properties" tofile="${org.groundwork.deploy.prefix}/config/db.properties.os" overwrite="true" />
+
+			<delete file="${org.groundwork.deploy.prefix}/config/foundation.properties.os" />
+			<copy file="${basedir}/../foundation/resources/foundation.properties" tofile="${org.groundwork.deploy.prefix}/config/foundation.properties.os" overwrite="true" />
+		</goal>  
+	
+
+	<!-- PHP wrapper for Foundation Webservice -->
+	<goal name="foundation.ws.php" 
+			description="Deploy PHP Wrapper for Foundation Web Service">
+		<mkdir dir="${org.groundwork.deploy.prefix}/share/php/DAL"/>
+		<copy todir="${org.groundwork.deploy.prefix}/share/php/DAL">
+		    <fileset dir="${basedir}/../foundation/collage/api/php/DAL">
+		      <include name="**/*"/>
+		      <exclude name="*/.svn" />
+		    </fileset>
+		</copy>
+	</goal>
+
+ 
+
+ 
+	
+	<!-- Build and deploy snmp modules -->
+	<goal name="snmp.build"
+  		description="Build and deploy snmp modules">
+			     
+		<maven:reactor
+		basedir="${basedir}/${dir.snmp.base}"
+		includes="project.xml"
+		goals="allBuild"
+		banner="Builds snmp modules"
+		postProcessing="false"
+		ignoreFailures="false"/>
+	</goal>
+
+</project>

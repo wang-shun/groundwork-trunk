@@ -1,0 +1,157 @@
+--- nagios-4.3.1/cgi/extinfo.c.orig	2017-02-23 12:00:40.000000000 -0800
++++ nagios-4.3.1/cgi/extinfo.c	2017-03-07 10:51:51.259718786 -0800
+@@ -106,7 +106,8 @@
+ int embedded = FALSE;
+ int display_header = TRUE;
+ 
+-
++/* Establish that this patch is in place. */
++char refresh_patch_ident[] = "$RefreshPatchCompileTime: " __TIME__ " on " __DATE__ " (" __FILE__ ") $";
+ 
+ int main(void) {
+ 	int found = FALSE;
+@@ -528,7 +529,7 @@
+ 
+ 	printf("Cache-Control: no-store\r\n");
+ 	printf("Pragma: no-cache\r\n");
+-	printf("Refresh: %d\r\n", refresh_rate);
++	// printf("Refresh: %d\r\n", refresh_rate);
+ 
+ 	time(&current_time);
+ 	get_time_string(&current_time, date_time, (int)sizeof(date_time), HTTP_DATE_TIME);
+@@ -579,7 +580,8 @@
+ 
+ 	printf("</head>\n");
+ 
+-	printf("<body CLASS='extinfo'>\n");
++	printf("<body CLASS='extinfo'"
++	       " onload='setTimeout(\"location=self.location;\",%d)'>\n", (refresh_rate ? refresh_rate : 1000000) * 1000);
+ 
+ 	/* include user SSI header */
+ 	include_ssi_files(EXTINFO_CGI, SSI_HEADER);
+--- nagios-4.3.1/cgi/outages.c.orig	2017-02-23 12:00:40.000000000 -0800
++++ nagios-4.3.1/cgi/outages.c	2017-03-07 10:51:51.259718786 -0800
+@@ -91,8 +91,8 @@
+ int embedded = FALSE;
+ int display_header = TRUE;
+ 
+-
+-
++/* Establish that this patch is in place. */
++char refresh_patch_ident[] = "$RefreshPatchCompileTime: " __TIME__ " on " __DATE__ " (" __FILE__ ") $";
+ 
+ int main(void) {
+ 	/* get the arguments passed in the URL */
+@@ -161,7 +161,7 @@
+ 
+ 	printf("Cache-Control: no-store\r\n");
+ 	printf("Pragma: no-cache\r\n");
+-	printf("Refresh: %d\r\n", refresh_rate);
++	// printf("Refresh: %d\r\n", refresh_rate);
+ 
+ 	time(&current_time);
+ 	get_time_string(&current_time, date_time, (int)sizeof(date_time), HTTP_DATE_TIME);
+@@ -190,7 +190,8 @@
+ 
+ 	printf("</head>\n");
+ 
+-	printf("<body CLASS='outages'>\n");
++	printf("<body CLASS='outages'"
++	       " onload='setTimeout(\"location=self.location;\",%d)'>\n", (refresh_rate ? refresh_rate : 1000000) * 1000);
+ 
+ 	/* include user SSI header */
+ 	include_ssi_files(OUTAGES_CGI, SSI_HEADER);
+--- nagios-4.3.1/cgi/status.c.orig	2017-02-23 12:00:40.000000000 -0800
++++ nagios-4.3.1/cgi/status.c	2017-03-07 10:51:51.260718787 -0800
+@@ -187,7 +187,8 @@
+ int embedded = FALSE;
+ int display_header = TRUE;
+ 
+-
++/* Establish that this patch is in place. */
++char refresh_patch_ident[] = "$RefreshPatchCompileTime: " __TIME__ " on " __DATE__ " (" __FILE__ ") $";
+ 
+ int main(void) {
+ 	char *sound = NULL;
+@@ -502,7 +503,7 @@
+ 
+ 	printf("Cache-Control: no-store\r\n");
+ 	printf("Pragma: no-cache\r\n");
+-	printf("Refresh: %d\r\n", refresh_rate);
++	// printf("Refresh: %d\r\n", refresh_rate);
+ 
+ 	get_time_string(&current_time, date_time, (int)sizeof(date_time), HTTP_DATE_TIME);
+ 	printf("Last-Modified: %s\r\n", date_time);
+@@ -566,7 +567,8 @@
+ 
+ 	printf("</head>\n");
+ 
+-	printf("<body class='status'>\n");
++	printf("<body class='status'"
++	       " onload='setTimeout(\"location=self.location;\",%d)'>\n", (refresh_rate ? refresh_rate : 1000000) * 1000);
+ 
+ 	/* include user SSI header */
+ 	include_ssi_files(STATUS_CGI, SSI_HEADER);
+--- nagios-4.3.1/cgi/statusmap.c.orig	2017-02-23 12:00:40.000000000 -0800
++++ nagios-4.3.1/cgi/statusmap.c	2017-03-07 10:51:51.261718787 -0800
+@@ -222,9 +222,8 @@
+ int exclude_layers = TRUE;
+ int all_layers = FALSE;
+ 
+-
+-
+-
++/* Establish that this patch is in place. */
++char refresh_patch_ident[] = "$RefreshPatchCompileTime: " __TIME__ " on " __DATE__ " (" __FILE__ ") $";
+ 
+ int main(int argc, char **argv) {
+ 	int result;
+@@ -315,7 +314,7 @@
+ 	if(create_type == CREATE_HTML) {
+ 		printf("Cache-Control: no-store\r\n");
+ 		printf("Pragma: no-cache\r\n");
+-		printf("Refresh: %d\r\n", refresh_rate);
++		// printf("Refresh: %d\r\n", refresh_rate);
+ 
+ 		time(&current_time);
+ 		get_time_string(&current_time, date_time, sizeof(date_time), HTTP_DATE_TIME);
+@@ -347,7 +346,8 @@
+ 
+ 		printf("</head>\n");
+ 
+-		printf("<body CLASS='statusmap' name='mappage' id='mappage'>\n");
++		printf("<body CLASS='statusmap' name='mappage' id='mappage'"
++		       " onload='setTimeout(\"location=self.location;\",%d)'>\n", (refresh_rate ? refresh_rate : 1000000) * 1000);
+ 
+ 		/* include user SSI header */
+ #ifdef LEGACY_GRAPHICAL_CGIS
+--- nagios-4.3.1/cgi/tac.c.orig	2017-02-23 12:00:40.000000000 -0800
++++ nagios-4.3.1/cgi/tac.c	2017-03-07 10:51:51.262718788 -0800
+@@ -178,6 +178,8 @@
+ int services_critical_unacknowledged = 0;
+ int services_critical = 0;
+ 
++/* Establish that this patch is in place. */
++char refresh_patch_ident[] = "$RefreshPatchCompileTime: " __TIME__ " on " __DATE__ " (" __FILE__ ") $";
+ 
+ /*efine DEBUG 1*/
+ 
+@@ -273,7 +275,7 @@
+ 
+ 	printf("Cache-Control: no-store\r\n");
+ 	printf("Pragma: no-cache\r\n");
+-	printf("Refresh: %d\r\n", refresh_rate);
++	// printf("Refresh: %d\r\n", refresh_rate);
+ 
+ 	time(&current_time);
+ 	get_time_string(&current_time, date_time, (int)sizeof(date_time), HTTP_DATE_TIME);
+@@ -315,7 +317,8 @@
+ 	printf("\n});\n</script>\n");
+ 
+ 	printf("</HEAD>\n");
+-	printf("<BODY CLASS='tac' marginwidth=2 marginheight=2 topmargin=0 leftmargin=0 rightmargin=0>\n");
++	printf("<BODY CLASS='tac' marginwidth=2 marginheight=2 topmargin=0 leftmargin=0 rightmargin=0"
++	       " onload='setTimeout(\"location=self.location;\",%d)'>\n", (refresh_rate ? refresh_rate : 1000000) * 1000);
+ 
+ 	/* include user SSI header */
+ 	include_ssi_files(TAC_CGI, SSI_HEADER);

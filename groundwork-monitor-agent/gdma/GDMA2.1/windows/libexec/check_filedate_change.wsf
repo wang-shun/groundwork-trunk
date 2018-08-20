@@ -1,0 +1,83 @@
+<job>
+<runtime>
+  <description>
+check_filesize_change (nrpe_nt-plugin) 1.1
+The nagios plugins come with ABSOLUTELY NO WARRANTY. You may redistribute
+copies of the plugins under the terms of the GNU General Public License.
+For more information about these matters, see the file named COPYING.
+Copyright (c) 1999-2001 Ethan Galstad/Hagen Deike (nagios@samurai.inka.de)
+
+Checks to see if the file size has not changed sence the last check
+  </description>
+  <named
+    name="h"
+    helpstring="Help"
+    type="simple"
+    required="false" 
+  />
+  <unnamed
+    name="filename"
+    helpstring="Path to the file you wish to watch"
+    many="false"
+    required="true"
+  />
+  <unnamed
+    name="age_timeout"
+    helpstring="Minutes sence the last file change or alert"
+    many="false"
+    required="true"
+  />
+  <example>
+Example: check_filesize_change.wsf c:\winnt\system32\LogFiles\W3SCV1\ex0001.log ex001.log.temp 60
+</example>
+</runtime>
+<script language="VBScript">
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+If Wscript.Arguments.Named.Exists("h") Or Wscript.Arguments.Count = 0 Then
+  Wscript.Echo "Plugin help screen:"
+  Wscript.Arguments.ShowUsage()
+  Wscript.Quit(0)
+End If
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Const's and Var's
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+ageTimeout = wscript.Arguments.Unnamed.Item(1)
+strFile = Wscript.Arguments.Unnamed.Item(0)
+
+Const intOK = 0
+Const intWarning = 1
+Const intCritical = 2
+Const intUnknown = 3
+
+Const ForReading = 1
+Const ForWriting = 0
+
+diff = -1
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Dim objFSO
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+
+If objFSO.FileExists(strFile) Then
+  Set objFile = objFSO.GetFile(strFile)
+  diff = DateDiff("n", objFile.DateLastModified, Now)
+Else
+  Wscript.Echo "UNKNOWN: File does not exist."
+  Wscript.Quit(intUnknown)
+End if
+
+  
+If Clng(diff) >= Clng(ageTimeout) Then
+  Wscript.Echo "CRITICAL: " & strFile & " has not been modifed in the last " & ageTimeout & " minutes (" & diff & ")"
+  Wscript.Quit(intCritical)  
+Else
+  Wscript.Echo "OK: " & strFile & " has been modifed in the last " & ageTimeout & " minutes (" & diff & ")"
+  Wscript.Quit(intOK)
+End If
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+</script>
+</job>

@@ -1,0 +1,801 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0014)about:internet -->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Adobe RoboHelp 8" />
+<title>Tutorial - SNMP Traps Adapter</title>
+<link rel="StyleSheet" href="../../Bookshelf.css" type="text/css" />
+<script type="text/javascript" language="JavaScript">
+//<![CDATA[
+function ehlp_showtip(current,e,text)
+{
+  if ((parseInt(navigator.appVersion) == 4) && (navigator.appName == 'Netscape'))
+  {
+    document.tooltip.document.write("<layer bgColor='yellow' style='border:1px solid black;font-size:12px;'>"+ text + "<\/layer>");
+    document.tooltip.document.close();
+    document.tooltip.left=e.pageX+5;
+    document.tooltip.top=e.pageY+5;
+    document.tooltip.visibility="show";
+  }
+}
+function ehlp_hidetip()
+{
+  document.tooltip.visibility="hidden";
+}
+//]]>
+</script>
+<script type="text/javascript" language="JavaScript">
+//<![CDATA[
+function reDo() {
+  if (innerWidth != origWidth || innerHeight != origHeight)
+     location.reload();
+}
+if ((parseInt(navigator.appVersion) == 4) && (navigator.appName == "Netscape")) {
+        origWidth = innerWidth;
+        origHeight = innerHeight;
+        onresize = reDo;
+}
+onerror = null; 
+//]]>
+</script>
+<style type="text/css">
+/*<![CDATA[*/
+<!--
+div.WebHelpPopupMenu { position:absolute;
+left:0px;
+top:0px;
+z-index:4;
+visibility:hidden; }
+-->
+/*]]>*/
+</style>
+
+<script type="text/javascript" language="javascript1.2" src="../../whmsg.js">
+</script>
+<script type="text/javascript" language="javascript" src="../../whver.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../whproxy.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../whutils.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../whlang.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../whtopic.js">
+</script>
+</head>
+<body>
+<script type="text/javascript" language="javascript1.2">
+//<![CDATA[
+<!--
+if (window.gbWhTopic)
+{
+        var strUrl = document.location.href;
+        var bc = 0;
+        var n = strUrl.toLowerCase().indexOf("bc-");
+        if(n != -1)
+        {
+                document.location.href = strUrl.substring(0, n);
+                bc = strUrl.substring(n+3);
+        }
+
+        if (window.addTocInfo)
+        {
+        addTocInfo("DEVELOPER REFERENCE\nFoundation\nTutorial - SNMP Traps Adapter");
+addButton("show",BTN_TEXT,"Show Table of Contents","","","","",0,0,"","","");
+
+        }
+        if (window.writeBtnStyle)
+                writeBtnStyle();
+
+        if (window.writeIntopicBar)
+                writeIntopicBar(1);
+
+        
+        
+
+        if (window.setRelStartPage)
+        {
+        setRelStartPage("../../Bookshelf.htm");
+
+                autoSync(0);
+                sendSyncInfo();
+                sendAveInfoOut();
+        }
+}
+else
+        if (window.gbIE4)
+                document.location.reload();
+
+//-->
+//]]>
+</script><script type="text/javascript" language="JavaScript1.2" src="../../ehlpdhtm.js">
+</script><script type="text/javascript" language="javascript">
+//<![CDATA[
+document.write("<p  style=\"text-align:right;color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;\">");
+AddMasterBreadcrumbs("../../Bookshelf.htm", "color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;", "&gt;", "Home", "../../Welcome_to_GroundWork_Monitor/index.htm");
+document.write("<a style=\"color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;\" href=\"../developer_aboutdeveloperreference.htm\">DEVELOPER REFERENCE<\/a> &gt; <a style=\"color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;\" href=\"developer_foundationoverview.htm\">Foundation<\/a> &gt; Tutorial - SNMP Traps Adapter<\/p>");
+//]]>
+</script>
+<p>&#160;</p>
+<h1><a name="MiniTOCBookMark1" id="MiniTOCBookMark1"></a><img src="../../Shared_Images/square.gif" alt="square.gif" style="border: none;" width="15" height="15" border="0" /> GroundWork Foundation</h1>
+<h3 align="right"><a href="../developer_aboutdeveloperreference.htm" title="Topic Home" onmouseover="if ((parseInt(navigator.appVersion) == 4) &amp;&amp; (navigator.appName == 'Netscape')) ehlp_showtip(this,event,'Topic Home');" onmouseout="if ((parseInt(navigator.appVersion) == 4) &amp;&amp; (navigator.appName == 'Netscape')) ehlp_hidetip();"><img src="../../Shared_Images/homeicon.gif" alt="homeicon.gif" style="border: none;" width="33" height="27" border="0" /></a> <img src="../../Shared_Images/printicon.gif" onclick="window.print()" alt="Print Page" title="Print Page" style="border: none;" width="31" height="27" border="0" /> <a href="mailto:support@groundworkopensource.com?subject=Tutorial: From Theory to Implementation" title="Send Comments"><img src="../../Shared_Images/commentsicon.gif" alt="Send Comments" title="Send Comments" style="border: none;" width="33" height="27" border="0" /></a></h3>
+<h2><a name="MiniTOCBookMark2" id="MiniTOCBookMark2"></a>Tutorial: From Theory to Implementation: A Real-World Adapter for SNMP Traps</h2>
+<p align="left">Table&#160;of&#160;Contents:&#160;<a class="dropspot" href="javascript:TextPopup(this)" id="MTHotSpot37125" name="MTHotSpot37125"><span class="MTText">Show</span><span class="MTText" style="display: none;">Hide</span></a></p>
+<script type="text/javascript" language="JavaScript1.2">
+//<![CDATA[
+TextPopupInit('MTHotSpot37125', 'MTPOPUP37125');
+//]]>
+</script>
+<div align="left" class="droptext" id="MTPOPUP37125" style="display: none;">
+<ul style="text-align:left; list-style-type: circle;">
+<li><a href="#MiniTOCBookMark3">About the Tutorial</a></li>
+<li><a href="#MiniTOCBookMark6">A. Before You Start</a></li>
+<li><a href="#MiniTOCBookMark7">B. Database Updates</a></li>
+<li><a href="#MiniTOCBookMark8">C. Writing the Feeder</a></li>
+<li><a href="#MiniTOCBookMark9">D. Writing an Adapter</a></li>
+<li><a href="#MiniTOCBookMark14">E. Installing and Configuring the SNMPTRAP Adapter</a></li>
+<li><a href="#MiniTOCBookMark15">F. SQL Script for SNMPTRAP Metadata Creation</a></li>
+<li><a href="#MiniTOCBookMark16">G. Spring Assembly for SNMPTrap Adapter</a></li>
+<li><a href="#MiniTOCBookMark17">H. Creating a Feeder for LOG4J and Using the Generic Log Adapter</a></li>
+<li><a href="#MiniTOCBookMark22">I. Feeder Code Example</a></li>
+</ul>
+</div>
+<h3><a name="MiniTOCBookMark3" id="MiniTOCBookMark3"></a>About the Tutorial</h3>
+<h4><a name="MiniTOCBookMark4" id="MiniTOCBookMark4"></a>Foundation Adapter Development</h4>
+<p>The following text describes step by step how to develop a new Feeder and Adapter for inserting custom data streams into the Foundation framework. The input source will be SNMP traps.</p>
+<h4><a name="MiniTOCBookMark5" id="MiniTOCBookMark5"></a>Development Environment</h4>
+<p>The Adapters are distributed as Java libraries (jar files) and therefore you need the JAVA SDK available for compiling and packaging the Adapters. The tutorial uses ANT and MAVEN as build tools. You can get ANT and Maven binaries from the Apache site. The tutorial uses the Foundation source distribution which is available from <a href="http://sourceforge.net/projects/gwfoundation" target="new">http://sourceforge.net/projects/gwfoundation</a>.</p>
+<h3><a name="MiniTOCBookMark6" id="MiniTOCBookMark6"></a>A. Before You Start</h3>
+<ol>
+<li class="p-Numbering">
+<p class="Numbering">Install and configure the build tools and Foundation.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">Make sure that foundations build runs without errors.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">Define the data that needs to be integrated.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">What is the Application scope? SNMP trap are treated as a separate application and therefore we have to create a new ApplicationType: SNMPTRAP.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">What is the Entity Type? SNMP trap messages will be stored in the LogMessage table and therefore the EntityType is LOG_MESSAGE.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">What fields need to be stored? Define the attributes that are generated by the application and specify the if required and the default values if not required.</p>
+<p class="Caption">Table: Attribute Definitions</p>
+</li>
+</ol>
+<table style="margin-left: 40px;" cellspacing="0" width="700">
+<col style="width: 25%;" />
+<col style="width: 25%;" />
+<col style="width: 25%;" />
+<col style="width: 25%;" />
+<tr style="vertical-align: top;">
+<td style="border: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#1B3A83">
+<p class="NormalTableBoldCenter">Attribute</p>
+</td>
+<td style="border-top: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#1B3A83">
+<p class="NormalTableBoldCenter">Type</p>
+</td>
+<td style="border-top: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#1B3A83">
+<p class="NormalTableBoldCenter">Property</p>
+</td>
+<td style="border-top: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#1B3A83">
+<p class="NormalTableBoldCenter">Required / Default Value</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Host</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">String</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">No</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Required</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Severity</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Class Severity</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">No</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Required</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">IpAddress</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">String</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Yes</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Required</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">MonitorStatus</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Class Severity</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">No</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Same as Severity</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">ReportDate</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Date</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">No</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Default set at time inserted</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">LastInsertDate</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Date</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">No</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Default set at time inserted. Can be set by SNMP_LOG message</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Event_OID_numeric</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">String</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Yes</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Not required, default to NULL</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Event_OID_symbolic</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">String</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Yes</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Not required, default to NULL</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Event_Name</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">String</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Yes</p>
+<p class="NormalTable">&#160;</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Not required, default to NULL</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Category</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">String</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Yes</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Not required, default to NULL</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Variable_Bindings</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">String</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Yes</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Not required, default to NULL</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">TextMessage</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">String</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">No</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 25%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Not required, default to NULL</p>
+</td>
+</tr>
+</table>
+<ol start="7" type="1">
+<li class="p-Numbering">
+<p class="Numbering">Select fields that are application specific. A list of fields needs to be defined that are properties attached to the table defined as the Entity Type. The properties are application specific and are not part of the base table. For SNMP traps the following fields and types will be stored.</p>
+<p class="Caption">Table: Attribute Definitions</p>
+</li>
+</ol>
+<table style="margin-left: 40px;" cellspacing="0" width="700">
+<col style="width: 50%;" />
+<col style="width: 50%;" />
+<tr style="vertical-align: top;">
+<td style="border: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#1B3A83">
+<p class="NormalTableBoldCenter">Property/Name</p>
+</td>
+<td style="border-top: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#1B3A83">
+<p class="NormalTableBoldCenter">Type</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">IpAddress</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">String</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Event_OID_numeric</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">String</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Event_OID_symbolic</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">String</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Event_Name</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">String</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Category</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">String</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Variable_Bindings</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">String</p>
+</td>
+</tr>
+</table>
+<ol start="8" type="1">
+<li class="p-Numbering">
+<p class="Numbering">Select fields for data consolidation. This feature reduces the number of identical messages in the <span class="CodeInline">LogMessage</span> table. For each insert, the consolidation criteria will be applied to the incoming message as long as the flag in the XML stream is set to a consolidation criteria name (<span class="CodeInline">consolidate="SNMPTRAP"</span> ). By default no consolidation criteria is applied. If the consolidation criteria matches that of an existing message in the Log Message table, the message counter for the existing message will increased and the date fields will be updated as following:</p>
+<p class="Caption">Table: Attribute Definitions</p>
+</li>
+</ol>
+<table width800px="" style="margin-left: 40px;" cellspacing="0" width="700">
+<col style="width: 50%;" />
+<col style="width: 50%;" />
+<tr style="vertical-align: top;">
+<td style="border: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#1B3A83">
+<p class="NormalTableBoldCenter">Field</p>
+</td>
+<td style="border-top: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#1B3A83">
+<p class="NormalTableBoldCenter">Change</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">FirstInsertDate</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">Unchanged</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">LastInsertDate</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">ReportDate</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">ReportDate</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 50%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="NormalTable">System (current time)</p>
+</td>
+</tr>
+</table>
+<p class="NormalIndent1">Fields that Need to Match before a Message Gets Consolidated:</p>
+<ul style="list-style: url('../../Shared_Images/bullet01.gif');">
+<li style="display: inline; margin-left: -20px;">
+<ul>
+<li class="p-Bullet1">
+<p class="Bullet1">OperationStatus</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">Host</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">Severity</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">IPaddress</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">MonitorStatus</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">Event_OID_numeric</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">Event_Name</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">Category</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">Variable_Bindings</p>
+</li>
+</ul>
+</li>
+</ul>
+<p class="NormalIndent1">Once the data set is defined and properties and consolidation criteria are defined, the next step will be to update the database <span class="CodeInline">Metadata</span> and write an Adapter for SNMP data normalization.</p>
+<h3><a name="MiniTOCBookMark7" id="MiniTOCBookMark7"></a>B. Database Updates</h3>
+<p>The following database updates can be integrated into one database script that ships with the new Adapter. It's always a good idea to check for the existence of an entry before attempting to insert that entry into the database, and abort if they are already present. But for readability of the tutorial these steps are not documented. Since a new application was created the Application needs to be added to the database; <span class="CodeInline">INSERT INTO ApplicationType(Name, Description) VALUES ("SNMPTRAP", "SNMP Trap application")</span>.</p>
+<p>The new properties need to be created and assigned to the ApplicationType and EntityType:</p>
+<p class="CodeGroup">INSERT INTO PropertyType(Name, Description, isString) VALUES ("ipaddress", "ipdddress of snmp device", 1);</p>
+<p class="CodeGroup">&#160;</p>
+<p class="CodeGroup">INSERT INTO PropertyType(Name, Description, isString) VALUES ("Event_OID_numeric", "Event_OID_numeric", 1);</p>
+<p>Continue for all property types.</p>
+<p class="CodeGroup">INSERT INTO ApplicationEntityProperty(ApplicationTypeID, EntityTypeID, PropertyTypeID, SortOrder) VALUES ((SELECT ApplicationTypeID FROM ApplicationType WHERE Name='SNMPTRAP'),(SELECT EntityTypeID FROM EntityType WHERE Name='LOG_MESSAGE'),(SELECT PropertyTypeID FROM PropertyType WHERE Name = 'ipaddress'), 1);</p>
+<p class="CodeGroup">INSERT INTO ApplicationEntityProperty(ApplicationTypeID, EntityTypeID, PropertyTypeID, SortOrder) VALUES ((SELECT ApplicationTypeID FROM ApplicationType WHERE Name='SNMPTRAP'),(SELECT EntityTypeID FROM EntityType WHERE Name='LOG_MESSAGE'),(SELECT PropertyTypeID FROM PropertyType WHERE Name = 'Event_OID_numeric'), 1);</p>
+<p>Continue for all properties.</p>
+<p>The consolidation criteria needs to be named and the criteria of matching fields is a semicolon separated list.</p>
+<p class="CodeGroup">INSERT INTO ConsolidationCriteria(Name, Criteria) VALUES ("SNMPTRAP", "OperationStatus;Host;Severity;ipaddress, MonitorStatus; Event_OID_numeric;Event_Name;Category;Variable_Bindings");</p>
+<h3><a name="MiniTOCBookMark8" id="MiniTOCBookMark8"></a>C. Writing the Feeder</h3>
+<p>The Feeder captures SNMP trap and sends XML formatted messages where all the fields to monitor are XML attributes to the Foundation listener component. The Listener listens on a configurable socket for incoming messages. The default is set to port 4913. For SNMP traps the XML messages look like the following:</p>
+<p class="CodeGroup">&lt;SNMPTRAP<br />
+MonitorServerName="localhost"<br />
+Host="cisco2900.itgroundwork.com"<br />
+Severity="Normal"<br />
+MonitorStatus="Normal"<br />
+ReportDate=""2005-10-25 04:20.44"<br />
+LastInsertDate="2005-10-25 04:20.44"<br />
+ipaddress="192.168.2.203"<br />
+Event_OID_numeric=".1.3.6.1.4.1.9.0.1"<br />
+Event_OID_symbolic="enterprises.9.0.1"<br />
+Event_Name="tcpConnectionClose"<br />
+Category="Status Events"<br />
+Variable_Bindings="enterprises.9.2.9.3.1.1.1.1:5 tcpConnState.192.168.2.203.23.192.168.2.249.38591:synReceived enterprises.9.2.6.1.1.5.192.168.2.203.23.192.168.2.249.38591:600 enterprises.9.2.6.1.1.1.192.168.2.203.23.192.168.2.249.38591:70 enterprises.9.2.6.1.1.2.192.168.2.203.23.192.168.2.249.38591:101 enterprises.9.2.9.2.1.18.1:"<br />
+TextMessage="A tty trap signifies that a TCP connection, previously established with the sending protocol entity for the purposes of a tty session, has been terminated. 5 synReceived 600 70 101 " /&gt;</p>
+<h3><a name="MiniTOCBookMark9" id="MiniTOCBookMark9"></a>D. Writing an Adapter</h3>
+<h4><a name="MiniTOCBookMark10" id="MiniTOCBookMark10"></a>Creating the Java Project</h4>
+<ol>
+<li class="p-Numbering">
+<p class="Numbering">Inside the expanded Foundation package, go into <span class="CodeInline">collagefeeder/adapter</span> and create a new folder called <span class="CodeInline">snmp</span>.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">Step inside the <span class="CodeInline">snmp</span> directory and create a <span class="CodeInline">source/java</span> directory.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">Create a new <span class="CodeInline">maven.xml</span> file that looks like the following:</p>
+</li>
+</ol>
+<p class="GroupCode2">&lt;project default="jar:install"</p>
+<p class="GroupCode2">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;xmlns:j="jelly:core"</p>
+<p class="GroupCode2">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;xmlns:maven="jelly:maven"</p>
+<p class="GroupCode2">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;xmlns:ant="jelly:ant"&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&lt;goal name='distro'&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&lt;attainGoal name='clean'/&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&lt;attainGoal name='jar'/&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&lt;delete dir='./dist' /&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&lt;mkdir dir='./dist' /&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&lt;mkdir dir='./dist/lib' /&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&lt;copy todir="./dist/lib" file="${maven.build.dir}/${maven.final.name}.jar"/&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&lt;j:forEach var="lib" items="${pom.artifacts}"&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&lt;j:set var="dep" value="${lib.dependency}"/&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&lt;j:if test="${dep.getProperty('war.bundle')=='true'}"&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&lt;copy todir="./dist/lib" file="${lib.path}"/&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&lt;/j:if&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&lt;/j:forEach&gt;</p>
+<p class="GroupCode2">&#160;&lt;/goal&gt;</p>
+<p class="GroupCode2">&#160;&#160;&lt;goal name='allBuild'&gt;</p>
+<p class="GroupCode2">&#160;&lt;attainGoal name='distro'/&gt;</p>
+<p class="GroupCode2">&#160;&lt;/goal&gt;</p>
+<p class="GroupCode2">&lt;/project&gt;</p>
+<ol start="4">
+<li class="p-Numbering">
+<p class="Numbering">Create a <span class="CodeInline">project.xml</span> that looks like the following. Note that the version and the libraries are inherited from the main project file:</p>
+</li>
+</ol>
+<p class="GroupCode2">&lt;project&gt;</p>
+<p class="GroupCode2">&#160;&lt;pomVersion&gt;3&lt;/pomVersion&gt;</p>
+<p class="GroupCode2">&#160;&lt;extend&gt;../project.xml&lt;/extend&gt;</p>
+<p class="GroupCode2">&#160;&lt;id&gt;collage-adapter-snmp&lt;/id&gt;</p>
+<p class="GroupCode2">&#160;&lt;name&gt;Groundwork Collage Adapters for SNMP&lt;/name&gt;</p>
+<p class="GroupCode2">&#160;&lt;package&gt;com.groundwork.feeder&lt;/package&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&lt;build&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&lt;sourceDirectory&gt;src/java&lt;/sourceDirectory&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&#160;&lt;resources&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&#160;&#160;&lt;resource&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&lt;directory&gt;${basedir}/src/java&lt;/directory&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&lt;excludes&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&lt;exclude&gt;**/*.java&lt;/exclude&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&lt;/excludes&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&#160;&#160;&lt;/resource&gt;</p>
+<p class="GroupCode2">&#160;&#160;&#160;&lt;/resources&gt;</p>
+<p class="GroupCode2">&#160;&lt;/build&gt;</p>
+<p class="GroupCode2">&#160;&lt;/project&gt;</p>
+<ol start="5" type="1">
+<li class="p-Numbering">
+<p class="Numbering">Create a new package by creating the following directories under <span class="CodeInline">src/java: com.groundwork.feeder.adapter.impl</span>.</p>
+<p>Now the setup of the new java project that will include the SNMP Adapter is done. The next step will show what classes need to be implemented.</p>
+</li>
+</ol>
+<h4><a name="MiniTOCBookMark11" id="MiniTOCBookMark11"></a>Classes and Method to Overwrite</h4>
+<p>The Adapter has to implement the FeederBase interface which is part of the <span class="CodeInline">adapter-api</span>. Class creation:</p>
+<ol>
+<li class="p-Numbering">
+<p class="Numbering">Create a new class SNMPTrap inside com/groundwork/feeder/adapter/impl that implements the FeederBase (Note: will be renamed to AdapterBase).</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">Implement GetName that returns the Adapter name. The name has to match the node name of the XML fragment sent to the listener. For snmp traps, it is SNMPTRAP.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">Implement initialize() and uninitialize() for any actions that need to be executed when the Adapter gets loaded or unloaded by the framework.</p>
+</li>
+</ol>
+<ul>
+<li class="p-Numbering" style="list-style: url('../../Shared_Images/bullet01.gif');">
+<p class="Numbering">Implement the method process() that gets called by the framework for each incoming XML stream that is of the Adapter name (SNMPTRAP). Into this method goes the normalization code that transforms the XML message to a database call. The main steps are:</p>
+<ul class="level03">
+<li class="p-Bullet1">
+<p class="Bullet1">Parse the XML stream and extract the attributes. Use the utils.getAttributes() method.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">Get the API object by calling into the bean factory.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">Create a properties map and call into the API.</p>
+</li>
+</ul>
+</li>
+</ul>
+<h4><a name="MiniTOCBookMark12" id="MiniTOCBookMark12"></a>Spring Assemblies for SNMPTrap Adapter</h4>
+<p>The new SNMPTrap Adapter will be loaded into the Spring container. What you have to include into your JAR file is the spring assembly file which has to be created in the src/java/META-INF directory. Steps:</p>
+<ol>
+<li class="p-Numbering">
+<p class="Numbering">Create a new folder META-INF inside your project's snmp/src/java directory</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">In META-INF create a file called assembly-adapter-snmptrap.xml. A sample of the whole file can be seen below under <i>Spring Assembly for SNMPTRAP Adapter</i>.</p>
+</li>
+</ol>
+<h4><a name="MiniTOCBookMark13" id="MiniTOCBookMark13"></a>Building the Adapter Package</h4>
+<p>Inside the adapter/snmp directory execute: maven jar. This will create the jar file in the target directory. Executing: maven jar:install This will copy the jar file into the local repository.</p>
+<h3><a name="MiniTOCBookMark14" id="MiniTOCBookMark14"></a>E. Installing and Configuring the SNMPTRAP Adapter</h3>
+<p>Once the Adapter is compiled successfully it needs to be deployed into the listener installation and the adapter.properties need to be updated with the new Adapter entry</p>
+<ol>
+<li class="p-Numbering">
+<p class="Numbering">Copy the jar file <span class="CodeInline">collage-adapter-snmp-1.1.jar</span> into the listener library path <span class="CodeInline">/usr/local/groundwork/collage/feeder/lib</span>. Edit <span class="CodeInline">adapter.properties</span> for the new adapter as following:<br />
+First, increment the counter for assemblies:</p>
+</li>
+</ol>
+<p class="GroupCode2"># Spring assemblies</p>
+<p class="GroupCode2">nb.assemblies = 3</p>
+<p class="Numbering" style="margin-left: 40px;">Add the assembly name and the Property Bean name:</p>
+<p class="GroupCode2"># SNMPTrap Beans</p>
+<p class="GroupCode2">adapter.assembly3 = META-INF/assembly-adapter-snmptrap.xml</p>
+<p class="GroupCode2">adapter.properties.assembly3 = SNMPTrapAdapterProperties</p>
+<ol start="2" type="1">
+<li class="p-Numbering">
+<p class="Numbering">Start the listener.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">Feed data to the listener and verify that the data shows up in the database. Check the log files for any errors.</p>
+</li>
+</ol>
+<h3><a name="MiniTOCBookMark15" id="MiniTOCBookMark15"></a>F. SQL Script for SNMPTRAP Metadata Creation</h3>
+<p class="CodeGroup"># Database changes for SNMPTRAP messages</p>
+<p class="CodeGroup"># Add new ApplicationType for SNMPTRAP</p>
+<p class="CodeGroup">DELETE FROM ApplicationEntityProperty WHERE ApplicationTypeID = (SELECT ApplicationTypeID FROM ApplicationType WHERE Name='SNMPTRAP') %% EntityTypeID = (SELECT EntityTypeID FROM EntityType WHERE Name='LOG_MESSAGE');</p>
+<p class="CodeGroup">INSERT INTO ApplicationType (Name, Description) VALUES ("SNMPTRAP","SNMP Trap application");</p>
+<p class="CodeGroup"># Add the properties specific to SNMPTRAP</p>
+<p class="CodeGroup">INSERT INTO PropertyType(Name, Description, isString) VALUES ("IpAddress", "ipadddress of snmp device", 1);</p>
+<p class="CodeGroup">&#160;</p>
+<p class="CodeGroup">INSERT INTO PropertyType(Name, Description, isString) VALUES ("Event_OID_numeric", "Event_OID_numeric", 1);</p>
+<p class="CodeGroup">&#160;</p>
+<p class="CodeGroup">INSERT INTO PropertyType(Name, Description, isString) VALUES ("Event_OID_symbolic", "Event_OID_symbolic of snmp device", 1);</p>
+<p class="CodeGroup">&#160;</p>
+<p class="CodeGroup">INSERT INTO PropertyType(Name, Description, isString) VALUES ("Event_Name", "Event_Name", 1);</p>
+<p class="CodeGroup">&#160;</p>
+<p class="CodeGroup">INSERT INTO PropertyType(Name, Description, isString) VALUES ("Category", "Category of snmp device", 1);</p>
+<p class="CodeGroup">&#160;</p>
+<p class="CodeGroup">INSERT INTO PropertyType(Name, Description, isString) VALUES ("Variable_Bindings", "Variable_Bindings", 1);</p>
+<p class="CodeGroup"># Assign the SNMP properties to Application Type SNMPTRAP and Entity LOG_MESSAGE</p>
+<p class="CodeGroup">INSERT INTO ApplicationEntityProperty(ApplicationTypeID, EntityTypeID, PropertyTypeID, SortOrder) VALUES ((SELECT ApplicationTypeID FROM ApplicationType WHERE Name='SNMPTRAP'),(SELECT EntityTypeID FROM EntityType WHERE Name='LOG_MESSAGE'), (SELECT PropertyTypeID FROM PropertyType WHERE Name = 'IpAddress'), 1);</p>
+<p class="CodeGroup">&#160;</p>
+<p class="CodeGroup">INSERT INTO ApplicationEntityProperty(ApplicationTypeID, EntityTypeID, PropertyTypeID, SortOrder) VALUES ((SELECT ApplicationTypeID FROM ApplicationType WHERE Name='SNMPTRAP'),(SELECT EntityTypeID FROM EntityType WHERE Name='LOG_MESSAGE'), (SELECT PropertyTypeID FROM PropertyType WHERE Name = 'Event_OID_numeric'), 1);</p>
+<p class="CodeGroup">&#160;</p>
+<p class="CodeGroup">INSERT INTO ApplicationEntityProperty(ApplicationTypeID, EntityTypeID, PropertyTypeID, SortOrder) VALUES ((SELECT ApplicationTypeID FROM ApplicationType WHERE Name='SNMPTRAP'),(SELECT EntityTypeID FROM EntityType WHERE Name='LOG_MESSAGE'),(SELECT PropertyTypeID FROM PropertyType WHERE Name = 'Event_OID_symbolic'), 1);</p>
+<p class="CodeGroup">&#160;</p>
+<p class="CodeGroup">INSERT INTO ApplicationEntityProperty(ApplicationTypeID, EntityTypeID, PropertyTypeID, SortOrder) VALUES ((SELECT ApplicationTypeID FROM ApplicationType WHERE Name='SNMPTRAP'), (SELECT EntityTypeID FROM EntityType WHERE Name='LOG_MESSAGE'),(SELECT PropertyTypeID FROM PropertyType WHERE Name = 'Event_Name'), 1);</p>
+<p class="CodeGroup">&#160;</p>
+<p class="CodeGroup">INSERT INTO ApplicationEntityProperty(ApplicationTypeID, EntityTypeID, PropertyTypeID, SortOrder) VALUES ((SELECT ApplicationTypeID FROM ApplicationType WHERE Name='SNMPTRAP'), (SELECT EntityTypeID FROM EntityType WHERE Name='LOG_MESSAGE'), (SELECT PropertyTypeID FROM PropertyType WHERE Name = 'Category'), 1);</p>
+<p class="CodeGroup">&#160;</p>
+<p class="CodeGroup">INSERT INTO ApplicationEntityProperty(ApplicationTypeID, EntityTypeID, PropertyTypeID, SortOrder) VALUES ((SELECT ApplicationTypeID FROM ApplicationType WHERE Name='SNMPTRAP'),(SELECT EntityTypeID FROM EntityType WHERE Name='LOG_MESSAGE'),(SELECT PropertyTypeID FROM PropertyType WHERE Name = 'Variable_Bindings'), 1);</p>
+<p class="CodeGroup">#Create consolidation criteria</p>
+<p class="CodeGroup">INSERT INTO ConsolidationCriteria(Name, Criteria) VALUES ('SNMPTRAP', 'Host;Severity;IpAddress;MonitorStatus;Event_OID_numeric;Event_Name;Category;Variable_Bindings')</p>
+<h3><a name="MiniTOCBookMark16" id="MiniTOCBookMark16"></a>G. Spring Assembly for SNMPTrap Adapter</h3>
+<p>The following file <span class="CodeInline">assembly-adapter-snmptrap.xml</span> needs to be included into the jar package for the SNMPTrap Adapter inside META-INF:</p>
+<p class="CodeGroup">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</p>
+<p class="CodeGroup">&lt;!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd"&gt;</p>
+<p class="CodeGroup">&lt;beans&gt;</p>
+<p class="CodeGroup">&lt;!--</p>
+<p class="CodeGroup">List all the BeanID that have implemented the initialize method. The bean ID's defined as a comma</p>
+<p class="CodeGroup">separated list will be called during the loading of the assembly</p>
+<p class="CodeGroup">--&gt;</p>
+<p class="CodeGroup">&lt;bean id="SNMPTrapAdapterProperties" class="com.groundwork.feeder.adapter.impl.AdapterProperties"&gt;</p>
+<p class="CodeGroup">&lt;constructor-arg type="java.lang.String"&gt;&lt;value&gt;adapter.snmptrap&lt;/value&gt;&lt;/constructor-arg&gt;</p>
+<p class="CodeGroup">&#160;&lt;/bean&gt;</p>
+<p class="CodeGroup">&lt;bean id="adapter.snmptrap" singleton="false"</p>
+<p class="CodeGroup">&#160;&#160;&#160;&#160;&#160;&#160;class="com.groundwork.feeder.adapter.impl.SNMPTrap" /&gt;</p>
+<p class="CodeGroup">&lt;/beans&gt;</p>
+<h3><a name="MiniTOCBookMark17" id="MiniTOCBookMark17"></a>H. Creating a Feeder for LOG4J and Using the Generic Log Adapter</h3>
+<p>The Foundation Adapters are pluggable modules, written in Java, that normalize data from an Application before it gets inserted into the data store. Normalization is needed for complex data structures, but a simple Generic Adapter with several pre-defined fields might be sufficient for many external log messages, including some application logs. Foundation provides a GenericLog Adapter that can be used to add log data into Foundation without writing any code. The values assigned to pre-defined fields will be stored in the database under a user defined Application Type. The following example shows how LOG4J (used by Application Servers) can be fed into Foundation.</p>
+<h4><a name="MiniTOCBookMark18" id="MiniTOCBookMark18"></a>Installing and Using the Generic Log Adapter</h4>
+<p>The Generic Log Adapter is included in all distributions of Foundation.</p>
+<h4><a name="MiniTOCBookMark19" id="MiniTOCBookMark19"></a>Definitions</h4>
+<p>An ApplicationType for the Adapter to log data against must be defined. In this example the ApplicationType will be LOG4J, but this is user defined and may be adjusted to any type.</p>
+<h4><a name="MiniTOCBookMark20" id="MiniTOCBookMark20"></a>Generic Adapter Input</h4>
+<p>The following attributes are required as part of the XML feed, otherwise the message will be rejected: ApplicationType, MonitorServerName, Device, Severity, TextMessage</p>
+<p>In addition to the required properties the following properties are accepted but optional: Host, MonitorStatus, ReportDate, OperationStatus, ApplicationSeverity, Component, Priority, ServiceDescription, Priority, and TypeRule.</p>
+<p>Notes about some fields:</p>
+<ul style="list-style: url('../../Shared_Images/bullet01.gif');">
+<li class="p-Bullet1">
+<p class="Bullet1">If OperationStatus is not defined it will be set to Open.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">If ReportDate is not set the current time (system) will be used.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">If MonitorStatus is not defined it will be set to UNKNOWN. MonitorStatus defines the color in the console: OK = Green, DOWN = Red, WARNING = Yellow, and UNKNOWN = Blue.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">If the FeederScript defines values for the Host and ServiceDescription attributes, the LogMessage will be linked (via a Foreign Key) to the matching ServiceStatus. This can be used in the GroundWork Monitor UI to link from an Event Message to the ServiceStatus.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">If Host is set the LogMessage will be linked to HostStatus.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">If Host and Service Description are set the message will be linked to an existing ServiceStatus entry.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">If the FeederScript defines a value for the Host attribute, the LogMessage will be linked (via a Foreign Key) to the matchng HostStatus entry.</p>
+</li>
+</ul>
+<h4><a name="MiniTOCBookMark21" id="MiniTOCBookMark21"></a>System Setup</h4>
+<p>Create a new ApplicationType (LOG4J) in the database:</p>
+<p style="margin-left: 0px;">Stop the listener and update the database with a SQL statement. In GroundWork Monitor, these statements will work:</p>
+<p style="margin-left: 0px;">Stop gwservice from the bash command line:</p>
+<p class="CodeGroup"># /usr/local/groundwork/ctlscript.sh stop gwservices</p>
+<p style="margin-left: 0px;">PostgreSQL command line:</p>
+<p class="CodeGroup"># psql -U postgres gwcollagedb</p>
+<p class="CodeGroup">gwcollagedb=# INSERT INTO ApplicationType (Name, Description) VALUES("LOG4J","LOG4J Events");</p>
+<p class="CodeGroup">gwcollagedb=#\q</p>
+<p style="margin-left: 0px;">Start GWService:</p>
+<p class="CodeGroup"># /usr/local/groundwork/ctlscript.sh start gwservices</p>
+<h3><a name="MiniTOCBookMark22" id="MiniTOCBookMark22"></a>I. Feeder Code Example</h3>
+<p>Here is an example of the simplest possible script that can be used to send one message to the Event table:</p>
+<p class="CodeGroup">#!/usr/local/groundwork/bin/perl --</p>
+<p class="CodeGroup">#</p>
+<p class="CodeGroup">#Copyright 2003-2011 Groundwork, Inc.</p>
+<p class="CodeGroup">#http://www.gwos.com</p>
+<p class="CodeGroup"># &#160;</p>
+<p class="CodeGroup">#Unless required by applicable law or agreed to in writing, software</p>
+<p class="CodeGroup">#distributed under the License is distributed on an "AS IS" BASIS, WITHOUT</p>
+<p class="CodeGroup">#WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the</p>
+<p class="CodeGroup">#License for the specific language governing permissions and limitations under the License.</p>
+<p class="CodeGroup">#</p>
+<p class="CodeGroup">use IO::Socket;</p>
+<p class="CodeGroup">my $debug =1 ;</p>
+<p class="CodeGroup">my $remote_host = "localhost";</p>
+<p class="CodeGroup">my $remote_port = 4913;</p>
+<p class="CodeGroup">my $socket;</p>
+<p class="CodeGroup">if ( $socket = IO::Socket::INET-&gt;new(PeerAddr =&gt; $remote_host,</p>
+<p class="CodeGroup">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;PeerPort =&gt; $remote_port,</p>
+<p class="CodeGroup">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;Proto &#160;&#160;&#160;=&gt; "tcp",</p>
+<p class="CodeGroup">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;Type &#160;&#160;&#160;&#160;=&gt; SOCK_STREAM)</p>
+<p class="CodeGroup">) {</p>
+<p class="CodeGroup">my $xml_message = "&lt;GENERICLOG ApplicationType='LOG4J' MonitorServerName='localhost' Host='dashboard.itgroundwork.com' Device='dashboard.itgroundwork.com' Severity='WARNING' MonitorStatus='WARNING' ErrorType='LogRotation' SubComponent='LOG4J Integrator' TextMessage='16:15:54,593 [WARN ] com.groundwork.collage.impl.LogMessageDAOImpl - Consolidation criteria matches with more than one record. Make sure the criteria is better defined. If the consolidation criteria was turned on after identical messages were inserted you have to run consolidate existing messages. Contact support for more information about database maintenance.' /&gt;" ;</p>
+<p class="CodeGroup">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;print $xml_message."\n\n" if $debug;</p>
+<p class="CodeGroup">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;print $socket $xml_message;</p>
+<p class="CodeGroup">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;my $xml_message = "&lt;SERVICE-MAINTENANCE command=\"close\" /&gt;";</p>
+<p class="CodeGroup">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;print $xml_message."\n\n" if $debug;</p>
+<p class="CodeGroup">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;print $socket $xml_message;</p>
+<p class="CodeGroup">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;} &#160;else {</p>
+<p class="CodeGroup">&#160;&#160;&#160;&#160;&#160;&#160;print "Couldn't connect to $remote_host:$remote_port : $@\n";</p>
+<p class="CodeGroup">}</p>
+<div style="width: 100%; position: relative;" id="footer">
+<p class="Footer" style="font-size: 7pt; line-height: Normal; margin-top: 6pt; margin-bottom: 4pt;">GroundWork, Inc. ©2011</p>
+</div>
+<script type="text/javascript" language="JavaScript">
+//<![CDATA[
+ if ((parseInt(navigator.appVersion) == 4) && (navigator.appName == 'Netscape'))
+  document.write("<div id='tooltip' class='WebHelpPopupMenu'><\/div>");
+//]]>
+</script><script type="text/javascript" language="javascript1.2">
+//<![CDATA[
+<!--
+if (window.writeIntopicBar)
+        writeIntopicBar(0);
+
+
+highlightSearch();
+//-->
+//]]>
+</script>
+</body>
+</html>

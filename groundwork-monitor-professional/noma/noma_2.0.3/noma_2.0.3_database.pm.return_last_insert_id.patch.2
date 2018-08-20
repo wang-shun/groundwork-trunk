@@ -1,0 +1,106 @@
+--- noma_2.0.3/notifier/lib/database.pm.orig.2	2017-07-19 23:43:07.571235457 -0700
++++ noma_2.0.3/notifier/lib/database.pm	2017-07-19 23:45:10.224078390 -0700
+@@ -41,10 +41,12 @@
+ {
+ 
+ 
+-    my ( $queryStr, $array, $nolog ) = @_;
++    # "returning", if specified, must be the name of the auto-increment field in the table having a row inserted
++    my ( $queryStr, $array, $nolog, $returning ) = @_;
+     my $debug_queries = $conf->{debug}->{queries};
+     my $database_type = $conf->{db}->{type};
+     my $dbh;
++    my $result = 0;
+ 
+     debug('Database type: '.$database_type,3) unless defined($nolog);
+     if ($database_type eq 'mysql'){
+@@ -66,14 +68,16 @@
+ 	          . $conf->{db}->{postgresql}->{database},	# PostgreSQL NoMa DB
+ 	        $conf->{db}->{postgresql}->{user}, 		# PostgreSQL Username
+ 		$conf->{db}->{postgresql}->{password},	# PostgreSQL Password
+-        { 'AutoCommit' => 1 }
++		{ 'AutoCommit' => 1 }
+ 	    ) or debug($DBI::errstr,1);
++	    $queryStr .= " returning $returning" if $returning;
+     } elsif ($database_type eq 'sqlite3'){
+             debug('Going to use SQLite3 as backend...',3) unless defined($nolog);
+ 	    $dbh = DBI->connect(
+ 		"dbi:SQLite:dbname=$conf->{db}->{sqlite3}->{dbfile}","","") or debug($DBI::errstr,1);
+     } else {
+ 	debug(' Invalid database set: '.$database_type.' Fix your configuration!',1);
++	return undef;
+     }
+ 
+     debug("QUERY: " . $queryStr, 2) if (defined($debug_queries) and ($debug_queries != 0) and not defined($nolog));
+@@ -82,6 +86,7 @@
+ 	debug( "QUERY: " . $queryStr, 1 )
+ 	  if $conf->{debug}->{logging} < 2 || not( defined($debug_queries) and ( $debug_queries != 0 ) and not defined($nolog) );
+ 	debug('DB statement prepare error: '.$dbh->errstr,1);
++	$dbh->disconnect();
+ 	## FIX MAJOR:  See notes at the end of this routine.
+ 	return undef;
+     };
+@@ -90,6 +95,7 @@
+ 	debug( "QUERY: " . $queryStr, 1 )
+ 	  if $conf->{debug}->{logging} < 2 || not( defined($debug_queries) and ( $debug_queries != 0 ) and not defined($nolog) );
+ 	debug('DB statement execute error: '.$query->errstr,1);
++	$dbh->disconnect();
+ 	## FIX MAJOR:  See notes at the end of this routine.
+ 	return undef;
+     };
+@@ -142,6 +148,20 @@
+             return %dbResult;
+         }
+     }
++    elsif ( $returning && $queryStr =~ m/^\s*insert/i )
++    {
++	if ($database_type eq 'mysql') {
++	    $result = $dbh->last_insert_id();
++	}
++	elsif ($database_type eq 'postgresql') {
++	    $result = $query->fetchrow_arrayref()->[0];
++	    ## debug("update got back $returning as $result", 3);
++	    $query->finish;
++	}
++	elsif ($database_type eq 'sqlite3') {
++	    $result = $dbh->last_insert_id();
++	}
++    }
+     $dbh->disconnect();
+ 
+     # FIX MAJOR:  Returning a numeric zero when the caller is expecting an array or hash
+@@ -155,7 +175,7 @@
+     # the best way to do so would be to return an arrayref, hashref, or undef -- all of them
+     # being scalar values.  That would make it easier for the calling code to test the result
+     # before attempting to use it.
+-    return 0;
++    return $result;
+ 
+ }
+ 
+@@ -163,10 +183,11 @@
+ # TODO: implement cacheing
+ sub updateDB
+ {
+-    my ($sql, $nolog) = @_;
++    my ($sql, $nolog, $returning) = @_;
+     my $cache;
++    my $result = queryDB($sql, undef, $nolog, $returning);
+ 
+-    if ( !defined( queryDB($sql, undef, $nolog) ) )
++    if ( !defined( $result ) )
+     {
+ 
+ 	debug('Failed to query DB - serious error', 1);
+@@ -176,9 +197,11 @@
+         #close(LOG);
+     }
+     
++    # This won't work, because we use a separate database connection for every query.
+     # my $query = $dbh->prepare('select LAST_INSERT_ID') or return undef;
+     # $query->execute or return undef;
+ 
++    return $result;
+ }
+ 
+ sub dbVersion

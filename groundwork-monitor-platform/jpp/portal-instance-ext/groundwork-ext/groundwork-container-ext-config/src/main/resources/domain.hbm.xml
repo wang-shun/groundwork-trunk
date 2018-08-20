@@ -1,0 +1,186 @@
+<?xml version="1.0"?>
+<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+	~ JBoss, a division of Red Hat ~ ~ Copyright 2006, Red Hat Middleware, LLC, 
+	and individual ~ ~ contributors as indicated by the @authors tag. See the 
+	~ ~ copyright.txt in the distribution for a full listing of ~ ~ individual 
+	contributors. ~ ~ ~ ~ This is free software; you can redistribute it and/or 
+	modify it ~ ~ under the terms of the GNU Lesser General Public License as 
+	~ ~ published by the Free Software Foundation; either version 2.1 of ~ ~ 
+	the License, or (at your option) any later version. ~ ~ ~ ~ This software 
+	is distributed in the hope that it will be useful, ~ ~ but WITHOUT ANY WARRANTY; 
+	without even the implied warranty of ~ ~ MERCHANTABILITY or FITNESS FOR A 
+	PARTICULAR PURPOSE. See the GNU ~ ~ Lesser General Public License for more 
+	details. ~ ~ ~ ~ You should have received a copy of the GNU Lesser General 
+	Public ~ ~ License along with this software; if not, write to the Free ~ 
+	~ Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA ~ ~ 
+	02110-1301 USA, or see the FSF site: http://www.fsf.org. ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+<!DOCTYPE hibernate-mapping PUBLIC
+   "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+   "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+	<class
+		name="com.groundworkopensource.portal.identity.extendedui.HibernateExtendedRole"
+		table="gw_ext_role_attributes">
+
+		<id name="id" column="jbp_rid" type="java.lang.Long">
+			<generator class="native">
+				<param name="sequence">hibernate_sequence</param>
+			</generator>
+		</id>
+		<property name="name" column="jbp_name" type="java.lang.String" unique-key="ukey_gw_ext_role_attributes_name"/>
+		<property name="dashboardLinksDisabled" column="dashboard_links_disabled"
+			type="boolean" />
+		<property name="hgList" column="hg_list" type="java.lang.String"
+			length="4096" />
+		<property name="sgList" column="sg_list" type="java.lang.String"
+			length="4096" />
+		<property name="defaultHostGroup" column="defaultHostGroup"
+			type="java.lang.String" />
+		<property name="defaultServiceGroup" column="defaultServiceGroup"
+			type="java.lang.String" />
+		<property name="restrictionType" column="restrictionType"
+			type="java.lang.String" />
+		<property name="actionsEnabled" column="actions_enabled"
+			type="boolean" />
+        <set name="rolePermissions" table="gw_ext_role_permissions" lazy="false"
+             inverse="true" cascade="all-delete-orphan,save-update">
+            <key>
+                <column name="jbp_rid" />
+            </key>
+
+            <one-to-many
+                    class="com.groundworkopensource.portal.identity.extendedui.HibernateExtendedRolePermission" />
+        </set>
+	</class>
+
+
+	<class
+		name="com.groundworkopensource.portal.identity.extendedui.HibernateEntityType"
+		table="gw_entitytype">
+		<cache usage="read-write" />
+		<id name="entityTypeId" column="entitytype_id" type="java.lang.Byte">
+			<generator class="assigned" />
+		</id>
+		<property name="entityType" column="entitytype" type="java.lang.String" />
+	</class>
+
+	<class
+		name="com.groundworkopensource.portal.identity.extendedui.HibernateCustomGroup"
+		table="gw_customgroup" lazy="false">
+		<cache usage="read-write" />
+		<id name="groupId" column="group_id" type="java.lang.Long">
+			<generator class="native">
+				<param name="sequence">hibernate_sequence</param>
+			</generator>
+		</id>
+		<property name="groupName" column="group_name" type="java.lang.String" />
+		<many-to-one name="entityType" column="entitytype_id"
+			class="com.groundworkopensource.portal.identity.extendedui.HibernateEntityType"
+			lazy="false" />
+		<set name="parents" table="gw_customgroup_collection" lazy="false"
+			inverse="false" cascade="all">
+			<key>
+				<column name="group_id" />
+			</key>
+			<many-to-many
+				class="com.groundworkopensource.portal.identity.extendedui.HibernateCustomGroup"
+				column="parent_id" />
+		</set>
+		<set name="elements" lazy="false" inverse="false" cascade="save-update"
+			order-by="element_id">
+			<key>
+				<column name="group_id" />
+			</key>
+			<one-to-many
+				class="com.groundworkopensource.portal.identity.extendedui.HibernateCustomGroupElement" />
+		</set>
+		<property name="groupState" column="group_state" type="java.lang.String" />
+		<property name="createdBy" column="createdby" type="java.lang.String" />
+		<property name="createdTimeStamp" column="createdtimestamp"
+			type="java.sql.Timestamp" />
+		<property name="lastModifiedTimeStamp" column="lastmodifiedtimestamp"
+			type="java.sql.Timestamp" />
+	</class>
+
+
+	<class
+		name="com.groundworkopensource.portal.identity.extendedui.HibernateCustomGroupElement"
+		table="gw_customgroup_element">
+		<cache usage="read-write" />
+		<composite-id>
+			<key-property name="elementId" column="element_id" type="java.lang.Long" />
+			<key-many-to-one name="group" column="group_id"
+				class="com.groundworkopensource.portal.identity.extendedui.HibernateCustomGroup" />
+			<key-many-to-one name="entityType" column="entitytype_id"
+				class="com.groundworkopensource.portal.identity.extendedui.HibernateEntityType" />
+		</composite-id>
+	</class>
+
+	<!-- New table to persist user navigation in SV since GWM 6.1.1 -->
+	<class name="com.groundworkopensource.portal.model.UserNavigation"
+		table="USER_NAVIGATION">
+		<id name="id" type="java.lang.Integer" column="ID">
+			<generator class="native">
+				<param name="sequence">hibernate_sequence</param>
+			</generator>
+		</id>
+
+		<property name="userId" type="java.lang.String" column="USER_ID"
+			not-null="true" length="254" />
+		<property name="nodeId" type="int" column="NODE_ID" not-null="true"
+			length="20" />
+		<property name="nodeName" type="java.lang.String" column="NODE_NAME"
+			not-null="true" length="254" />
+		<property name="nodeType" type="java.lang.String" column="NODE_TYPE"
+			not-null="true" length="50" />
+		<property name="parentInfo" type="java.lang.String" column="PARENT_INFO"
+			length="600" />
+		<property name="toolTip" type="java.lang.String" column="TOOLTIP"
+			not-null="true" length="254" />
+		<property name="appType" type="java.lang.String" column="APP_TYPE"
+			length="50" />
+		<property name="tabHistory" type="java.lang.String" column="TAB_HISTORY"
+			length="1500" />
+		<property name="nodeLabel" type="java.lang.String" column="NODE_LABEL"
+			length="254" />
+		<!-- Associations -->
+
+
+	</class>
+
+    <class
+            name="com.groundworkopensource.portal.identity.extendedui.HibernateResource"
+            table="gw_resources">
+        <cache usage="read-write" />
+        <id name="resourceId" column="resource_id" type="java.lang.Byte">
+            <generator class="assigned" />
+        </id>
+        <property name="name" column="name" type="java.lang.String" />
+    </class>
+
+    <class
+            name="com.groundworkopensource.portal.identity.extendedui.HibernatePermission"
+            table="gw_permissions">
+        <cache usage="read-write" />
+        <id name="permId" column="perm_id" type="java.lang.Byte">
+            <generator class="assigned" />
+        </id>
+        <property name="action" column="action" type="java.lang.String" />
+    </class>
+
+    <class
+            name="com.groundworkopensource.portal.identity.extendedui.HibernateExtendedRolePermission"
+            table="gw_ext_role_permissions" lazy="false">
+        <composite-id>
+            <key-many-to-one name="role" column="jbp_rid"
+                         class="com.groundworkopensource.portal.identity.extendedui.HibernateExtendedRole" />
+            <key-many-to-one name="resource" column="resource_id"
+                         class="com.groundworkopensource.portal.identity.extendedui.HibernateResource" lazy="false" />
+        </composite-id>
+
+        <many-to-one name="permission" column="perm_id"
+                         class="com.groundworkopensource.portal.identity.extendedui.HibernatePermission" lazy="false" />
+    </class>
+
+</hibernate-mapping>

@@ -1,0 +1,73 @@
+<!--
+	Collage - The ultimate data integration framework.
+	Copyright (C) 2004-2007  GroundWork Open Source Solutions info@groundworkopensource.com
+	
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of version 2 of the GNU General Public License 
+	as published by the Free Software Foundation.
+	
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+	
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+	
+-->
+
+<project xmlns:j="jelly:core" xmlns:define="jelly:define">
+
+	<goal name="allClean">
+		<attainGoal name="clean" />
+
+		<delete dir='${basedir}/target/groundwork-console' />
+
+		<!-- remove deploied war file and configuration -->
+		<delete
+			file="${org.groundwork.foundation.deploy.root}/container/webapps/groundwork-console.war" />
+
+	</goal>
+
+	<goal name="build">
+
+		<!-- Prepare the structure -->
+		<mkdir dir='${org.groundwork.build.config}' />
+		<mkdir
+			dir='${basedir}/target/groundwork-console/WEB-INF/classes' />
+
+
+		<!-- Should be done by war goal but whatever -->
+		<echo>
+			Copy top level web application files into
+			target/groundwork-console directory
+		</echo>
+		<copy todir="${basedir}/target/groundwork-console"
+			overwrite="true">
+			<!-- Directory changed- Arul -->
+			<fileset dir="${basedir}/WebContent/" includes="*/**"
+				excludes="*svn" />
+		</copy>
+
+		<!-- Build war file -->
+		<attainGoal name="war" />
+
+	</goal>
+
+	<goal name="deploy">
+		<!-- Copy war -->
+		<copy
+			todir="${org.groundwork.foundation.deploy.root}/container/webapps"
+			overwrite="true">
+			<fileset dir="${basedir}/target/" includes="*.war"
+				excludes="*svn" />
+		</copy>
+
+		<!-- Context descriptor -->
+		<copy file="${basedir}/../jetty/contexts/groundwork-console.xml"
+			todir="${org.groundwork.foundation.deploy.root}/container/contexts/"
+			overwrite="true" />
+	</goal>
+
+</project>

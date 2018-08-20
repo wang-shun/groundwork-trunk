@@ -1,0 +1,110 @@
+<?xml version="1.0"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Inc. info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-->
+<!DOCTYPE hibernate-mapping PUBLIC
+    "-//Hibernate/Hibernate Mapping DTD 2.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd" >
+    
+<hibernate-mapping default-lazy="false" >
+<!-- 
+	Updated to include Minimum/Maximum/Average values
+	$Id: LogPerformanceData.hbm.xml 18786 2011-11-09 05:50:37Z ashanmugam $  
+-->
+
+<class 
+    name="com.groundwork.collage.model.impl.LogPerformanceData" 
+    table="LogPerformanceData"
+>
+
+    <id
+        name="logPerformanceDataId"
+        type="java.lang.Integer"
+        column="LogPerformanceDataID"
+    >
+        <generator class="native">
+            <param name="sequence">logperformancedata_logperformancedataid_seq</param>
+         </generator>
+    </id>
+
+    <property
+        name="lastCheckTime"
+        type="java.util.Date"
+        column="LastCheckTime"
+        not-null="true"
+        length="19"
+    />
+	<!--
+    <property
+        name="performanceName"
+        type="java.lang.String"
+        column="PerformanceName"
+        not-null="false"
+        length="254"
+    />
+    -->
+    <property
+        name="maximum"
+        type="java.lang.Double"
+        column="Maximum"
+        not-null="false"
+        length="22"
+    />
+    
+    <property
+        name="minimum"
+        type="java.lang.Double"
+        column="Minimum"
+        not-null="false"
+        length="22"
+    />
+    
+    <property
+        name="average"
+        type="java.lang.Double"
+        column="Average"
+        not-null="false"
+        length="22"
+    />
+    
+    <property
+        name="measurementPoints"
+        type="java.lang.Integer"
+        column="MeasurementPoints"
+        not-null="false"
+     />
+    
+    
+    <!-- Associations -->
+  
+    <!-- bi-directional many-to-one association to ServiceStatus -->
+    <many-to-one
+        name="serviceStatus"
+        class="com.groundwork.collage.model.impl.ServiceStatus"
+        not-null="true">
+        <column name="ServiceStatusID" />
+	</many-to-one>
+		    <!-- bi-directional many-to-one association to PerformanceDataLabel -->
+
+    <many-to-one
+        name="performanceDataLabel"
+        class="com.groundwork.collage.model.impl.PerformanceDataLabel"
+        not-null="true">
+        <column name="PerformanceDataLabelID" />
+    </many-to-one>
+</class>
+</hibernate-mapping>

@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions targetNamespace="urn:fws"
+	xmlns:fwsmodel="http://model.ws.foundation.groundwork.org"
+	xmlns:apachesoap="http://xml.apache.org/xml-soap" xmlns:impl="urn:fws"
+	xmlns:intf="urn:fws"
+	xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/"
+	xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+	xmlns:wsdlsoap="http://schemas.xmlsoap.org/wsdl/soap/"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+	<!--
+		Collage - The ultimate data integration framework.
+		Copyright (C) 2004-2007  GroundWork Open Source Inc. info@groundworkopensource.com
+		
+		This program is free software; you can redistribute it and/or modify
+		it under the terms of version 2 of the GNU General Public License 
+		as published by the Free Software Foundation.
+		
+		This program is distributed in the hope that it will be useful,
+		but WITHOUT ANY WARRANTY; without even the implied warranty of
+		MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+		GNU General Public License for more details.
+		
+		You should have received a copy of the GNU General Public License
+		along with this program; if not, write to the Free Software
+		Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+	-->
+
+	<wsdl:import namespace="urn:fwsmodel"
+		xmlns:fwsmodel="http://model.ws.foundation.groundwork.org"
+		location="../fwsmodel.wsdl" />
+	<wsdl:message name="getRootCategoriesRequest">
+		<wsdl:part name="entityTypeName" type="xsd:string" >
+			<wsdl:documentation>Name of required entity type. In this case, it’s SERVICE_GROUP.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="startRange" type="xsd:int" >
+			<wsdl:documentation>Beginning record number [first result]. For pagination.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="endRange" type="xsd:int" >
+			<wsdl:documentation>Last record number [maximum results] For pagination.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="orderBy" type="fwsmodel:SortCriteria" >
+			<wsdl:documentation>Defines sorting – ascending or descending order and sorting field.
+			</wsdl:documentation></wsdl:part>
+		<wsdl:part name="retrieveChildren" type="xsd:boolean" >
+			<wsdl:documentation>This field is currently non-functional.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="namePropertyOnly" type="xsd:boolean" >
+			<wsdl:documentation>This field is currently non-functional.</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+    <wsdl:message name="WSFoundationException">
+      <wsdl:part name="fault" element="fwsmodel:WSFoundationException"/>
+   </wsdl:message>
+	<wsdl:message name="getRootCategoriesResponse">
+		<wsdl:part name="getRootCategoriesReturn"
+			type="fwsmodel:WSFoundationCollection" >
+			<wsdl:documentation>Returns WSFoundationCollection: collection of all available categories of specified type entityTypeName.</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getCategoryEntitiesRequest">
+		<wsdl:part name="categoryName" type="xsd:string" >
+			<wsdl:documentation>Name of service group, to which required CategoryEntities belong.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="entityTypeName" type="xsd:string" >
+			<wsdl:documentation>Name of type of entity. For service groups, it’s SERVICE_GROUP.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="startRange" type="xsd:int" >
+			<wsdl:documentation>beginning record number [first result]. For pagination.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="endRange" type="xsd:int" >
+			<wsdl:documentation>last record number [maximum results] For pagination.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="orderBy" type="fwsmodel:SortCriteria" >
+			<wsdl:documentation>Defines sorting – ascending or descending order and sorting field.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="retrieveChildren" type="xsd:boolean" >
+			<wsdl:documentation>This field is currently non-functional.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="namePropertyOnly" type="xsd:boolean" >
+			<wsdl:documentation>This field is currently non-functional.</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getCategoryEntitiesResponse">
+		<wsdl:part name="getCategoryEntitiesReturn"
+			type="fwsmodel:WSFoundationCollection" >
+			<wsdl:documentation>Returns WSFoundationCollection: collection of category entities as per the input parameters specified.</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+
+	<wsdl:message name="getCategoryByNameRequest">
+		<wsdl:part name="categoryName" type="xsd:string" >
+			<wsdl:documentation>Name of the required category.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="entityTypeName" type="xsd:string" >
+			<wsdl:documentation>Name of desired entity type. In this case, it’s SERVICE_GROUP.</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getCategoryByNameResponse">
+		<wsdl:part name="getCategoryByNameReturn"
+			type="fwsmodel:WSFoundationCollection" >
+			<wsdl:documentation>Returns WSFoundationCollection: collection of categories as per the input parameters specified.</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+
+	<wsdl:message name="getCategoriesRequest">
+		<wsdl:part name="filter" type="fwsmodel:Filter" >
+			<wsdl:documentation>A filter is provided to build the criteria for doing the required queries on the model (Foundation). Filters can be composed with the help of disjunctions (AND) and conjunctions (OR). Example: For example, to fetch all categories  that have category entities in it, with object Ids from list “serviceStatusIdsString” which is comma separated list of Service status Ids, use following Filter criteria: Filter categoryIdFilter = new Filter("categoryEntities.objectID", FilterOperator.IN, serviceStatusIdsString);
+			</wsdl:documentation></wsdl:part>
+		<wsdl:part name="startRange" type="xsd:int" >
+			<wsdl:documentation>beginning record number [first result]. For pagination.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="endRange" type="xsd:int" >
+			<wsdl:documentation>last record number [maximum results]. For pagination.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="orderBy" type="fwsmodel:SortCriteria" >
+			<wsdl:documentation>Defines sorting – ascending or descending order and sorting field.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="retrieveChildren" type="xsd:boolean" >
+			<wsdl:documentation>This field is currently non-functional. </wsdl:documentation></wsdl:part>
+		<wsdl:part name="namePropertyOnly" type="xsd:boolean" >
+			<wsdl:documentation>  This field is currently non-functional. </wsdl:documentation></wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getCategoriesResponse">
+		<wsdl:part name="getCategoriesReturn"
+			type="fwsmodel:WSFoundationCollection" >
+			<wsdl:documentation>Returns WSFoundationCollection: collection of categories as per the input parameters specified.</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+
+	<wsdl:message name="getCategoriesByEntityTypeRequest">
+		<wsdl:part name="entityTypeName" type="xsd:string" />
+		<wsdl:part name="startRange" type="xsd:int" />
+		<wsdl:part name="endRange" type="xsd:int" />
+		<wsdl:part name="orderBy" type="fwsmodel:SortCriteria" />
+		<wsdl:part name="retrieveChildren" type="xsd:boolean" />
+		<wsdl:part name="namePropertyOnly" type="xsd:boolean" />
+	</wsdl:message>
+	<wsdl:message name="getCategoriesByEntityTypeResponse">
+		<wsdl:part name="getCategoriesByEntityTypeReturn"
+			type="fwsmodel:WSFoundationCollection" />
+	</wsdl:message>
+
+	<wsdl:message name="getCategoryByIdRequest">
+		<wsdl:part name="categoryId" type="xsd:int" >
+			<wsdl:documentation>Id of required category object</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getCategoryByIdResponse">
+		<wsdl:part name="getCategoryByIdReturn"
+			type="fwsmodel:WSFoundationCollection" >
+			<wsdl:documentation>Returns WSFoundationCollection: collection of categories as per the input parameters specified.</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+
+
+	<wsdl:portType name="WSCategory">
+		<wsdl:operation name="getRootCategories"
+			parameterOrder="entityTypeName startRange endRange orderBy retrieveChildren namePropertyOnly">
+			<wsdl:documentation>Gets all available categories (service groups).</wsdl:documentation>
+			<wsdl:input message="impl:getRootCategoriesRequest"
+				name="getRootCategoriesRequest" />
+			<wsdl:output message="impl:getRootCategoriesResponse"
+				name="getRootCategoriesResponse" />
+			<wsdl:fault message="impl:WSFoundationException"
+				name="WSFoundationException" />
+		</wsdl:operation>
+
+		<wsdl:operation name="getCategoryEntities"
+			parameterOrder="categoryName entityTypeName startRange endRange orderBy retrieveChildren namePropertyOnly">
+			<wsdl:documentation>Gets CategoryEntities objects, which are in turn, used to retrieve services under service groups. (getServices call can be used to retrieve required service by passing object -Id, of CategoryEntity.)</wsdl:documentation>
+			<wsdl:input message="impl:getCategoryEntitiesRequest"
+				name="getCategoryEntitiesRequest" />
+			<wsdl:output message="impl:getCategoryEntitiesResponse"
+				name="getCategoryEntitiesResponse" />
+			<wsdl:fault message="impl:WSFoundationException"
+				name="WSFoundationException" />
+		</wsdl:operation>
+
+		<wsdl:operation name="getCategoryByName"
+			parameterOrder="categoryName entityTypeName">
+			<wsdl:documentation>Gets category object according to sent name.</wsdl:documentation>
+			<wsdl:input message="impl:getCategoryByNameRequest"
+				name="getCategoryByNameRequest" />
+			<wsdl:output message="impl:getCategoryByNameResponse"
+				name="getCategoryByNameResponse" />
+			<wsdl:fault message="impl:WSFoundationException"
+				name="WSFoundationException" />
+		</wsdl:operation>
+
+		<wsdl:operation name="getCategories"
+			parameterOrder="filter startRange endRange orderBy retrieveChildren namePropertyOnly">
+			<wsdl:documentation>Gets category objects according to sent filter/criteria.</wsdl:documentation>
+			<wsdl:input message="impl:getCategoriesRequest"
+				name="getCategoriesRequest" />
+			<wsdl:output message="impl:getCategoriesResponse"
+				name="getCategoriesResponse" />
+			<wsdl:fault message="impl:WSFoundationException"
+				name="WSFoundationException" />
+		</wsdl:operation>
+
+		<wsdl:operation name="getCategoriesByEntityType"
+			parameterOrder="entityTypeName startRange endRange orderBy retrieveChildren namePropertyOnly">
+			<wsdl:documentation>This web service method is currently not implemented.</wsdl:documentation>
+			<wsdl:input message="impl:getCategoriesByEntityTypeRequest"
+				name="getCategoriesByEntityTypeRequest" />
+			<wsdl:output
+				message="impl:getCategoriesByEntityTypeResponse"
+				name="getCategoriesByEntityTypeResponse" />
+			<wsdl:fault message="impl:WSFoundationException"
+				name="WSFoundationException" />
+		</wsdl:operation>
+
+		<wsdl:operation name="getCategoryById"
+			parameterOrder="categoryId">
+			<wsdl:documentation>Gets  category objects, which represents service groups in foundation by its Id.</wsdl:documentation>
+			<wsdl:input message="impl:getCategoryByIdRequest"
+				name="getCategoryByIdRequest" />
+			<wsdl:output message="impl:getCategoryByIdResponse"
+				name="getCategoryByIdResponse" />
+			<wsdl:fault message="impl:WSFoundationException"
+				name="WSFoundationException" />
+		</wsdl:operation>
+
+
+	</wsdl:portType>
+	<wsdl:binding name="categorySoapBinding" type="impl:WSCategory">
+		<wsdlsoap:binding style="rpc"
+			transport="http://schemas.xmlsoap.org/soap/http" />
+
+		<wsdl:operation name="getRootCategories">
+			<wsdlsoap:operation
+				soapAction="/foundation-webapp/services/wscategory" />
+			<wsdl:input name="getRootCategoriesRequest">
+				<wsdlsoap:body
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+			<wsdl:output name="getRootCategoriesResponse">
+				<wsdlsoap:body
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+
+		<wsdl:operation name="getCategoryEntities">
+			<wsdlsoap:operation
+				soapAction="/foundation-webapp/services/wscategory" />
+			<wsdl:input name="getCategoryEntitiesRequest">
+				<wsdlsoap:body
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+			<wsdl:output name="getCategoryEntitiesResponse">
+				<wsdlsoap:body
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+
+		<wsdl:operation name="getCategoryByName">
+			<wsdlsoap:operation
+				soapAction="/foundation-webapp/services/wscategory" />
+			<wsdl:input name="getCategoryByNameRequest">
+				<wsdlsoap:body
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+			<wsdl:output name="getCategoryByNameResponse">
+				<wsdlsoap:body
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+
+		<wsdl:operation name="getCategories">
+			<wsdlsoap:operation
+				soapAction="/foundation-webapp/services/wscategory" />
+			<wsdl:input name="getCategoriesRequest">
+				<wsdlsoap:body
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+			<wsdl:output name="getCategoriesResponse">
+				<wsdlsoap:body
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+
+		<wsdl:operation name="getCategoriesByEntityType">
+			<wsdlsoap:operation
+				soapAction="/foundation-webapp/services/wscategory" />
+			<wsdl:input name="getCategoriesByEntityTypeRequest">
+				<wsdlsoap:body
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+			<wsdl:output name="getCategoriesByEntityTypeResponse">
+				<wsdlsoap:body
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+
+		<wsdl:operation name="getCategoryById">
+			<wsdlsoap:operation
+				soapAction="/foundation-webapp/services/wscategory" />
+			<wsdl:input name="getCategoryByIdRequest">
+				<wsdlsoap:body
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+			<wsdl:output name="getCategoryByIdResponse">
+				<wsdlsoap:body
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault
+					encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+	</wsdl:binding>
+	<wsdl:service name="WSCategoryService">
+		<wsdl:documentation>Service Group Web Service is a collection of APIs that manages service Group entries in Foundation. Service Group is collection of services. Categories are used to group any entities (Service, Host, Log Message, devices) and build a hierarchy. This web service allows creating, maintaining, and deleting Categories (grouping) but not the entities. The current version of Groundwork uses Categories to manage Service Groups.</wsdl:documentation>
+		<wsdl:port binding="impl:categorySoapBinding"
+			name="wscategory">
+			<wsdlsoap:address
+				location="http://localhost:8080/foundation-webapp/services/wscategory" />
+		</wsdl:port>
+	</wsdl:service>
+</wsdl:definitions>

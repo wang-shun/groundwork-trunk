@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<ice:inputHidden id="serviceAvailabilityPortlet_ipHiddn"
+			value="#{serviceAvailabilityHandler.hiddenField}"></ice:inputHidden>
+		<!--  error / info message -->
+		<ice:panelGroup rendered="#{serviceAvailabilityHandler.message}"
+			id="serviceAvailabilityPortlet_panelsGroupError">
+			<ice:column id="serviceAvailabilityPortlet_columnError"
+				rendered="#{serviceAvailabilityHandler.error}">
+				<ui:include src="/jsp/error.jspx">
+					<ui:param name="errorMessage"
+						value="#{serviceAvailabilityHandler.errorMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:column id="serviceAvailabilityPortlet_columninfo"
+				rendered="#{serviceAvailabilityHandler.info}">
+				<ui:include src="/jsp/info.jspx">
+					<ui:param name="infoMessage"
+						value="#{serviceAvailabilityHandler.infoMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:commandButton
+				id="serviceAvailabilityPortlet_cmdRetryNowForHandler"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{serviceAvailabilityHandler.reloadPage}"></ice:commandButton>
+		</ice:panelGroup>
+		<!--  error message - END -->
+
+		<ice:panelGroup id="serviceAvailabilityPortlet_panelgrp"
+			rendered="#{!(serviceAvailabilityHandler.message)}">
+			<table border="0" cellpadding="0" cellspacing="0" >
+				<tr>
+					<td><ice:message for="serviceAvailabilityPortlet_startDateTime" showDetail="true"
+						showSummary="false"
+						style="color:red; width:350px; font-weight:normal;"
+						rendered="#{serviceAvailabilityHandler.selectedTime == '-1'}"></ice:message>
+					<ice:message for="serviceAvailabilityPortlet_endDateTime" showDetail="true"
+						showSummary="false"
+						style="color:red; width:350px; font-weight:normal;"
+						rendered="#{serviceAvailabilityHandler.selectedTime == '-1'}"></ice:message></td>
+				</tr>
+				<tr>
+					<td><ice:panelGrid
+						id="serviceAvailabilityPortlet_panelgridMain">
+						<!--  PanelGrid for time selector drop-down -->
+						<table id="tbl_otr" border="0" align="left" >
+							<tr>
+								<td><ice:panelGrid columns="3" style="align:left;">
+									<!-- Label associated with time selector drop down list -->
+									<ice:outputLabel
+										for="serviceAvailabilityPortlet_menuTimeSelector"
+										id="serviceAvailabilityPortlet_lblTimeSelector"
+										value="#{message['com_groundwork_portal_statusviewer_hostAvailabilityPortlet_label_time']}">
+									</ice:outputLabel>
+
+									<!-- Time selector drop down list as selectOneMenu component -->
+									<ice:selectOneMenu
+										id="serviceAvailabilityPortlet_menuTimeSelector"
+										value="#{serviceAvailabilityHandler.selectedTime}" valueChangeListener="#{serviceAvailabilityHandler.selectedServiceTimeChangeListener}">
+										<f:selectItems
+											value="#{serviceAvailabilityHandler.timeSelectorList}" />
+									</ice:selectOneMenu>
+
+									<!-- 'Apply' command button -->
+									<ice:commandButton
+										value="#{message['com_groundwork_portal_statusviewer_apply']}"
+										id="serviceAvailabilityPortlet_submitApply" type="submit"
+										actionListener="#{serviceAvailabilityHandler.apply}"
+										styleClass="cust_portlet_filter_button">
+									</ice:commandButton>
+								</ice:panelGrid></td>
+							</tr>
+							<tr>
+								<td>
+								<ice:panelGroup id="serviceAvailabilityPortlet_custstartendtimegroup" rendered="#{serviceAvailabilityHandler.selectedTime == '-1'}"><!-- Custom Start date and end Date -->
+								<div style="float: left;"><ice:outputLabel id="serviceAvailabilityPortlet_startdatelbl" for="serviceAvailabilityPortlet_startDateTime"
+									value="#{message['com_groundwork_portal_statusviewer_serviceAvailabilityPortlet_label_start_Date']}"></ice:outputLabel> <ice:inputText
+									id="serviceAvailabilityPortlet_startDateTime"
+									value="#{serviceAvailabilityHandler.custStartDate}"></ice:inputText>
+								<ice:graphicImage value="/images/date-time.png"
+									onclick="datePicker(this);" onmouseover="datePicker(this);"></ice:graphicImage></div>
+								<div style="float: left;"><ice:outputLabel
+									id="serviceAvailabilityPortlet_enddatelbl" for="serviceAvailabilityPortlet_endDateTime"  value="#{message['com_groundwork_portal_statusviewer_serviceAvailabilityPortlet_label_end_Date']}"></ice:outputLabel>
+								<ice:inputText id="serviceAvailabilityPortlet_endDateTime"
+									value="#{serviceAvailabilityHandler.custEndDate}"></ice:inputText>
+								<ice:graphicImage value="/images/date-time.png"
+									onclick="datePicker(this);" onmouseover="datePicker(this);"></ice:graphicImage>
+								</div>
+								</ice:panelGroup>
+								</td>
+							</tr>
+						</table>
+						<!-- Panel grid to display bar chart and current status image -->
+						<ice:panelGrid
+							id="serviceAvailabilityPortlet_panelGridServiceTransitions"
+							columns="2">
+							<!--  Bar chart for state transitions -->
+							<ice:column
+								id="serviceAvailabilityPortlet_colServiceTranisitionImage">
+								<ice:graphicImage
+									
+									rendered="#{serviceAvailabilityHandler.serviceTransitionsChartImage != null}"
+									value="#{serviceAvailabilityHandler.serviceTransitionsChartImage}"></ice:graphicImage>
+								<ice:graphicImage
+									id="serviceAvailabilityPortlet_imgserviceTransitionsBarChart"
+									value="/images/connect_active.gif"
+									rendered="#{serviceAvailabilityHandler.serviceTransitionsChartImage == null}"></ice:graphicImage>
+							</ice:column>
+							<!--<ice:column id="serviceAvailabilityPortlet_colHeader">
+								<ice:outputLabel style="height : 30px"
+									id="serviceAvailabilityPortlet_lblCurrentStatus"
+									value="#{message['com_groundwork_portal_statusviewer_hostAvailabilityPortlet_label_currentStatus']}"></ice:outputLabel>
+								<ice:graphicImage
+									id="serviceAvailabilityPortlet_imgHostCurrentStatus"
+									url="#{serviceAvailabilityHandler.iconPath}"></ice:graphicImage>
+							</ice:column>-->
+						</ice:panelGrid>
+
+						<!--  Panel Grid to be displayed in there are no state transitions. -->
+						<!-- Info message for serviceAvailabilityHandler - START -->
+						<!--<ice:panelGrid
+							rendered="#{serviceAvailabilityHandler.info and !serviceAvailabilityHandler.message}"
+							style="width : 850px"
+							id="serviceAvailabilityPortlet_panelForInfoMessage">
+							<ui:include src="/jsp/info.jspx">
+								<ui:param name="infoMessage"
+									value="#{serviceAvailabilityHandler.infoMessage}" />
+							</ui:include>
+						</ice:panelGrid>-->
+						<!--  info message - END -->
+					</ice:panelGrid></td>
+				</tr>
+			</table>
+		</ice:panelGroup>				
+	</ui:define>
+</ui:composition>

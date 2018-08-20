@@ -1,0 +1,2156 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+# This program runs commands that support GDMA Auto-Setup.
+#
+# Copyright (c) 2017-2018 GroundWork, Inc. (www.gwos.com).  All rights reserved.
+# Use of this software is subject to commercial license terms.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+# ================================
+# Perl Setup
+# ================================
+
+use strict;
+use warnings;
+
+use Fcntl;
+use POSIX qw(EEXIST);
+
+use GDMA::Logging;
+use GDMA::AutoSetup;
+use GDMA::Discovery;
+
+use TypedConfig;
+
+use MonarchLocks;
+
+# ================================
+# Program Variables
+# ================================
+
+my $PROGNAME = "autosetup";
+our $VERSION = '0.8.2';
+
+# Where to pick up configuration options for this registration script.
+my $default_config_file = '/usr/local/groundwork/config/register_agent_by_discovery.conf';
+
+my %is_valid_command = (
+    analyze  => 1,
+    audit    => 1,
+    install  => 1,
+    print    => 1,
+    remove   => 1,
+    status   => 1,
+#   trigger  => 1,  # Original design, probably not worth implementing.
+    validate => 1,
+);
+
+# ================================
+# Command-Line Parameters
+# ================================
+
+my $pattern_filepath            = 0;
+my $show_all                    = 0;
+my $show_timestamps             = 0;
+my $use_only_exact_matches      = 0;
+my $use_only_full_alternatives  = 0;
+my $use_only_short_alternatives = 0;
+
+# ================================
+# Configuration Variables
+# ================================
+
+my $enable_processing = undef;
+
+# Possible $debug_level values:
+# 0 = no info of any kind printed, except for startup/shutdown messages and major errors
+# 1 = print just error info and summary statistical data
+# 2 = also print basic debug info
+# 3 = print detailed debug info
+# Initial level, to be overwritten by a value from the config file:
+my $debug_level = 1;
+
+my $logfile                                       = undef;
+my $lockfile_directory                            = undef;
+my $max_logfile_size                              = undef;    # log rotate is handled externally, not here
+my $max_logfiles_to_retain                        = undef;    # log rotate is handled externally, not here
+my $instructions_directory                        = undef;
+my $trigger_directory                             = undef;
+my $results_directory                             = undef;
+my $max_input_size                                = undef;
+my $default_change_policy                         = undef;
+my $hostname_qualification                        = undef;
+my $default_hostgroup                             = undef;
+my $assign_hostgroups_to_existing_hostgroup_hosts = undef;
+my $default_monarch_group                         = undef;
+my $assign_monarch_groups_to_existing_group_hosts = undef;
+my $force_hostname_case                           = undef;
+my $force_domainname_case                         = undef;
+my $host_address_selection                        = undef;
+my $log4perl_config                               = undef;
+
+# Parameters derived from the config-file parameters.
+
+# These values will be replaced once $debug_level is itself replaced by a value from
+# the config file.  But we want these values to be operational even before the config
+# file is read, in case we need to debug early operation of this script.
+my $debug_minimal = ( $debug_level >= 1 );
+my $debug_basic   = ( $debug_level >= 2 );
+my $debug_maximal = ( $debug_level >= 3 );
+
+my @host_address_choices = ();
+
+# ================================
+# Working Variables
+# ================================
+
+my $config_file  = $default_config_file;
+my $debug_config = 0;                      # if set, spill out certain data about config-file processing to STDOUT
+
+my $command   = undef;
+my @arguments = ();
+
+my $logging = undef;
+my $logger  = undef;
+
+my $instructions_file = undef;
+
+use constant ERROR_STATUS => 0;
+use constant STOP_STATUS  => 1;
+
+use constant SECONDS_PER_MINUTE    => 60;
+use constant MINUTES_PER_HOUR      => 60;
+use constant HOURS_PER_DAY         => 24;
+use constant DAYS_PER_11_MONTHS    => 334;
+use constant SECONDS_PER_HOUR      => SECONDS_PER_MINUTE * MINUTES_PER_HOUR;
+use constant SECONDS_PER_DAY       => SECONDS_PER_HOUR * HOURS_PER_DAY;
+use constant SECONDS_PER_11_MONTHS => SECONDS_PER_DAY * DAYS_PER_11_MONTHS;
+
+# ================================
+# Program
+# ================================
+
+# Here is the entire substance of this script, in a one-liner:
+exit( ( main() == ERROR_STATUS ) ? 1 : 0 );
+
+# ================================
+# Supporting Subroutines
+# ================================
+
+sub print_usage {
+    my $show_full_usage = shift;
+
+    my $short_usage =  <<'EOF';
+=pod
+
+=head1 SYNOPSIS
+
+=over 4
+
+=item B<autosetup status> [B<-t>] {B<-a>|[B<-e>|B<-f>|B<-u>] I<hostname> ...}
+
+=item B<autosetup validate> I<file> ...
+
+=item B<autosetup install -p> I<patternfile> I<hostname> ...
+
+=item B<autosetup install> I<file> ...
+
+=item B<autosetup print results> [B<-e>|B<-f>|B<-u>] I<hostname> ...
+
+=item B<autosetup analyze> [B<-e>|B<-f>|B<-u>] I<hostname> ...
+
+=item B<autosetup print analysis> [B<-e>|B<-f>|B<-u>] I<hostname> ...
+
+=item B<autosetup audit> [B<-e>|B<-f>|B<-u>] I<hostname> ...
+
+=item B<autosetup remove> [B<-e>|B<-f>|B<-u>] I<hostname> ...
+
+=item B<autosetup -h>
+
+=item B<autosetup -V>
+
+=back
+=cut
+
+EOF
+
+    my $long_usage =  <<'EOF';
+=pod
+
+=head1 DESCRIPTION
+
+B<autosetup> provides all the server-side operations needed to support GDMA Auto-Setup.
+
+=head1 COMMANDS
+
+=over 4
+
+=item B<autosetup status> [B<-t>] {B<-a>|[B<-e>|B<-f>|B<-u>] I<hostname> ...}
+
+Lists the status of all the files for the named hosts, in a compact form.
+Use the B<-t> option to print file timestamps instead of YES/no indicators
+for the presence of the files.  Use the B<-a> option without any hostnames to
+list all hosts with at least one file in any of the relevant directories.
+
+If the B<-a> option is not given, this command normally looks for files
+under an alternative form of each I<hostname> if an exact match is not
+found.  You can control which I<hostname> alternatives are considered
+by specifying one of the following options:
+
+=over
+
+=item B<-e>   only allow an exact match to the I<hostname>(s) given
+
+=item B<-f>   only allow a fully-qualified hostname as an alternative match
+
+=item B<-u>   only allow an unqualified hostname as an alternative match
+
+=back
+
+=item B<autosetup validate> I<file> ...
+
+Checks that the listed instructions, trigger, or results files pass
+validation tests.
+
+=item B<autosetup install -p> I<patternfile> I<hostname> ...
+
+Safely installs the patternfile in the appropriate configured install
+location, creating or replacing one copy for each named host.  The name
+of the I<patternfile> must be of the general form B<?*_instructions> or
+B<?*_trigger> to indicate its file type, so the correct install location
+can be determined.
+
+=item B<autosetup install> I<file> ...
+
+Safely installs the named instructions and/or trigger files to their
+respective configured locations for pickup by GDMA clients.  In this
+form of the command, each listed file must exist and be appropriately
+named, the acceptable forms being either I<hostname>B<_instructions>
+or I<hostname>B<_trigger>.  Instructions and trigger filenames can be
+freely intermixed on the same command.  Hint:  the "B<autosetup install
+-p> I<patternfile>" form of the install command is more commonly used
+than this one.
+
+=item B<autosetup print results> [B<-e>|B<-f>|B<-u>] I<hostname> ...
+
+Prints the last discovery results for the named hosts.
+The B<-e>, B<-f>, and B<-u> options act as noted above.
+
+=item B<autosetup analyze> [B<-e>|B<-f>|B<-u>] I<hostname> ...
+
+NOT YET IMPLEMENTED.
+Analyzes the last discovery results for the named hosts.
+The B<-e>, B<-f>, and B<-u> options act as noted above.
+
+=item B<autosetup print analysis> [B<-e>|B<-f>|B<-u>] I<hostname> ...
+
+Prints the last discovery results analyses for the named hosts.
+The B<-e>, B<-f>, and B<-u> options act as noted above.
+
+=item B<autosetup audit> [B<-e>|B<-f>|B<-u>] I<hostname> ...
+
+NOT YET IMPLEMENTED.
+Compares current configuration with the last discovery results
+for the named hosts.
+The B<-e>, B<-f>, and B<-u> options act as noted above.
+
+=item B<autosetup remove> [B<-e>|B<-f>|B<-u>] I<hostname> ...
+
+Removes all instructions, trigger, results, and analysis files
+for the named hosts, from their respective configured directories.
+The B<-e>, B<-f>, and B<-u> options act as noted above.
+This is the standard mechanism for deprovisioning hosts from
+Auto-Setup processing.  That said, it does not also remove the
+named hosts from the configuration database.
+
+=item B<autosetup -h>
+
+=item B<autosetup -V>
+
+The -h and -V options print the help message and program version, respectively.
+
+=back
+
+=head1 EXAMPLES
+
+=over 4
+
+=item B<autosetup status -t -a>
+
+This will find all related files and print last-modified timestamps
+for them.
+
+=item B<autosetup print results myhost>
+
+This will find discovery results for B<myhost>, or failing that, for
+B<myhost.mydomain.com> if such discovery results exist.  This automatic
+failover to an alternate form of the hostname can be a great convenience,
+saving a lot of typing when the usual discovered hostname is fully
+qualified.
+
+=item B<autosetup install -p my_standard_instructions host1 host2 host3>
+
+=item B<autosetup install -p standard_test_only_trigger host1 host2 host3>
+
+These two commands will copy B<my_standard_instructions> to the
+instructions directory, creating B<host1_instructions> and similar files
+there, followed by copying B<standard_test_only_trigger> to the trigger
+directory, creating B<host1_trigger> and similar files there.  In general,
+this is the correct sequence to follow:  make sure the proper instructions
+are in place before you create or update a trigger file for a given host.
+Using pattern files like this makes it possible to easily share the same
+setup across many hosts, so you can support just a few master files and
+don't need to maintain sets of one-per-host files.
+
+=back
+
+=head1 BUGS
+
+Hostnames are generally supposed to be case-insensitive, but all of the
+handling of hostnames by this tool is case-sensitive.
+If you wish to know exactly what lettercase forms of hostnames are
+currently in play, use the B<autosetup status -a> command.
+
+=cut
+EOF
+
+    my $usage_hint =  <<'EOF';
+=pod
+
+=head1 B<>Run B<autosetup> or B<autosetup -h> to see full usage notes.
+
+=cut
+EOF
+
+    my $parser;
+    if ( -t STDOUT ) {
+	## Impose a standard pager, depending on what is available.
+	my $PAGER;
+	my $more_options =
+	    ( $^O eq 'linux' )   ? '-d -f'
+	  : ( $^O eq 'solaris' ) ? '-d -f -w'
+	  : ( $^O eq 'aix' )     ? '-d -v -W notite'
+	  : ( $^O eq 'hpux' )    ? '-d -f -v -W notite'
+	  :                        '';
+	local $ENV{LESSSECURE}='1';
+	if (   ( !-x '/usr/bin/less' || not open PAGER, '|-', '/usr/bin/less -R -F -X -K' )
+	    && ( !-x '/usr/bin/more' || not open PAGER, '|-', "/usr/bin/more $more_options" )
+	    && ( !-x '/bin/more'     || not open PAGER, '|-', "/bin/more $more_options" ) )
+	{
+	    *PAGER = *STDOUT;
+	}
+	require Term::ReadKey;
+	my ( $wchar, $hchar, $wpixels, $hpixels ) = Term::ReadKey::GetTerminalSize();
+	## Don't run right up to the right edge of the terminal window, since that looks ugly.
+	$wchar -= 2;
+
+	require Pod::Text::Termcap;
+	my $pod_text_termcap_vstring = pack( 'U*', split( /\./, $Pod::Text::Termcap::VERSION ) );
+
+	if ( $pod_text_termcap_vstring le v4.10 ) {
+	    ## These corrections were necessary before we had Pod::Text::Termcap v4.11 in our GWMEE
+	    ## 7.2.1 build and packaged as part of our add-on install of Auto-Setup on GWMEE 7.2.0.
+	    ##
+	    ## Extend the formatting width to prevent wraparound in the =item lines we use (with
+	    ## lots of embedded color changes, thereby driving up the number of invisible characters),
+	    ## even if that otherwise violates the terminal width elsewhere in the text.  If you're
+	    ## running a terminal window which is just too small, the best thing is just to expand it.
+	    ## This is being fixed in release v4.11 of Pod::Text::Termcap, so once that is part of our
+	    ## build, we won't need this correction.  See
+	    ## https://rt.cpan.org/Public/Bug/Display.html?id=124447 for more info.
+	    $wchar = 110 if $wchar < 110;
+	    ##
+	    ## Work around a bug in Pod::Text::Termcap v4.10 that does not pay attention to the "width"
+	    ## option.  This is part of the same bug report, is also being fixed as part of the v4.11
+	    ## release of Pod::Text::Termcap, and won't be needed once we have that in our build.
+	    local $ENV{COLUMNS} = $wchar + 2;
+
+	    $parser = Pod::Text::Termcap->new( quotes => 'none', width => $wchar, sentence => 1 );
+	}
+	else {
+	    ## This call looks identical to the call in the other branch, but it has no localized
+	    ## adjustment to $ENV{COLUMNS} operating in the background.
+	    $parser = Pod::Text::Termcap->new( quotes => 'none', width => $wchar, sentence => 1 );
+	}
+	$parser->output_fh(*PAGER);
+    }
+    elsif ( -p STDOUT ) {
+	require Pod::Text::Termcap;
+	my $pod_text_termcap_vstring = pack( 'U*', split( /\./, $Pod::Text::Termcap::VERSION ) );
+
+	## We allow operation in color via explicit use of "| more" by the user.
+	## This doesn't work well with "| less", but it's okay with "| less -R".
+	if ( $pod_text_termcap_vstring le v4.10 ) {
+	    ##
+	    ## We're less concerned with using the full terminal width in this mode,
+	    ## since we don't really know what's on the other side of the pipe.  So
+	    ## we only make it wide enough to deal with the Pod::Text::Termcap v4.10
+	    ## early wrapping problem (see the bug report noted above).
+	    ##
+	    local $ENV{COLUMNS} = 112;
+	    $parser = Pod::Text::Termcap->new( quotes => 'none', width => 110, sentence => 1 );
+	}
+	else {
+	    $parser = Pod::Text::Termcap->new( quotes => 'none', sentence => 1 );
+	}
+    }
+    else {
+	require Pod::Simple::Text;
+	do {
+	    no warnings 'once';
+	    $Text::Wrap::columns = 95;
+	};
+	$parser = Pod::Simple::Text->new();
+    }
+    $parser->parse_string_document( $show_full_usage ? $short_usage . $long_usage : $short_usage . $usage_hint );
+}
+
+sub get_version {
+    return $VERSION;
+}
+
+sub print_version {
+    print "autosetup version " . get_version() . "\n";
+    print "using GDMA::AutoSetup version $GDMA::AutoSetup::VERSION\n";
+    print "using GDMA::Discovery version $GDMA::Discovery::VERSION\n";
+    print "using GDMA::Logging   version $GDMA::Logging::VERSION\n";
+    print "using TypedConfig     version $TypedConfig::VERSION\n";
+}
+
+sub main {
+    if (@ARGV) {
+	if ( $ARGV[0] eq '-h' || $ARGV[0] eq '--help') {
+	    print_usage(1);
+	    exit(0);
+	}
+	## We use -V for the version option in order to reserve -v for
+	## possible future use as a "verbose" option.
+	if ( $ARGV[0] eq '-V' || $ARGV[0] eq '--version') {
+	    print_version();
+	    exit(0);
+	}
+    }
+
+    # We need at least one command.  We purposely do this check before checking for
+    # executing as root, so the existence of the -h and -V options can be exposed even
+    # in that situation (since it's not illegal to run with those options as root).
+    if ( @ARGV < 1 ) {
+	print_usage(1);
+	exit(1);
+    }
+
+    # We must prohibit executing as root, so we don't create files that won't be
+    # modifiable later on when this script is run as an ordinary user.  We run this
+    # check after handling a few simple command-line arguments, so we can always
+    # at least run the -h (help) and -V (version) options to just spill out useful
+    # information that can't be damaging.  To make that possible, any earlier code
+    # is not allowed to do anything that touches any outside resources.
+    #
+    if ( ( $^O eq 'linux' ) or ( $^O eq 'solaris' ) or ( $^O eq 'aix' ) or ( $^O eq 'hpux' ) ) {
+	if ( $> == 0 ) {
+	    ( my $program = $0 ) =~ s<.*/><>;
+	    die "ERROR:  You cannot run $program as root.\n";
+	}
+    }
+    else {
+	die "ERROR:  $^O is not a supported operating system for this program.\n";
+    }
+
+    $command   = shift @ARGV;
+    @arguments = @ARGV;
+
+    if ( not exists $is_valid_command{$command} ) {
+	print "\"$command\" is not a supported command.\n\n";
+	print_usage();
+	exit(1);
+    }
+
+    # Every command has at least one argument.
+    if ( @ARGV < 1 ) {
+	print "\"$command\" needs additional arguments.\n\n";
+	print_usage();
+	exit(1);
+    }
+
+    ## FIX MINOR:  This is a lot of custom parsing.  Once we have the full set of commands
+    ## implemented, revisit this section and see if there is some better way to analyze the
+    ## command line and make appropriate adjustments and set appropriate flags.
+    ##
+    if ( $command eq 'status' ) {
+	if ( $arguments[0] eq '-t' ) {
+	    $show_timestamps = 1;
+	    shift @arguments;
+	    if ( not @arguments ) {
+		print "You also need either \"-a\" (to show status for all hosts) or a list of specific hostnames.\n\n";
+		print_usage();
+		exit(1);
+	    }
+	}
+	if ( $arguments[0] eq '-a' ) {
+	    $show_all = 1;
+	    shift @arguments;
+	    if (@arguments) {
+		if ( $arguments[0] eq '-t' ) {
+		    print "The \"-t\" argument must be specified before the \"-a\" argument.\n\n";
+		}
+		else {
+		    print "You have specified \"-a\" (to show status for all hosts), so no further arguments are needed.\n\n";
+		}
+		print_usage();
+		exit(1);
+	    }
+	}
+	else {
+	    if ( $arguments[0] eq '-e' ) {
+		$use_only_exact_matches = 1;
+		shift @arguments;
+	    }
+	    elsif ( $arguments[0] eq '-f' ) {
+		$use_only_full_alternatives = 1;
+		shift @arguments;
+	    }
+	    elsif ( $arguments[0] eq '-u' ) {
+		$use_only_short_alternatives = 1;
+		shift @arguments;
+	    }
+	    if ( not @arguments ) {
+		print "You must supply at least one hostname.\n\n";
+		print_usage();
+		exit(1);
+	    }
+	    if ( $arguments[0] =~ m{^-}) {
+		print "A command option of $arguments[0] is not supported at this position.\n\n";
+		print_usage();
+		exit(1);
+	    }
+	}
+    }
+    elsif ( $command eq 'install' ) {
+	if ( $arguments[0] eq '-p' ) {
+	    $command = "install_patternfile";
+	    shift @arguments;
+	    if ( not @arguments ) {
+		print "You must supply a patternfile pathname and at least one hostname.\n\n";
+		print_usage();
+		exit(1);
+	    }
+	    $pattern_filepath = shift @arguments;
+	    if ( not @arguments ) {
+		print "You must supply at least one hostname.\n\n";
+		print_usage();
+		exit(1);
+	    }
+	    if ( $arguments[0] =~ m{^-}) {
+		print "A command option of $arguments[0] is not supported at this position.\n\n";
+		print_usage();
+		exit(1);
+	    }
+	}
+	else {
+	    $command = "install_files";
+	}
+    }
+    elsif ( $command eq 'print' ) {
+	if ( $arguments[0] eq 'results' || $arguments[0] eq 'analysis' ) {
+	    $command = "print_$arguments[0]";
+	    shift @arguments;
+	    if ( not @arguments ) {
+		print "You must supply at least one hostname.\n\n";
+		print_usage();
+		exit(1);
+	    }
+	    if ( $arguments[0] eq '-e' ) {
+		$use_only_exact_matches = 1;
+		shift @arguments;
+	    }
+	    elsif ( $arguments[0] eq '-f' ) {
+		$use_only_full_alternatives = 1;
+		shift @arguments;
+	    }
+	    elsif ( $arguments[0] eq '-u' ) {
+		$use_only_short_alternatives = 1;
+		shift @arguments;
+	    }
+	    if ( not @arguments ) {
+		print "You must supply at least one hostname.\n\n";
+		print_usage();
+		exit(1);
+	    }
+	    if ( $arguments[0] =~ m{^-}) {
+		print "A command option of $arguments[0] is not supported at this position.\n\n";
+		print_usage();
+		exit(1);
+	    }
+	}
+	else {
+	    print "\"autosetup print\" only accepts \"results\" and \"analysis\" as subcommands.\n\n";
+	    print_usage();
+	    exit(1);
+	}
+    }
+    elsif ( $command eq 'analyze' || $command eq 'audit' || $command eq 'remove' ) {
+	if ( not @arguments ) {
+	    print "You must supply at least one hostname.\n\n";
+	    print_usage();
+	    exit(1);
+	}
+	if ( $arguments[0] eq '-e' ) {
+	    $use_only_exact_matches = 1;
+	    shift @arguments;
+	}
+	elsif ( $arguments[0] eq '-f' ) {
+	    $use_only_full_alternatives = 1;
+	    shift @arguments;
+	}
+	elsif ( $arguments[0] eq '-u' ) {
+	    $use_only_short_alternatives = 1;
+	    shift @arguments;
+	}
+	if ( not @arguments ) {
+	    print "You must supply at least one hostname.\n\n";
+	    print_usage();
+	    exit(1);
+	}
+	if ( $arguments[0] =~ m{^-}) {
+	    print "A command option of $arguments[0] is not supported at this position.\n\n";
+	    print_usage();
+	    exit(1);
+	}
+    }
+
+    if ( not read_config_file( $config_file, $debug_config ) ) {
+	print "FATAL:  $PROGNAME cannot load configuration from $config_file\n";
+	return ERROR_STATUS;
+    }
+
+    $instructions_file = "/dev/null";
+
+    ## FIX MINOR:  Also take $logfile from the server-side config file?
+    ##
+    ## A log grouping of 'bundled' won't do any good without an actual logfile, so for now we use
+    ## 'individual'.  if we do decide to log into a logfile as well, to support later forensic work,
+    ## we should probably change this to 'bundled' so as to properly support potentially concurrent
+    ## executions of this script without intermixing their log output.  Note that 'bundled' logging
+    ## is subject to the condition that an uncaught signal will skip END blocks, which means that
+    ## buffered log output will never be output if such a signal appears.
+    ##
+    my $logging_logfile = undef;
+    $logging = GDMA::Logging->new( { logfile => $logging_logfile, stdout => 1, grouping => 'individual' }, 'started', \*STDERR );
+    if ( not defined $logging ) {
+	print "FATAL:  Cannot create a GDMA::Logging object" . ( defined($logging_logfile) ? " for file \"$logging_logfile\"" : '' ) . ".\n";
+	return ERROR_STATUS;
+    }
+    $logger = $logging->logger();
+
+    my $autosetup_outcome = main->$command(@arguments);
+
+    return $autosetup_outcome ? STOP_STATUS : ERROR_STATUS;
+}
+
+sub read_config_file {
+    my $config_file  = shift;
+    my $config_debug = shift;
+
+    # All the config-file processing is wrapped in an eval{}; because TypedConfig
+    # throws exceptions when it cannot open the config file or finds bad config data.
+    eval {
+	my $config = TypedConfig->new( $config_file, $config_debug );
+
+	# Whether to process anything.  Turn this off if you want to disable
+	# this process completely, so auto-setup is prohibited.
+	$enable_processing = $config->get_boolean('enable_processing');
+
+	$debug_level = $config->get_number('debug_level');
+
+	$debug_minimal = ( $debug_level >= 1 );
+	$debug_basic   = ( $debug_level >= 2 );
+	$debug_maximal = ( $debug_level >= 3 );
+
+	# Where to log debug messages.
+	$logfile = $config->get_scalar ('logfile');
+
+	$default_change_policy = $config->get_scalar('default_change_policy');
+	if ( $default_change_policy !~ /^(from_scratch|ignore_extras|non_destructive)$/ ) {
+	    die "ERROR:  the configured value for default_change_policy (\"$default_change_policy\") is not supported\n";
+	}
+	$hostname_qualification = $config->get_scalar('hostname_qualification');
+	if ( $hostname_qualification !~ /^(full|short|custom)$/ ) {
+	    die "ERROR:  the configured value for hostname_qualification (\"$hostname_qualification\") is not supported\n";
+	}
+
+	$lockfile_directory                            = $config->get_scalar('lockfile_directory');
+	$instructions_directory                        = $config->get_scalar('instructions_directory');
+	$trigger_directory                             = $config->get_scalar('trigger_directory');
+	$results_directory                             = $config->get_scalar('results_directory');
+	$max_input_size                                = $config->get_integer('max_input_size');
+	$default_hostgroup                             = $config->get_scalar('default_hostgroup');
+	$assign_hostgroups_to_existing_hostgroup_hosts = $config->get_boolean('assign_hostgroups_to_existing_hostgroup_hosts');
+	$default_monarch_group                         = $config->get_scalar('default_monarch_group');
+	$assign_monarch_groups_to_existing_group_hosts = $config->get_boolean('assign_monarch_groups_to_existing_group_hosts');
+	$force_hostname_case                           = $config->get_scalar('force_hostname_case');
+	$force_domainname_case                         = $config->get_scalar('force_domainname_case');
+	$host_address_selection                        = $config->get_scalar('host_address_selection');
+	$log4perl_config                               = $config->get_scalar('log4perl_config');
+
+	if ( $force_hostname_case !~ /^(lower|upper|as-is)$/ ) {
+	    die "ERROR:  force_hostname_case must be \"lower\" or \"upper\" or \"as-is\"\n";
+	}
+	if ( $force_domainname_case !~ /^(lower|upper|as-is)$/ ) {
+	    die "ERROR:  force_domainname_case must be \"lower\" or \"upper\" or \"as-is\"\n";
+	}
+
+	if ( $instructions_directory !~ m{^/} ) {
+	    die "the configured value for instructions_directory (\"$instructions_directory\") is not an absolute path\n";
+	}
+	if ( $trigger_directory !~ m{^/} ) {
+	    die "the configured value for trigger_directory (\"$trigger_directory\") is not an absolute path\n";
+	}
+
+	my $ipv4_cidr_block = qr{ (\d{1,3}) \. (\d{1,3}) \. (\d{1,3}) \. (\d{1,3}) / (\d{1,2}) }x;
+	my $ipv6_cidr_block = qr{ ( (?: [[:xdigit:]]{1,4})? (?: :{1,2} [[:xdigit:]]{1,4} ){0,7} (?: ::)? ) / (\d{1,3}) }x;
+	@host_address_choices = split (' ', $host_address_selection);
+	foreach my $choice (@host_address_choices) {
+	    if ( $choice =~ m{^$ipv4_cidr_block$}o ) {
+		## Validate each address component, along with the network-mask length portion of the IPv4 CIDR block.
+		## These tests cover all of the individual pieces we can usefully validate, except for possibly
+		## having some one-bits in the address part beyond the specified number of prefix bits.
+		if ( $1 > 255 || $2 > 255 || $3 > 255 || $4 > 255 || $5 > 32 ) {
+		    die "ERROR:  host_address_selection has a bad component ($choice):  it is not a valid IPv4 CIDR block.\n";
+		}
+		## We insist that if the netmask contains no bits, all the address bits must be zero.
+		if ( $5 == 0 && join( '', $1, $2, $3, $4 ) =~ m{[1-9]} ) {
+		    die "ERROR:  host_address_selection has a bad component ($choice):"
+		      . "  the netmask is zero but the address part contains some non-zero bits.\n";
+		}
+	    }
+	    elsif ( my @components = $choice =~ m{^$ipv6_cidr_block$}o ) {
+		## FIX MAJOR:  more validation can and should be done, to validate that:
+		## * at most one of the ":" separators that is a double-colon, and then only if there are fewer than 8 hex-digits components
+		## * the full set of separators and hex-digits components adds up to an RFC-compliant address
+		## * (optionally) the IPv6 address is further RFC compliant, in that it is normalized according to
+		##   RFC-5952, "A Recommendation for IPv6 Address Text Representation"
+		## When it comes right down to it, though, we're probably better off using some standard package for such validation.
+		##
+		## Validate the network-mask length portion of the IPv6 CIDR block.
+		if ( $components[$#components] > 128 ) {
+		    die "ERROR:  host_address_selection has a bad component ($choice):  it is not a valid IPv6 CIDR block.\n";
+		}
+		## We insist that if the netmask contains no bits, all the address bits must be zero.
+		if ( $components[$#components] == 0 && join( '', @components[ 0 .. ( $#components - 1 ) ] ) =~ m{[1-9a-fA-F]} ) {
+		    die "ERROR:  host_address_selection has a bad component ($choice):"
+		      . "  the netmask is zero but the address part contains some non-zero bits.\n";
+		}
+	    }
+	    elsif ( $choice eq 'mac_address' || $choice eq 'hostname' ) {
+		## These are good choices; there's nothing further to validate in these cases.
+	    }
+	    elsif ( $choice eq 'custom' ) {
+		## FIX MAJOR:  Validate that the user has actually configured a custom selection routine
+		## in some package provided by the customer, and that their own code really does exist.
+		die "ERROR:  host_address_selection has a bad component ($choice):  support for custom logic is not yet implemented.\n";
+	    }
+	    else {
+		die "ERROR:  host_address_selection has a bad component ($choice):  it does not match any valid construction.\n";
+	    }
+	}
+    };
+    if ($@) {
+	chomp $@;
+	$@ =~ s/^ERROR:\s+//i;
+	print "ERROR:  Cannot read config file $config_file\n  ($@).\n";
+	return 0;
+    }
+
+    return 1;
+}
+
+# There are many little details to get right when trying to install a file atomically in a concurrent-access
+# context.  It's best to just centralize those details so we only need to deal with implementing them once.
+#
+# FIX MINOR:  We might want to move this routine to one of our GDMA:: namespace packages, so it can also be
+# used in GDMA client-side code.
+#
+sub install_file_safely {
+    my $file_type   = shift;
+    my $hostname    = shift;
+    my $source_path = shift;
+    my $target_path = shift;
+    my $outcome     = 0;
+    local $_;
+
+    my $temporary_target_path = $target_path . '.tmp';
+    my $install_lockfile      = "$lockfile_directory/$hostname";
+    my $install_lock;
+
+    # ---------
+    # Rationale
+    # ---------
+
+    # Here is the protocol we need to follow in this routine, to guarantee
+    # correct operation in the face of possible concurrent activity by other
+    # actors.
+    #
+    # * Make sure that $source_path is not the same as $target_path; if that is
+    #   the case, just abort this invocation of this routine.
+    #
+    # * Create a lockfile if it doesn't already exist, in a dedicated lockfile
+    #   directory and named after the hostname related to the file being
+    #   manipulated.
+    #
+    # * Take an exclusive lock on the lockfile; if you cannot obtain the lock,
+    #   abandon installing the current file, and just return from this routine.
+    #
+    # * If any subsequent step fails (except for the situation with creating the
+    #   temporary copy of the target file, which has its own special augmented
+    #   exception procedure), unlink the temporary target file if it has been
+    #   opened, close all application (non-lock) files you have opened and not
+    #   yet closed, then unlink the lockfile, close the lockfile, and return
+    #   from this routine with a failure indicator.
+    #
+    # * Open the source file for reading.
+    #
+    # * Exclusively create a temporary copy of the target file (i.e., use
+    #   O_CREAT|O_EXCL flags or their equivalent no-clobber syntax at the
+    #   Perl level) so we can atomically tell whether it already existed),
+    #   creating it with appropriate final permissions.
+    #
+    # * If such a temporary file already existed (that is, the exclusive
+    #   create fails), there is some failure of the protocol, and we don't know
+    #   what that is, so we cannot depend on some other actor to clean it up.
+    #   So we must unlink the existing copy of the file to prevent any other
+    #   actor from attempting to write into the copy of the file that we will
+    #   write, and attempt to re-create it.
+    #
+    # * Copy the content of the source file to the temporary target file.
+    #
+    # * Close the source file.
+    #
+    # * Close the temporary target file.
+    #
+    # * Adjust the last-modified timestamp on the temporary trigger file
+    #   to enforce a rule that it be at least one second later than the
+    #   last-modified timestamp of the companion instructions file to which
+    #   it applies.  This rule is needed in order for the GDMA client to be
+    #   able to unambiguously understand that this trigger applies to those
+    #   instructions, and that there is not some sort of server-side update
+    #   currently in progress that the client should ignore for the time being.
+    #   This means that we must first read the timestamp on the two files
+    #   and compare them.  If they are already in the desired relationship,
+    #   we need take no further action.  Conversely, if the timestamp on the
+    #   temporary trigger file is identical to that of the instructions file,
+    #   we must sleep for just over one second (using select(), not sleep(),
+    #   to guarantee that we do really wait for at least one second) and then
+    #   adjust the timestamp of the temporary target file to be the current
+    #   time.  And in the last case, if the timestamp on the temporary trigger
+    #   file is earlier than that of the instructions file, we must abort the
+    #   installation of the trigger file, unlinking our temporary copy and
+    #   otherwise cleaning up.  A detailed rationale for these decisions is
+    #   presented below, after this full procedure.
+    #
+    # * If we are creating a trigger file and we looked for a companion
+    #   instructions file and failed to find it, follow the standard
+    #   failure procedure noted above instead of proceeding with the
+    #   next steps.
+    #
+    # * Rename the temporary target file to the final target filename.
+    #
+    # * Unlink the lockfile, thereby removing its lock from external view
+    #   without any danger of a race condition between releasing the lock and
+    #   closing the file.  Removing the lockfile will make it necessary to
+    #   re-create the lockfile the next time it is needed, which is somewhat
+    #   of an extra overhead.  On the other hand, our lockfile filename is
+    #   based on the hostname, and if we don't clean up, we will end up with
+    #   a forest of lockfiles to search through every time we need to obtain
+    #   a lock, which is own sort of competing overhead, and there would be
+    #   no purging mechanism in place to delete lockfiles for old hosts that
+    #   are no longer being monitored.
+    #
+    # * Close the lockfile.  This will simultaneously release the lock, though
+    #   that doesn't matter much because if the file is no longer linked into
+    #   the filesystem, there can be no contention for a lock on that lockfile.
+    #
+    # * Return with a success indicator.
+    #
+    # So now let's answer the question of why we need to take the special
+    # actions mentioned above with regard to precisely managing the
+    # last-modified timestamp of the trigger file.  The GDMA client is an
+    # independent actor, fetching its trigger file and its instructions file
+    # asynchronously with respect to how they are being updated on the server.
+    # We need some protocol to prove to the client that the following situation
+    # is not happening:
+    #
+    # * The GDMA client has in hand an old trigger file and some old
+    #   instructions.
+    #
+    # * The server updates the instructions and then the trigger.  At this
+    #   moment, the two files on the server are synchronized with respect to
+    #   one another: that trigger file applies to that copy of the instructions
+    #   file.
+    #
+    # * The GDMA client is in the middle of its polling cycle or is otherwise
+    #   down, and doesn't see those updated files on the server.
+    #
+    # * The customer decides that the instructions and trigger need to be
+    #   updated.  Clearly, the instructions must be updated first, since we
+    #   don't want the client to see an updated trigger and fetch outdated
+    #   instructions because of that.
+    #
+    # * Before the trigger file can be updated as well, the GDMA client reaches
+    #   over and finds the existing trigger file, which is already newer than
+    #   the older copy it last uploaded from the server.  So it naturally
+    #   assumes that it should fetch the server's existing instructions file
+    #   as well, and run discovery based on those instructions.  But this is
+    #   exactly what we were trying to avoid:  having that copy of the trigger
+    #   file be used with that copy of the instructions file.
+    #
+    # To block the GDMA client from using that pair of trigger and instructions,
+    # there must be some way for it to sense that they do not belong together
+    # as a pair.  And that way is to look at the last-modified timestamps on
+    # the two files, as mirrored onto the GDMA client during its fetching of
+    # those files.  If the timestamps are identical, there would be no way for
+    # the client to know which file had been updated last, and therefore no
+    # way for it to know whether it has fetched the files in the middle of a
+    # server-side update.  In that case, the GDMA client would need to ignore
+    # the trigger; but if the server thought it was done updating and left the
+    # two timestamps being identical, the GDMA client would never thereafter
+    # take any action on that trigger even if the server actually wanted it to.
+    # So we must avoid creating that situation on the server side.  We must
+    # instead follow rules:
+    #
+    # * If the instructions are to be updated, an updated trigger file will
+    #   thereafter be necessary for the GDMA client to pay attention to the
+    #   new instructions.
+    #
+    # * When it updates the two files, the server must always update the
+    #   instructions first, and then the trigger.  This way, in the middle
+    #   of the overall update, the last-modified timestamp on the updated
+    #   instructions file will be equal to or later than the last-modified
+    #   timestamp on the as-yet not-updated trigger file.  We cannot control
+    #   when the GDMA client fetches the files, or the timing of those fetches,
+    #   but if it finds this situation, it can reasonably conclude that the
+    #   overall updating is still in progress, and ignore it for the time being.
+    #   (We cannot use the alternative strategy of removing the old trigger
+    #   before updating the instructions, because the GDMA client might have
+    #   fetch the trigger right before we remove it, thereby defeating the
+    #   intent of this strategy.)
+    #
+    # Note that in this protocol, we are intentionally blocking the client-side
+    # use of files with identical last-modified timestamps.  Consider the
+    # situation if we update the instructions, trigger, instructions,
+    # and trigger in that order and all in the same second, all with the
+    # same last-modified timestamp.  If the GDMA client is fetching files
+    # concurrently, it would be unable to distinguish the points in time
+    # when it has fetched a valid pair of files, and when it has fetched a
+    # mismatched pair.  So we need distinct last-modified timestamps to provide
+    # an unambiguous signal.  The interpretation will then be:
+    #
+    # * If the instructions last-modified timestamp is equal to or later than
+    #   the trigger last-modified timestamp, the pair is considered to be in
+    #   the middle of being updated.  The GDMA client need not ignore the
+    #   instructions (it can still store a fetched copy of that file locally),
+    #   but it must ignore the trigger and not use it to initiate a pass of
+    #   auto-discovery.
+    #
+    # * If the instructions last-modified timestamp is earlier than the
+    #   trigger last-modified timestamp, the trigger is considered to apply
+    #   to those instructions.  If the GDMA client encounters this situation,
+    #   it should use the trigger to initiate a pass of auto-discovery using
+    #   those instructions.
+    #
+    # Updating the instructions and trigger files can occur in very close
+    # proximity, so if we are not careful, the last-modified timestamps could end
+    # up being identical even if the sequence of updates is properly ordered.
+    # So we must take special action when updating the trigger file, to
+    # ensure both that its last-modified timestamp is later than that of the
+    # instructions file, and that no later update of the instructions file
+    # will leave the last-modified timestamp on the instructions file still
+    # earlier than the last-modified timestamp on the trigger file.
+    #
+    # Note that in the operations I'm about to discuss, when I mention the
+    # trigger file, I'm really talking about the temporary trigger file, before
+    # it is moved into place as the trigger file as an atomic rename operation.
+    # That blocks any race conditions of having the actual trigger file content
+    # updated but having an undesired value of the last-modified timestamp.
+    #
+    # * We could consider looking at the two timestamps of the updated files,
+    #   and if they are identical, bumping up the timestamp on the trigger
+    #   file to one second later.  But that won't prevent the instructions
+    #   file from being immediately updated again in the same second, before
+    #   the trigger file's future timestamp is actually reached.  That would
+    #   at least temporarily (until the trigger file is updated again) leave
+    #   the timestamps looking like the two files are a matched pair, which
+    #   we must avoid.
+    #
+    # * When we update the trigger file, we could consider bumping down the
+    #   timestamp on the existing instructions file, to ensure that it is
+    #   earlier than the timestamp on the trigger file.  But that might wreak
+    #   havoc with the GDMA client's notion of what copy of the instructions
+    #   file it has in hand, it if happens to fetch the instructions file
+    #   before this adjustment is made.
+    #
+    # * We could bump down the timestamp on the temporary copy of the
+    #   instructions file when updating the instructions, before renaming
+    #   the temporary copy to be the final copy.  But suppose we ended up
+    #   updating the instructions within the same second as we updated the
+    #   trigger for some other reason.  Then the instructions timestamp would
+    #   be earlier than the trigger timestamp, and we would have a mismatched
+    #   pair of files.  So that strategy does not work.
+    #
+    # * The only strategy I can see that does work is the following, as noted
+    #   earlier in the main procedure.  Before we rename the temporary trigger
+    #   file to the final trigger file, compare the timestamps on the existing
+    #   instructions file and the temporary trigger file.  If the instructions
+    #   file timestamp is earlier, take no special action; just continuing
+    #   on will produce timestamps in the proper order to be recognized as a
+    #   matched pair.  If the instructions file timestamp is later (effectively,
+    #   later than the current time), something strange is going on, and we'd
+    #   best not make any assumptions; we simply abandon updating the trigger
+    #   file.  (Although there would be no danger in proceeding, it wouldn't do
+    #   any good, because it would not create a trigger file matched to that
+    #   instructions file.)  Finally, if the two timestamps are identical,
+    #   we sleep for one second and then update the timestamp on the temporary
+    #   trigger file, before renaming it.  This will again produce timestamps
+    #   in the proper order to be recognized as a matched pair.
+    #
+    # What is the cost of this approach?  It is that we introduce a one-second
+    # delay into the installation of these files.  If that delay is repeated
+    # over and over, say by separate invocations of "autosetup install" for
+    # individual pair of instructions and trigger files, that could introduce
+    # substantial slowness into the overall processing time if we need to
+    # make such updates for many GDMA clients.  There are two basic ways to
+    # ameliorate this substantial delay.  One is by listing many pairs of files
+    # on the same "autosetup install" command line.  Given that we sort the
+    # updates internal to this script so that all of the instructions files
+    # get updated before all of the trigger files, at most a single one-second
+    # delay will be introduced between those two phases of updating, and that is
+    # certainly acceptable.  The other approach is to move this separation of
+    # phases out into the calls to "autosetup install".  That is, the customer
+    # would use one set of calls to update only instructions files, and then
+    # another set of calls to update the corresponding trigger files.  Again,
+    # there would be at most a single one-second delay introduced internal
+    # to the "autosetup install" processing; after that, there could be no
+    # further findings that the temporary trigger files have timestamps equal
+    # to those of the corresponding instructions files.
+    #
+    # The upshot of all this is that we must advise the customer of the two
+    # different methods of using "autosetup install" in a time-efficient manner,
+    # so they don't get concerned about seemingly artificial excessive delays.
+
+    # --------------
+    # Implementation
+    # --------------
+
+    # * Make sure that $source_path is not the same as $target_path; if that is
+    #   the case, just abort this invocation of this routine.
+
+    # I suppose we could go even further and check for indirection through symlinks ending
+    # up still pointing to the same file.  For now, we ignore that possible refinement.
+    if ($source_path eq $target_path) {
+	$logger->error("ERROR:  Cannot install $source_path to its own location.");
+	return $outcome;
+    }
+
+    # * Create a lockfile if it doesn't already exist, in a dedicated lockfile
+    #   directory and named after the hostname related to the file being
+    #   manipulated.
+    #
+    # * Take an exclusive lock on the lockfile; if you cannot obtain the lock,
+    #   abandon installing the current file, and just return from this routine.
+
+    # FIX LATER:  This section of code is similar to that in GDMA::Lockfile::get_file_lock().
+    # Should we convert to using that?
+
+    my $errors = Locks->open_and_lock( \*install_lock, $install_lockfile, $Locks::EXCLUSIVE, $Locks::NON_BLOCKING );
+    if (@$errors) {
+	if ( defined fileno \*install_lock ) {
+	    ## We were able to open the file, but not obtain the lock.
+	    ## So some other actor must be dealing with this file already.
+	    $logger->error("ERROR:  Cannot obtain a lock to protect against concurrent updates:  @$errors");
+	    Locks->close_and_unlock( \*install_lock );
+	}
+	else {
+	    ## We couldn't even open the file.
+	    $logger->error("ERROR:  Cannot open a lockfile to protect against concurrent updates:  @$errors");
+	}
+	return $outcome;
+    }
+    elsif ( @{ Locks->lock_file_exists( \*install_lock, $install_lockfile ) } ) {
+	## We got the lock, but too late -- somebody else locked and then
+	## destroyed the file after we opened it and before we got the lock.
+	$logger->error("ERROR:  Encountered contention for the $install_lockfile lockfile.");
+	Locks->close_and_unlock( \*install_lock );
+	return $outcome;
+    }
+    elsif ( !-f \*install_lock || !-O _ ) {
+	## This situation won't clear by itself, and it will therefore block future updates for
+	## this host.  But it's clear evidence of some sort of tampering, so we want to leave
+	## the evidence around for human inspection.  If not for that, we would be tempted to
+	## attempt to unlink the file, to self-heal and allow updates again without additional
+	## human interaction.
+	$logger->error( "ERROR:  Lockfile $install_lockfile is not a regular file owned by " . ( scalar getpwuid($<) ) . '.' );
+	Locks->close_and_unlock( \*install_lock );
+	return $outcome;
+    }
+
+    # * If any subsequent step fails (except for the situation with creating the
+    #   temporary copy of the target file, which has its own special augmented
+    #   exception procedure), unlink the temporary target file if it has been
+    #   opened, close all application (non-lock) files you have opened and not
+    #   yet closed, then unlink the lockfile, close the lockfile, and return
+    #   from this routine with a failure indicator.
+
+    # * Open the source file for reading.
+
+    if ( not open SOURCE, '<', $source_path ) {
+	$logger->error("ERROR:  Cannot open $source_path for reading ($!).");
+	Locks->unlink_and_close( \*install_lock, $install_lockfile );
+	return $outcome;
+    }
+
+    # * Exclusively create a temporary copy of the target file (i.e., use
+    #   O_CREAT|O_EXCL flags or their equivalent no-clobber syntax at the
+    #   Perl level) so we can atomically tell whether it already existed),
+    #   creating it with appropriate final permissions.
+    #
+    # * If such a temporary file already existed (that is, the exclusive
+    #   create fails), there is some failure of the protocol, and we don't know
+    #   what that is, so we cannot depend on some other actor to clean it up.
+    #   So we must unlink the existing copy of the file to prevent any other
+    #   actor from attempting to write into the copy of the file that we will
+    #   write, and attempt to re-create it.
+
+  OPEN_TARGET: {
+	last if sysopen( TARGET, $temporary_target_path, O_WRONLY | O_NOFOLLOW | O_CREAT | O_EXCL, 0600 );
+	if ( $! == EEXIST ) {
+	    unlink $temporary_target_path;
+	    last if sysopen( TARGET, $temporary_target_path, O_WRONLY | O_NOFOLLOW | O_CREAT | O_EXCL, 0600 );
+	}
+	$logger->error("ERROR:  Cannot open $target_path for writing ($!).");
+	close SOURCE;
+	Locks->unlink_and_close( \*install_lock, $install_lockfile );
+	return $outcome;
+    }
+
+    # * Copy the content of the source file to the temporary target file.
+
+    while (<SOURCE>) {
+	if ( not print TARGET ) {
+	    $logger->error("ERROR:  Write to $target_path failed ($!).");
+	    unlink $temporary_target_path;
+	    close TARGET;
+	    close SOURCE;
+	    Locks->unlink_and_close( \*install_lock, $install_lockfile );
+	    return $outcome;
+	}
+    }
+
+    # * Close the source file.
+
+    if ( not close SOURCE ) {
+	$logger->error("ERROR:  Cannot close $source_path after reading ($!).");
+	unlink $temporary_target_path;
+	close TARGET;
+	Locks->unlink_and_close( \*install_lock, $install_lockfile );
+	return $outcome;
+    }
+
+    # * Close the temporary target file.
+
+    if ( not close TARGET ) {
+	$logger->error("ERROR:  Cannot close $target_path after writing ($!).");
+	unlink $temporary_target_path;
+	Locks->unlink_and_close( \*install_lock, $install_lockfile );
+	return $outcome;
+    }
+
+    # * Adjust the last-modified timestamp on the temporary trigger file
+    #   to enforce a rule that it be at least one second later than the
+    #   last-modified timestamp of the companion instructions file to which
+    #   it applies.  This rule is needed in order for the GDMA client to be
+    #   able to unambiguously understand that this trigger applies to those
+    #   instructions, and that there is not some sort of server-side update
+    #   currently in progress that the client should ignore for the time being.
+    #   This means that we must first read the timestamp on the two files
+    #   and compare them.  If they are already in the desired relationship,
+    #   we need take no further action.  Conversely, if the timestamp on the
+    #   temporary trigger file is identical to that of the instructions file,
+    #   we must sleep for just over one second (using select(), not sleep(),
+    #   to guarantee that we do really wait for at least one second) and then
+    #   adjust the timestamp of the temporary target file to be the current
+    #   time.  And in the last case, if the timestamp on the temporary trigger
+    #   file is earlier than that of the instructions file, we must abort the
+    #   installation of the trigger file, unlinking our temporary copy and
+    #   otherwise cleaning up.  A detailed rationale for these decisions is
+    #   presented below, after this full procedure.
+    #
+    # * If we are creating a trigger file and we looked for a companion
+    #   instructions file and failed to find it, follow the standard
+    #   failure procedure noted above instead of proceeding with the
+    #   next steps.
+
+    if ( $file_type eq 'trigger' ) {
+	my $trigger_mtime = ( stat $temporary_target_path )[9];
+	if ( not defined $trigger_mtime ) {
+	    $logger->error( "ERROR:  Cannot check the timestamp on the temporary file $temporary_target_path ($!);"
+		  . " the trigger file $target_path will not be installed." );
+	    unlink $temporary_target_path;
+	    Locks->unlink_and_close( \*install_lock, $install_lockfile );
+	    return $outcome;
+	}
+	my $instructions_path  = "$instructions_directory/${hostname}_instructions";
+	my $instructions_mtime = ( stat $instructions_path )[9];
+	if ( not defined $instructions_mtime ) {
+	    $logger->error( "ERROR:  Cannot check the timestamp on the instructions file $instructions_path ($!);"
+		  . " the trigger file $target_path will not be installed." );
+	    unlink $temporary_target_path;
+	    Locks->unlink_and_close( \*install_lock, $install_lockfile );
+	    return $outcome;
+	}
+	if ( $trigger_mtime < $instructions_mtime ) {
+	    $logger->error( "ERROR:  Instructions file $instructions_path has a timestamp in the future;"
+		  . " the trigger file $target_path will not be installed." );
+	    unlink $temporary_target_path;
+	    Locks->unlink_and_close( \*install_lock, $install_lockfile );
+	    return $outcome;
+	}
+	if ( $trigger_mtime == $instructions_mtime ) {
+	    select undef, undef, undef, 1.25;
+	    if ( not utime( undef, undef, $temporary_target_path ) ) {
+		$logger->error( "ERROR:  Cannot adjust the last-modified timestamp on $temporary_target_path ($!);"
+		      . " the trigger file $target_path will not be installed." );
+		unlink $temporary_target_path;
+		Locks->unlink_and_close( \*install_lock, $install_lockfile );
+		return $outcome;
+	    }
+	}
+    }
+
+    # * Rename the temporary target file to the final target filename.
+
+    if (not rename $temporary_target_path, $target_path) {
+	## The autosetup program need only run on UNIX platforms, so the extra data
+	## from $^E should not be necessary here, but we're being paranoid.
+	my $os_error = "$!";
+	$os_error .= " ($^E)" if "$^E" ne "$!";
+	$logger->error("ERROR:  Cannot rename $temporary_target_path ($os_error).");
+	unlink $temporary_target_path;
+	Locks->unlink_and_close( \*install_lock, $install_lockfile );
+	return $outcome;
+    }
+
+    # * Unlink the lockfile, thereby removing its lock from external view
+    #   without any danger of a race condition between releasing the lock and
+    #   closing the file.  Removing the lockfile will make it necessary to
+    #   re-create the lockfile the next time it is needed, which is somewhat
+    #   of an extra overhead.  On the other hand, our lockfile filename is
+    #   based on the hostname, and if we don't clean up, we will end up with
+    #   a forest of lockfiles to search through every time we need to obtain
+    #   a lock, which is own sort of competing overhead, and there would be
+    #   no purging mechanism in place to delete lockfiles for old hosts that
+    #   are no longer being monitored.
+    #
+    # * Close the lockfile.  This will simultaneously release the lock, though
+    #   that doesn't matter much because if the file is no longer linked into
+    #   the filesystem, there can be no contention for a lock on that lockfile.
+
+    # We face a choice here of how to release the lock.  Ordinarily, at the end
+    # of a successful action, we would just close the lockfile, using:
+    #
+    #     Locks->close_and_unlock( \*install_lock );
+    #
+    # But to reduce the number of outstanding lockfiles and keep the system
+    # somewhat cleaner, the following call will do essentially the same thing
+    # with no real downside.
+
+    Locks->unlink_and_close( \*install_lock, $install_lockfile );
+
+    # * Return with a success indicator.
+
+    $outcome = 1;
+
+    return $outcome;
+}
+
+sub analyze {
+    return process_file( 'analyze', 'results' );
+}
+
+sub audit {
+    my $outcome = 0;
+
+    ## FIX MAJOR:  fill this in
+    $logger->error("ERROR:  The autosetup audit command is not yet implemented.");
+
+    return $outcome;
+}
+
+sub install_patternfile {
+    my $file_type = undef;
+    my $outcome   = 1;
+    local $_;
+
+    if ( $pattern_filepath =~ m{(?:.*/)?.+_(instructions|trigger)$} ) {
+	$file_type = $1;
+    }
+    else {
+	$logger->error("ERROR:  The patternfile filename must be of the general form ?*_instructions or ?*_trigger to indicate its file type.");
+	$outcome = 0;
+	return $outcome;
+    }
+
+    my %unique = ();
+    @unique{@arguments} = (1) x @arguments;
+
+    # We allow not just standard DNS hostnames but also IP addresses, given that some customers might not manage their machines
+    # using hostnames.  That said, filenames containing colons might be problematic under Windows (and might possibly cause
+    # filesystem corruption when such a file is deleted), so the use of IPv6 addresses should be avoided for Windows hosts.
+    #
+    my @bad_hostnames = grep { not GDMA::AutoSetup::is_valid_hostname($_) and not GDMA::AutoSetup::is_valid_ip_address($_) } keys %unique;
+    if (@bad_hostnames) {
+	## We only report out one bad hostname, since that's bad enough and to limit the size of the error message.
+	$logger->error("ERROR:  \"$bad_hostnames[0]\" is not a valid hostname or IP address.");
+	$outcome = 0;
+	return $outcome;
+    }
+
+    # Sorting here is only to make human consumption of error messages, if any, a bit easier.
+    foreach my $hostname ( sort keys %unique ) {
+	## We checked the $file_type above, so the last choice here cannot happen.
+	my $target_filepath =
+	    $file_type eq 'instructions' ? "$instructions_directory/${hostname}_instructions"
+	  : $file_type eq 'trigger'      ? "$trigger_directory/${hostname}_trigger"
+	  :                                '/tmp/unknown_autosetup_file_type';
+	my $install_outcome = install_file_safely( $file_type, $hostname, $pattern_filepath, $target_filepath );
+	$outcome &&= $install_outcome;
+    }
+
+    return $outcome;
+}
+
+sub install_files {
+    my $outcome = 1;
+
+    my @bad_paths = grep !m{(?:.*/)?.+(?:_instructions|_trigger)$}, @arguments;
+    if (@bad_paths) {
+	foreach my $path (@bad_paths) {
+	    $logger->error( "ERROR:  File \"$path\" is not recognized as either an instructions file or a trigger file,"
+		  . " because the filename does not end with either \"_instructions\" or \"_trigger\"." );
+	}
+	$outcome = 0;
+	return $outcome;
+    }
+
+    my %instructions_source = ();
+    my %instructions_target = ();
+    my %trigger_source      = ();
+    my %trigger_target      = ();
+
+    my $hostname;
+    my %unique = ();
+    @unique{@arguments} = (1) x @arguments;
+    foreach my $path ( sort keys %unique ) {
+	if ( $path =~ m{(([^/]+)_instructions)$} ) {
+	    $hostname = $2;
+	    $instructions_source{$hostname} = "$path";
+	    $instructions_target{$hostname} = "$instructions_directory/$1";
+	}
+	elsif ( $path =~ m{(([^/]+)_trigger)$} ) {
+	    $hostname = $2;
+	    $trigger_source{$hostname} = "$path";
+	    $trigger_target{$hostname} = "$trigger_directory/$1";
+	}
+	else {
+	    ## This should have been caught earlier.
+	    $logger->error("ERROR:  Internal error:  file \"$path\" is neither an instructions file nor a trigger file.");
+	    $outcome = 0;
+	    return $outcome;
+	}
+    }
+
+    if ($outcome) {
+	foreach my $hostname ( sort keys %instructions_target ) {
+	    my $install_outcome = install_file_safely( 'instructions', $hostname, $instructions_source{$hostname}, $instructions_target{$hostname} );
+	    if ( not $install_outcome ) {
+		## If an instructions file fails installation, don't install its companion trigger file
+		## if that is also listed, since that might end up installing a new trigger for old
+		## instructions.  But we still allow processing to continue on and install other files.
+		if ( delete $trigger_target{$hostname} ) {
+		    $logger->notice( "NOTICE:  Due to an instructions-file error listed above,"
+			  . " the trigger file for host \"$hostname\" will not be installed." );
+		}
+	    }
+	    $outcome &&= $install_outcome;
+	}
+	foreach my $hostname ( sort keys %trigger_target ) {
+	    my $install_outcome = install_file_safely( 'trigger', $hostname, $trigger_source{$hostname}, $trigger_target{$hostname} );
+	    $outcome &&= $install_outcome;
+	}
+    }
+
+    return $outcome;
+}
+
+sub print_analysis {
+    return process_file( 'print', 'analysis' );
+}
+
+sub print_results {
+    return process_file( 'print', 'results' );
+}
+
+sub process_file {
+    my $processing_type = shift;    # 'analyze' or 'print'
+    my $file_type       = shift;    # 'results' or 'analysis'
+    my $outcome         = 0;
+    my $separator       = '-' x 90;
+
+    if ( $processing_type ne 'print' && $processing_type ne 'analyze' ) {
+	$logger->error("ERROR:  Internal error:  processing type is neither \"print\" nor \"analyze\".");
+	return $outcome;
+    }
+
+    if ( $file_type ne 'results' && $file_type ne 'analysis' ) {
+	$logger->error("ERROR:  Internal error:  file type is neither \"results\" nor \"analysis\".");
+	return $outcome;
+    }
+
+    if ( not opendir RESULTSDIR, $results_directory ) {
+	$logger->error("ERROR:  Cannot open the results directory '$results_directory' ($!).");
+	return $outcome;
+    }
+
+    my %found_files = map { $_ => undef } grep { /._$file_type$/ && -f } map { "$results_directory/$_" } readdir RESULTSDIR;
+    my %found_hosts = map { $_ => undef } map { s{_$file_type$}{}r } map { s{.*/}{}r } keys %found_files;
+
+    if ( not closedir RESULTSDIR ) {
+	$logger->error("ERROR:  Cannot close the results directory '$results_directory' ($!).");
+	return $outcome;
+    }
+
+    my $discovery = undef;
+    if ( $file_type eq 'results' ) {
+	my %discovery_options = ( logger => $logger );
+	$discovery = GDMA::Discovery->new( \%discovery_options );
+	if ( not defined $discovery ) {
+	    $logger->error("ERROR:  Cannot initialize the GDMA::Discovery package.");
+	    $outcome = 0;
+	    return $outcome;
+	}
+    }
+
+    my $autosetup = undef;
+    if ( $processing_type eq 'analyze' or $file_type eq 'analysis' ) {
+	my %autosetup_options = ( logger => $logger );
+	$autosetup = GDMA::AutoSetup->new( \%autosetup_options );
+	if ( not defined $autosetup ) {
+	    $logger->error("ERROR:  Cannot instantiate the GDMA::AutoSetup package.");
+	    $outcome = 0;
+	    return $outcome;
+	}
+    }
+
+    my $configuration = undef;
+    if ( $processing_type eq 'analyze' ) {
+	require GDMA::Configuration;
+	my %configuration_options = ( logger => $logger );
+	$configuration = GDMA::Configuration->new( \%configuration_options );
+	if ( not defined $configuration ) {
+	    $logger->error("ERROR:  Cannot instantiate the GDMA::Configuration package.");
+	    $outcome = 0;
+	    return $outcome;
+	}
+    }
+
+    # FIX MINOR:  Hostnames are case-insensitive, so perhaps searching for matching filenames should also be case-insensitive.
+    my $subsequent = -1;
+    foreach my $hostname (@arguments) {
+	++$subsequent;
+	my $host;
+	my $file;
+	my $exact_host = $hostname;
+	( my $small_host = $exact_host ) =~ s{\..*}{};
+	my $exact_file = "$results_directory/${exact_host}_${file_type}";
+	my $small_file = "$results_directory/${small_host}_${file_type}";
+	if ( exists $found_files{$exact_file} ) {
+	    $host = $exact_host;
+	    $file = $exact_file;
+	}
+	elsif ( !$use_only_exact_matches ) {
+	    if ( !$use_only_full_alternatives && $small_host ne '' && $small_host ne $exact_host && exists $found_files{$small_file} ) {
+		$host = $small_host;
+		$file = $small_file;
+	    }
+	    elsif ( !$use_only_short_alternatives && $small_host eq $exact_host ) {
+		## Try once again, this time looking for a long hostname when only a short hostname was given.
+		foreach my $filename ( keys %found_files ) {
+		    if ( $filename =~ m{^$results_directory/(${small_host}\..+)_$file_type$} ) {
+			$host = $1;
+			$file = $filename;
+			last;
+		    }
+		}
+	    }
+	}
+
+	# Here we solve the following problem.  We specify a commmand using an unqualified hostname without either of
+	# the -e or -u options.  Then it turns out that there are matching files with both an unqualified hostname and
+	# a fully-qualified hostname in the filesystem.  And it turns out the file with the fully-qualified hostname
+	# is more recent, and is therefore probably the one you wanted to work with.  But you were counting on the
+	# inexact-match capability to find the file you want, so you just gave the unqualified hostname.  That will find
+	# the wrong (older) exact-match file, but not clue you in that there was a more-recent file with the alternative
+	# fully-qualified hostname that might have been the one you were looking for.  In such a situation, we should
+	# present the user with a list of potentially matching files before we use the (defaulted) exact-match file.
+	#
+	# We use this same logic to also address the following problem.  We specify a commmand using an unqualified
+	# hostname without any of the -e, -f, or -u options.  Then it turns out there are multiple matching files with
+	# a fully-qualified hostname in the filesystem.  We don't want to just use the first of them, as that would be
+	# misleading.  In such a situation, we should present the user with a list of potentially matching files, even
+	# if we do use just one of them and ignore the rest.  Or we could expand the semantics and process all of them.
+	#
+	if ( $hostname !~ m{\.} && !$use_only_exact_matches && !$use_only_short_alternatives ) {
+	    my @matching_hosts = ();
+	    foreach my $found_host ( keys %found_hosts ) {
+		push @matching_hosts, $found_host if $found_host =~ m{^$hostname(\.|$)};
+	    }
+	    if ( @matching_hosts > 1 ) {
+		## FIX LATER:  Perhaps autosetup should prefer a results or analysis file with the most recent timestamp
+		## (that is, perhaps this code block should override the previous selection) when given a choice between
+		## multiple matching hostnames.
+		##
+		## Logically, we would probably want to sort the hosts in last-modified-timestamp order rather than in
+		## alphabetic order.  We might do that in a future release.  In the meantime, the number of matches is
+		## likely to be small and thus the order is likely to be insignificant, unless the site is using a lot
+		## of duplicate hostnames in different domains.  In that case, using an alphabetic order may in fact
+		## make more sense.
+		foreach my $matched_host ( sort @matching_hosts ) {
+		    my $file_mtime = ( stat "$results_directory/${matched_host}_${file_type}" )[9];
+		    print "Found matching host:  " . localtime($file_mtime) . "  $matched_host\n";
+		}
+		print "You may use the -e, -f, and -u flags to be selective about the particular host\n";
+		print "to display.  See the \"autosetup -h\" help message for more information.\n";
+		print "$separator\n";
+	    }
+	}
+
+	if ( not defined $host ) {
+	    $logging->log_separator($separator) if $subsequent;
+	    $logger->error(
+		"ERROR:  No discovery " . ( $file_type eq 'results' ? 'results were' : 'analysis was' ) . " found for host \"$hostname\"." );
+	    next;
+	}
+	if ( $file_type eq 'results' ) {
+	    if ( defined( my $filesize = -s $file ) ) {
+		if ( $filesize > $max_input_size ) {
+		    $logging->log_separator($separator) if $subsequent;
+		    $logger->error("ERROR:  The discovery results for host \"$hostname\" exceed the configured max_input_size ($max_input_size).");
+		    next;
+		}
+	    }
+	    else {
+		## Recognize a race condition:  the file has seemingly disappeared.
+		$logging->log_separator($separator) if $subsequent;
+		$logger->error("ERROR:  No discovery results were found for host \"$hostname\" ($!).");
+		next;
+	    }
+	    my $file_mtime = ( stat _ )[9];
+	    my $discovery_results;
+	    ( $outcome, $discovery_results ) = $discovery->read_discovery_results($file);
+	    if ( $file_mtime && $outcome ) {
+		my $results_length = do { use bytes; length $discovery_results; };
+		if ( $results_length > $max_input_size ) {
+		    $logging->log_separator($separator) if $subsequent;
+		    $logger->error("ERROR:  The discovery results for host \"$hostname\" exceed the configured max_input_size ($max_input_size).");
+		    next;
+		}
+		if ( $processing_type eq 'print' ) {
+		    print "$separator\n" if $subsequent;
+		    print "Reporting results for alternative host:  $host\n" if $host ne $hostname;
+		    print "Showing discovery results for host \"$host\" as saved on " . localtime($file_mtime) . ".\n";
+		    $outcome = $discovery->print_discovery_results($discovery_results);
+		}
+		elsif ( $processing_type eq 'analyze' ) {
+		    ## FIX MAJOR:  fill this in
+		    ##
+		    ## FIX MAJOR:  here we are printing some info lines (to the standard output stream, not into the logfile);
+		    ## does that comport with the output from analyzing the results?
+		    ##
+		    print "$separator\n" if $subsequent;
+		    print "Analyzing results for alternative host:  $host\n" if $host ne $hostname;
+		    print "Processing discovery results saved on " . localtime($file_mtime) . ".\n";
+		    ##
+		    ## FIX MAJOR:  if we read the discovery results from a file, they won't contain the chosen_hostname,
+		    ## chosen_alias, and chosen_address fields.  How will that affect the analysis?  Do we need to modify
+		    ## code elsewhere to set those fields not as part of the registration script, but as part of the results
+		    ## analysis, so we always get consistent output from the analysis no matter the execution context?
+		    ##
+		    ## FIX MAJOR:  Currently, analyze_discovery_results() resides in GDMA::Configuration, not in GDMA::Discovery;
+		    ## should it be moved?
+		    ##
+		    # $outcome = $discovery->analyze_discovery_results($discovery_results);
+
+		    # FIX MAJOR:  put in lots of error checking
+		    $logger->error("ERROR:  The autosetup analyze command is not yet implemented.");
+
+		    my $input_hostname = $discovery_results->{forced_hostname} // $discovery_results->{hostnames}[0];
+		    $input_hostname = 'unknown-hostname' if !defined($input_hostname) || $input_hostname eq '';
+
+		    # FIX MAJOR:  ... more stuff in addition to this ...
+
+		    # FIX MAJOR:  we might also need to pass in some indication of customer-provided custom logic to
+		    # sort through the host identity data and make the desired decisions
+		    my ( $hostname, $alias, $address ) =
+		      $autosetup->decide_host_identity( $discovery_results, $hostname_qualification, $force_hostname_case,
+			$force_domainname_case, \@host_address_choices );
+		    if (not defined $hostname) {
+			$logger->error("ERROR:  Cannot determine a valid hostname for the supposed hostname '$input_hostname'.");
+			$outcome = 0;
+			return $outcome;
+		    }
+		    if (not defined $alias) {
+			$logger->error("ERROR:  Cannot determine a valid alias for the supposed hostname '$input_hostname'.");
+			$outcome = 0;
+			return $outcome;
+		    }
+		    if (not defined $address) {
+			$logger->error("ERROR:  Cannot determine a valid network address for the supposed hostname '$input_hostname'.");
+			$outcome = 0;
+			return $outcome;
+		    }
+		    $discovery_results->{chosen_hostname} = $hostname;
+		    $discovery_results->{chosen_alias}    = $alias;
+		    $discovery_results->{chosen_address}  = $address;
+
+		    if ( $hostname eq $input_hostname ) {
+			$logger->notice("NOTICE:  Using hostname \"$hostname\" for further operation.");
+		    }
+		    else {
+			$logger->notice("NOTICE:  Input hostname \"$input_hostname\" becomes \"$hostname\" for further operation.");
+		    }
+
+		    my $meet_server_side_requirements = 1;
+		    my ( $validation_outcome, $failure_reason, $analysis_results ) =
+		      $autosetup->validate_discovery_results( $discovery_results, $meet_server_side_requirements );
+
+		    if ( not $validation_outcome ) {
+			$analysis_results .= "$separator\n";
+			$analysis_results .= "Use the following command to see the discovery results:\n";
+			$analysis_results .= "/usr/local/groundwork/gdma/bin/autosetup print results $hostname\n";
+		    }
+
+		    ## FIX MAJOR:  Do we save the analysis file here?  If so, make sure we save useful stuff.  But perhaps more importantly,
+		    ## if we're going to continue on, perhaps it's too early to save the analysis results, inasmuch as they ought to include
+		    ## information from the subsequent steps.  The same thing applies to saving analysis results in the registration script.
+		    ##
+		    my $analysis_file           = "$results_directory/${hostname}_analysis";
+		    my $analysis_saving_outcome = $autosetup->save_data_safely( 'discovery analysis results', $analysis_results, $analysis_file );
+
+		    if ( not $analysis_saving_outcome ) {
+			$logger->error("ERROR:  Cannot save the discovery analysis for host '$hostname'.");
+			$outcome = 0;
+			return $outcome;
+		    }
+
+		    if ( not $validation_outcome ) {
+			$logger->error("ERROR:  The discovery results for host '$hostname' failed validation ($failure_reason).");
+			$outcome = 0;
+			return $outcome;
+		    }
+
+		    my $elemental_results       = $autosetup->consolidate_discovery_results($discovery_results);
+		    if ( not $elemental_results ) {
+			## FIX LATER:  We currently have no error conditions within the consolidate_discovery_results()
+			## routine, so it cannot fail.  If we ever do somehow revise that routine to possibly fail, we
+			## should also revise it to return the reason for that failure, and report that in these messages.
+			$logger->error("ERROR:  Consolidation of discovery results failed.");
+			$outcome = 0;
+			return $outcome;
+		    }
+
+		    ## We force a reversion here even if the $discovery_results->{last_step} value is 'do_configuration',
+		    ## because all we're supposed to be doing here is analyzing the discovery results, not permantently
+		    ## changing the database.
+		    ##
+		    my $configuration_outcome;
+		    my $is_data_problem;
+		    my $database_changes;
+		    ( $configuration_outcome, $failure_reason, $is_data_problem, $database_changes ) =
+		      $configuration->apply_consolidated_results(
+			$default_change_policy, [$default_hostgroup], $assign_hostgroups_to_existing_hostgroup_hosts,
+			[$default_monarch_group], $assign_monarch_groups_to_existing_group_hosts,
+			$elemental_results, 'revert'
+		      );
+
+		    ## FIX MAJOR:  if the configuration failed, make sure the database connection gets closed; more
+		    ## generally, look at all of this code to make sure the database connection is handled properly
+		    ## under all conditions.
+
+		    if ($configuration_outcome) {
+			$logger->notice( "NOTICE:  The discovery results for host \"$hostname\""
+			      . " are fully valid and would apply to the database without problems." );
+		    }
+		    else {
+			$logger->error(
+			    "ERROR:  The discovery results for host \"$hostname\" have problems at the database level ($failure_reason).");
+		    }
+		}
+		else {
+		    ## We checked the $processing_type above, so the last choice here cannot happen.
+		    $logger->error("ERROR:  Internal error:  processing type is neither \"print\" nor \"analyze\".");
+		    $outcome = 0;
+		    return $outcome;
+		}
+	    }
+	    else {
+		$logger->error("ERROR:  Cannot read the discovery results for host \"$hostname\".");
+	    }
+	}
+	elsif ( $file_type eq 'analysis' ) {
+	    my $file_mtime = ( stat $file )[9];
+	    my $discovery_analysis;
+	    ( $outcome, $discovery_analysis ) = $autosetup->read_discovery_analysis($file);
+	    if ( $file_mtime && $outcome ) {
+		print "$separator\n" if $subsequent;
+		print "Reporting analysis for alternative host:  $host\n" if $host ne $hostname;
+		print "Showing discovery analysis for host \"$host\" as saved on " . localtime($file_mtime) . ".\n";
+		if ( length $discovery_analysis ) {
+		    print $discovery_analysis;
+		}
+		else {
+		    print "The discovery analysis file $file is empty.\n";
+		}
+	    }
+	    else {
+		$logger->error("ERROR:  Cannot read the discovery analysis for host \"$hostname\".");
+	    }
+	}
+    }
+
+    return $outcome;
+}
+
+sub remove {
+    my $outcome = 0;
+
+    # Unlike the status command, when collecting filenames, we don't ignore empty files,
+    # because they do have relevance for us here.
+
+    if ( not opendir INSTRUCTIONSDIR, $instructions_directory ) {
+	$logger->error("ERROR:  Cannot open the instructions directory '$instructions_directory' ($!).");
+	return $outcome;
+    }
+    my %instructions_files = map { $_ => undef } grep { /._instructions$/ && -f } map { "$instructions_directory/$_" } readdir INSTRUCTIONSDIR;
+    if ( not closedir INSTRUCTIONSDIR ) {
+	$logger->error("ERROR:  Cannot close the instructions directory '$instructions_directory' ($!).");
+	return $outcome;
+    }
+
+    if ( not opendir TRIGGERDIR, $trigger_directory ) {
+	$logger->error("ERROR:  Cannot open the trigger directory '$trigger_directory' ($!).");
+	return $outcome;
+    }
+    my %trigger_files = map { $_ => undef } grep { /._trigger$/ && -f } map { "$trigger_directory/$_" } readdir TRIGGERDIR;
+    if ( not closedir TRIGGERDIR ) {
+	$logger->error("ERROR:  Cannot close the trigger directory '$trigger_directory' ($!).");
+	return $outcome;
+    }
+
+    if ( not opendir RESULTSDIR, $results_directory ) {
+	$logger->error("ERROR:  Cannot open the results directory '$results_directory' ($!).");
+	return $outcome;
+    }
+    my %results_files = map { $_ => undef } grep { /._results$/ && -f } map { "$results_directory/$_" } readdir RESULTSDIR;
+    if ( not rewinddir RESULTSDIR ) {
+	$logger->error("ERROR:  Cannot rewind the results directory '$results_directory' ($!).");
+	cloedir RESULTSDIR;
+	return $outcome;
+    }
+    my %analysis_files = map { $_ => undef } grep { /._analysis$/ && -f } map { "$results_directory/$_" } readdir RESULTSDIR;
+    if ( not closedir RESULTSDIR ) {
+	$logger->error("ERROR:  Cannot close the results directory '$results_directory' ($!).");
+	return $outcome;
+    }
+
+    # Much of the construction here could have been done in a somewhat more direct fashion if all we were
+    # concerned with was getting files removed.  Instead, we are as much concerned with producing decent
+    # output as to what specific actions are being taken to remove individual files.
+
+    my %unique_hostnames = ();
+    @unique_hostnames{ map { (m</([^/]+)_instructions$>)[0] } keys %instructions_files } = (undef) x keys %instructions_files;
+    @unique_hostnames{ map { (m</([^/]+)_trigger$>)[0] } keys %trigger_files }           = (undef) x keys %trigger_files;
+    @unique_hostnames{ map { (m</([^/]+)_results$>)[0] } keys %results_files }           = (undef) x keys %results_files;
+    @unique_hostnames{ map { (m</([^/]+)_analysis$>)[0] } keys %analysis_files }         = (undef) x keys %analysis_files;
+
+    my %full_name  = ();
+    my %short_name = ();
+    my $unqualified;
+    if ( not $use_only_short_alternatives ) {
+	foreach my $hostname ( keys %unique_hostnames ) {
+	    ( $unqualified = $hostname ) =~ s{\..*}{};
+	    $full_name{$unqualified} = $hostname;
+	}
+    }
+    if ( not $use_only_full_alternatives ) {
+	foreach my $hostname ( keys %unique_hostnames ) {
+	    ( $unqualified = $hostname ) =~ s{\..*}{};
+	    $short_name{$unqualified} = undef;
+	}
+    }
+    foreach my $hostname (@arguments) {
+	my $instructions_file = "$instructions_directory/${hostname}_instructions";
+	my $trigger_file      = "$trigger_directory/${hostname}_trigger";
+	my $results_file      = "$results_directory/${hostname}_results";
+	my $analysis_file     = "$results_directory/${hostname}_analysis";
+
+	if (    not exists $instructions_files{$instructions_file}
+	    and not exists $trigger_files{$trigger_file}
+	    and not exists $results_files{$results_file}
+	    and not exists $analysis_files{$analysis_file}
+	    and not $use_only_exact_matches )
+	{
+	    ## If we find an alternative hostname, we replace $hostname, which
+	    ## because it is an alias will modify @arguments, as we desire.
+	    if ( not $use_only_short_alternatives ) {
+		if ( defined $full_name{$hostname} ) {
+		    $hostname = $full_name{$hostname};
+		    next;
+		}
+	    }
+	    if ( not $use_only_full_alternatives ) {
+		( $unqualified = $hostname ) =~ s{\..*}{};
+		if ( exists $short_name{$unqualified} ) {
+		    $hostname = $unqualified;
+		    next;
+		}
+	    }
+	}
+    }
+    my %unique_arguments = ();
+    @unique_arguments{@arguments} = (1) x @arguments;
+    @arguments = keys %unique_arguments;
+
+    my %files_to_remove = ();
+    foreach my $hostname (@arguments) {
+	my $instructions_file = "$instructions_directory/${hostname}_instructions";
+	my $trigger_file      = "$trigger_directory/${hostname}_trigger";
+	my $results_file      = "$results_directory/${hostname}_results";
+	my $analysis_file     = "$results_directory/${hostname}_analysis";
+
+	if ( exists $instructions_files{$instructions_file} ) {
+	    $files_to_remove{instructions}{$hostname} = $instructions_file;
+	}
+	if ( exists $trigger_files{$trigger_file} ) {
+	    $files_to_remove{trigger}{$hostname} = $trigger_file;
+	}
+	if ( exists $results_files{$results_file} ) {
+	    $files_to_remove{results}{$hostname} = $results_file;
+	}
+	if ( exists $analysis_files{$analysis_file} ) {
+	    $files_to_remove{analysis}{$hostname} = $analysis_file;
+	}
+    }
+
+    $outcome = 1;
+    if (%files_to_remove) {
+	print "\n";
+	foreach my $file_type (qw( instructions trigger results analysis )) {
+	    if ( defined $files_to_remove{$file_type} ) {
+		print "Removing $file_type files:\n";
+		use feature 'fc';
+		foreach my $hostname ( sort { fc($a) cmp fc($b) || $a cmp $b } keys %{ $files_to_remove{$file_type} } ) {
+		    print "$files_to_remove{$file_type}{$hostname}\n";
+		    if ( not unlink $files_to_remove{$file_type}{$hostname} ) {
+			$logger->error("ERROR:  Cannot remove $files_to_remove{$file_type}{$hostname} ($!).");
+			$outcome = 0;
+		    }
+		}
+		print "\n";
+	    }
+	}
+    }
+    else {
+	print "There are no files to remove for the named " . ( @arguments == 1 ? 'host' : 'hosts' ) . ".\n";
+    }
+
+    return $outcome;
+}
+
+# FIX LATER:  Perhaps we should add another column that indicates whether
+# an error has been detected in the discovery results or analysis.
+sub status {
+    my $outcome = 0;
+
+    # When collecting filenames, we ignore all empty files, because they can have no relevance for us here.
+
+    if ( not opendir INSTRUCTIONSDIR, $instructions_directory ) {
+	$logger->error("ERROR:  Cannot open the instructions directory '$instructions_directory' ($!).");
+	return $outcome;
+    }
+    my %instructions_files =
+      map { $_ => undef } grep { /._instructions$/ && -f && -s } map { "$instructions_directory/$_" } readdir INSTRUCTIONSDIR;
+    if ( not closedir INSTRUCTIONSDIR ) {
+	$logger->error("ERROR:  Cannot close the instructions directory '$instructions_directory' ($!).");
+	return $outcome;
+    }
+
+    if ( not opendir TRIGGERDIR, $trigger_directory ) {
+	$logger->error("ERROR:  Cannot open the trigger directory '$trigger_directory' ($!).");
+	return $outcome;
+    }
+    my %trigger_files = map { $_ => undef } grep { /._trigger$/ && -f && -s } map { "$trigger_directory/$_" } readdir TRIGGERDIR;
+    if ( not closedir TRIGGERDIR ) {
+	$logger->error("ERROR:  Cannot close the trigger directory '$trigger_directory' ($!).");
+	return $outcome;
+    }
+
+    if ( not opendir RESULTSDIR, $results_directory ) {
+	$logger->error("ERROR:  Cannot open the results directory '$results_directory' ($!).");
+	return $outcome;
+    }
+    my %results_files = map { $_ => undef } grep { /._results$/ && -f && -s } map { "$results_directory/$_" } readdir RESULTSDIR;
+    if ( not rewinddir RESULTSDIR ) {
+	$logger->error("ERROR:  Cannot rewind the results directory '$results_directory' ($!).");
+	cloedir RESULTSDIR;
+	return $outcome;
+    }
+    my %analysis_files = map { $_ => undef } grep { /._analysis$/ && -f && -s } map { "$results_directory/$_" } readdir RESULTSDIR;
+    if ( not closedir RESULTSDIR ) {
+	$logger->error("ERROR:  Cannot close the results directory '$results_directory' ($!).");
+	return $outcome;
+    }
+
+    my %unique_hostnames = ();
+    @unique_hostnames{ map { (m</([^/]+)_instructions$>)[0] } keys %instructions_files } = (undef) x keys %instructions_files;
+    @unique_hostnames{ map { (m</([^/]+)_trigger$>)[0] } keys %trigger_files }           = (undef) x keys %trigger_files;
+    @unique_hostnames{ map { (m</([^/]+)_results$>)[0] } keys %results_files }           = (undef) x keys %results_files;
+    @unique_hostnames{ map { (m</([^/]+)_analysis$>)[0] } keys %analysis_files }         = (undef) x keys %analysis_files;
+
+    use feature 'fc';
+    if ($show_all) {
+	@arguments = sort { fc($a) cmp fc($b) || $a cmp $b } keys %unique_hostnames;
+	if ( not @arguments ) {
+	    $logger->error("ERROR:  There are no hosts with files to list status for.");
+	    return $outcome;
+	}
+    }
+    else {
+	my %full_name  = ();
+	my %short_name = ();
+	my $unqualified;
+	if ( not $use_only_short_alternatives ) {
+	    foreach my $hostname ( keys %unique_hostnames ) {
+		( $unqualified = $hostname ) =~ s{\..*}{};
+		$full_name{$unqualified} = $hostname;
+	    }
+	}
+	if ( not $use_only_full_alternatives ) {
+	    foreach my $hostname ( keys %unique_hostnames ) {
+		( $unqualified = $hostname ) =~ s{\..*}{};
+		$short_name{$unqualified} = undef;
+	    }
+	}
+	foreach my $hostname (@arguments) {
+	    my $instructions_file = "$instructions_directory/${hostname}_instructions";
+	    my $trigger_file      = "$trigger_directory/${hostname}_trigger";
+	    my $results_file      = "$results_directory/${hostname}_results";
+	    my $analysis_file     = "$results_directory/${hostname}_analysis";
+
+	    if (    not exists $instructions_files{$instructions_file}
+		and not exists $trigger_files{$trigger_file}
+		and not exists $results_files{$results_file}
+		and not exists $analysis_files{$analysis_file}
+		and not $use_only_exact_matches )
+	    {
+		## If we find an alternative hostname, we replace $hostname, which
+		## because it is an alias will modify @arguments, as we desire.
+		if ( not $use_only_short_alternatives ) {
+		    if ( defined $full_name{$hostname} ) {
+			$hostname = $full_name{$hostname};
+			next;
+		    }
+		}
+		if ( not $use_only_full_alternatives ) {
+		    ( $unqualified = $hostname ) =~ s{\..*}{};
+		    if ( exists $short_name{$unqualified} ) {
+			$hostname = $unqualified;
+			next;
+		    }
+		}
+	    }
+	}
+	my %unique_arguments = ();
+	@unique_arguments{@arguments} = (1) x @arguments;
+	@arguments = sort { fc($a) cmp fc($b) || $a cmp $b } keys %unique_arguments;
+    }
+
+    if ($show_timestamps) {
+	print "instructions     trigger          results          analysis         hostname\n";
+	print "===============  ===============  ===============  ===============  ========================================\n";
+	##     Feb 10 22:37:15  Feb 10 22:37:15  Feb 10 22:37:15  Feb 10 22:37:15  this-hostname
+    }
+    else {
+	print "instructions trigger results analysis hostname\n";
+	print "============ ======= ======= ======== ========================================\n";
+    }
+    my $now = time();
+    foreach my $hostname (@arguments) {
+	my $instructions_file = "$instructions_directory/${hostname}_instructions";
+	my $trigger_file      = "$trigger_directory/${hostname}_trigger";
+	my $results_file      = "$results_directory/${hostname}_results";
+	my $analysis_file     = "$results_directory/${hostname}_analysis";
+
+	if ($show_timestamps) {
+	    my $instructions = exists $instructions_files{$instructions_file} ? timestamp( $now, $instructions_file ) : '      ---';
+	    my $trigger      = exists $trigger_files{$trigger_file}           ? timestamp( $now, $trigger_file )      : '      ---';
+	    my $results      = exists $results_files{$results_file}           ? timestamp( $now, $results_file )      : '      ---';
+	    my $analysis     = exists $analysis_files{$analysis_file}         ? timestamp( $now, $analysis_file )     : '      ---';
+	    printf "%-15s  %-15s  %-15s  %-15s  %s\n", $instructions, $trigger, $results, $analysis, $hostname;
+	}
+	else {
+	    ## We capitalize one form of these indicators and not the other to make the
+	    # distinction between them stand out better in a large array of such indicators.
+	    my $instructions = exists $instructions_files{$instructions_file} ? 'YES' : 'no';
+	    my $trigger      = exists $trigger_files{$trigger_file}           ? 'YES' : 'no';
+	    my $results      = exists $results_files{$results_file}           ? 'YES' : 'no';
+	    my $analysis     = exists $analysis_files{$analysis_file}         ? 'YES' : 'no';
+	    printf "     %-9s %-7s %-8s %-5s %s\n", $instructions, $trigger, $results, $analysis, $hostname;
+	}
+    }
+
+    $outcome = 1;
+    return $outcome;
+}
+
+sub timestamp {
+    my $now          = shift;
+    my $filename     = shift;
+    my $last_changed = '??';
+    my $file_mtime = ( stat $filename )[9];
+    if ($file_mtime) {
+	## We print out the clock time for as long as is reasonable back in time.  But once the
+	## unspoken year is nearly a problem (not quite long enough that we might experience some
+	## confusion with the current month), we switch to specifying only a coarse timestamp,
+	## so as not to cause any confusion.
+	##
+	## Sat Feb 10 11:48:49 2018
+	## 012345678901234567890123
+	##
+	my $mtimestring = localtime($file_mtime);
+	if ( $now - $file_mtime < SECONDS_PER_11_MONTHS ) {
+	    $last_changed = substr( $mtimestring, 4, 15 );
+	}
+	else {
+	    $last_changed = substr( $mtimestring, 4, 7 ) . substr( $mtimestring, 20, 4 );
+	}
+    }
+    return $last_changed;
+}
+
+sub validate {
+    my $outcome = 0;
+    local $_;
+
+    # It should be possible to look at the name of each file and tell from that what
+    # type of validation is required, for instructions, trigger, or result files.
+
+    my @bad_paths = grep !m{(?:.*/)?.+(?:_instructions|_trigger|_results)$}, @arguments;
+    if (@bad_paths) {
+	foreach my $path (@bad_paths) {
+	    $logger->error( "ERROR:  File \"$path\" is not recognized as either an instructions file, a trigger file, or a results file,"
+		  . " because the filename does not end with either \"_instructions\", \"_trigger\", or \"_results\"." );
+	}
+	return $outcome;
+    }
+
+    my $autosetup;
+    if ( grep { m<(?:_instructions|_results)$> } @arguments ) {
+	my %autosetup_options = ( logger => $logger );
+	$autosetup = GDMA::AutoSetup->new( \%autosetup_options );
+	if ( not defined $autosetup ) {
+	    $logger->error("ERROR:  Cannot initialize the GDMA::AutoSetup package; see earlier error messages.");
+	    return $outcome;
+	}
+    }
+
+    my $discovery;
+    if ( grep { m<(?:_trigger|_results)$> } @arguments ) {
+	my %discovery_options = ( logger => $logger, show_resources => 0 );
+	$discovery = GDMA::Discovery->new( \%discovery_options );
+	if ( not defined $discovery ) {
+	    $logger->error("ERROR:  Cannot initialize the GDMA::Discovery package; see earlier error messages.");
+	    return $outcome;
+	}
+    }
+
+    my %unique = ();
+    @unique{@arguments} = (1) x @arguments;
+    foreach my $path ( sort keys %unique ) {
+	if ( $path =~ m{[^/]+_instructions$} ) {
+	    ## FIX MAJOR:  Can/should we suppress the requirement for 600 permissions during this check?
+	    my $instructions = $autosetup->read_instructions_file($path);
+	    if ( not defined($instructions) or not %$instructions ) {
+		$logger->error("ERROR:  Discovery instructions file $path could not be read; see earlier error messages.");
+		return $outcome;
+	    }
+	    my $validation_outcome = $autosetup->validate_instructions( $path, $instructions );
+	    if ( not $validation_outcome ) {
+		$logger->error("ERROR:  Discovery instructions in $path failed validation; see earlier error messages.");
+		return $outcome;
+	    }
+	    $logger->error("NOTICE:  Discovery instructions in $path pass validation tests.");
+	}
+	elsif ( $path =~ m{[^/]+_trigger$} ) {
+	    my $trigger = $discovery->read_trigger_file( $path, undef, 1 );
+	    if ( not %$trigger ) {
+		$logger->error("ERROR:  Discovery trigger file $path could not be read; see earlier error messages.");
+		return $outcome;
+	    }
+	    my $validation_outcome = $discovery->validate_trigger( $path, $trigger );
+	    if ( not $validation_outcome ) {
+		$logger->error("ERROR:  Discovery trigger in $path failed validation; see earlier error messages.");
+		return $outcome;
+	    }
+	    $logger->error("NOTICE:  Discovery trigger in $path passes validation tests.");
+	}
+	elsif ( $path =~ m{[^/]+_results$} ) {
+	    my ( $read_outcome, $discovery_results ) = $discovery->read_discovery_results($path);
+	    if ($read_outcome) {
+		my $results_length = do { use bytes; length $discovery_results; };
+		if ( $results_length > $max_input_size ) {
+		    $logger->error("ERROR:  The discovery results in file \"$path\" exceed the configured max_input_size ($max_input_size).");
+		    return $outcome;
+		}
+	    }
+	    else {
+		$logger->error("ERROR:  Discovery results file $path could not be read; see earlier error messages.");
+		return $outcome;
+	    }
+	    ##
+	    ## We run a client-side validation (the second parameter is false), so we don't concern ourselves with
+	    ## whether certain fields that are only added on the server side (i.e., chosen_hostname, chosen_alias,
+	    ## chosen_address) are present in the discovery results.  In fact, we don't expect those fields to be
+	    ## present, because we will generally be validating discovery results that got saved into a file before
+	    ## being extended to prepare for server-side analysis.
+	    ##
+	    my ( $validation_outcome, $failure_reason, $analysis_results ) = $autosetup->validate_discovery_results( $discovery_results, 0 );
+	    if ( not $validation_outcome ) {
+		$logger->error("ERROR:  Discovery results in $path failed validation ($failure_reason).");
+		return $outcome;
+	    }
+	    $logger->error("NOTICE:  Discovery results in $path pass validation tests.");
+	}
+	else {
+	    ## This should have been caught earlier.
+	    $logger->error("ERROR:  Internal error:  file \"$path\" is neither an instructions file, a trigger file, nor a results file.");
+	    return $outcome;
+	}
+    }
+
+    $outcome = 1;
+    return $outcome;
+}
+

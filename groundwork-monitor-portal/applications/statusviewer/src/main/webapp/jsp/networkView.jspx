@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<jsp:root version="1.2" xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<jsp:directive.page contentType="text/html;charset=UTF-8"
+		pageEncoding="UTF-8" />
+	<f:view>
+		<ice:outputDeclaration doctypeRoot="HTML"
+			doctypePublic="-//W3C//DTD HTML 4.01 Transitional//EN"
+			doctypeSystem="http://www.w3.org/TR/html4/loose.dtd" />
+		<html>
+		<head>
+		
+		</head>
+		<body>
+		<ice:portlet>
+			<ui:composition template="/templates/template.xhtml">
+				<ui:define name="content">
+				
+				<ice:panelGrid columns="2" columnClasses="svTreePanel,svViewPanel" cellpadding="0" cellspacing="0" bgcolor="#7F7F7F">
+				<ice:panelGroup>
+				<!-- <div id="tree_menu" style="background-color:#848484;height:900px;width:19%;float:left;"> -->
+					<ui:include src="networkTree.jspx" />
+				<!-- </div>
+ -->				</ice:panelGroup>
+ 					<ice:panelGroup style="background-color:#CCCCCC;">
+ 					<f:loadBundle basename="#{localeBean.baseName}" var="message" />
+					<ice:inputHidden value="#{requestHandlerBean.hiddenField}"></ice:inputHidden>
+					<ice:inputHidden value="#{navigationRenderBean.hiddenField}"></ice:inputHidden>
+					
+					<!-- <div id="content" style="background-color:#848484;height:auto;width:81%;float:right;"> -->
+					<ice:form partialSubmit="true" id="frmNavigationTabset"
+						styleClass="uniqueTabForm" >
+						
+						<table class="tabStyles" border="0" cellpadding="0" cellspacing="0">
+							<tr>
+								<td><ice:panelTabSet id="icePnlTbSetLeft"
+									tabPlacement="top" styleClass="uniqueTabClass arrowsClass backArrow icePnlTbOff">
+									<ice:panelTab>
+										<f:facet name="label">
+										<a> <img style="background:none; border:none; margin:0; "
+												src="/portal-statusviewer/images/previous.png"  onclick="leftFocus();"/> </a>
+											
+										</f:facet>
+									</ice:panelTab>
+								</ice:panelTabSet></td>
+								<td>
+
+								<div id="tabsetDiv" >
+									<!-- hidden filed which will initialize all the members  -->
+									<ice:inputHidden id="NTSBipHiddn"
+										value="#{navigationTabsetBean.hiddenField}"></ice:inputHidden>
+									<ice:panelTabSet id="icePnlTbSet" var="tab"
+										value="#{navigationTabsetBean.tabs}" tabPlacement="top"
+										selectedIndex="#{navigationTabsetBean.tabIndex}"
+										styleClass="uniqueTabClass" style="border-bottom:none;">
+										<ice:panelTab title="#{tab.toolTip}">
+											<f:facet name="label">
+												<ice:panelGrid columns="2" style="width:105px;">
+													<ice:commandLink id="icePnlTabClick"
+														actionListener="#{tab.navigationTabSelected}"
+														style="height:100%;-moz-outline:none;">
+														<f:param value="#{tab.nodeType.subPageName}"
+															name="nodeView" />
+														<f:param value="#{tab.nodeName}" name="nodeNameValue" />
+														<f:param value="#{tab.nodeId}" name="nodeId" />
+
+														<ice:outputText value="#{tab.label}" />
+													</ice:commandLink>
+													
+													<ice:commandButton
+														styleClass="nav_tab_close_button"
+														style="background:none;border:none;margin:0 0 0 0px;"
+														disabled="#{navigationTabsetBean.tabsSize == 1}"
+														image="/images/delete.png"
+														actionListener="#{tab.closeTab}"
+														rendered="#{tab.index != 0}"/>
+												</ice:panelGrid>
+											</f:facet>
+										</ice:panelTab>
+									</ice:panelTabSet>
+								
+								</div>
+								</td>
+								<td><ice:panelTabSet id="icePnlTbSetRight" 
+									tabPlacement="top" styleClass="uniqueTabClass arrowsClass icePnlTbOff nextTabLeftside">
+									<ice:panelTab>
+										<f:facet name="label">
+											<ice:panelGroup>
+												<table>
+												<tr><td>
+											<a ><img  style="background:none;border:none;margin:0 0 0 0px;"
+													src="/portal-statusviewer/images/next.png" onclick="rightFocus();"/></a></td>
+												<td><ice:commandButton
+													actionListener="#{navigationTabsetBean.closeAllTabs}"
+													rendered="#{navigationTabsetBean.tabsSize != 1}"
+													image="/images/scroll_delete.png" title="Close All Tabs"
+													style=";margin-top:-2px;background:none;border:none;float:left;" /></td>
+													</tr>
+													</table>
+													
+											</ice:panelGroup>
+
+										</f:facet>
+									</ice:panelTab>
+								</ice:panelTabSet></td>
+							</tr>
+
+						</table>
+					</ice:form>
+
+					<ice:form partialSubmit="true" id="frmNV">
+						<ice:panelGroup
+							rendered="#{navigationRenderBean.selectedNodeView == 'NetworkView'}">
+							<ui:include src="entireNetworkView.jspx" />
+						</ice:panelGroup>
+					</ice:form>
+
+					<ice:form id="HGVform" partialSubmit="true" >
+						<ice:panelGroup
+							rendered="#{navigationRenderBean.selectedNodeView == 'HostGroupView'}" styleClass="#{navigationRenderBean.megaViewStyleClass}">
+							<ui:include src="hostGroupView.jspx" />
+						</ice:panelGroup>
+					</ice:form>
+
+					<ice:form id="HVform" partialSubmit="true" >
+						<ice:panelGroup
+							rendered="#{navigationRenderBean.selectedNodeView == 'HostView'}" styleClass="#{navigationRenderBean.megaViewStyleClass}">
+							<ui:include src="hostview.jspx" />
+						</ice:panelGroup>
+					</ice:form>
+
+					<ice:form id="SVform" partialSubmit="true" >
+						<ice:panelGroup
+							rendered="#{navigationRenderBean.selectedNodeView == 'ServiceView'}" styleClass="#{navigationRenderBean.megaViewStyleClass}">
+							<ui:include src="serviceview.jspx" />
+						</ice:panelGroup>
+					</ice:form>
+
+					<ice:form id="SGVform" partialSubmit="true" >
+						<ice:panelGroup
+							rendered="#{navigationRenderBean.selectedNodeView == 'ServiceGroupView'}"  styleClass="#{navigationRenderBean.megaViewStyleClass}">
+							<ui:include src="servicegroupview.jspx" />
+						</ice:panelGroup>
+					</ice:form>
+
+					<ice:inputHidden value="#{navigationTabsetBean.newHiddenField}"></ice:inputHidden>
+					<!-- </div> -->
+					</ice:panelGroup>
+					</ice:panelGrid>
+					
+				</ui:define>
+			</ui:composition>
+		</ice:portlet>
+		</body>
+		</html>
+	</f:view>
+</jsp:root>

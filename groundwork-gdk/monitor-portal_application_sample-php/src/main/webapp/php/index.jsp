@@ -1,0 +1,15 @@
+<%@page import="java.io.*" %>
+<%@page import="javax.script.*" %>
+<%@page import="php.java.script.servlet.EngineFactory" %>
+<%@page import="org.apache.commons.io.FileUtils" %>
+<%@page contentType="text/html" %>
+
+  <%  out.println ("This servlet executes a php file"); 
+      	javax.script.ScriptEngine e = 
+        	php.java.script.servlet.EngineFactory.getPhpScriptEngine 
+                                       (this, application, request, response);
+      	e.getContext().setWriter (out);
+	File file = new File(application.getRealPath("/")+request.getAttribute("url"));
+	e.eval(FileUtils.readFileToString(file, null));
+	((Closeable)e).close();
+  %>

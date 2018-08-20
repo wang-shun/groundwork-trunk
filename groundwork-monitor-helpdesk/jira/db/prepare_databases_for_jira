@@ -1,0 +1,218 @@
+#!/bin/bash -e
+
+# Container script to run database-modification scripts needed to
+# support the JIRA helpdesk ticketing integration.
+
+# Copyright 2013 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+credentials=`sed -e 's/#.*//' -e 's/^ *//' -e 's/ *$//' /usr/local/groundwork/config/db.properties | fgrep collage.`
+
+for key_value in $credentials
+do
+    # collage.field=value
+    key=${key_value%%=*}
+    value=${key_value#*=}
+    case $key in 
+	(collage.database) database=$value;;
+	(collage.dbhost)   hostname=$value;;
+	(collage.username) username=$value;;
+	(collage.password) password=$value;;
+    esac
+done
+
+# This selection ought to be configured in the db.properties file, but
+# until it is, we need to compute this ourselves.
+if [ "$hostname" = 'localhost' ]; then
+    # FIX LATER:  In a future release, this could be drawn from the name
+    # of the /usr/local/groundwork/postgresql/.s.PGSQL.5432 file.
+    # port_or_sock=`netstat -npa | grep postgres | grep CONNECTED | sed -e s/^.*PGSQL\.//g`
+    port_or_sock="--port 5432"
+else
+    port_or_sock="--port 5432"
+fi
+
+# FIX LATER:  someday we should specify root_dataport="${PG_PORT:-5432}" as well,
+# with appropriate security validation checking of the $PG_PORT value
+# NOTE:  Having the user pass the "postgres" user password into this script via
+# the PG_PASS environment variable is actually considered bad security practice.
+# That mechanism is provided only to support the RPM standard of now allowing the
+# RPM any interaction with the user during the installation process.  But from a
+# security standpoint, a better solution is to violate the RPM standard, not
+# define PG_PASS while the RPM is being installed, and instead allow the script
+# below to prompt the user for a password.
+root_hostname="${PG_HOST:-localhost}"
+root_database="postgres"
+root_username="postgres"
+root_password="$PG_PASS"
+
+# Security check:  Make sure $root_hostname only contains a valid hostname,
+# before we go blindly substituting it into a command line.
+# Reference:  http://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names
+# * FQDN max length:  255 characters
+# * FQDN structure:  a series of FQDN components, separated by single "." characters
+# * FQDN component length:  1 to 63 characters
+# * FQDN component character set:  [-a-zA-Z0-9]
+# * FQDN component structure:  cannot start or end with a hyphen
+
+# Disable automatic script failure for this next command.
+set +e
+
+/usr/local/groundwork/perl/bin/perl -e '
+sub is_valid_hostname {
+    my $name = shift;
+    return 0 if not defined $name;
+    my $name_length = length $name;
+    return 0 if $name_length < 1 || $name_length > 255;
+    foreach my $part ( split(/\./, $name, -1) ) {
+	my $part_length = length $part;
+	return 0 if $part_length < 1 || $part_length > 63;
+	return 0 if $part =~ /[^-a-zA-Z0-9]/;
+	return 0 if $part =~ /^-/;
+	return 0 if $part =~ /-$/;
+    }
+    return 1;
+}
+
+# We need to turn success upside down for the exit code to properly reflect it.
+exit ! is_valid_hostname $ARGV[0];
+' "$root_hostname"
+
+if [ $? -ne 0 ]; then
+    echo "ERROR:  The PG_HOST environment variable does not contain"
+    echo "        a legal hostname.  Execution is being aborted."
+    exit 1;
+fi
+
+# Enable automatic script failure for subsequent commands.
+set -e
+
+if [ "$root_hostname" = 'localhost' ]; then
+    # FIX LATER:  In a future release, this could be drawn from the name
+    # of the /usr/local/groundwork/postgresql/.s.PGSQL.5432 file.
+    # root_port_or_sock=`netstat -npa | grep postgres | grep CONNECTED | sed -e s/^.*PGSQL\.//g`
+    root_port_or_sock="--port 5432"
+else
+    root_port_or_sock="--port 5432"
+fi
+
+# We need the "|| true" at the end to sidestep the bash -e flag for this one command,
+# primarily because fgrep clumsily changes its return code depending on whether or not
+# it matches anything, regardless of whether the command otherwise ran successfully.
+# FIX LATER:  We might not need that protection, because fgrep is running in a subshell.
+running=`/usr/local/groundwork/ctlscript.sh status gwservices | egrep -v '(is|not|copies) running' | fgrep -c running || true`
+
+# Make sure gwservices is down, to prevent interference from a cached copy
+# of the tables we're about to change. 
+/usr/local/groundwork/ctlscript.sh stop gwservices
+
+gwpath=/usr/local/groundwork
+helpdeskpath=$gwpath/jira
+psql=$gwpath/postgresql/bin/psql
+
+echo "Adding helpdesk actions ..."
+su nagios -c "$psql -h '$hostname' $port_or_sock -q -d '$database' -U '$username' -w < $helpdeskpath/db/helpdesk_actions_seed_file.sql"
+
+echo "Adding helpdesk dynamic property types ..."
+su nagios -c "$psql -h '$hostname' $port_or_sock -q -d '$database' -U '$username' -w < $helpdeskpath/db/helpdesk_dynamic_property_types.sql"
+
+echo "Creating the HelpDeskBridgeDB database ..."
+# This next script must be run as the database-doman postgres user, as it must create the
+# new database.  I really don't like this PGPASSWORD mechanism for passing the password
+# to PostgreSQL, but there don't seem to be any good choices for automating this while
+# still keeping with the RPM standard of not allowing any interaction with the user who is
+# installing the RPM.
+#
+# Using the -f option and not the -w option allows psql to recognize that it has another
+# channel by which it can obtain the password, by prompting the user for it.  The downside
+# is that it prepends the entire script name and line number to each RAISE notice message
+# output from the script, thereby making that output a lot harder to read on an ordinary
+# terminal.  Unfortunately, all attempts to filter that output to remove this prefix have
+# failed because they cause even more serious problems.
+#
+# We trap an EXIT and reset the terminal attributes to sane settings, because if this
+# command is interrupted with CTRL-C, it can leave the terminal in a miserable state.
+#
+trap "stty sane || true;" EXIT
+if [ -n "$root_password" ]; then
+    # If the specified password is wrong, then so be it, this will simply fail,
+    # without prompting the user.  But that will then be the intended outcome.
+    export PGPASSWORD="$root_password"
+    su nagios -c "$psql -h '$root_hostname' $root_port_or_sock -q -d '$root_database' -U '$root_username' -w < $helpdeskpath/db/helpdesk_initialize_bridge_db.sql"
+    unset PGPASSWORD
+else
+    # In this branch, psql will prompt the user for a password.
+    su nagios -c "$psql -h '$root_hostname' $root_port_or_sock -q -d '$root_database' -U '$root_username' -f   $helpdeskpath/db/helpdesk_initialize_bridge_db.sql"
+fi
+# If we got here successfully, without having bash kill the script while psql had
+# the terminal settings screwed up while asking for a password, just because psql
+# returned a bad exit code, then psql should have itself cleaned up the terminal
+# settings, and we shouldn't need to fiddle further with them here.
+trap "-" EXIT
+
+# Modify /usr/local/groundwork/config/db.properties
+# to include the HelpDeskBridgeDB access credentials.
+
+new_properties='
+# Helpdesk integration bridge database:
+bridgeDB.dbhost=localhost
+bridgeDB.database=helpdeskbridgedb
+bridgeDB.username=helpdesk
+bridgeDB.password=gwrk
+'
+
+timestamp=`date +"%Y-%m-%d.%H_%M_%S"`
+old_file=/usr/local/groundwork/config/db.properties
+# FIX LATER:  there are improved ways to name a temporary file
+# that provide even better security
+new_file=/usr/local/groundwork/config/db.properties.new.$$
+sav_file=/usr/local/groundwork/config/db.properties.$timestamp.pre_jira
+
+# Disable automatic script failure for the rest of this script, inasmuch as
+# we are checking return codes explicitly for all of the critical commands.
+set +e
+
+old_properties=`cat $old_file`
+if [ $? -ne 0 ]; then
+    echo "FATAL:  JIRA Integration could not read the old db.properties" 1>&2
+    exit 1
+fi
+# We only bother to check one critical property, even though several properties are involved.
+# Apparently, the bash -e flag does not carry through to the subshell that executes this pipe,
+# so we don't need to protect against a non-zero exit status if fgrep doesn't find the string.
+if [ "`echo \"$old_properties\" | sed -e 's/#.*//' | fgrep -c 'bridgeDB.database'`" -eq 0 ]; then
+    # The new properties are not installed.  Do so now.  We don't bother to try to delete
+    # existing properties if they are currently commented out; we just add new ones.
+
+    # First, prepare the new file by copying the content along with ownership and permissions.
+    cp -p $old_file $new_file
+    if [ $? -ne 0 ]; then
+	echo "FATAL:  JIRA Integration could not copy the db.properties file." 1>&2
+	exit 1
+    fi
+    # Just append to the file, as there is no obvious particular place to put the new properties.
+    echo "$new_properties" >> $new_file
+    if [ $? -ne 0 ]; then
+	echo "FATAL:  JIRA Integration could not create a revised db.properties file." 1>&2
+	exit 1
+    fi
+    cp -p $old_file $sav_file
+    if [ $? -ne 0 ]; then
+	echo "FATAL:  JIRA Integration could not back up the db.properties file." 1>&2
+	exit 1
+    fi
+    mv $new_file $old_file
+    if [ $? -ne 0 ]; then
+	echo "FATAL:  JIRA Integration could not install a new db.properties file." 1>&2
+	exit 1
+    fi
+else
+    echo "NOTICE:  The JIRA Integration bridge database access credentials"
+    echo "    were already in place."
+fi
+
+# Restart gwservices only if it was already running before we made these changes.
+if [ $running -ne 0 ]; then
+    /usr/local/groundwork/ctlscript.sh start gwservices
+fi
+

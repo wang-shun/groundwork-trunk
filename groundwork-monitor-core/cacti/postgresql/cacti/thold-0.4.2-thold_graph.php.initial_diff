@@ -1,0 +1,34 @@
+*** dummy/cacti-0.8.7g/plugins/thold/thold_graph.php	Sat Jul 17 08:04:22 2010
+--- cacti/htdocs/plugins/thold/thold_graph.php.orig	Thu Sep 16 15:59:31 2010
+***************
+*** 241,247 ****
+--- 241,257 ----
+  	load_current_session_value("filter", "sess_thold_thold_filter", "");
+  	load_current_session_value("triggered", "sess_thold_thold_triggered", "1");
+  	load_current_session_value("data_template_id", "sess_thold_thold_data_template_id", "-1");
++ 
++ // Begin alert_num_rows fix
++ 
++ 	if (!config_value_exists("alert_num_rows")) {
++                 $alert_num_rows = set_config_option('alert_num_rows', 30);
++ 	}
++ 
+  	load_current_session_value("rows", "sess_thold_thold_rows", read_config_option("alert_num_rows"));
++ 
++ // End alert_num_rows fix
++ 
+  	load_current_session_value("sort_column", "sess_thold_host_sort_column", "name");
+  	load_current_session_value("sort_direction", "sess_thold_host_sort_direction", "ASC");
+  
+***************
+*** 783,786 ****
+  		</form>
+  	</tr>
+  	<?php
+! }
+\ No newline at end of file
+--- 793,796 ----
+  		</form>
+  	</tr>
+  	<?php
+! }

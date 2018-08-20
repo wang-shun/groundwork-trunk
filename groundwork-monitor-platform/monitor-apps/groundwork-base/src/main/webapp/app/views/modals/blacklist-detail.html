@@ -1,0 +1,33 @@
+<div class="modal-header" gwp-sliding-dialog>
+    <button type="button" class="close" aria-hidden="true" ng-click="close()">&times;</button>
+    <h4 class="modal-title" ng-show="!hostIdentity.hostBlacklistId">New Black List Record<span ng-show="hostIdentity.hostName.length">: {{hostIdentity.hostName}}</span></h4>
+    <h4 class="modal-title" ng-show="hostIdentity.hostBlacklistId">Black List Record Detail: <span>{{hostIdentity.hostName}}</span></h4>
+</div>
+<form name="hostBlacklistDetailForm" role="form" novalidate class="form-horizontal css-form">
+    <div class="modal-body">
+        <div class="form-group">
+            <label for="host-name" class="col-sm-2 control-label">Host Name</label>
+            <div class="col-md-10 col-sm-10">
+                <input type="text" name="hostname" id="host-name" class="form-control" placeholder="new-black-list-record" ng-model="hostIdentity.hostName" ng-class="{error: !isValidHostName()}" gwp-autofocus gwp-no-spaces />
+                <span id="helpBlock" class="help-block">Enter full Host Name to be displayed or a regular expression</span>
+            </div>
+        </div>
+        <div class="form-group" ng-show="!!hostIdentity.hostBlacklistId">
+            <label for="host-name" class="col-sm-2 control-label">&nbsp;</label>
+            <div class="col-md-10 col-sm-10">
+                <input type="submit" class="btn btn-primary" ng-disabled="!deleteMatchingHostsEnabled() || hostBlacklistDetailForm.hostname.$dirty" ng-click="deleteMatchingHosts()" value="Delete Matching Hosts"></input>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-md-10 col-sm-10 padding-left0">
+                <alert ng-repeat="alert in alerts" type="alert.type" close="closeAlert($index)"><strong>{{alert.msg}}</strong></alert>
+            </div>
+            <br />
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-default" ng-click="close()">Cancel</button>
+        <input type="submit" class="btn btn-primary" ng-click="add()" ng-disabled="!hostIdentity.hostName.length || !isValidHostName()" ng-show="!hostIdentity.hostBlacklistId" value="Add"></input>
+        <input type="submit" class="btn btn-primary" ng-click="add()" ng-disabled="!hostIdentity.hostName.length || !isValidHostName()" ng-show="!!hostIdentity.hostBlacklistId" value="Update"></input>
+    </div>
+</form>

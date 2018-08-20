@@ -1,0 +1,115 @@
+--- nedi/nedi.conf.orig	2016-02-25 08:06:10.161734596 -0800
++++ nedi/nedi.conf	2016-02-25 08:06:10.161734596 -0800
+@@ -131,9 +131,9 @@
+ # rep	replace upon SN change (updates device's first discover as well)
+ ;asset		rep
+ 
+-# This value needs to be set to the discovery interval in seconds. Make sure it
+-# corresponds to the NeDi crontab entry (e.g. hourly 1 * * *  => 3600).
+-rrdstep		3600
++# 14400 matches the default 4-hour interval between nedi.pl cron jobs
++# established in a standard GroundWork installation.
++rrdstep                14400
+ 
+ # This value lets you adjust how many samples you want within an RRD. With the default of
+ # 1000 and hourly discoveries you get 1000h ~ 42 days worth of samples. Those will be aggregated
+@@ -145,7 +145,7 @@
+ #============================================================================
+ 
+ # Choose backend (mysql or Pg)
+-backend		mysql
++backend		Pg
+ 
+ # DB params
+ dbname		nedi
+@@ -155,22 +155,22 @@
+ 
+ # Points to executable (leave empty to disable graphs)
+ # The 'new' option enables some additional styling (won't work with rrdtool <1.3)
+-rrdcmd		rrdtool		new
++rrdcmd         /usr/local/groundwork/common/bin/rrdtool                new
+ 
+ # Location of NeDi
+-nedipath	/var/nedi
++nedipath	/usr/local/groundwork/nedi
+ 
+ # Prefix to call Cacti CLI tools for adding graphs in Topology-Graph
+-;cacticli	/usr/bin/php /usr/share/cacti/cli
++;cacticli	/usr/local/groundwork/php/bin/php /usr/local/groundwork/cacti/htdocs/cli
+ 
+ # Cacti integration. Uncomment, if you want Devices-Status to link to Cacti.
+ # You will need to have the NeDi device names as host (or description) in cacti,
+ # with that a link can be established.
+ ;cactihost	localhost
+ ;cactidb	cacti
+-;cactiuser	cacti
+-;cactipass	cactipa55
+-;cactiurl	/cacti
++;cactiuser	cactiuser
++;cactipass	cactiuser
++;cactiurl	/portal/auth/portal/groundwork-monitor/nagios/Cacti
+ 
+ # Freeradius integration
+ #rdbname		radius
+@@ -179,7 +179,7 @@
+ #rdbhost		localhost
+ 
+ # Redirect NeDi events into nagios
+-;nagpipe	/Data/nagios/rw/nagios.cmd
++;nagpipe	/usr/local/groundwork/nagios/var/spool/nagios.cmd
+ 
+ #============================================================================
+ # Messaging & Monitoring
+@@ -302,7 +302,7 @@
+ module	Devices		Vlans			vlan	net
+ module	Devices		Status			sys	net
+ module	Devices		Config			conf	net
+-module	Devices		Doctor			info	net
++#module	Devices		Doctor			info	net
+ module	Devices		Graph			grph	net
+ module	Devices		Write			wrte	adm
+ 
+@@ -337,13 +337,13 @@
+ module	Reports		Monitoring		dbin	mon
+ module	Reports		Custom			note	mgr
+ 
+-module	Monitoring	Health			hlth	mon
++#module	Monitoring	Health			hlth	mon
+ #module	Monitoring	Map			map	mon
+-module	Monitoring	Events			bell	mon
+-module	Monitoring	Timeline		news	mon
+-module	Monitoring	Incidents		bomb	mon
++#module	Monitoring	Events			bell	mon
++#module	Monitoring	Timeline		news	mon
++#module	Monitoring	Incidents		bomb	mon
+ #module	Monitoring	Master			trgt	mon
+-module	Monitoring	Setup			bino	adm
++#module	Monitoring	Setup			bino	adm
+ 
+ module	System		NeDi			radr	mgr
+ module	System		Files			file	adm
+@@ -356,16 +356,16 @@
+ module	User		Profile			user
+ module	User		Management		ugrp	adm
+ #module	User		Radius			key	mgr
+-module	User		Chat			say
+-module	User		Logout			exit
++#module	User		Chat			say
++#module	User		Logout			exit
+ 
+-module	Other		Noodle			find	oth
+-module	Other		Defgen			geom	net
+-module	Other		Calculator		calc	net
+-module	Other		Info			php	oth
++#module	Other		Noodle			find	oth
++#module	Other		Defgen			geom	net
++#module	Other		Calculator		calc	net
++#module	Other		Info			php	oth
+ #module	Other		Flower			fan	oth
+-module	Other		Converter		hat2	oth
+-module	Other		Invoice			cash
++#module	Other		Converter		hat2	oth
++#module	Other		Invoice			cash
+ #module	Other		Nagios			cinf	oth
+ 
+ # Authentication for GUI users can be set to:

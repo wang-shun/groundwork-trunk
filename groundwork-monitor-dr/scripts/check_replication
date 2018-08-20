@@ -1,0 +1,92 @@
+#!/usr/bin/perl -w --
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+# FIX MINOR:
+# We will use the generic OS-supplied Perl for initial testing, until we package
+# this all up for delivery.  At that time, we will evaluate the situation to see
+# if there is some reason to use or not use a particular version of Perl.
+#
+# See comments at the top of replication_state_engine and GWMON-8508 for details
+# of why we are forced to use the OS-supplied version of Perl for the time being.
+#
+# If we use the GW copy of Perl for this script, that sets various environment
+# variables that destroy our ability to run the recover script below.
+
+# Nagios service check for the Disaster Recovery replication engine.
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+# ================================================================
+# Documentation.
+# ================================================================
+
+# To Do:
+#
+# (*) This plugin probes to see whether heartbeats are alive between the two
+#     Replication Engines.  The current version does not probe deeper, to
+#     verify (for instance) that replication actions are not stalling out.
+#     For that, see messages sent to the Foundation Event Console.  Future
+#     revisions of this plugin may be more robust.
+#
+# (*) The state of Master Configuration Authority in the two systems can
+#     be observed via the "recover status config" command.  An energetic
+#     administrator might wish to wrap this in a script, have that script
+#     called periodically, and get its output posted in a highly visible
+#     place that everyone will pay attention to.  Bear in mind that, due
+#     to the possibility that the opposing side might be inaccessible
+#     (as noted in an old Last Contact Time timestamp), the remote state
+#     displayed by this command might be stale.  Also note that there
+#     may be a need to grab Master Configuration Authority on one side
+#     before it can be released on the other side, so the output might
+#     show it being held by both sides.  These situations must be
+#     understood to interpret the command output properly.
+#
+#     The check_replication script should make such a probe as a secondary
+#     check.  Both Master Configuration Authority and Notification Authority
+#     should be captured as performance data and then their states on both
+#     systems intelligently graphed, along with an indication of whether
+#     the presented state is current or stale.  Also include availability
+#     info (scheduled and unscheduled outages) of both the Primary and DR
+#     systems in the same graph, for the densest possible presentation of
+#     related data.
+
+# ================================================================
+# Perl setup.
+# ================================================================
+
+use strict;
+
+# These environment variables (among many others) are set in the Monarch Test
+# environment, to values that have a tendency to break the scripting we call
+# here.  $ENV{PERL5LIB} is the worst offender, that alone causes breakage.
+# But $ENV{LD_LIBRARY_PATH} can cause problems as well, and I can't stand
+# these other settings, either, so we clean them all up.
+delete $ENV{LD_LIBRARY_PATH};
+delete $ENV{LD_PRELOAD};
+delete $ENV{PERL5LIB};
+$ENV{PATH} = '/bin:/usr/bin';
+
+# ================================================================
+# Calculation.
+# ================================================================
+
+my $recover = '/usr/local/groundwork/replication/bin/recover';
+my @heartbeat_status = grep {/->/} `$recover status heartbeat`;
+if (@heartbeat_status != 2) {
+    print "CRITICAL - replication cannot be contacted\n";
+    exit 2;
+}
+my @server_status = ();
+for (@heartbeat_status) {
+    my @fields = split;
+    push @server_status, $fields[$#fields];
+}
+for (@server_status) {
+    if (!/up/) {
+        print "CRITICAL - replication is down\n";
+	exit 2;
+    }
+}
+
+print "OK - local and remote replication are both up\n";
+exit 0;

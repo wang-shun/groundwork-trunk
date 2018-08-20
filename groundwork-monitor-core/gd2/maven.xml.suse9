@@ -1,0 +1,289 @@
+<!--
+Copyright 2007 GroundWork Open Source, Inc. ("GroundWork")  
+All rights reserved. This program is free software; you can redistribute it
+and/or modify it under the terms of the GNU General Public License version 2
+as published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU General Public License for 
+more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+
+<project default="allBuild"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+
+
+<goal name='allBuild'>
+    <attainGoal name='zlib' />
+    <attainGoal name='freetype' />
+    <attainGoal name='jpeg' />
+    <attainGoal name='png' />
+    <attainGoal name='gdbm' />
+    <attainGoal name='gd2' />
+</goal>
+
+  <goal name="allClean"
+        description="Clean the master project and all subprojects">
+       <delete dir="${basedir}/${dir.groundwork.gd2.jpeg}"/>
+       <delete dir="${basedir}/${com.groundwork.gd2.png}"/>
+       <delete dir="${basedir}/${com.groundwork.gd2.gdbm}"/>
+       <delete dir="${basedir}/${com.groundwork.gd2.gd2}"/>
+       <delete dir="${basedir}/${com.groundwork.gd2.zlib}"/>
+       <delete dir="${basedir}/${com.groundwork.gd2.freetype}"/>
+   </goal>
+
+<!-- 
+		Build individual components of GD2
+		
+		Add a goal for any new component
+ -->
+  <!-- START BUILDING GD-2 -->
+  <goal name="gd2" description="Build Graphics library and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/gd2/${com.groundwork.gd2.gd2}.tar.gz" dest="${basedir}"/>
+    
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.gd2.gd2}" executable="sh" >
+      <arg line="configure  --prefix=${org.groundwork.deploy.prefix} 
+			    --libdir=${org.groundwork.deploy.prefix}/${libdir}
+			    --includedir=${org.groundwork.deploy.prefix}/include	
+			    --with-jpeg-lib=${org.groundwork.deploy.prefix}/${libdir} 
+			    --with-jpeg-inc=${org.groundwork.deploy.prefix}/include 
+			    --with-png-lib=${org.groundwork.deploy.prefix}/${libdir}
+			    --with-png-inc=${org.groundwork.deploy.prefix}/include
+										"/>
+    </exec>
+    
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.gd2.gd2}" executable="make" >
+      <arg line="all"/>
+    </exec>
+    
+    <!-- CHECK -->
+    <exec dir="${basedir}/${com.groundwork.gd2.gd2}" executable="make" >
+      <arg line="check"/>
+    </exec>
+    
+    <!-- INSTALL -->
+    <exec dir="${basedir}/${com.groundwork.gd2.gd2}" executable="make" >
+      <arg line="install"/>
+    </exec>
+
+  </goal>   
+  <!-- STOP BUILDING GD-2 -->
+  
+   <!-- START BUILDING png -->
+  <goal name="png" description="Build PNG library and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/gd2/${com.groundwork.gd2.png}.tar.gz" dest="${basedir}"/>
+    
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.gd2.png}" executable="sh" >
+      <arg line="./configure --prefix=${org.groundwork.deploy.prefix}
+			     --libdir=${org.groundwork.deploy.prefix}/${libdir}
+			     --includedir=${org.groundwork.deploy.prefix}/include	
+			     --with-pkgconfigdir=${org.groundwork.deploy.prefix}/${libdir}/pkgconfig	
+								   "/>
+    </exec>
+    
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.gd2.png}" executable="make" >
+      <arg line="all"/>
+    </exec>
+    
+    <!-- INSTALL -->
+    <exec dir="${basedir}/${com.groundwork.gd2.png}" executable="make" >
+      <arg line="install"/>
+    </exec>
+
+  </goal>   
+  <!-- STOP BUILDING png -->
+  
+
+
+  <!-- START BUILDING gdbm -->
+  <goal name="gdbm" description="Build GDBM library and install it into /usr/local/groundwork">
+
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/gd2/${com.groundwork.gd2.gdbm}.tar.gz" dest="${basedir}"/>
+
+    <!-- MAKE -->
+    <exec dir="${basedir}/${dir.groundwork.gd2.gdbm}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.gd2.gdbm}" executable="sh" >
+      <arg line="./configure --prefix=${org.groundwork.deploy.prefix}
+                             --libdir=${org.groundwork.deploy.prefix}/${libdir}
+                             --includedir=${org.groundwork.deploy.prefix}/include       
+                                                                   "/>
+    </exec>
+
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.gd2.gdbm}" executable="make" >
+      <arg line="all"/>
+    </exec>
+
+    <!-- INSTALL -->
+    <exec dir="${basedir}/${com.groundwork.gd2.gdbm}" executable="make" >
+      <arg line="install"/>
+    </exec>
+
+  </goal>
+  <!-- STOP BUILDING gdbm -->
+
+
+
+
+  <!-- START BUILDING libjpeg -->
+  <goal name="jpeg" description="Build JPEG library and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/gd2/${com.groundwork.gd2.jpeg}.tar.gz" dest="${basedir}"/>
+
+  <!-- MAKE -->
+    <exec dir="${basedir}/${dir.groundwork.gd2.jpeg}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+    
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${dir.groundwork.gd2.jpeg}" executable="sh" >
+      <arg line="./configure --build=${build} 
+			     --host=${host} 
+			     --target=${target} 
+			     --prefix=${org.groundwork.deploy.prefix} 
+			     --exec-prefix=${org.groundwork.deploy.prefix} 
+			     --includedir=${org.groundwork.deploy.prefix}/include 
+			     --libdir=${org.groundwork.deploy.prefix}/${libdir} 
+		             --enable-shared 
+	                     --enable-static
+									"/>
+    </exec>
+    
+    <!-- MAKE -->
+    <exec dir="${basedir}/${dir.groundwork.gd2.jpeg}" executable="make" >
+      <arg line="all"/>
+    </exec>
+    
+    <!-- MAKE DIRECTORY FOR MAN PAGES-->
+    <exec dir="${org.groundwork.deploy.prefix}" executable="mkdir" >
+      <arg line="-p man"/>
+    </exec>
+
+    <!--  MAKE DIRECTORY FOR MAN PAGES-->
+    <exec dir="${org.groundwork.deploy.prefix}/man" executable="mkdir" >
+      <arg line="-p man1"/>
+    </exec>
+
+    <!--  MAKE LIB (temporary )-->
+    <exec dir="${org.groundwork.deploy.prefix}" executable="mkdir" >
+      <arg line="-p lib"/>
+    </exec>
+
+    <!-- INSTALL -->
+    <exec dir="${basedir}/${dir.groundwork.gd2.jpeg}" executable="make" >
+      <arg line="install"/>
+    </exec>
+
+    <copy todir="${org.groundwork.deploy.prefix}/${libdir}" overwrite="true">
+       <fileset dir="${basedir}/${dir.groundwork.gd2.jpeg}/.libs">
+           <include name="**/*"/>
+        </fileset>
+     </copy>
+
+    <exec dir="${org.groundwork.deploy.prefix}/${libdir}" executable="chmod" >
+      <arg line="755 libjpeg.so.62.0.0"/>
+    </exec>
+
+    <exec dir="${org.groundwork.deploy.prefix}/${libdir}" executable="chmod" >
+      <arg line="755 libjpeg.la"/>
+    </exec>
+
+    <exec dir="${org.groundwork.deploy.prefix}/${libdir}" executable="ln" >
+      <arg line="-sf libjpeg.so.62.0.0 libjpeg.so.62"/>
+    </exec>
+
+    <exec dir="${org.groundwork.deploy.prefix}/${libdir}" executable="ln" >
+      <arg line="-sf libjpeg.so.62.0.0 libjpeg.so"/>
+    </exec>
+
+  </goal>   
+  <!-- STOP BUILDING lib-jpeg -->
+  
+  <!-- START BUILDING freetype -->
+  <goal name="freetype" description="Build freetype library and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/gd2/${com.groundwork.gd2.freetype}.tar.gz" dest="${basedir}"/>
+
+  <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.gd2.freetype}" executable="chmod" >
+      <arg line="-R +x ./"/>
+      
+    </exec>
+    
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.gd2.freetype}" executable="sh" >
+      <arg line="./configure  	--prefix=${org.groundwork.deploy.prefix}
+				--libdir=${org.groundwork.deploy.prefix}/${libdir}
+				--includedir=${org.groundwork.deploy.prefix}/include
+	                    	--enable-shared 
+			    						"/>
+    </exec>
+    
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.gd2.freetype}" executable="make" >
+      <arg line="all"/>
+    </exec>
+    
+    <!-- INSTALL -->
+    <exec dir="${basedir}/${com.groundwork.gd2.freetype}" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>   
+  <!-- STOP BUILDING freetype -->
+  
+<!-- START BUILDING zlib -->
+  <goal name="zlib" description="Build zlib library and install it into /usr/local/groundwork">
+                                                                                                                             
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/gd2/${com.groundwork.gd2.zlib}.tar.gz" dest="${basedir}"/>                                                                                                                             
+     <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.gd2.zlib}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.gd2.zlib}" executable="sh" >
+      <arg line="./configure --shared 
+                             --prefix=${org.groundwork.deploy.prefix} 
+                             --exec_prefix=${org.groundwork.deploy.prefix} 
+                             --libdir=${org.groundwork.deploy.prefix}/${libdir} 
+                             --includedir=${org.groundwork.deploy.prefix}/include
+								    		"/>
+    </exec>
+                                                                                                                             
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.gd2.zlib}" executable="make" >
+      <arg line="all"/>
+    </exec>
+                                                                                                                             
+    <!-- INSTALL -->
+    <exec dir="${basedir}/${com.groundwork.gd2.zlib}" executable="make" >
+      <arg line="install"/>
+    </exec>
+
+  </goal>
+  <!-- STOP BUILDING zlib -->
+
+</project>

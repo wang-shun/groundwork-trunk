@@ -1,0 +1,141 @@
+Windows GDMA Version 2.0
+========================
+
+
+
+    **** READ ALL OF THIS DOCUMENT, INCLUDING NOTES ON PACKAGING AT THE END ****
+
+
+
+
+Important notes
+---------------
+
+It is recommended that, at minimum, some critical issues are addressed before distributing this to partners or customers :
+ 
+a) a different way of purging the spool (eg a seperate spool purger service) that is independent of the gw_win_monitor program (see jiras)
+b) a send_nsca that respects the timout option properly (see jiras)
+c) further and rigorous testing by someone other than myself
+ 
+Please read and understand the current jiras on GDMA, esp'y those added recently discussing spooling, limitations and recommendations.
+ 
+ 
+Summary of what is new in this version
+--------------------------------------
+
+The functionality has been updated to include per-service check intervals, and spooling.
+Other improvements and minor features were also added. 
+This version also includes previous patches, such as hanging agent patch, and https pulls (ssl) patch.
+ 
+Bugs fixed
+----------
+ssleay issue fixed when pulling via https
+Cumulatively, the agent-freezing issue is included
+
+Logging and versioning improvements for diagnosis in the field
+--------------------------------------------------------------
+gdma service (gdma.exe) logging which was too noisy (this is in response to DZ Bank).  Reorganized content, removed logging about dispatcher processes. Log only updated at startup/shutdown/errors (eg killing of dispatcher process tree). So for example :  <insert log example here>
+version strings added where missing, updated otherwise : 2.0.20090420; all 3 exe's support -v option to display version now.
+version strings show up in respective logs (gdma.log, gw_win_dispatcher.log and <hostname>.log)
+non-default gdma service log location content was validated
+ 
+Additions/Changes
+-----------------
+Per-service interval feature added (in response to Migros)
+Spooling feature added (make sure to read and understand the recent jira's on spooling in Windows) (in response to DZ Bank)
+Hostname_Case option was added to control agent-reported hostname (upper/lower/as-is) (in response to both PeopleClick and NFCU).  This feature gives the customer flexibility and control over their GW host naming conventions, and means we don't need to rebuild on a per customer basis any more.
+Added a new default per-service check interval option -  Default_Service_Check_Interval - put in host externals (if not defined, then drops back to 600 second hardcoded preset)
+Default gw_dispatcher.cfg options changed :
+Host_Timeout was increased from 60 to 180 to match Program_Timeout - GDMA is single host, so this hopefully simplifies tuning etc
+Max_Concurrent_Hosts was changed from 2 to 1 - again, GDMA is single host, so this is more correct
+GDMA service defaults changes :
+Default dispatcher invocation frequency is now 200 seconds rather than 60 seconds. This is necessary to give the system time to deal with the case when a destination GW server is not responding, resulting in spooling. Read and understand the issues with spooling discussed in the jiras.
+Default dispatcher timeout is now 190 seconds (after which dispatcher and its process subtree are killed off by the GDMA service)
+
+4/24/09 - Added No_Timestamps host externals option for Migros
+
+
+Distribution ZIP changes
+------------------------
+The zip file is "clean" (no junk, virus and malware scanned as usual).
+gw_dispatcher.cfg updated
+source code\ directory updated - now contains PDK .perlapp and .perlsvc files
+a new host-externals-example.txt file
+Host profile for base OS checks included
+ 
+Tests
+-----
+Tested, including numerous cases, in my dev lab using an XP Pro 32bit SP2 host and GW 5.3 pro. But its strongly recommended that GW performs more rigorous testing before releasing.
+ 
+Compatibility
+-------------
+For customers who have already installed and configured their agents, they would need to update their Windows host externals by including the Hostname_Case option, and possibly include the Default_Service_Check_Interval set to their original GDMA service frequency. Hosts would need the old GDMA removed and this new one installed. The client also needs to pay careful attention to GDMA service and dispatcher defaults and adjust as necessary.
+ 
+ 
+Things to watch out for
+-----------------------
+Time synchronization between hosts and the GW server is critical. If the host's time is ahead of the GW server's time, then the incoming results from GDMA will be rejected. Watch the nagios.log for these events (heck might want to even monitor for them in a GDMA-specific groundwork server service profile ??).
+Aside from the jira references about spooling, the new things to watch out for around spooling are watching the GDMA service log (by default \groundwork\winagent\gdma.log) for entries about the dispatcher and its process tree being terminated due to running too long.  If this is seen, then its just a case of tuning the gdma service and dispatcher defaults.
+All the other usual stuff that we've run into - its time we made a troubleshooting guide perhaps before we forget it all
+ 
+Build environment
+-----------------
+OS : XP Pro 32bit with SP2
+Activestate PDK : 8.0.1
+Activestate Perl : 5.10.0.1004
+Additional modules : Win32-Process-Info and no others.
+Build files (.perlapp and .perlsvc) included under source code directory
+ 
+ 
+Notes on scripts
+----------------
+
+- gdma.pl 
+   - source for gdma.exe, the GDMA windows service, which invokes the dispatcher
+   - has a variable at the top called $default_drive, which by default is c:.  
+      - some customers like this to be c, others d. Rebuild if it saves time for the customer during installation.
+
+- gw_win_dispatcher.pl
+   - source for the dispatcher, gw_win_dispatcher, the thing that invokes the monitor
+
+- gw_win_monitor.pl
+   - source for gw_win_monitor.exe, the thing that reads the externals cfgs, executes the checks and returns the results
+
+
+Building windows gdma binaries
+------------------------------
+
+1.	If you have Perl installed - uninstall it and remove c:\perl completely.
+2.	Install ActiveState Perl 5.10.0.1004  (has to be .1004).
+3.	Do NOT install Crypt-SSLeay - this now ships with .1004 (installing the winnipeg Crypt-SSLeay will put an incompatible and dynamically linked libeay32.dll in the built gw_win_dispatcher.exe which will cause https access to fail).
+4.	Do NOT install LWP::UserAgent - this now ships with .1004
+5.	Do Install  Win32-Process-Info (from a standard repository)
+6.	Install PDK 8.0.1 
+7.	Build using the source code .perlapp and .perlsvc control files
+8.      Read the comments at the top of the pl scripts for more details.
+
+
+Packaging and installing
+------------------------
+
+- To package :
+
+   - modify the gw_dispatcher.cfg :
+      - change the c: to whatever drive it's going to be installed on by default 
+      - if using http(s) to pull cfgs
+          - set ConfigFile_Use_HTTPS to something, else comment it out
+          - set ConfigFile_URL to the url from where the cfgs are being built on the GW server
+
+   - zip up everything in this folder EXCLUDING these :
+       1. this README
+       2. possibly the source code - check with GroundWork project lead on a per project basis
+     
+- To install :
+
+   - unzip the zip package into c:\groundwork\winagent for example
+   - run gdma.exe --help and study it carefully and follow the instructions therein. Typically this just means
+     running gdma.exe --install auto but study the help
+
+
+
+DSN 4/23/08

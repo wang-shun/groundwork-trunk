@@ -1,0 +1,78 @@
+Our model of Notification Authority Control was previously somewhat sloppy.
+This file is an attempt to think out loud and clarify our thinking.
+
+Commands for controlling Notification Authority:
+
+    notify grab      # arrogate Notification Authority, and lock this choice
+    notify dynamic   # allow the choice to float, based on current conditions
+    notify release   # relinquish Notification Authority, and lock this choice
+
+Possible states of Notification Authority Control on the local and remote
+systems, where for purposes of the Notes we assume that Local is the Primary
+site and Remote is the Disaster Recovery site:
+
+    Local     Remote    Notes
+    ----------------------------------------------------------------
+    grabbed   grabbed   conflict, as both sides will generate notifications;
+			warn when this state is established, and during every
+			heartbeat analysis using current remote state that
+			finds this condition, about duplicate notifications
+    grabbed   dynamic   ok (can be used as setup for normal-mode operation;
+			allows both failover and failback of Notification
+			Authority to occur)
+    grabbed   released  ok and useful under some conditions, but failover can no
+			longer occur; warn about that
+    dynamic   grabbed   ok (can be used as setup during long-term failure-mode
+			operation; allows failback to occur when normal mode
+			resumes, though should this setup then persist,
+			duplicate notifications would be generated)
+    dynamic   dynamic   If the heartbeat analysis logic were too simplistic,
+			this combination would potentially be dangerous, because
+			the system might be left with neither system in charge
+			(notifications could go missing or could be duplicated).
+			To limit the possible damage, a normal-mode heartbeat
+			analysis using current remote state will enable
+			notifications only if the local system has Master
+			Configuration Authority and the remote system does not,
+			as a kind of polite deference to the Primary system.
+			(If both systems have or neither system has Notification
+			Authority, we do enable notifications on both sides.)
+			With such a deference rule in place, this combination of
+			control states becomes the standard mode of operation,
+			reducing the need for the administrator to ever grab or
+			release control.  (If not for the deference rule, during
+			normal-mode operation, we would need to generate a
+			console warning if this condition were detected during
+			a heartbeat analysis using current remote state, and
+			always enable notifications on both sides, even in
+			normal mode.  That would mean duplicate notifications
+			while this condition holds.)
+    dynamic   released  potentially dangerous, as the system may be left with
+			neither system in charge (notifications may go missing)
+			when failure mode is triggered.  With this setup, a
+			heartbeat analysis on the Local system (only) using
+			current remote state will always enable notifications
+			(though simply because the Local system has dynamic
+			Notification Authority Control and Master Configuration
+			Authority, not because of any logic involving the Remote
+			system's Notification Authority Control setting).
+    released  grabbed   ok and useful under some conditions, but failback can
+			no longer occur; warn about that
+    released  dynamic   potentially dangerous, because if the heartbeat analysis
+			logic were too simplistic, the system might be left with
+			neither system in charge (notifications could go missing).
+			To prevent that from happening, a heartbeat analysis on
+			the Remote system (only) using current remote state (i.e.,
+			current Local state) will always enable notifications in
+			both normal and failure modes.	This is not considered an
+			ideal operating configuration (having the DR system handle
+			all notifications even while operating in normal mode).
+			But it could be used, for instance, if the equipment used
+			for notifications from the Primary system were inoperative.
+			More likely, you would want the DR system to have grabbed
+			rather than dynamic control in such a situation, to make
+			the intention clear.
+    released  released  dangerous, as no notifications will ever be generated;
+			warn during every heartbeat analysis using current
+			remote state that finds this condition, about having
+			no notifications sent from either side

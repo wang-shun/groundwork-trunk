@@ -1,0 +1,141 @@
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' "check_disk.wsf"
+' nagios@samurai.inka.de
+'
+' 03.06.2003 ver 1.13
+' Type converting problems fixed
+' New return string format
+' Minor bugs in the help
+' Auto MB or GB detect
+' 13.06.2003 ver 1.13b (miwi)
+'added support for Percentage in /w and /c
+' 
+' --------------------------------------------------------------
+' This plugin returns the Total, Free And Used space In MB And % of a given drive
+'
+
+<job>
+<runtime>
+  <description>
+check_disk (nrpe_nt-plugin) 1.1
+The nagios plugins come with ABSOLUTELY NO WARRANTY. You may redistribute
+copies of the plugins under the terms of the GNU General Public License.
+For more information about these matters, see the file named COPYING.
+Copyright (c) 1999-2001 Ethan Galstad/Hagen Deike (nagios@samurai.inka.de)
+
+This plugin returns the Total, Free And Used space In MB And % of a given drive.
+  </description>
+  <named
+    name="h"
+    helpstring="Help"
+    type="simple"
+    required="false" 
+  />
+  <named
+    name="drive"
+    helpstring="The drive letter to check. See the example."
+    type="string"
+    required="true" 
+  />
+  <named
+    name="w"
+    helpstring="Warning watermark. Defined in MB (/w:100) or % (/w:80%)"
+    type="string"
+    required="true"
+  />
+  <named
+    name="c"
+    helpstring="Critical watermark. Defined in MB (/c:100) or % (/c:90%)"
+    type="string"
+    required="true"
+  />
+  <example>
+Example: check_disk.wsf /drive:"c:\" /w:200 /c:100
+  </example>
+</runtime>
+<script language="VBScript">
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Const's and Var's
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'Cons for return val's
+Const intOK = 0
+Const intWarning = 1
+Const intCritical = 2
+Const intUnknown = 3
+
+' Cons for FSO
+Const ForReading = 1
+Const ForWriting = 2
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Help
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+  If Wscript.Arguments.Named.Exists("h") Or Not Wscript.Arguments.Named.Exists("drive") Or Not Wscript.Arguments.Named.Exists("w") Or Not Wscript.Arguments.Named.Exists("c") Then
+	Wscript.Echo "Plugin help screen:"
+      Wscript.Arguments.ShowUsage()
+      Wscript.Quit(intUnknown)
+  End If
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Main
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Dim objFSO, objDrive, intFree, intTotal, intUsed, intFreePro, intUsedPro, strDriveName, strFreeType, strTotalType, strUsedType
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+
+strDriveName = Wscript.Arguments.Named("drive")
+strFreeType = "MB"
+strTotalType = "MB"
+strUsedType = "MB"
+
+Set objDrive = objFSO.GetDrive(objFSO.GetDriveName(strDriveName))
+intFree = CLng(FormatNumber(objDrive.FreeSpace/1048576, 0))
+intTotal = CLng(FormatNumber(objDrive.TotalSize/1048576, 0))
+intUsed = intTotal - intFree
+
+intFreePro = (intFree*100)/intTotal
+intUsedPro = (intUsed*100)/intTotal
+
+intFreeOut = intFree
+intUsedOut = intUsed
+intTotalOut = intTotal
+If intFreeOut > 1024 Then
+	intFreeOut = Round(intFreeOut/1024,2)
+	strFreeType = "GB"
+End If
+If intUsedOut > 1024 Then
+	intUsedOut = Round(intUsedOut/1024,2)
+	strUsedType = "GB"
+End If
+If intTotalOut > 1024 Then
+	intTotalOut = Round(intTotalOut/1024,2)
+	strTotalType = "GB"
+End If
+
+strDriveName = Replace(strDriveName,"\","")
+Wscript.Echo "Drive "& UCase(strDriveName) &" "& objDrive.VolumeName &" - Total: "& intTotalOut &" "& strTotalType &" - Free: "& intFreeOut &" "& strFreeType &" ("& Round(intFreePro,0) &"%) - Used: "& intUsedOut &" "& strUsedType &" ("& Round(intUsedPro,0) &"%)"
+
+If InStr(Wscript.Arguments.Named("c"),"%") Then
+	If intFreePro <=CInt(Replace(Wscript.Arguments.Named("c"),"%","")) Then
+		Wscript.Quit(intCritical)
+	End if
+Else
+	If intFree <= CInt(Wscript.Arguments.Named("c")) Then
+		Wscript.Quit(intCritical)
+	End if
+End if
+
+If InStr(Wscript.Arguments.Named("w"),"%") Then
+	If intFreePro <=CInt(Replace(Wscript.Arguments.Named("w"),"%","")) Then
+		Wscript.Quit(intWarning)
+	End if
+Else
+	If intFree <= CInt(Wscript.Arguments.Named("w")) Then
+		Wscript.Quit(intWarning)
+	End if
+End if
+Wscript.Quit(intOK)
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+</script>
+</job>

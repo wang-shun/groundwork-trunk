@@ -1,0 +1,222 @@
+#!/bin/bash
+#
+# Copyright 2007 GroundWork Open Source, Inc. ("GroundWork")  
+# All rights reserved. This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public License version 2
+# as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for 
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51 Franklin # Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# init file for snmptt
+# Alex Burger - 8/29/02
+# 	      - 9/8/03 - Added snmptt.pid support to Stop function
+#
+# chkconfig: - 50 50
+# description: Simple Network Management Protocol (SNMP) Daemon
+#
+# processname: /usr/local/groundwork/sbin/snmptt
+# pidfile: /var/run/snmptt.pid
+### BEGIN INIT INFO
+# Provides: snmptt
+# Required-Start: $local_fs $remote_fs
+# X-UnitedLinux-Should-Start: $named $syslog $time
+# Required-Stop:  $local_fs $remote_fs
+# X-UnitedLinux-Should-Stop: $named $syslog $time # Default-Start:  3 5
+# Default-Stop:   0 1 2 6
+# Short-Description: Simple Network Management Protocol (SNMP) Daemon
+# Description:    Starting Groundwork Simple Network Management Protocol (SNMP) Daemon
+### END INIT INFO
+# Vladimir Novoselskiy -1/25/06 added:SuSE suport, --ini ,snmptrapd, groundwork structure adjustment, major clean up
+# 
+# source function library
+if [ -f /etc/SuSE-release  ]; then
+. /etc/rc.status
+# Shell functions sourced from /etc/rc.status:
+#      rc_check         check and set local and overall rc status
+#      rc_status        check and set local and overall rc status
+#      rc_status -v     ditto but be verbose in local rc status
+#      rc_status -v -r  ditto and clear the local rc status
+#      rc_failed        set local and overall rc status to failed
+#      rc_failed <num>  set local and overall rc status to <num><num>
+#      rc_reset         clear local rc status (overall remains)
+#      rc_exit          exit appropriate to overall rc status
+. /etc/rc.status
+
+# First reset status of this service
+rc_reset
+
+# Return values acc. to LSB for all commands but status:
+# 0 - success
+# 1 - generic or unspecified error
+# 2 - invalid or excess argument(s)
+# 3 - unimplemented feature (e.g. "reload")
+# 4 - insufficient privilege
+# 5 - program is not installed
+# 6 - program is not configured
+# 7 - program is not running
+#
+# Note that starting an already running service, stopping
+# or restarting a not-running service as well as the restart
+# with force-reload (in case signalling is not supported) are
+# considered a success.
+fi
+
+if [ -f /etc/redhat-release  ] ; then
+. /etc/init.d/functions
+fi
+
+PROG1="snmp"
+OPTIONS="--daemon"
+OPTIONS1="--ini"
+CONFIGFILE="/usr/local/groundwork/etc/snmp/snmptt.ini"
+SNMPTT="/usr/local/groundwork/sbin/snmptt"
+SUBSYS1="/var/lock/subsys/snmptt"
+PID1="/var/run/snmptt.pid"
+SUBSYS2="/var/lock/subsys/snmptrapd"
+PID2="/var/run/snmptrapd.pid"
+RETVAL=0
+PROG2="snmptrapd"
+
+SNMPTRAPD="/usr/local/groundwork/sbin/snmptrapd"
+SNMPTRAPDCONF="/usr/local/groundwork/etc/snmp/snmptrapd.conf"
+LOGFILE="/usr/local/groundwork/var/log/snmp/snmptrapd.log"
+
+if [ -f /etc/redhat-release  ] ; then
+start() {
+	echo -en $"Starting $PROG1: "
+        daemon $SNMPTT $OPTIONS $OPTIONS1 $CONFIGFILE >/dev/null 2>&1 &
+        if [ $? -eq 0 ] ; then
+        	echo -en '\E[0m'"\033[61G[\033[0m"
+        	echo -e '\E[1;37;32m'"\033[63GOK\033[0m" ]
+	else	
+        	echo -en '\E[0m'"\033[61G[\033[0m"
+        	echo -e '\E[1;37;31m'"\033[63GFAILED\033[0m" ]
+		return 1
+        fi
+
+	echo -n $"Starting $PROG2: "
+        $SNMPTRAPD -On -C -c $SNMPTRAPDCONF -Lf $LOGFILE >/dev/null 2>&1 &
+        if [ $? -eq 0 ] ; then
+        	echo -en '\E[0m'"\033[61G[\033[0m"
+        	echo -e '\E[1;37;32m'"\033[63GOK\033[0m" ]
+        else
+        	echo -en '\E[0m'"\033[61G[\033[0m"
+        	echo -e '\E[1;37;31m'"\033[63GFAILED\033[0m" ]
+		return 1
+        fi
+        
+	return 0
+}
+
+stop() {
+	echo -n $"Stopping $PROG1: "
+	killproc $SNMPTT >/dev/null 2>&1 &
+        if [ $? -eq 0 ] ; then
+                echo -en '\E[0m'"\033[61G[\033[0m"
+                echo -e '\E[1;37;32m'"\033[63GOK\033[0m" ]
+        else
+                echo -en '\E[0m'"\033[61G[\033[0m"
+                echo -e '\E[1;37;31m'"\033[63GFAILED\033[0m" ]
+		return 1
+        fi
+
+	echo -n $"Stopping $PROG2: "
+	killproc $SNMPTRAPD >/dev/null 2>&1 &
+        if [ $? -eq 0 ] ; then
+                echo -en '\E[0m'"\033[61G[\033[0m"
+                echo -e '\E[1;37;32m'"\033[63GOK\033[0m" ]
+        else
+                echo -en '\E[0m'"\033[61G[\033[0m"
+                echo -e '\E[1;37;31m'"\033[63GFAILED\033[0m" ]
+		return 1
+        fi
+
+	return 0
+}
+fi
+
+if [ -f /etc/SuSE-release  ]; then
+start() {
+	echo -n $"Starting $PROG1: "
+        $SNMPTT $OPTIONS $OPTIONS1 $CONFIGFILE >/dev/null 2>&1 &
+	rc_status -v
+	touch $SUBSYS2
+	echo -n $"Starting $PROG2: "
+        $SNMPTRAPD -On -C -c $SNMPTRAPDCONF -Lf $LOGFILE >/dev/null 2>&1 &
+	rc_status -v
+	return $RETVAL 
+}
+stop() {
+	echo -n $"Stopping $PROG1: "
+	killproc $SNMPTT 
+	RETVAL=$?
+	rc_status -v
+	rm -rf $SUBSYS1
+	if test -f $PID ; then
+	  [ $RETVAL -eq 0 ] && rm -rf $PID
+	fi
+
+	echo -n $"Stopping $PROG2: "
+	killproc $SNMPTRAPD
+	RETVAL=$?
+	rc_status -v
+	rm -rf $SUBSYS2
+	return $RETVAL
+}
+fi
+
+restart(){
+	stop
+	start
+}
+
+condrestart(){
+    [ -e $SUBSYS ] && restart
+    return 0
+}
+
+case "$1" in
+  start)
+	start
+	;;
+  stop)
+	stop
+	;;
+  restart)
+	stop
+	sleep 1
+	start
+        ;;
+  condrestart)
+	condrestart
+	;;
+  status)
+	if [ -f /etc/SuSE-release  ]; then
+	echo -n "Checking for $PROG1: "
+        checkproc $SNMPTT
+        rc_status -v
+	echo -n "Checking for $PROG2: "
+        checkproc $SNMPTRAPD
+        rc_status -v
+        fi
+	if [ -f /etc/redhat-release  ] ; then
+	echo -n "Checking for $PROG1: "
+        status $SNMPTT
+	RETVAL=$?
+	echo -n "Checking for $PROG2: "
+	status $SNMPTRAPD
+	RETVAL=$?
+	fi
+        ;;
+  *)
+	echo $"Usage: $0 {start|stop|restart|condrestart|status}"
+	RETVAL=1
+esac
+
+exit $RETVAL

@@ -1,0 +1,184 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0014)about:internet -->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Adobe RoboHelp 8" />
+<title>Configuring Host Groups</title>
+<link rel="StyleSheet" href="../../../../Bookshelf.css" type="text/css" />
+<script type="text/javascript" language="JavaScript">
+//<![CDATA[
+function ehlp_showtip(current,e,text)
+{
+  if ((parseInt(navigator.appVersion) == 4) && (navigator.appName == 'Netscape'))
+  {
+    document.tooltip.document.write("<layer bgColor='yellow' style='border:1px solid black;font-size:12px;'>"+ text + "<\/layer>");
+    document.tooltip.document.close();
+    document.tooltip.left=e.pageX+5;
+    document.tooltip.top=e.pageY+5;
+    document.tooltip.visibility="show";
+  }
+}
+function ehlp_hidetip()
+{
+  document.tooltip.visibility="hidden";
+}
+//]]>
+</script>
+<script type="text/javascript" language="JavaScript">
+//<![CDATA[
+function reDo() {
+  if (innerWidth != origWidth || innerHeight != origHeight)
+     location.reload();
+}
+if ((parseInt(navigator.appVersion) == 4) && (navigator.appName == "Netscape")) {
+        origWidth = innerWidth;
+        origHeight = innerHeight;
+        onresize = reDo;
+}
+onerror = null; 
+//]]>
+</script>
+<style type="text/css">
+/*<![CDATA[*/
+<!--
+div.WebHelpPopupMenu { position:absolute;
+left:0px;
+top:0px;
+z-index:4;
+visibility:hidden; }
+-->
+/*]]>*/
+</style>
+
+<script type="text/javascript" language="javascript1.2" src="../../../../whmsg.js">
+</script>
+<script type="text/javascript" language="javascript" src="../../../../whver.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../../../whproxy.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../../../whutils.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../../../whlang.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../../../whtopic.js">
+</script>
+</head>
+<body>
+<script type="text/javascript" language="javascript1.2">
+//<![CDATA[
+<!--
+if (window.gbWhTopic)
+{
+        var strUrl = document.location.href;
+        var bc = 0;
+        var n = strUrl.toLowerCase().indexOf("bc-");
+        if(n != -1)
+        {
+                document.location.href = strUrl.substring(0, n);
+                bc = strUrl.substring(n+3);
+        }
+
+        if (window.addTocInfo)
+        {
+        addButton("show",BTN_TEXT,"Show Table of Contents","","","","",0,0,"","","");
+
+        }
+        if (window.writeBtnStyle)
+                writeBtnStyle();
+
+        if (window.writeIntopicBar)
+                writeIntopicBar(1);
+
+        
+        
+
+        if (window.setRelStartPage)
+        {
+        setRelStartPage("../../../../Bookshelf.htm");
+
+                autoSync(0);
+                sendSyncInfo();
+                sendAveInfoOut();
+        }
+}
+else
+        if (window.gbIE4)
+                document.location.reload();
+
+//-->
+//]]>
+</script>
+<p style="margin-top: 0pt; color: #0000ff; font-size: 7pt;" align="right"><a href="../../../../Welcome_to_GroundWork_Monitor/index.htm" style="color: #0000ff; font-size: 7pt; text-decoration: none;">Home</a> &gt; <a href="../../../usingapplications_aboutusingapplications.htm" style="color: #0000ff; font-size: 7pt; text-decoration: none;">USING APPLICATIONS</a> &gt; <a href="../../configuration_aboutconfiguration.htm" style="color: #0000ff; font-size: 7pt; text-decoration: none;">Configuration</a> &gt; <a href="../configuration_configurationscenarios.htm" style="color: #0000ff; font-size: 7pt; text-decoration: none;">Configuration Scenarios</a>&#160;&gt;&#160;Defining Configuration Groups</p>
+<p>&#160;</p>
+<script src="../../../../ehlpdhtm.js" type="text/javascript" language="JavaScript1.2">
+</script>
+<h1><img src="../../../../Shared_Images/square.gif" alt="square.gif" style="border: none;" width="15" height="15" border="0" /> Configuration Scenarios</h1>
+<h3 style="text-decoration: none;" align="right"><a href="../configuration_configurationscenarios.htm" title="Topic Home" id="a1" style="text-decoration: none;" onmouseover="if ((parseInt(navigator.appVersion) == 4) &amp;&amp; (navigator.appName == 'Netscape')) ehlp_showtip(this,event,'Topic Home');" onmouseout="if ((parseInt(navigator.appVersion) == 4) &amp;&amp; (navigator.appName == 'Netscape')) ehlp_hidetip();" name="a1"><img src="../../../../Shared_Images/homeicon.gif" alt="homeicon.gif" style="border: none;" width="33" height="27" border="0" /></a> <img src="../../../../Shared_Images/printicon.gif" onclick="window.print()" alt="Print Page" title="Print Page" style="border: none;" width="33" height="27" border="0" /> <a href="mailto:support@groundworkopensource.com?subject=Defining Host Groups" title="Send Comments" style="text-decoration: none;"><img src="../../../../Shared_Images/commentsicon.gif" alt="Send Comments" title="Send Comments" style="border: none;" width="33" height="27" border="0" /></a></h3>
+<h2>Configuring Host Groups</h2>
+<p>A <span style="font-weight: bold;"><b>Host Group</b></span> definition is used to group one or more hosts together for the purposes of simplifying notifications. When a host goes down, becomes unreachable, or recovers, <span style="font-style: italic;"><i>Nagios</i></span> will find which host group(s) the host is a member of, get the contact group for each of those host groups, and notify all Contacts associated with those contact groups. Host groups allow for flexibility in determining who gets paged for what kind of problems.</p>
+<p>Each host that you define must be a member of at least one host group - even if it is the only host in that group. Hosts can be in more than one host group.</p>
+<h3>Defining a Host Group</h3>
+<p style="font-size: 8pt;"><span><font size="1" style="font-size:8pt;"><span><a class="dropspot" href="javascript:TextPopup(this)" id="a3" style="font-size: 8pt;" name="a3"><img src="../../../../Shared_Images/screenshoticon.gif" title="View Screenshot" alt="screenshoticon.gif" style="border: none;" width="29" height="27" border="0" />Show/Hide</a></span></font></span></p>
+<div class="droptext" id="POPUP237474862" style="display: none;">
+<p class="Caption">Figure: Host Group Properties</p>
+<p class="Figure"><img src="Assets/configuration_hostgroupproperties.gif" alt="configuration_hostgroupproperties.gif" style="border: none;" width="700" height="627" border="0" /></p>
+</div>
+<ol>
+<li class="p-Numbering">
+<p class="Numbering">Select <b>Hosts</b> from the <span style="font-style: italic;"><i>Configuration</i></span> page.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">Expand the <b>Host Groups</b> drop-down menu.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">Select <b>New</b>.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">In the <b>Host Group Properties</b> screen, enter a host group <span style="font-weight: bold;"><b>Name</b></span> which should be unique and not the same as a contact group. Enter an <span style="font-weight: bold;"><b>Alias</b></span>.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">Next, optionally enter <span style="font-weight: bold;"><b>Notes</b></span>. This field is intended to describe common features of the host group (e.g. the business unit, the geographical location,or the team responsible for maintenance). This information is shown on the host group detail page within the <span style="font-style: italic;"><i>Status</i></span> application.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">In this screen select the hosts from the right side list to be included in this host group.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">Next, select the <span style="font-weight: bold;"><b>Contact Groups</b></span> that should be notified whenever there are problems (or recoveries) with any of the hosts in this host group.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">We will by pass the optional host and service escalation ID directives for now.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">Select <b>Add</b> to save the new host group.</p>
+</li>
+</ol>
+<p>After setting up host groups you are ready to setup <a href="../Notifications/configuration_abouthostservicenotifications.htm">Notifications and Escalations</a>.</p>
+<div style="width: 100%; position: relative;" id="footer">
+<p class="Footer" style="font-size: 7pt; line-height: Normal; margin-top: 6pt; margin-bottom: 4pt;">GroundWork, Inc. ©2011</p>
+</div>
+<script type="text/javascript" language="JavaScript1.2">
+//<![CDATA[
+        if( typeof( TextPopupInit ) != 'function' ) TextPopupInit = new Function();
+        TextPopupInit('a3','POPUP237474862');
+//]]>
+</script><script type="text/javascript" language="JavaScript">
+//<![CDATA[
+ if ((parseInt(navigator.appVersion) == 4) && (navigator.appName == 'Netscape'))
+  document.write("<div id='tooltip' class='WebHelpPopupMenu'><\/div>");
+//]]>
+</script><script type="text/javascript" language="javascript1.2">
+//<![CDATA[
+<!--
+if (window.writeIntopicBar)
+        writeIntopicBar(0);
+
+
+highlightSearch();
+//-->
+//]]>
+</script>
+</body>
+</html>

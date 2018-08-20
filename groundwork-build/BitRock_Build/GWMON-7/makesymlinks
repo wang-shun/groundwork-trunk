@@ -1,0 +1,108 @@
+#!/usr/bin/perl -w --
+
+# Make symlinks specified in a SYMLINKS file residing in a particular directory,
+# with the symlinks owned by a specified user and group.
+
+sub print_usage {
+    print "usage:    makesymlinks user_name group_name symlinks_base_dir symlinks_file\n";
+    print "example:  makesymlinks nagios nagios BitRock/groundwork/profiles SYMLINKS\n";
+}
+
+if ( @ARGV != 4 ) {
+    print_usage();
+    exit 1;
+}
+
+my $username  = $ARGV[0];
+my $groupname = $ARGV[1];
+my $basedir   = $ARGV[2];
+my $linksfile = $ARGV[3];
+
+my $uid = getpwnam($username);
+my $gid = getgrnam($groupname);
+
+if ( not defined $uid ) {
+    print "FATAL:  Cannot find user \"$username\".\n";
+    exit 1;
+}
+if ( not defined $gid ) {
+    print "FATAL:  Cannot find group \"$groupname\".\n";
+    exit 1;
+}
+if ( $basedir eq '' ) {
+    print "FATAL:  Empty base directory specified.\n";
+    exit 1;
+}
+if ( not chdir $basedir ) {
+    print "FATAL:  Cannot change working directory to \"$basedir\" ($!).\n";
+    exit 1;
+}
+
+if ( not open SYMLINKS, '<', $linksfile ) {
+    print "FATAL:  Cannot open \"$basedir/$linksfile\" ($!).\n";
+    exit 1;
+}
+
+my %symlinks = ();
+
+my $line = 0;
+while (<SYMLINKS>) {
+    ++$line;
+    next if /^\s*$/;
+    next if /^\s*#/;
+    ## For now, we only support relative symlinks, located in the
+    ## links file in a location relative to the base directory.
+    if ( not m{^\s*([^/]\S*)\s+([^/]\S*)\s*$} ) {
+	print "FATAL:  Illegal input at line $line in the \"$basedir/$linksfile\" file:\n";
+	print $_;
+	exit 1;
+    }
+    $symlinks{$1} = $2;
+}
+
+close SYMLINKS;
+
+# Even Perl 16.0 has no native lchown() function to not follow a symlink but to
+# change the ownership of the link itself.  So we cannot change the symlink ownership
+# after creating the symlink without either spawning a child process ("chown -h") to
+# do so, or installing the CPAN Lchown package which provides an lchown() call, or
+# using the POSIX::lchown() call.  The first couple of options seem like excessive
+# overhead.  So we allow for another choice, in case the POSIX::lchown() call is not
+# supported:  before creating the symlinks, we become the user/group we want to own
+# the symlinks, and there is thereafter no need to change ownership, since it will be
+# set as desired when the symlinks are created.
+my $use_lchown = 1;
+if (not $use_lchown) {
+    $) = "$gid $gid";
+    $> = $uid;
+    if ( $> != $uid ) {
+	print "FATAL:  Cannot run as user \"$username\".\n";
+	exit 1;
+    }
+    my $effective_group = ( split ' ', $) )[0];
+    if ( $effective_group != $gid ) {
+	print "FATAL:  Cannot run as group \"$groupname\".\n";
+	exit 1;
+    }
+}
+
+use POSIX (qw(lchown));
+
+# If we get an error at this point, we continue on and still try to make all the
+# other specified symlinks, in hopes that we'll end up with a build containing less
+# overall damage this way.  However, we still report the failure to the calling
+# environment as best we can, so it can decide how seriously to react.
+my $exit_status = 0;
+foreach my $location ( sort keys %symlinks ) {
+    if ( not symlink $symlinks{$location}, $location ) {
+	print "ERROR:  Could not create symlink at location \"$location\" to \"$symlinks{$location}\" ($!).\n";
+	$exit_status = 1;
+    }
+    elsif ($use_lchown and not lchown $uid, $gid, $location) {
+	print "ERROR:  Could not chown symlink at location \"$location\" ($!).\n";
+	$exit_status = 1;
+    }
+}
+
+exit $exit_status;
+

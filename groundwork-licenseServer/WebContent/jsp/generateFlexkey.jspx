@@ -1,0 +1,100 @@
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<ice:messages errorStyle="color:#FF0000;" infoStyle="color:#347C17;"/>
+		<!-- Layout the links and buttons. -->
+		<ice:panelGrid columns="2" styleClass="panelGroupInner"
+			rowClasses="textFieldNameRow">
+			<ice:outputLabel for="flexmenuOrderID" value="Order Id : " />
+			<ice:panelGroup>
+				<ice:setEventPhase events="ValueChangeEvent"
+                                       phase="INVOKE_APPLICATION"
+                                       >
+				<ice:selectOneMenu id="flexmenuOrderID"
+					value="#{LicenseManagementBean.orderBean.orderID}" valueChangeListener="#{LicenseManagementBean.flexOrderIdChangeListener}"
+					 partialSubmit="true">
+
+					<f:selectItem id="flexmenuItemHostAllFilters" itemValue=""
+						itemLabel="Select OrderID" />
+					<f:selectItems id="flexmenuItemsOrderIDList"
+						value="#{LicenseManagementBean.orderIDList}" />
+				</ice:selectOneMenu>
+				</ice:setEventPhase>
+				<ice:outputText value="(required)" />
+			</ice:panelGroup>
+
+			<ice:outputLabel for="lookupcustLastTxt"
+				value="Customer LastName  : " />
+			<ice:panelGroup>
+				<ice:inputText id="lookupcustLastTxt" size="25" maxlength="25"
+					value="#{LicenseManagementBean.orderBean.customerLastName}"
+					styleClass="text" />
+				<ice:outputText value="(required)" />
+
+			</ice:panelGroup>
+		</ice:panelGrid>
+		<ice:panelGroup>
+			<ice:dataTable id="paramsTable"
+				value="#{LicenseManagementBean.paramsList}" var="params" rows="10">
+				<ice:column id="paramColRowSel">
+					<f:facet name="header">
+						<ice:outputText id="paramHeaderSelect" value="Select" />
+					</f:facet>
+					<ice:selectBooleanCheckbox id="paramInputSelect"
+						value="#{params.selected}" styleClass="text" />
+				</ice:column>
+				<ice:column id="paramCol">
+					<f:facet name="header">
+						<ice:outputText id="paramHeader" value="Validation Rules" />
+					</f:facet>
+					<ice:panelGrid columns="2">
+						<ice:outputLabel id="labelName" for="paramInput"
+							value="#{params.name} : " styleClass="text" />
+
+						<ice:inputText id="paramInput" size="50" maxlength="50"
+							value="#{params.value}" styleClass="text"
+							rendered="#{params.type=='textbox'}" />
+
+						<ice:selectInputDate id="paramInput1" value="#{params.value}"
+							imageDir="/xmlhttp/css/xp/css-images/" renderAsPopup="true"
+							styleClass="text" rendered="#{params.type=='date'}" />
+
+						<ice:selectOneRadio id="paramInputRadio" value="#{params.value}"
+							rendered="#{params.type=='boolean'}">
+							<f:selectItems id="licnetworkServiceReqdItms"
+								value="#{LicenseManagementBean.networkServiceReqdItems}" />
+						</ice:selectOneRadio>
+					</ice:panelGrid>
+
+				</ice:column>
+			</ice:dataTable>
+
+
+			<ice:panelGroup>
+				<ice:commandButton id="genLicBtn" value="Create License Key"
+					actionListener="#{LicenseManagementBean.generateFlexLicenseKey}"
+					styleClass="text" />
+
+				<ice:commandButton id="resetLicBtn" value="Reset"
+					actionListener="#{LicenseManagementBean.reset}" styleClass="text" />
+			</ice:panelGroup>
+			<ice:panelGroup>
+				<ice:outputLabel for="keyTxt" value="License Key : "
+					styleClass="text" />
+
+				<ice:panelGroup>
+					<ice:inputTextarea id="keyTxt" rows="12" cols="100"
+						value="#{LicenseManagementBean.key}" readonly="true"
+						styleClass="text" />
+				</ice:panelGroup>
+			</ice:panelGroup>
+		</ice:panelGroup>
+
+		<ice:inputHidden id="genType" value="internal"
+			validator="#{LicenseManagementBean.genTypeSetter}" />
+	</ui:define>
+</ui:composition>

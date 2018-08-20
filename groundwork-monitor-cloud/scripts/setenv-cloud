@@ -1,0 +1,32 @@
+# setenv-cloud
+# Set up the environment for using Amazon EC2 API tools with a specified cloud.
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+# Some funkiness is used here to make this invocation support multiple shells.
+# It must be sourced, not executed:
+#
+#    In tcsh:  source setenv-cloud {region}
+#    In bash:  . setenv-cloud {region}
+#    In  ksh:  . setenv-cloud {region}
+#
+# This script is carefully constructed so it will execute under any of the
+# tcsh, bash, or ksh shells.  The "$status" shell variable is used as a marker
+# that we're executing under tcsh (so far, we haven't thought of anything else
+# that can be safely tested under other shells).  We carefully avoid using
+# conditional-logic syntax that is specific to a particular shell, preferring
+# instead to use portable single-line conditional commands.
+
+# This section supports tcsh, and will be effectively ignored by other shells.
+# The "exit" here, if taken, will simply exit the "source" command, and leave the
+# original shell still standing.
+[ -n "$status" ] && [ $# -ne 1 ] && echo "usage:  source setenv-cloud {region}" && exit 1
+[ -n "$status" ] && source /usr/local/groundwork/cloud/scripts/setenv-cloud.tcsh "$*"
+
+# This section supports bash and related shells, and will be effectively ignored by
+# tcsh (except that it parses all of each line even though it won't execute all of it).
+# The "return" here, if taken, will simply exit the "." command, and leave the
+# original shell still standing.
+[ -z "$status" ] && [ $# -ne 1 ] && echo "usage:  . setenv-cloud {region}" && return 1
+[ -z "$status" ] && . /usr/local/groundwork/cloud/scripts/setenv-cloud.bash "$*"

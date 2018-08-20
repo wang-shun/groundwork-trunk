@@ -1,0 +1,88 @@
+*** cacti.orig/htdocs/cli/add_graphs.php	Wed Nov 28 12:29:49 2012
+--- cacti/htdocs/cli/add_graphs.php	Wed Nov 28 12:39:06 2012
+***************
+*** 91,97 ****
+  
+  			break;
+  		case "--graph-title":
+! 			$graphTitle = $value;
+  
+  			break;
+  		case "--graph-template-id":
+--- 91,98 ----
+  
+  			break;
+  		case "--graph-title":
+! 			$graphTitle = ($database_type === "mysql") ? mysql_real_escape_string($value) :
+! 				     (($database_type === "postgres9") ? pg_escape_string($value) : $value);
+  
+  			break;
+  		case "--graph-template-id":
+***************
+*** 443,449 ****
+  
+  		if ($graphTitle != "") {
+  			db_execute("UPDATE graph_templates_graph
+! 				SET title=\"$graphTitle\"
+  				WHERE local_graph_id=" . $returnArray["local_graph_id"]);
+  
+  			update_graph_title_cache($returnArray["local_graph_id"]);
+--- 444,450 ----
+  
+  		if ($graphTitle != "") {
+  			db_execute("UPDATE graph_templates_graph
+! 				SET title='$graphTitle'
+  				WHERE local_graph_id=" . $returnArray["local_graph_id"]);
+  
+  			update_graph_title_cache($returnArray["local_graph_id"]);
+***************
+*** 464,470 ****
+  			db_execute("replace into host_graph (host_id,graph_template_id) values (" . $hostId . "," . $templateId . ")");
+  		} else {
+  			if (db_execute("start transaction isolation level serializable") &&
+! 			    db_execute("delete from host_graph where name = $hostId and graph_template_id = $templateId") &&
+  			    db_execute("insert into host_graph (host_id,graph_template_id) values (" . $hostId . "," . $templateId . ")") ) {
+  			    db_execute("commit");
+  			} else {
+--- 465,471 ----
+  			db_execute("replace into host_graph (host_id,graph_template_id) values (" . $hostId . "," . $templateId . ")");
+  		} else {
+  			if (db_execute("start transaction isolation level serializable") &&
+! 			    db_execute("delete from host_graph where host_id = $hostId and graph_template_id = $templateId") &&
+  			    db_execute("insert into host_graph (host_id,graph_template_id) values (" . $hostId . "," . $templateId . ")") ) {
+  			    db_execute("commit");
+  			} else {
+***************
+*** 506,512 ****
+  				if (isset($existsAlready) && $existsAlready > 0) {
+  					if ($graphTitle != "") {
+  						db_execute("UPDATE graph_templates_graph
+! 							SET title = \"$graphTitle\"
+  							WHERE local_graph_id = $existsAlready");
+  
+  						update_graph_title_cache($existsAlready);
+--- 507,513 ----
+  				if (isset($existsAlready) && $existsAlready > 0) {
+  					if ($graphTitle != "") {
+  						db_execute("UPDATE graph_templates_graph
+! 							SET title = '$graphTitle'
+  							WHERE local_graph_id = $existsAlready");
+  
+  						update_graph_title_cache($existsAlready);
+***************
+*** 530,536 ****
+  
+  				if ($graphTitle != "") {
+  					db_execute("UPDATE graph_templates_graph
+! 						SET title=\"$graphTitle\"
+  						WHERE local_graph_id=" . $returnArray["local_graph_id"]);
+  
+  					update_graph_title_cache($returnArray["local_graph_id"]);
+--- 531,537 ----
+  
+  				if ($graphTitle != "") {
+  					db_execute("UPDATE graph_templates_graph
+! 						SET title='$graphTitle'
+  						WHERE local_graph_id=" . $returnArray["local_graph_id"]);
+  
+  					update_graph_title_cache($returnArray["local_graph_id"]);

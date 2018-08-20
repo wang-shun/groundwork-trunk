@@ -1,0 +1,63 @@
+More stuff that should be done with the ServiceNow integration:
+
+(*) When GroundWork packages extra add-on Perl modules as we
+    do for this integration, they should ultimately end up under
+    /usr/local/groundwork/perl/lib/site_perl/5.8.9/ since that would
+    be the proper place for a local add-on.  But this also means that
+    all the packages we currently supply in the GWMEE base release
+    under that directory ought instead to be placed by Bitrock in
+    the /usr/local/groundwork/perl/lib/vendor_perl/5.8.9/ directory,
+    which is the proper place for stuff that we as a Perl distribution
+    vendor ought to be using for code that is beyond the base Perl
+    release content.  The current use of .../site_perl/... for this
+    purpose really represents a misunderstanding of how the Perl library
+    hierarchy is intended to be constructed.
+
+    The only problem with using
+    /usr/local/groundwork/perl/lib/site_perl/5.8.9/ as the proper place
+    for add-on packages is that we might have conflicts between our own
+    add-on packages which were supplied at different times, that could
+    include different versions of particular Perl (e.g., CPAN) packages.
+    We would need to maintain a separate GroundWork-Perl add-on package
+    that represents the full set of latest-update packages that can
+    serve for all of our add-ons.  By shipping that extra Perl package,
+    we could avoid bundling Perl modules in each separate GroundWork
+    add-on extension.
+
+(*) When I build the Perl modules locally before stuffing them into the
+    RPM build file hierarchy, certain files end up with embedded pathnames
+    that represent my build environment instead of the ultimate target
+    environment.  Currently, the set of files affected is:
+
+    ./perl/lib/x86_64-linux-thread-multi/perllocal.pod
+    ./perl/lib/x86_64-linux-thread-multi/auto/Email/Date/Format/.packlist
+    ./perl/lib/x86_64-linux-thread-multi/auto/MIME/Lite/.packlist
+    ./perl/lib/x86_64-linux-thread-multi/auto/MIME/Types/.packlist
+    ./perl/lib/x86_64-linux-thread-multi/auto/Class/Inspector/.packlist
+    ./perl/lib/x86_64-linux-thread-multi/auto/Task/Weaken/.packlist
+    ./perl/lib/x86_64-linux-thread-multi/auto/SOAP/Lite/.packlist
+    ./perl/lib/x86_64-linux-thread-multi/auto/ServiceNow/.packlist
+    ./perl/lib/x86_64-linux-thread-multi/auto/ExtUtils/MakeMaker/.packlist
+
+    None of these files is critical to operation of the software, but
+    for cleanliness, we ought to programmatically alter the paths these
+    files contain to represent actual eventual installed locations.
+
+(*) Refactor the HelpDesk.pm module and supporting scripts and config
+    files, so the ticketing framework is better separated from the
+    individual customizations for particular ticketing service providers.
+    Then package the framework and the customizations separately.
+
+(*) The twoway_helpdesk.pl script currently takes no notice if a
+    resolved ticket is subsequently re-opened.  This leaves a hole in
+    our monitoring of the ticket status.  We ought to scan for any
+    resolved tickets still in the HelpDeskLookupTable, and if they
+    have been re-opened, adjust their Operation Status within the
+    GroundWork Monitor system.
+
+(*) The code in modules/ServiceNow/HelpDesk.pm needs to be looked at for
+    the wrong-current-configuration-database issue noted in GWMON-9076,
+    as regards its use of "monarch"-database information.  When we
+    resolve that JIRA by renaming the future-configuration database,
+    this script will need to adapt accordingly.
+

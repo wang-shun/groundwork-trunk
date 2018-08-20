@@ -1,0 +1,64 @@
+README Jun 1 2015
+=================
+
+Intro
+-----
+This README describes how to install the Perl components of LogBridge child server.
+The following KB article has detail instructions for all of the other parts of this installation
+https://kb.groundworkopensource.com/display/STAFF/Logstash+Child+How+to+with+GW+Core+components+for+GW+7.0.2+-+revised
+
+Important Version Note
+----------------------
+This version of the logbridge feeders was developed under 7.0.2 patch 1. 
+It has not been developed or tested under version 7.1.0. 
+Given changes to 7.1.0, including RAPID, this version will need some updates to work with 7.1.0.
+
+Prerequisites
+-------------
+A working ELK environment (redis, logstash shipper(s), elasticsearch, kibana)
+
+File                            Description                                                     Destination (ownership is nagios:nagios unless noted otherwise)
+----                            -----------                                                     ---------------------------------------------------------------
+logstash_feeder.pl              Runs searches against elasticsearch, feeds GW                   /usr/local/groundwork/foundation/feeder
+logstash_feeder.conf.default    Default config for logstash_feeder.pl                           /usr/local/groundwork/config
+elastic_scanner.pl              Reads events from GW logmessage table, feeds into Elasticearch  /usr/local/groundwork/foundation/feeder
+elastic_scanner.conf.default    Default config for elastic_scanner.pl                           /usr/local/groundwork/config
+Feeder.pm                       A 7.0.2 updated Feeder.pm module                                /usr/local/groundwork/perl/lib/site_perl/5.8.9/GW/Feeder.pm ( but see "GWME integration" notes below )
+elastic_scanner                 An init.d / service script                                      /etc/init.d (ownership root:root) ( but see "GWME integration" notes below )
+logstash_feeder                 An init.d / service script                                      /etc/init.d (ownership root:root) ( but see "GWME integration" notes below )
+deploy.supervise                A helper script for installing services in GWME system          See "GWME integration" notes below
+
+
+Notes 
+-----
+- during operation, you can change config file contents, and they will automatically be read in withourt requiring a restart of the associated application
+- both of the default config files included here have the following settings :
+- enable_processing = no 
+- the same health_hostgroup = LogBridgeHealth 
+- note about license limit checking 
+--- in version 7.0.2, license checking is done using add_check . Add_check doesn't work quite properly.
+--- In both configuration files, license_check = remote and monitoring_server = gw-parent , so change gw-parent after installing, and read the config file notes about license checking
+- GWME integration
+--- These versions of the feeders were designed to live in a GWME-free environment. In some cases, they need to run in a GWME environment though. Do this as follows :
+------ Since Feeder.pm version here is ahead of and needs merging with 702 stock, the following should be done :
+--------- a) install Feeder.pm into /usr/local/groundwork/foundation/feeder/log-hub/GW
+--------- b) after installing the pl scripts, modify them both to pick up the Feeder.pm : use lib '/usr/local/groundwork/foundation/feeder/log-hub'; use GW::Feeder qv('0.3.1.3');
+--------- c) since these scripts are living in the GWME environment, make them GW supervised services :
+------------- i) do not install the elastic_scanner and logstash_feeder init.d scripts
+------------- ii) run the deploy.supervise script - this will install the two feeder scripts as supervised services
+--------- d) change location of logfiles for permission reasons :
+------------- i) logstash_feeder.conf : logfile = /usr/local/groundwork/core/services/feeder-logstash_feeder/log/main/log
+------------- i) elastic_scanner.conf : logfile = /usr/local/groundwork/core/services/feeder-elastic_scanner/log/main/log
+--------- e) change license checking more in configs from remote to local, and monitoring_server = localhost
+
+
+Logstash Feeder Specific Notes
+------------------------------
+- an example set of searches has been provided, based around the demo. These will need customizing for customers.
+
+Notes About init.d Scripts
+--------------------------
+- after installing, do a chkconfig --add elastic_scanner, and chkconfig --add logstash_feeder
+- do work but need more work eg issuing the stop command will actually kill all processes with the $APP_PROGRAM string (including vim if you're editing) etc
+
+

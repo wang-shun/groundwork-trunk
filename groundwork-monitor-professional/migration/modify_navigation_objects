@@ -1,0 +1,321 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+# modify_navigation_objects
+
+# Copyright (c) 2017-2018 GroundWork, Inc.  All rights reserved.
+
+# Insert a JBoss Portal navigation element into its desired place in
+# the navigation tree of a previously exported site configuration.  Or
+# delete a specific navigation element.
+#
+# This script is deceptively simple (well, it's grown some since I wrote that).
+# Getting this correct is a bit of a tricky process, in spite of the final
+# simplicity of the code.  The hard parts are navigating to exactly where you
+# want to be when you add in the new objects, and knowing exactly what tree
+# elements to reference, and in what form, to make the insertion work.
+
+# FIX LATER:  Generalize this script so it can be readily used for future
+# upgrades of all sorts of components.
+#
+# (*) Add explicit error checking everywhere; there is currently very little.
+#
+# (*) Generalize this script to allow insertion at the very top level,
+#     creating a new top-level menu-bar item, not just allowing insertion
+#     into an existing menu or (recursively) sub-menu.
+
+use strict;
+use warnings;
+
+use XML::Smart;
+
+# Exit codes:
+# General, for non-insert/non-delete operations:
+use constant SUCCESS => 0;
+use constant WARNING => 1;
+use constant FAILURE => 2;
+# Specific, for insert or delete operations:
+use constant SUCCESSFUL_OPERATION     => SUCCESS;
+use constant OPERATION_ALREADY_DONE   => WARNING;
+use constant CANNOT_PERFORM_OPERATION => FAILURE;
+
+my $VERSION = "1.1.0";
+
+sub print_usage {
+    print <<EOF;
+usage:  modify_navigation_objects input_file insert_position new_node_file output_file
+        modify_navigation_objects -V
+where:  input_file is the XML list of existing menu items, as exported from JBoss.
+        insert_position specifies where in the menus new node should be added.
+            It consists of at least two parts:  menu_category/menu_position, where
+            menu_category specifies the list in which the new node should be added,
+            and menu_position is the place in the menu_category list where the new node
+            should be added.  More levels can be specified, separated by more slashes.
+            However many levels are used, each level can be the name of a specific
+            existing node.  BEGIN or END can be used instead as a virtual marker for
+            the respective location in an existing list of menu items.  Currently,
+            the top level cannot be specifed as BEGIN or END.
+        new_node_file is where the new node XML lives; see below for its content.
+            Using the special name DELETE for the new_node_file means that instead
+            of adding a new node, the existing insert_position node should be removed.
+        output_file is where the modified menu items should be written, in XML.  It's
+            okay to use the same filename as input_file, if you are willing to risk
+            not having obvious traceability if things go wrong.
+        -V prints the script version.
+
+Exit codes are:
+
+0 => the specified node was inserted or deleted as requested
+1 => the specified node was already present (or already deleted, for a DELETE)
+2 => failure (see printed output for detail)
+
+For a successful or idempotent operation, the output file is written out.  For
+a failed operation, the output file may or may not be written, so the calling
+program should not depend on even its existence at that point.
+
+Examples:
+
+The following command would add a new node in the menus, right before the existing
+Configuration / Maintenance / Service Cleanup menu item.  Those are the <label>
+values for those menu items; on this command line, you give the corresponding
+<name> values for those menu items within the navigation.xml file.  So you must
+manually examine the navigation.xml file obtained from a site export so see what
+<name> values are present in that file as useful markers.
+
+    modify_navigation_objects navigation.xml config/maintenance/service-cleanup new-node.xml navigation.xml
+
+The new-node.xml file would contain a node definition like:
+
+    <?xml version='1.0' encoding='UTF-8'?>
+    <node>
+        <name>my-menu-item</name>
+        <label xml:lang="en">My Menu Item</label>
+        <visibility>DISPLAYED</visibility>
+        <page-reference>portal::classic::my-menu-item-page</page-reference>
+    </node>
+
+and the my-menu-item-page <page-reference> matches <name>my-menu-item-page</name>
+in a <page> definition in the pages.xml file.
+
+The following command would add a new node as the last element in the dashboard list:
+
+    modify_navigation_objects navigation.xml dashboard/END new-node.xml navigation.xml
+EOF
+}
+
+# Note:  Adding nodes to the navigation XML file via this tool and then importing the
+# site back upstream using default settings is sufficient to get JBoss to recognize
+# new nodes and add them to menus.  But deleting nodes from the navigation XML file
+# and then importing the site using the default import settings does nothing to get
+# JBoss to recognize that certain existing nodes should no longer be present and remove
+# them from menus.  To make that happen, the entire site must be overwritten, using the
+# "?importMode=overwrite" parameter during the .../mop URL importing.  That's because
+# the default "Import Mode" in our setup is Merge, as opposed to Conserve, Insert, or
+# Overwrite (as seen as options in the UI).  In brief, these options are:
+#
+#     Conserve will only import data when data for that site does not exist.
+#     Insert will import data only when it does not exist.
+#     Merge will import new data and override existing data.
+#     Overwrite will delete existing data and import the new.
+#
+# But those short descriptions are insufficiently clear.  See the docs for Gatein 3.2 (or
+# later).  Overwrite may be variously described as rewrite.  These docs are most useful:
+#
+# https://access.redhat.com/documentation/en-US/Red_Hat_JBoss_Portal/6.2/html/Administration_and_Configuration_Guide/chap-Model_Object_for_Portal_MOP_Management_Extension.html#Understanding_import-resource_Operation
+# https://access.redhat.com/documentation/en-US/Red_Hat_JBoss_Portal/6.1/html/Development_Guide/chap-Data_Import_Strategy.html
+# https://docs.jboss.org/author/display/GTNPORTAL39/GateIn+Management
+#
+# In our setup, the portal-configuration.xml file inside the portal.war file is
+# responsible for this setup:
+#
+#     <value-param>
+#         <name>default.import.mode</name>
+#         <value>merge</value>
+#     </value-param>
+#
+# Note that our WEB-INF/conf/groundwork-ext/portal/portal-configuration.xml file inside
+# the groundwork-container-ext.war warfile defines:
+#
+#     <field name="importMode">
+#         <string>OVERWRITE</string>
+#     </field>
+#
+# for both <name>portal.configuration</name> and <name>group.configuration</name>, so it's
+# not totally clear what setup rules, or for that matter, whether capitalization matters.
+#
+# Alternatively, we might need a REST call instead of a MOP call executed by the script
+# that would otherwise call this modify_navigation_objects script, to delete a given node.
+# The form might be something like (in abstract terms):
+#
+#     curl -u <username> http://<host>:<port>/rest/private/managed-components/api
+#     DELETE /api/sites/classic/navigation/config/my-old-node
+#
+# to delete the "config/my-old-node" node in the navigation tree.
+#
+# IMPORTANT:  If we wanted to OVERWRITE the site, we would probably need to include
+# ALL previously existing pages.xml data if we want to add any pages for this add-on,
+# and perhaps all the previously existing group and user data as well under similar
+# conditions, not just the bits we want to add for a specific add-on integration.
+
+sub print_version {
+    print "modify_navigation_objects version $VERSION\n";
+}
+
+if ( @ARGV == 1 && $ARGV[0] eq '-V' ) {
+    print_version();
+    exit SUCCESS;
+}
+
+if ( @ARGV != 4 ) {
+    print_usage();
+    exit FAILURE;
+}
+
+my $input_file      = $ARGV[0];
+my $insert_position = $ARGV[1];
+my $new_node_file   = $ARGV[2];
+my $output_file     = $ARGV[3];
+
+my $delete_item = $new_node_file eq 'DELETE';
+
+if ( $delete_item and ( $insert_position =~ m{^(?:.*/)?BEGIN$} or $insert_position =~ m{^(?:.*/)?END$} ) ) {
+    print "ERROR:  You cannot delete an arbitrary BEGIN or END menu item;\n";
+    print "        only a specific menu item can be deleted.\n";
+    exit CANNOT_PERFORM_OPERATION;
+}
+
+# Currently, we only support menu/sub-menu items, and no deeper.  The complication in
+# supporting deeper levels comes both in keeping track of what sub-level you're dealing
+# with while scanning (presumably, $relative_item will become an array as well), and in
+# making sure the proper sub-list is modified at the end.
+my @all_menu_levels = split( '/', $insert_position );
+if ( @all_menu_levels < 2 ) {
+    print "ERROR:  You must specify at least two levels of menu items for the insert_position.";
+    exit CANNOT_PERFORM_OPERATION;
+}
+
+my $nodes_xml;
+my $new_node_xml;
+eval { $nodes_xml = XML::Smart->new( $input_file, undef, use_spaces => 1 ); };
+if ($@) {
+    print "ERROR:  Could not read the input file ($input_file).  " . ( $@ =~ /^\n/ ? $@ : "\n" );
+    exit CANNOT_PERFORM_OPERATION;
+}
+eval { $new_node_xml = XML::Smart->new( $new_node_file, undef, use_spaces => 1 ) if not $delete_item; };
+if ($@) {
+    print "ERROR:  Could not read the new-node file ($new_node_file).  " . ( $@ =~ /^\n/ ? $@ : "\n" );
+    exit CANNOT_PERFORM_OPERATION;
+}
+
+my $new_node_name = $new_node_xml->{node}{name}->content() if not $delete_item;
+## print "DEBUG:  new node name = $new_node_name\n";
+
+my $status = edit_node( $nodes_xml->{'node-navigation'}{'page-nodes'}{node}, \@all_menu_levels );
+
+if ( $status != CANNOT_PERFORM_OPERATION and not $nodes_xml->save( $output_file, 'nometagen' => 1 ) ) {
+    print "ERROR:  Failed to write $output_file file!\n";
+    exit CANNOT_PERFORM_OPERATION;
+}
+
+exit $status;
+
+# We define this routine so we can do some recursion for sub-menu editing.
+# It is called as:
+# $status = edit_node( \@remaining_nodes, \@remaining_menu_items );
+# where $status will have the same meanings as the documented overall script exit status.
+sub edit_node {
+    my $nodes          = shift;
+    my $menu_items     = shift;
+    my $found_category = 0;
+    my $relative_item  = undef;
+    my $status         = CANNOT_PERFORM_OPERATION;
+    ## print "DEBUG:  looking for $menu_items->[0] from " . join( '.', @$menu_items ) . "\n";
+    foreach my $node (@$nodes) {
+	if ( $node->{name}->content() eq $menu_items->[0] ) {
+	    $found_category = 1;
+	    my $already_exists = 0;
+	    my $menu_item      = 0;
+	    if ( exists $node->{node} ) {
+		foreach my $subnode ( @{ $node->{node} } ) {
+		    if ( exists $subnode->{name} ) {
+			## print "DEBUG:  existing menu item is " . $subnode->{name}->content() . "\n";
+			if ( not $delete_item and not defined $menu_items->[2] and $subnode->{name}->content() eq $new_node_name ) {
+			    $already_exists = 1;
+			    last;
+			}
+			elsif ( $subnode->{name}->content() eq $menu_items->[1] ) {
+			    if ( defined $menu_items->[2] ) {
+				my @submenu_items = @$menu_items;
+				shift @submenu_items;
+				return edit_node( $node->{node}, \@submenu_items );
+			    }
+			    else {
+				$relative_item = $menu_item;
+				## FIX LATER:  Should we do "last;" here?  Think carefully, and run experiments.
+			    }
+			}
+		    }
+		    ++$menu_item;
+		}
+	    }
+	    if ($delete_item) {
+		if ( defined $relative_item ) {
+		    ## This works in the middle of a list, retaining the rest of the list,
+		    ## in spite of our comments below.
+		    splice @{ $node->{node} }, $relative_item, 1;
+		    $status = SUCCESSFUL_OPERATION;
+		}
+		else {
+		    ## We have to treat this as a warning, not an error, to achieve idempotency
+		    ## at a higher level.
+		    print "WARNING:  Menu item $menu_items->[1] does not exist at the specified location, so it cannot be deleted.\n";
+		    $status = OPERATION_ALREADY_DONE;
+		}
+	    }
+	    elsif ( $already_exists ) {
+		print "NOTICE:  The $new_node_name node already exists in the $input_file file.\n";
+		$status = OPERATION_ALREADY_DONE;
+	    }
+	    else {
+		if ( $menu_items->[1] eq 'END' ) {
+		    push @{ $node->{node} }, $new_node_xml->tree_pointer()->{node};
+		    $status = SUCCESSFUL_OPERATION;
+		}
+		elsif ( $menu_items->[1] eq 'BEGIN' ) {
+		    unshift @{ $node->{node} }, $new_node_xml->tree_pointer()->{node};
+		    $status = SUCCESSFUL_OPERATION;
+		}
+		elsif ( not defined $relative_item ) {
+		    print "WARNING:  Menu item \"$menu_items->[1]\" does not exist at the specified location, so it cannot be used to position the new node.\n";
+		    $status = CANNOT_PERFORM_OPERATION;
+		}
+		else {
+		    ## The intent here is to insert the new node immediately before the externally
+		    ## specified existing node.  We'd like to use:
+		    ##     splice @{ $node->{node} }, $relative_item, 0, $new_node_xml->tree_pointer()->{node};
+		    ## and take care of the changes all in one go.  But unlike an ordinary splice, because
+		    ## we're operating on a complex tied object (at least, the current implementation of the
+		    ## Object::MultiType type, used by XML::Smart) and not on a simple ordinary array, specifying
+		    ## the splice length as zero doesn't move the remaining elements down; it simply deletes all
+		    ## of them.  I suppose this is a bug in the current implementation, and should be reported
+		    ## uptream.  Fortunately, it does still return the removed elements, and we can use them to
+		    ## complete the intended work.  So we have to do this in multiple steps.  In theory, if the
+		    ## bug ever does get fixed, we would need to test for that here and adjust to whatever behavior
+		    ## we find.  On the other hand, if it does get fixed, @removed should be empty, so this code
+		    ## should continue to work unaltered.
+		    my @removed = splice @{ $node->{node} }, $relative_item, 0, $new_node_xml->tree_pointer()->{node};
+		    push @{ $node->{node} }, @removed;
+		    $status = SUCCESSFUL_OPERATION;
+		}
+	    }
+	    last;
+	}
+    }
+
+    if ( not $found_category ) {
+	print "WARNING:  Menu item \"$menu_items->[0]\" does not exist at the specified location, so it cannot be used to position the new node.\n";
+	$status = CANNOT_PERFORM_OPERATION;
+    }
+
+    return $status;
+}
+

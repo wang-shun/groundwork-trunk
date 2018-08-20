@@ -1,0 +1,36 @@
+*** dummy/cacti-0.8.7g/plugins/thold/thold_functions.php	Sat Jul 17 08:04:22 2010
+--- cacti/htdocs/plugins/thold/thold_functions.php.orig	Wed Jan 26 16:57:04 2011
+***************
+*** 915,921 ****
+  
+  function thold_rrd_last($rra, $cf) {
+  	global $config;
+! 	$last_time_entry = rrdtool_execute('last ' . trim(get_data_source_path($rra, true)) . ' ' . trim($cf), false, RRDTOOL_OUTPUT_STDOUT, $rrdtool_pipe);
+  	return trim($last_time_entry);
+  }
+  
+--- 915,921 ----
+  
+  function thold_rrd_last($rra, $cf) {
+  	global $config;
+! 	$last_time_entry = rrdtool_execute('last ' . trim(get_data_source_path($rra, true)), false, RRDTOOL_OUTPUT_STDOUT, $rrdtool_pipe);
+  	return trim($last_time_entry);
+  }
+  
+***************
+*** 1015,1021 ****
+     1 if the current value is below the calculated threshold
+     2 if the current value is above the calculated threshold
+   */
+! function &thold_check_baseline($rra_id, $ds, $ref_time, $ref_range, $current_value, $pct_down, $pct_up) {
+  	global $debug;
+  
+  	// First let's check if either current time or reference time falls within either
+--- 1015,1021 ----
+     1 if the current value is below the calculated threshold
+     2 if the current value is above the calculated threshold
+   */
+! function thold_check_baseline($rra_id, $ds, $ref_time, $ref_range, $current_value, $pct_down, $pct_up) {
+  	global $debug;
+  
+  	// First let's check if either current time or reference time falls within either

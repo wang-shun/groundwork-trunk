@@ -1,0 +1,169 @@
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' "check_service.wsf"
+' nagios@samurai.inka.de
+'
+' 02.06.2003 ver 1.1
+' Minor bugfixes
+' 
+' --------------------------------------------------------------
+' This plugin checks In what state a defined service Is.
+'
+
+<job>
+<runtime>
+  <description>
+check_services (nrpe_nt-plugin) 1.1
+The nagios plugins come with ABSOLUTELY NO WARRANTY. You may redistribute
+copies of this plugin under the terms of the GNU General Public License.
+For more information about these matters, see the file named COPYING.
+Copyright (c) 1999-2004 Ethan Galstad/Justin Fitzhugh (jfitzhugh@macromedia.com)
+
+This plugin checks In what state a defined service Is.
+  </description>
+  <named
+    name="h"
+    helpstring="Help"
+    type="simple"
+    required="false" 
+  />
+  <named
+    name="list"
+    helpstring="Returns a list of all services by name"
+    type="simple"
+    required="false"
+  />
+  <unnamed
+    name="services"
+    helpstring="The name of the services to check (space delimmited)"
+    many="true"
+    required="1"
+  />
+  <example>
+Example: check_services.wsf /info
+         Will return a large list of all services that are present.
+         The output will look As follows:
+         
+         Service:     Alerter
+         Description: Warndienst
+
+         Service:     ALG
+         Description: Gatewaydienst auf Anwendungsebene
+
+         [...]
+         
+         To use the plugin you need the string that Is returned For service:
+         In this Case If you wish To monitor the alerter you use this command
+         
+         check_services.wsf Alerter Alerter2
+
+         Please notice that the String Is Case sensitive
+  </example>
+</runtime>
+<script language="VBScript">
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Const's and Var's
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'Cons for return val's
+Const intOK = 0
+Const intWarning = 1
+Const intCritical = 2
+Const intUnknown = 3
+
+' Cons for FSO
+Const ForReading = 1
+Const ForWriting = 2
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Help
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+If Wscript.Arguments.Named.Exists("info") Then
+	strComputer = "."
+	Set objWMIService = GetObject("winmgmts:" _
+	& "{impersonationLevel=impersonate}!\\" & strComputer & "\root\cimv2")
+	Set colRunningServices = objWMIService.ExecQuery("Select * from Win32_Service")
+
+	For Each objService In colRunningServices
+		Wscript.Echo "Service:     "& objService.Name
+'		Wscript.Echo "State:       "& objService.State
+		Wscript.Echo "Description: "& objService.DisplayName &Vbcrlf
+	Next
+	Wscript.Quit(intUnknown)
+End If
+
+If Wscript.Arguments.Named.Exists("h") Or Wscript.Arguments.Unnamed.Count <= 0 Then
+	Wscript.Echo "Plugin help screen:"
+      Wscript.Arguments.ShowUsage()
+      Wscript.Quit(intUnknown)
+End If
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Main
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+strComputer = "."
+Set objWMIService = GetObject("winmgmts:" _
+& "{impersonationLevel=impersonate}!\\" & strComputer & "\root\cimv2")
+Set colRunningServices = objWMIService.ExecQuery("Select * from Win32_Service")
+returnCode = 0
+returnString = ""
+matched = 0
+runningOK = 0
+
+For intCounter = 0 To Wscript.Arguments.Unnamed.Count-1
+	matched=0
+	For Each objService In colRunningServices
+		If StrComp(Wscript.Arguments.Unnamed.Item(intCounter),objService.Name,vbTextCompare) = 0 Then
+			tmpReturnCode = 0
+			matched=1
+			If objService.State = "Stopped" Then
+				returnString = returnString & objService.Name & "=Stopped, "
+				tmpReturnCode = intCritical
+			Elseif objService.State = "Start Pending" Then
+				returnString = returnString & objService.Name & "=StartPend, "
+				tmpReturnCode = intWarning
+			Elseif objService.State = "Stop Pending" Then
+				returnString = returnString & objService.Name & "=StopPend, "
+				tmpReturnCode = intWarning
+			Elseif objService.State = "Running" Then
+				' returnString = returnString & objService.Name & "=Running, "
+				runningOK = runningOK + 1
+				tmpReturnCode = intOK
+			Elseif objService.State = "Continue Pending" Then
+				returnString = returnString & objService.Name & "=ContinuePend, "
+				tmpReturnCode = intWarning
+			Elseif objService.State = "Pause Pending" Then
+				returnString = returnString & objService.Name & "=PausePend, "
+				tmpReturnCode = intWarning
+			Elseif objService.State = "Paused" Then
+				returnString = returnString & objService.Name & "=Paused, "
+				tmpReturnCode = intCritical
+			Elseif objService.State = "Unknown" Then
+				returnString = returnString & objService.Name & "=Unknown, "
+				tmpReturnCode = intUnknown
+			End If
+			If tmpReturnCode > returnCode Then
+				returnCode = tmpReturnCode
+			End If
+		End If 
+	Next
+	if matched = 0 then
+		returnString = returnString & Wscript.Arguments.Unnamed.Item(intCounter) & "=NotFound, "
+		returnCode = intUnknown
+	end if
+Next
+
+returnString = returnString & runningOK & " of " & Wscript.Arguments.Unnamed.Count & " services running OK."
+if returnCode = intOK then
+	returnString = "OK: " & returnString
+elseif returnCode = intWarning then
+	returnString = "WARNING: " & returnString
+elseif returnCode = intCritical then
+	returnString = "CRITICAL: " & returnString
+elseif returnCode = intUnknown then
+	returnString = "UNKNOWN: " & returnString
+end if
+Wscript.Echo(returnString)
+Wscript.Quit(returnCode)
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+</script>
+</job>

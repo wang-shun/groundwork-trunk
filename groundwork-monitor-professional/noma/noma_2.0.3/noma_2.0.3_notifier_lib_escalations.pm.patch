@@ -1,0 +1,42 @@
+--- noma_2.0.3/notifier/lib/escalations.pm.orig	2011-11-21 03:25:24.000000000 -0800
++++ noma_2.0.3/notifier/lib/escalations.pm	2017-08-02 16:00:30.149446314 -0700
+@@ -18,7 +18,7 @@
+ {
+     my ($host, $svc, $rule, $flag) = @_;
+ 
+-    $counter = 0 unless defined($flag);
++    my $counter = 0 unless defined($flag);
+ 
+     my $query = 'select counter from escalation_stati where'.
+         ' host=\''.$host.'\''.
+@@ -294,7 +294,7 @@
+     ($next_id, $method, $command, $sender, $tofield) = ($dbResult{0}->{id}, $dbResult{0}->{method}, $dbResult{0}->{command}, $dbResult{0}->{sender}, $dbResult{0}->{contact_field});
+     return (0, '/bin/true') if (!defined($next_id) or $next_id == 0);
+ 
+-    $query = sprintf('select %s from contacts as c, notification_logs as l where c.username=l.user and l.unique_id=\'%s\'', $tofield, $notify_id);
++    $query = sprintf('select %s from contacts as c, notification_logs as l where c.username='.quoteIdentifier('l.user').' and l.unique_id=\'%s\'', $tofield, $notify_id);
+     %dbResult = queryDB($query);
+     $to = $dbResult{0}->{$tofield};
+ 
+@@ -356,7 +356,7 @@
+     my $query;
+ 
+ 
+-	$query = sprintf('select distinct n.counter, m.contact_field, m.method, n.user, n.incident_id, n.notification_rule, m.id as last_method, m.command, c.email, m.sender, t.check_type, t.status, t.type, t.host, t.host_alias, t.host_address, t.service, t.output, n.timestamp from tmp_active as t left join notification_logs as n on n.unique_id=t.notify_id left join contacts as c on c.username=n.user, notification_methods as m where n.unique_id=t.notify_id and t.notify_id=\'%s\' and m.id=\'%s\'', $notify_id, $method_id);
++	$query = sprintf('select distinct n.counter, m.contact_field, m.method, '.quoteIdentifier('n.user').', n.incident_id, n.notification_rule, m.id as last_method, m.command, c.email, m.sender, t.check_type, t.status, t.type, t.host, t.host_alias, t.host_address, t.service, t.output, n.timestamp from tmp_active as t left join notification_logs as n on n.unique_id=t.notify_id left join contacts as c on c.username='.quoteIdentifier('n.user').', notification_methods as m where n.unique_id=t.notify_id and t.notify_id=\'%s\' and m.id=\'%s\'', $notify_id, $method_id);
+     	
+     %dbResult = queryDB( $query );
+     
+@@ -367,6 +367,12 @@
+     #
+     
+ 
++    # FIX MAJOR:  This call won't work, because it is missing the very first argument (an incident ID), and
++    # perhaps a desired last argument (rule) as well, and perhaps also some other arguments to fill out the
++    # complete set and potentially provide the new tmp_commands_id argument if that might make sense in this
++    # context.  We are saved only by the fact that getNextMethodCmd() is never called from anywhere, the one
++    # call in noma_daemon.pl currently being commented out.  If the call here to prepareNotification() is ever
++    # corrected, the full set of arguments should be re-verified.
+     my $cline = prepareNotification($dbResult{0}{user}, $dbResult{0}{method}, $dbResult{0}{command},
+ 	    $dbResult2{0}{$dbResult{0}{contact_field}}, $dbResult{0}{sender}, $notify_id, 
+ 	    $dbResult{0}{timestamp},$dbResult{0}{check_type}, $dbResult{0}{status}, 

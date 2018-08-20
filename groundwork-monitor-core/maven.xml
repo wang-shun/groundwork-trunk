@@ -1,0 +1,175 @@
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2005  GroundWork Open Source Solutions info@itgroundwork.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-->
+<!--
+	Top level build script for GroundWork Monitor
+	
+	The command:
+		   maven allBuild
+	will build the following components:
+		gd2
+		perl
+		syslib
+		apache
+		nagios
+	
+		Setup environment
+		
+		Before launching the build make sure that the values in the build.properties files
+		are correct. The most important settings:
+			com.groundwork.installdir = /usr/local/groundwork
+			com.groundwork.share = /home/dev/build/share
+		
+-->
+<project default="java:jar"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+	
+<goal name='allBuild'>
+ 	<attainGoal name="gd2" />
+ 	<attainGoal name="perl" />
+ 	<attainGoal name="syslib" />
+	<attainGoal name="netsnmp" />
+ 	<attainGoal name="apache" />
+	<attainGoal name="nagios" />
+</goal>
+
+
+<goal name="allClean"
+        description="Clean the master project and all subprojects">
+    <attainGoal name="subClean"/>
+    <attainGoal name="clean"/>
+
+    <delete dir="${basedir}/distribution"/>
+    <!-- remove Apache2, tomcat, jetspeed -->
+    <delete dir="${com.groundwork.deploy.prefix}/apache2" />
+    <delete dir="${com.groundwork.deploy.prefix}/apache" />
+    <delete dir="${com.groundwork.deploy.prefix}/collage" />
+    <delete dir="${com.groundwork.deploy.prefix}/nagios" />
+    
+</goal>
+
+<goal name="subClean"
+        description="Clean all subprojects"
+        >
+    <maven:reactor
+	basedir="${basedir}"
+	includes="gd2/*/project.xml, perl/*/project.xml, syslib/*/project.xml, apache/*/project.xml, nagios/*/project.xml, "
+	goals="allClean"
+	banner="Cleaning"
+	ignoreFailures="true"/>
+  </goal>
+
+<!-- 
+		Build individual components of the GroundWork Monitor
+		
+		Add a goal for any new component
+ -->	
+	<goal name="gd2"
+  		description="Build Graphic library GD version 2">
+     
+	<maven:reactor
+               basedir="${basedir}/gd2"
+               includes="project.xml"
+               goals="allBuild"
+               banner="Builds Graphics Library"
+               postProcessing="false"
+               ignoreFailures="false"/>
+
+	</goal>
+
+	<goal name="perl"
+  		description="Build perl modules">
+     
+	<maven:reactor
+               basedir="${basedir}/perl"
+               includes="project.xml"
+               goals="allBuild"
+               banner="Builds perl modules"
+               postProcessing="false"
+               ignoreFailures="false"/>
+
+	</goal>
+
+	<goal name="syslib"
+  		description="Build system modules">
+		
+     
+	<maven:reactor
+               basedir="${basedir}/syslib"
+               includes="project.xml"
+               goals="allBuild"
+               banner="Builds system modules"
+               postProcessing="false"
+               ignoreFailures="false"/>
+
+	</goal>
+     
+	<goal name="apache"
+               description="Build/deploy apache modules">
+     
+	<maven:reactor
+               basedir="${basedir}/apache"
+               includes="project.xml"
+               goals="apache2"
+               banner="Builds apache modules"
+               postProcessing="false"
+               ignoreFailures="false"/>
+               
+        <maven:reactor
+               basedir="${basedir}/apache"
+               includes="project.xml"
+               goals="jk2"
+               banner="Builds apache tomcat re-director"
+               postProcessing="false"
+               ignoreFailures="false"/>
+               
+        <maven:reactor
+               basedir="${basedir}/apache"
+               includes="project.xml"
+               goals="php"
+               banner="Builds PHP"
+               postProcessing="false"
+               ignoreFailures="false"/>
+	</goal>
+	
+	<goal name="netsnmp"
+			description="Build GroundWork netsnmp ">
+
+		<maven:reactor
+	 		basedir="${basedir}/snmp"
+			includes="project.xml"
+			goals="allBuild"
+	               	banner="Build GroundWork nagios "
+	               	postProcessing="false"
+	               	ignoreFailures="false"/>
+		</goal>
+	 
+	<goal name="nagios"
+		description="Build GroundWork nagios ">
+
+	<maven:reactor
+ 		basedir="${basedir}/nagios"
+		includes="project.xml"
+		goals="allBuild"
+               	banner="Build GroundWork nagios "
+               	postProcessing="false"
+               	ignoreFailures="false"/>
+	</goal>
+ 
+</project>

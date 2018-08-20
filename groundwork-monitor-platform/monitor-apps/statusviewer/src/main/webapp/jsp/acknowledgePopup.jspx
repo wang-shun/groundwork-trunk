@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<jsp:root version="1.2" xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<jsp:directive.page contentType="text/html;charset=ISO-8859-1"
+		pageEncoding="ISO-8859-1" />
+
+	<!-- Acknowledge Panel Pop-up for Integration with Action Portlet links  -->
+
+	<!-- POPUP PANEL -->
+	<ice:panelPopup id="ackPackPanelPopupExecute" modal="true"
+		styleClass="icePnlPop" autoPosition="manual"
+		autoCentre="#{acknowledgePopupBean.inStatusViewer}"
+		rendered="#{acknowledgePopupBean.visible}"
+		style="#{acknowledgePopupBean.popupStyle}">
+
+		<!-- POPUP HEADER -->
+		<f:facet name="header">
+		<div>
+					<ice:outputText style="float:left;" id="ackPtxtAckPanelPopupTitle" 
+						value="#{acknowledgePopupBean.title}"/>
+					<ice:commandButton id="ackPcmdButtonAckPanelPopup"						
+						image="/css/css-images/popup_modeBtn_close.gif"
+						action="#{acknowledgePopupBean.closePopup}"
+						actionListener ="#{acknowledgePopupBean.resetFields}"
+						title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+						alt="Close" style="float:right;"/> 
+			</div>				
+		</f:facet>
+		
+
+		<!-- POPUP BODY -->
+		<f:facet name="body">
+				<table id="ackPAckPopUp_tblGridMain" border="0"
+					valign="top">
+					<tr>
+						<td valign="top" width="27%"><ice:panelGrid
+							id="ackPAckPanelPopupPanelGridLeft">
+							<div style="padding-bottom: 12px"><!-- COMMAND OPTIONS LABEL -->
+							<ice:outputText id="ackPAckPanelPopupTxtCmdOptions"
+								style="width:50%;font-family:Verdana, Arial, Helvetica, sans-serif;font-size: 14px;font-weight:bold;color:#585858;text-align:left;border-collapse:collapse;"
+								styleClass="icePnlGrdCol2 padbottom10"
+								value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_commandsOptions']}">
+							</ice:outputText></div>
+							<!-- TABLE OF FIELDS -->
+							<!-- FIELD 1 - HOSTNAME [Both host & service]-->
+								
+							<div>	
+										<ice:outputText id="ackPAckPanelPopupTxtHostName"
+											styleClass="iceOutTxt" style="float:left;"
+											value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_hostname']} ">
+										</ice:outputText>
+										<ice:outputText style="float:left;"
+											id="ackPAckPanelPopupOutTextHostName"
+											value="#{acknowledgePopupBean.hostName}">
+										</ice:outputText>
+							</div>	
+
+								<!-- FIELD 2 - SERVICE DESC [Only service]-->
+								<ice:panelGroup rendered="#{!acknowledgePopupBean.hostAck and !acknowledgePopupBean.acknowledgeAllServices}"
+									id="ackPAckPanelPopupPanelgroupServiceDesc">
+										<ice:outputText
+											id="ackPAckPanelPopupTxtServiceDesc"
+											styleClass="iceOutTxt"
+											value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_service']}">
+										</ice:outputText>
+										<ice:outputText
+											id="ackPAckPanelPopupOutTextServiceDesc"
+											value="#{acknowledgePopupBean.serviceDescription}">
+										</ice:outputText>
+								</ice:panelGroup>
+								
+								<!-- FIELD 3 - ACKNOWLEDGE ALL SERVICES TOO [Only host] -->
+								<ice:panelGroup 
+									rendered="#{acknowledgePopupBean.hostAck and !acknowledgePopupBean.ackAllServicesCheckboxInvisible}"
+									id="ackPAckPanelPopupPanelgroupAckAllServicesToo">
+									
+										<ice:outputText
+											id="ackPAckPanelPopupTxtAckAllServicesToo"
+											styleClass="iceOutTxt"
+											value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_ackHostServicesToo']}">
+										</ice:outputText>
+									<!-- Do not change ID.Id Reference => AcknowledgePopupBean.resetFields(ActionEvent ae)   -->
+										<ice:selectBooleanCheckbox
+											disabled="#{acknowledgePopupBean.acknowledgeServicesCheckboxDisabled}"
+											id="ackPAckPanelPopupAckAllServicesToo"
+											required="false"
+											value="#{acknowledgePopupBean.acknowledgeServices}"
+											autocomplete="off">
+										</ice:selectBooleanCheckbox>
+								</ice:panelGroup>
+
+								<!-- FIELD 4 - SEND NOTIFICATION [Both host & service]-->
+								<div>
+										<ice:outputText
+											id="ackPAckPanelPopupTxtSendNotification"
+											styleClass="iceOutTxt"
+											value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_sendNotification']}"></ice:outputText>
+									<!-- Do not change ID.Id Reference => AcknowledgePopupBean.resetFields(ActionEvent ae)   -->
+										<ice:selectBooleanCheckbox
+											id="ackPAckPanelPopupChkSendNotification"
+											required="false" value="#{acknowledgePopupBean.notify}"
+											autocomplete="off">
+										</ice:selectBooleanCheckbox>
+									</div>
+
+								<!-- FIELD 5 - PERSISTENT COMMENT [Both host & service]-->
+								<div>
+										<ice:outputText
+											id="ackPAckPanelPopupTxtPersistentComment"
+											styleClass="iceOutTxt"
+											value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_persistentComment']}">
+									</ice:outputText>
+									<!-- Do not change ID.Id Reference => AcknowledgePopupBean.resetFields(ActionEvent ae)   -->
+									<ice:selectBooleanCheckbox
+											id="ackPAckPanelPopupChkBoxPersistentComment"
+											required="false"
+											value="#{acknowledgePopupBean.persistentComment}"
+											autocomplete="off">
+										</ice:selectBooleanCheckbox>
+									</div>
+
+
+								<!-- FIELD 6 - AUTHOR [Both host & service]-->
+								<div>
+										<ice:outputLabel styleClass="iceOutTxt"
+											id="ackPAckPanelPopupLblAuthor"
+											value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_author']}">
+										</ice:outputLabel>
+										<ice:outputLabel
+											id="ackPAckPanelPopupLblAuthorValue"
+											value="#{acknowledgePopupBean.author}"></ice:outputLabel>
+									</div>
+
+								<!-- FIELD 7 - COMMENT [Both host & service]-->
+								<div>
+									<ice:outputLabel styleClass="iceOutTxt"
+										id="ackPAckPanelPopupLblComment"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_comment']}">
+									</ice:outputLabel>
+									<!-- Do not change ID.Id Reference => AcknowledgePopupBean.resetFields(ActionEvent ae)   -->
+									<ice:inputText styleClass="iceOutTxt" 
+										id="ackPAckPanelPopupTxtComment"
+										value="#{acknowledgePopupBean.comment}">
+									</ice:inputText>
+								</div>
+								<h:message for="ackPAckPanelPopupTxtComment"
+									showDetail="true" showSummary="false"
+									style="color: red; width: 350px;font-weight:normal;" />
+
+								<!-- BUTTONS -->
+								<!-- BUTTON SUBMIT -->
+								<ice:column id="ackPAckPanelPopup_SubmitBtnCol1">
+									<ice:commandButton
+										actionListener="#{acknowledgePopupBean.submitCommand}"
+										styleClass="portlet-filter-button" 
+										partialSubmit="false"
+										title="#{message['com_groundwork_portal_statusviewer_actionsPortlet_button_submit']}"
+										id="ackPAckPanelPopupBtnSubmit"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_button_submit']}">
+									</ice:commandButton>
+								</ice:column>
+						</ice:panelGrid></td>
+						<td valign="top" style="border-left: 1px solid #d0d0d0;"><ice:panelGroup
+							id="ackPAckPopupGrpRight"
+							style="valign:top">
+							<div style="padding-left: 12px; padding-bottom: 12px;"><ice:outputText
+								style="width:50%;font-family:Verdana, Arial, Helvetica, sans-serif;font-size: 14px;font-weight:bold;color:#585858;text-align:left;border-collapse:collapse;"
+								id="ackPAckPanelPopupTxtCmdDesc"
+							value="#{message['com_groundwork_portal_statusviewer_commentsPortlet_popup_commanddescription']}">
+							</ice:outputText></div>
+							<br />
+							<div style="padding-left: 12px;"><ice:outputText
+								id="ackPAckPanelPopupTxtCmdDescValue"
+								value="#{acknowledgePopupBean.commandDescription}">
+							</ice:outputText></div>
+						</ice:panelGroup></td>
+					</tr>
+				</table>
+			</f:facet>
+	</ice:panelPopup>
+</jsp:root>

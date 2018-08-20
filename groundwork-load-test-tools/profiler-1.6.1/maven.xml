@@ -1,0 +1,145 @@
+<!--
+Copyright (C) 2004-2005  GroundWork Open Source Solutions info@itgroundwork.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-->
+<!--
+	Top level build script for GroundWork Professional
+	
+	Make sure that the build/prepare.sh run before invoking this build script
+
+-->
+<project default="build"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+
+	<goal name='build' 
+		description="Build profiler tool">
+		
+		<attainGoal name="jar:install" />
+	</goal>
+	
+	<goal name="deploy" 
+			description="Deploy build into deploy area" >
+	
+		<delete dir="${basedir}/deploy" />
+		<mkdir dir="${basedir}/deploy" />
+		
+		<!-- Jars -->
+		<copy todir="${basedir}/deploy" >
+			<fileset dir="${basedir}/target" >
+				<include name="*.jar"/>
+			</fileset>
+						 
+			<fileset dir="${maven.repo.local}/org.itgroundwork/jars" >
+				<include name="${org.groundwork.profiler.collageapi.jar}"/>
+			</fileset>					
+			<fileset dir="${maven.repo.local}/log4j/jars" >
+				<include name="${org.groundwork.profiler.log4j.jar}"/>
+			</fileset>		
+			<fileset dir="${maven.repo.local}/commons-logging/jars" >
+				<include name="${org.groundwork.profiler.commons.logging.jar}"/>
+			</fileset>					
+			<fileset dir="${maven.repo.local}/mysql/jars" >
+				<include name="${org.groundwork.profiler.mysql.driver.jar}"/>
+			</fileset>				
+			<fileset dir="${maven.repo.local}/axis/jars" >
+				<include name="${org.groundwork.profiler.axis.jar}"/>
+			</fileset>					
+			<fileset dir="${maven.repo.local}/jaxrpc/jars" >
+				<include name="${org.groundwork.profiler.jaxrpc.jar}"/>
+			</fileset>	
+			<fileset dir="${maven.repo.local}/commons-discovery/jars" >
+				<include name="${org.groundwork.profiler.discovery.jar}"/>
+			</fileset>				
+			<fileset dir="${maven.repo.local}/saaj/jars" >
+				<include name="${org.groundwork.profiler.saaj.jar}"/>
+			</fileset>				
+			<fileset dir="${maven.repo.local}/wsdl4j/jars" >
+				<include name="${org.groundwork.profiler.wsdl4j.jar}"/>
+			</fileset>				
+			<fileset dir="${maven.repo.local}/commons-logging/jars" >
+				<include name="${org.groundwork.profiler.logging.jar}"/>
+			</fileset>	
+			<fileset dir="${maven.repo.local}/xml-apis/jars" >
+				<include name="${org.groundwork.profiler.xmlapis.jar}"/>
+			</fileset>					
+		</copy>
+
+		<!-- Properties files -->
+		<copy todir="${basedir}/deploy" >
+			<fileset dir="${basedir}/resources" >
+					<include name="*.properties"/>
+					<include name="*.xml"/>				
+					<include name="*.sh"/>
+			</fileset>
+		</copy>
+		
+		<!-- Adjust permissions -->
+		<exec dir="${basedir}/deploy" executable="chmod" >
+		      <arg line="ugo+x foundation-profiler.sh"/>
+		    </exec>
+	</goal>
+	
+	<goal name="allClean"
+	        description="Clean the master project and all subprojects">
+	    <attainGoal name="subClean"/>
+	    <attainGoal name="clean"/>
+		
+	</goal>
+		
+	<goal name="subClean" description="Clean all subprojects">
+  	</goal>
+	
+	<goal name="database">
+		
+		<!-- Create Database - Warning this script will remove an existing database. -->
+		<j:set var="database.arg.script" value="./database/schema/mysql/create-db.sql" />
+		<attainGoal name="db.execute"/>
+		
+		<!-- Create Database Entities -->
+		<j:set var="database.arg.script" value="./database/schema/mysql/GWProfilerDB.sql" />
+		<attainGoal name="db.execute"/>		
+		
+	</goal>
+	
+	<goal name="database.clean">
+		<!-- Clear Database Tables -->
+		<j:set var="database.arg.script" value="./database/queries/clear-profile-data.sql" />
+		<attainGoal name="db.execute"/>				
+	</goal>
+	
+	<!-- ================================================================ -->
+	<!-- EXECUTE a DB SCRIPT                                              -->
+	<!-- TODO: I'd like to implement this as a plugin or use commons SQL  -->
+	<!-- ================================================================ -->
+	<goal name="db.execute">    
+		<echo>URL: ${org.groundwork.profiler.database.url}</echo>
+		<echo>Driver path: ${maven.repo.local}/mysql/jars/${org.groundwork.profiler.mysql.driver.jar}</echo>
+
+		<sql 
+   			driver="${org.groundwork.profiler.database.driver}"
+		    url="${org.groundwork.profiler.database.url}"
+		    userid="${org.groundwork.profiler.database.user}"
+		    password="${org.groundwork.profiler.database.password}"
+		    print='true'
+			output="${database.arg.script}.log">
+  			<transaction src="${database.arg.script}"/>         
+  			<classpath>
+				<pathelement location="${maven.repo.local}/mysql/jars/${org.groundwork.profiler.mysql.driver.jar}"/>
+  			</classpath>
+		</sql>
+  	</goal>	
+</project>

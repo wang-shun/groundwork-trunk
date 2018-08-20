@@ -1,0 +1,124 @@
+================================================================
+
+Copyright (c) 2010 GroundWork Open Source, Inc.
+All rights reserved.
+
+================================================================
+
+Notes on the GroundWork 6.X mod_security2 patch:
+
+(1) We are including all the optional parts of mod_security2 support,
+    namely:
+
+    (a) lua (only needed if you will be using the new Lua engine)
+    (b) curl (only needed if you will be using the ModSecurity Log
+	Collector [mlogc] to send audit logs to a central repository)
+    (c) the ModSecurity Log Collector (mlogc)
+    (d) all the standard ModSecurity rules in the Core Rule Set
+
+(2) For reference, the ModSecurity Log Collector will be installed in:
+
+	/usr/local/groundwork/apache2/bin/mlogc
+	/usr/local/groundwork/apache2/bin/mlogc-batch-load.pl
+	/usr/local/groundwork/apache2/conf/mlogc-default.conf
+
+    If you wish to configure and use the ModSecurity Log Collector, the
+    mlogc-default.conf file should be copied to mlogc.conf in the same
+    directory before local configuration, and that copy used for the
+    actual installation.
+
+(3) The ModSecurity Core Rule Set, needed to have the mod_security2
+    module do anything useful, is provided in this patch distribution
+    as this file tree:
+
+	/usr/local/groundwork/apache2/conf/modsecurity/...
+
+(4) Configuring ModSecurity components is complicated, and not all the
+    steps are listed below.  In addition to the on-line documents listed
+    below, see also these files that are included in this distribution:
+
+	/usr/local/groundwork/apache2/conf/modsecurity/README
+	/usr/local/groundwork/apache2/doc/INSTALL.mlogc
+
+    The information in those files is not always terribly clear,
+    for instance as to which file needs to be edited in each case.
+    In particular, directives such as SecAuditEngine are set in
+    apache2/conf/modsecurity/modsecurity_crs_10_config.conf and
+    not in apache2/conf/httpd.conf.
+
+================================================================
+
+How to install the mod_security2 patch:
+
+(1) Log in as the "nagios" user for all the installation work.
+
+(2) Copy the patch tarball to the /tmp directory.
+
+(3) Execute these commands, with appropriate substitutions:
+
+	cd /usr/local/groundwork
+	tar xvfz /tmp/modsecurity-$(MODSEC2_VERSION)-$(PATCH_RELEASE).tar.gz
+
+(4) Edit /usr/local/groundwork/apache2/conf/httpd.conf and make the
+    following modifications:
+
+    (a) Uncomment this line:
+
+	    ##LoadModule unique_id_module modules/mod_unique_id.so
+
+    (b) Add these lines to the file in the appropriate sections.  The
+	LoadFile lines must come before the LoadModule line.  Loading
+	the lua library here is presumably only needed if you will be
+	using the new Lua engine in your rules.
+
+	    LoadFile /usr/local/groundwork/common/lib/libxml2.so
+	    LoadFile /usr/local/groundwork/common/lib/liblua5.1.so
+	    LoadModule security2_module modules/mod_security2.so
+
+(5) Configure ModSecurity rules, and tell Apache to refer to them.
+    See /usr/local/groundwork/apache2/conf/modsecurity/README and
+    these additional references for details:
+
+	http://www.modsecurity.org/documentation/modsecurity-apache/2.5.11/html-multipage/
+	http://www.modsecurity.org/documentation/modsecurity-apache/2.5.11/html-multipage/configuration-directives.html
+	http://www.owasp.org/index.php/Category:OWASP_ModSecurity_Core_Rule_Set_Project
+
+    Refer also to:
+
+        http://www.modsecurity.org/documentation/
+
+    if you prefer to read the documentation in PDF format.
+
+    Note that the security rules can operate in a detection-only mode,
+    or in an active-protection mode.  Your site won't be fully armored
+    until the protection mode is in play.  See the Caution notes in the
+    README file above.
+
+(6) Optionally configure mlogc (see Notes above).  You may need to
+    create the CollectorRoot directory manually, with appropriate
+    ownership (probably "nagios.nagios", since that is what Apache
+    runs as) and permissions.  Adjust the SecAuditLog setting to be:
+
+	SecAuditLog "|/usr/local/groundwork/apache2/bin/mlogc /usr/local/groundwork/apache2/conf/mlogc.conf"
+
+(7) Bounce apache:
+
+	service groundwork restart apache
+
+================================================================
+
+Additional notes:
+
+(1) The configuration of ModSecurity and mlogc becomes another piece
+    of the local setup that must be preserved when upgrading to a new
+    release of GroundWork Monitor.
+
+(2) In our next release (6.1.1) of GroundWork Monitor, the following
+    text should be included in httpd.conf:
+
+	# ModSecurity configuration (optional).  See the docs
+	# for extensive details if you want to enable this.
+	#Include conf/modsecurity/*.conf
+	#Include conf/modsecurity/base_rules/*conf
+
+================================================================

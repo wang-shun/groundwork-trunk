@@ -1,0 +1,281 @@
+#!/bin/csh -f
+
+# ========================================================================
+
+# Copyright (c) 2009 GroundWork Open Source, Inc.  All rights reserved.
+# Use is subject to GroundWork commercial license terms.
+
+# ========================================================================
+
+set print_usage = 0
+
+while ($#argv > 0)
+    set option = "$argv[1]"
+    if ("@$option" == "@-r" && $#argv > 1) then
+	set OPENSSL_RELEASE = "$argv[2]"
+	shift
+	shift
+    else if ("@$option" == "@-p" && $#argv > 1) then
+	set OPENSSL_PREFIX = "$argv[2]"
+	shift
+	shift
+    else
+	set print_usage = 1
+	shift
+    endif
+end
+
+if (! $?OPENSSL_RELEASE || ! $?OPENSSL_PREFIX ) then
+    set print_usage = 1
+endif
+
+if ($print_usage) then
+    echo "Usage:    $0 -r {openssl_release} -p {openssl_prefix}"
+    echo "Example:  $0 -r 0.9.8j -p /opt/groundwork/gdma"
+    exit 1
+endif
+
+# ========================================================================
+
+# We normally don't bother to install the software during this build, because that
+# requires permissions in the /opt/groundwork file tree, which we probably don't
+# have while we build this as an ordinary user.
+set do_install = 0
+
+set DESIRED_USER  = root
+set DESIRED_GROUP = bin
+
+set CURRENT_USER  = `/usr/xpg4/bin/id -un`
+set CURRENT_GROUP = `/usr/xpg4/bin/id -Gn`
+if ("$CURRENT_USER" == root || "$CURRENT_USER" == $DESIRED_USER) then
+    if ("`/usr/xpg4/bin/id -un $DESIRED_USER`" == $DESIRED_USER) then
+	set INSTALL_USER  = $DESIRED_USER
+	set INSTALL_GROUP = $DESIRED_GROUP
+    else
+	set INSTALL_USER  = $CURRENT_USER
+	set INSTALL_GROUP = $CURRENT_GROUP
+	if ($do_install) then
+	    echo "================================================================"
+	    echo "WARNING:  User '$DESIRED_USER' does not exist; will use the"
+	    echo "          build user ($INSTALL_USER) and group ($INSTALL_GROUP) instead"
+	    echo "          for the owner/group of the installed files."
+	    echo "================================================================"
+	endif
+    endif
+else
+    set INSTALL_USER  = $CURRENT_USER
+    set INSTALL_GROUP = $CURRENT_GROUP
+    if ($do_install) then
+	echo "========================================================================"
+	echo -n "WARNING:  You are not building as"
+	if ("$DESIRED_USER" != root) then
+	    echo " either"
+	endif
+	echo -n " 'root'"
+	if ("$DESIRED_USER" != root) then
+	    echo -n " or '$DESIRED_USER'"
+	endif
+	echo ";"
+	echo "          will use the build user ($INSTALL_USER) and group ($INSTALL_GROUP)"
+	echo "          instead for the owner/group of the installed files."
+	echo "========================================================================"
+    endif
+endif
+
+if ("$CURRENT_USER" != root) then
+    echo "================================================================"
+    echo "WARNING:  You are not building as 'root'.  Any setuid plugins"
+    echo "          (including check_dhcp and check_icmp) will not appear"
+    echo -n "          in the"
+    if ($do_install) then
+	echo -n " installed or"
+    endif
+    echo " packaged software."
+    echo "          However, note that the package produced at this time"
+    echo "          is just the standard Nagios plugins package, not the"
+    echo "          full GDMA package, which will include setuid plugins."
+    echo "          So building as 'root' is definitely not recommended."
+    echo "================================================================"
+endif
+
+# ========================================================================
+
+setenv PLUGIN_MAKE_PROCESS $$
+set parent_dir = $cwd
+onintr abort
+
+if ( `uname -s` != SunOS ) then
+    echo "========================================================================"
+    echo "ERROR:  This script is only designed to be run under Solaris; aborting\!"
+    echo "========================================================================"
+    exit 1
+endif
+
+# The commands specified here are demonstrated to work when compiling the
+# Nagios Plugins 1.4.10 release.  In some cases, alternative commands might
+# work, such as using /usr/xpg4/bin/grep instead of /usr/sfw/bin/ggrep .
+# However, such alternatives have not been thoroughly tested.
+switch (`uname -r`)
+    case 5.6:
+	set gunzip = /usr/local/bin/gunzip
+	set ggrep  = /usr/bin/grep
+	set gmake  = /usr/ccs/bin/make
+	set gcc    = /usr/local/bin/gcc
+	breaksw
+    case 5.8:
+	set gunzip = /usr/bin/gunzip
+	set ggrep  = /usr/bin/grep
+	set gmake  = /opt/sfw/bin/gmake
+	set gcc    = /opt/sfw/bin/gcc
+	breaksw
+    case 5.9:
+	set gunzip = /usr/bin/gunzip
+	set ggrep  = /usr/sfw/bin/ggrep
+	set gmake  = /opt/sfw/bin/gmake
+	set gcc    = /opt/sfw/bin/gcc
+	set cc    = /opt/sfw/bin/gcc
+	breaksw
+    case 5.10:
+	set gunzip = /usr/bin/gunzip
+	set ggrep  = /usr/sfw/bin/ggrep
+	set gmake  = /usr/sfw/bin/gmake
+	set gcc    = /usr/sfw/bin/gcc
+	breaksw
+    case 5.11:
+	set gunzip = /usr/bin/gunzip
+	set ggrep  = /usr/sfw/bin/ggrep
+	set gmake  = /usr/sfw/bin/gmake
+	set gcc    = /usr/sfw/bin/gcc
+	breaksw
+    default:
+	echo "========================================================================"
+	echo "ERROR:  This script has only been ported so far to Solaris 5.6,"
+	echo "        Solaris 8 through Solaris 10, and Solaris Express.  Aborting\!"
+	echo "========================================================================"
+	exit 1
+	breaksw
+endsw
+
+foreach program ($gunzip $ggrep $gmake $gcc)
+    if ( ! -f $program ) then
+	echo "========================================================================"
+	echo "ERROR:  You don't have `basename $program` installed on your machine"
+	echo "        in the expected location ($program); aborting\!"
+	echo "========================================================================"
+	exit 1
+    endif
+end
+
+# ========================================================================
+
+if ( $cwd =~ *,* ) then
+    echo "========================================================================"
+    echo "The build pathname is:"
+    echo "    $cwd"
+    echo "BUILD ERROR:  This path contains a comma, which will interfere with the"
+    echo "configuration phase of the build.  Try again under some other directory."
+    echo "========================================================================"
+    exit 1
+endif
+
+# We have to patch up our compilation environment to match what is expected
+# by the Nagios plugins code, since the native build of that code is not
+# internally ported to the platforms we're trying to build on here.  The
+# configuration process may depend on the GNU grep -E option, the compilation
+# process depends in some way on features of GNU make, and Sun puts some of
+# their build tools and third-party tools in out-of-the-way locations.
+#
+mkdir /tmp/gnu_$PLUGIN_MAKE_PROCESS
+ln -s $ggrep /tmp/gnu_$PLUGIN_MAKE_PROCESS/grep
+ln -s $gmake /tmp/gnu_$PLUGIN_MAKE_PROCESS/make
+set path = (/tmp/gnu_$PLUGIN_MAKE_PROCESS /usr/ccs/bin /usr/sfw/bin /opt/sfw/bin $path)
+
+if ({ false }) then
+    if ( -e openssl-fips-1.2.tar.gz ) then
+	gunzip -c openssl-fips-1.2.tar.gz | tar xf -
+    endif
+    cd openssl-fips-1.2
+    if ( $status != 0 ) then
+	echo 'Cannot chdir to openssl-fips-1.2; aborting\!'
+	exit 1
+    endif
+    if ( -f Makefile ) then
+	make clean
+    endif
+    ./config --prefix=$OPENSSL_PREFIX --openssldir=$OPENSSL_PREFIX/openssl fips
+    build no-shared
+    make
+    make install
+    cd ..
+endif
+
+set architecture = `isainfo -k`
+
+if ({ true }) then
+    if ( -e openssl-$OPENSSL_RELEASE.tar.gz ) then
+	gunzip -c openssl-$OPENSSL_RELEASE.tar.gz | tar xf -
+    endif
+    cd openssl-$OPENSSL_RELEASE
+    if ( $status != 0 ) then
+	echo "Cannot chdir to openssl-$OPENSSL_RELEASE; aborting"'\!'
+	exit 1
+    endif
+    if ( -f Makefile ) then
+	make clean
+    endif
+    switch (`uname -r`)
+	case 5.6:
+	    echo "========================================================================"
+	    echo "ERROR:  This script has not yet been ported to Solaris 5.6.  Aborting\!"
+	    echo "========================================================================"
+	    exit 1
+	    breaksw
+	case 5.8:
+	    # The architecture specified by the as-obtained code distribution is appropriate
+	    # for the Sun Studio 11 compiler.
+	    set fix_architecture = ''
+	    breaksw
+	case 5.9:
+	case 5.10:
+	case 5.11:
+	    if ($architecture == sparcv9)  then
+		# This architecture substitution is appropriate for the Sun Studio 12 compiler.
+		set fix_architecture = 's/-xarch=v8plus/-m32 -xarch=sparcvis/'
+	    else
+		set fix_architecture = ''
+	    endif
+	    breaksw
+	default:
+	    echo "========================================================================"
+	    echo "ERROR:  This script has only been ported so far to Solaris 5.6,"
+	    echo "        Solaris 8 through Solaris 10, and Solaris Express.  Aborting\!"
+	    echo "========================================================================"
+	    exit 1
+	    breaksw
+    endsw
+    if ($architecture == sparcv9) then
+	# We restrict this compilation to a 32-bit build, for compatibility with the system
+	# compilation of Perl.  Otherwise, we might use "set target = solaris64-sparcv9-cc" here.
+        set target = solaris-sparcv9-cc
+    else if ($architecture == amd64) then
+	# We restrict this compilation to a 32-bit build, for compatibility with the system
+	# compilation of Perl.  Otherwise, we would use "set target = solaris64-x86_64-cc" here.
+	set target = solaris-x86-cc 
+    else if ($architecture == i386) then
+	set target = solaris-x86-cc 
+    else
+	echo "ERROR:  Your architecture ($architecture) is not yet supported by the $0 script."
+        exit 1
+    endif
+    # The BSD and -rpath adjustments are there to to force the generated shared libraries to include
+    # an RPATH (loosely speaking) to find our own copies of the libcrypto.so and libssl.so libraries.
+    sed -e "$fix_architecture" -e 's@.*/^BSD@# &@' -e 's@-rpath,\\\$(LIBRPATH)@-R,$OPENSSL_PREFIX/lib@' Configure > configure
+    chmod +x configure
+    ./configure --prefix=$OPENSSL_PREFIX --openssldir=$OPENSSL_PREFIX/openssl $target fipscanisterbuild fips shared
+    make
+    /bin/rm -rf $OPENSSL_PREFIX/{bin,include,lib,openssl}
+    make install
+    cd ..
+endif
+
+cp -R $OPENSSL_PREFIX/* opt/groundwork/gdma

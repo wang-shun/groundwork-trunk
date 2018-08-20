@@ -1,0 +1,27 @@
+<h1>Open A Dashboard</h1>
+<table width="500">
+
+<tr>
+
+	<td valign="top" style="padding: 10px;">
+	To open a dashboard, select the name of the dashboard from the list at the right.
+	</td>
+	<td >
+	<div style="padding: 0px; background: #eeeeee; border: 1px solid grey; width: 300px; height: 200px; overflow: auto;">
+
+	<div tal:repeat="dashboard self/getDashboards" style="background: #f5f5f5; border-width: 0px 0px 1px 0px; border-style: solid; border-color: #e0e0e0; padding: 8px;">
+	
+		<div style="font-size: 12pt; font-weight: bold;"><a tal:attributes="href string:javascript:addMessage('framework', 'object', [{name: 'identifier', type: 'string', value: '${self/getIdentifier}'}, {name: 'dashboard', type: 'string', value: '${dashboard/id}'}]);; sendMessageQueue();;" tal:content="dashboard/name">Name</a></div>
+		<div style="padding-top: 5px; font-size: 8pt;">Author: <span tal:replace="dashboard/author">Author</span></div>
+	</div>
+	
+	
+	</div>
+	</td>
+</tr>
+<tr>
+	<td colspan="2" align="right">
+	<input tal:replace="structure target:cancelButton" />
+	</td>
+</tr>
+</table>

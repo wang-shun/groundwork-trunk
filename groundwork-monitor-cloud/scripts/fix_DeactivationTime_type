@@ -1,0 +1,64 @@
+#!/bin/bash -e
+
+# Script to modify the type of the DeactivationTime property in Foundation,
+# to address an inadvertent mistake in the GW6.3 release.
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+credentials=`sed -e 's/#.*//' -e 's/^ *//' -e 's/ *$//' /usr/local/groundwork/config/db.properties | fgrep collage.`
+
+for key_value in $credentials
+do
+    # collage.field=value
+    key=${key_value%%=*}
+    value=${key_value#*=}
+    case $key in 
+	(collage.database) database=$value;;
+	(collage.dbhost)   hostname=$value;;
+	(collage.username) username=$value;;
+	(collage.password) password=$value;;
+    esac
+done
+
+# This selection ought to be configured in the db.properties file, but
+# until it is, we need to compute this ourselves.  The mysql client
+# program is configured to do this for us in its my.cnf file, but we
+# cannot use that because we need to use the --defaults-extra-file
+# argument, which is not supported by the Bitrock "mysql" wrapper.
+if [ "$hostname" = 'localhost' ]; then
+    port_or_sock="--socket=/usr/local/groundwork/mysql/tmp/mysql.sock"
+else
+    port_or_sock="--port=3306"
+fi
+
+# FIX LATER:  there are improved ways to name a temporary file
+# that provide even better security
+my_local_cnf="/usr/local/groundwork/tmp/my_local.cnf.$$"
+trap "/bin/rm -f $my_local_cnf;" EXIT
+touch $my_local_cnf
+chmod 600 $my_local_cnf
+cat > $my_local_cnf << eof
+[mysql]
+user=$username
+password=$password
+eof
+
+# We need the "|| true" at the end to sidestep the bash -e flag for this one command,
+# primarily because fgrep clumsily changes its return code depending on whether or not
+# it matches anything, regardless of whether the command otherwise ran successfully.
+running=`/usr/local/groundwork/ctlscript.sh status gwservices | egrep -v '(is|not|copies) running' | fgrep -c running || true`
+
+# Make sure gwservices is down, to prevent interference from a cached copy
+# of the datatype we're about to change.
+/usr/local/groundwork/ctlscript.sh stop gwservices
+
+echo "Fixing the DeactivationTime type."
+/usr/local/groundwork/mysql/bin/mysql.bin --defaults-extra-file=$my_local_cnf \
+    -h $hostname $port_or_sock -s $database \
+    -e "update PropertyType set isDate=1, isString=0 where Name='DeactivationTime'"
+
+# Restart gwservices only if it was already running before we made this fix.
+if [ $running -ne 0 ]; then
+    /usr/local/groundwork/ctlscript.sh start gwservices
+fi

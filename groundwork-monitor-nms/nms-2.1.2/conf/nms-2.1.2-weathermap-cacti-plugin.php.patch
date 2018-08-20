@@ -1,0 +1,17 @@
+*** weathermap-cacti-plugin.php.orig	2009-11-03 17:04:26.000000000 -0800
+--- weathermap-cacti-plugin.php	2009-11-03 16:37:55.000000000 -0800
+***************
+*** 9,14 ****
+--- 9,20 ----
+  // include the weathermap class so that we can get the version
+  include_once(dirname(__FILE__)."/Weathermap.class.php");
+  
++ if ( strlen( $_SESSION['GWRK_USER']) == 0 ) {
++         print "<br><br><center><font color=red>You do not have permission to access this page. Please log in first</font></color>";
++         exit;
++ }
++ 
++ 
+  $action = "";
+  if (isset($_POST['action'])) {
+  	$action = $_POST['action'];

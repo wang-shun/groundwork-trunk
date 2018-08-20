@@ -1,0 +1,14 @@
+# Custom RPM initialization file for building application RPM packages
+# as a non-root user.
+#
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+# Which "rc" files to use will be specified in the makefile, via the
+# rpmbuild --rcfile option, not here.  We only leave this next line around
+# as documentation for an alternate possibility in other contexts.
+# include:	/usr/lib/rpm/rpmrc
+
+# We override the default path, to eliminate macro files that are not even
+# in our build environment and to include our own customized macros.
+macrofiles:	/usr/lib/rpm/macros:/usr/lib/rpm/%{_target}/macros:/etc/rpm/macros.specspo:rpmsetup/groundwork-cloud-connector.rpmmacros

@@ -1,0 +1,304 @@
+<!--
+$Id: maven.xml 14960 2009-04-09 17:09:05Z asoleymanzadeh $ 
+GroundWork Monitor - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Solutions info@itgroundwork.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-->
+<!--
+	Top level build script for GroundWork Monitor
+		<attainGoal name="monitor-core" />
+	
+		
+-->
+<project default="build"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+	
+	
+	<!-- Main entry point for GroundWork Monitor Build -->
+	
+	<goal name="allBuild"
+			description="Builds all components of GroundWork Monitor">
+<!--		<attainGoal name="guava.build" /> -->
+		<attainGoal name="monarch.build" />
+		<attainGoal name="reports.build" />
+<!--		<attainGoal name="sv.build" /> -->
+		<attainGoal name="PUC.build" />
+		<attainGoal name="bookshelf.build" />
+<!--		<attainGoal name="monitor-osv.build" /> -->
+	</goal>
+	
+	<goal name="allDeploy"
+			description="Deploy all components of GroundWork Monitor">
+<!--		<attainGoal name="guava.deploy" /> -->
+		<attainGoal name="monarch.deploy" />
+		<attainGoal name="reports.deploy" />
+<!--		<attainGoal name="sv.deploy" /> -->
+		<attainGoal name="PUC.deploy" />
+		<attainGoal name="bookshelf.deploy" />
+<!--		<attainGoal name="monitor-osv.deploy" /> -->
+	</goal>
+	
+	<goal name="allClean"
+			description="Cleans the build and the deployment section of GroundWork Monitor">
+<!--		<attainGoal name="guava.clean" /> -->
+		<attainGoal name="monarch.clean" />
+		<attainGoal name="reports.clean" />
+<!--		<attainGoal name="sv.clean" /> -->
+		<attainGoal name="PUC.clean" />
+		<attainGoal name="bookshelf.clean" />
+<!--		<attainGoal name="monitor-osv.clean" /> -->
+	</goal>
+	
+
+<!-- 
+		Build individual components of the GroundWork Monitor
+		
+		Add a goal for any new component
+ -->
+ 
+	<goal name="monitor-core"
+			description="Build GroundWork Core ">
+		<maven:reactor
+			basedir="${basedir}/monitor-core"
+			includes="project.xml"
+			goals="allBuild"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal>
+	
+	<goal name="monitor-core.clean"
+	  		description="Clean GroundWork Core ">
+		<maven:reactor
+			basedir="${basedir}/monitor-core"
+			includes="project.xml"
+			goals="allClean"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal>
+
+<!--	<goal name="guava.build"
+			description="Build Guava ">
+		<maven:reactor
+			basedir="${basedir}/guava"
+			includes="project.xml"
+			goals="allBuild"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal>
+
+	<goal name="guava.deploy"
+			description="Build Guava ">
+		<maven:reactor
+			basedir="${basedir}/guava"
+			includes="project.xml"
+			goals="allDeploy"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal> 
+
+	<goal name="guava.clean"
+	  		description="Clean Guava ">
+		<maven:reactor
+			basedir="${basedir}/guava"
+			includes="project.xml"
+			goals="allClean"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal> -->
+
+	<goal name="monarch.build"
+			description="Build Monarch ">
+		<maven:reactor
+			basedir="${basedir}/monarch"
+			includes="project.xml"
+			goals="allBuild"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal>
+
+	<goal name="monarch.deploy"
+			description="Deploy Monarch ">
+		<maven:reactor
+			basedir="${basedir}/monarch"
+			includes="project.xml"
+			goals="allDeploy"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal>
+
+	<goal name="monarch.clean"
+	  		description="Clean Monarch ">
+		<maven:reactor
+			basedir="${basedir}/monarch"
+			includes="project.xml"
+			goals="allClean"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal>
+
+	<goal name="reports.build"
+			description="Build Reports ">
+		<maven:reactor
+			basedir="${basedir}/reports"
+			includes="project.xml"
+			goals="allBuild"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal>
+
+	<goal name="reports.deploy"
+			description="Deploy Reports ">
+		<maven:reactor
+			basedir="${basedir}/reports"
+			includes="project.xml"
+			goals="allDeploy"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal>
+
+	<goal name="reports.clean"
+	  		description="Clean Monarch ">
+		<maven:reactor
+			basedir="${basedir}/reports"
+			includes="project.xml"
+			goals="allClean"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal>
+
+	<!-- Status Viewer 2 integration -->
+<!--	<goal name="sv.build"
+			description="Build SV2 ">
+		<maven:reactor
+			basedir="${basedir}/sv2"
+			includes="project.xml"
+			goals="allBuild"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal>
+
+	<goal name="sv.deploy"
+			description="Deploy SV2 ">
+		<maven:reactor
+			basedir="${basedir}/sv2"
+			includes="project.xml"
+			goals="allDeploy"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal>
+
+	<goal name="sv.clean"
+	  		description="Clean SV 2">
+		<maven:reactor
+			basedir="${basedir}/sv2"
+			includes="project.xml"
+			goals="allClean"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal> -->
+
+	<goal name="PUC.build"
+				description="Build PUC ">
+			<maven:reactor
+				basedir="${basedir}/PUC"
+				includes="project.xml"
+				goals="allBuild"
+				postProcessing="false"
+				ignoreFailures="false"/>
+		</goal>
+
+		<goal name="PUC.deploy"
+				description="Deploy PUC ">
+			<maven:reactor
+				basedir="${basedir}/PUC"
+				includes="project.xml"
+				goals="allDeploy"
+				postProcessing="false"
+				ignoreFailures="false"/>
+		</goal>
+
+		<goal name="PUC.clean"
+		  		description="Clean PUC">
+			<maven:reactor
+				basedir="${basedir}/PUC"
+				includes="project.xml"
+				goals="allClean"
+				postProcessing="false"
+				ignoreFailures="false"/>
+		</goal>
+ 
+	<goal name="bookshelf.build"
+			description="Build Bookshelf ">
+		<maven:reactor
+			basedir="${basedir}/bookshelf"
+			includes="project.xml"
+			goals="allBuild"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal>
+
+	<goal name="bookshelf.deploy"
+			description="Deploy Bookshelf ">
+		<maven:reactor
+			basedir="${basedir}/bookshelf"
+			includes="project.xml"
+			goals="allDeploy"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal>
+
+	<goal name="bookshelf.clean"
+	  		description="Clean Bookshelf">
+		<maven:reactor
+			basedir="${basedir}/bookshelf"
+			includes="project.xml"
+			goals="allClean"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal>
+
+<!--	<goal name="monitor-osv.build"
+			description="Build Bookshelf ">
+		<maven:reactor
+			basedir="${basedir}/monitor-os"
+			includes="project.xml"
+			goals="allBuild"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal>
+
+	<goal name="monitor-osv.deploy"
+			description="Deploy Bookshelf ">
+		<maven:reactor
+			basedir="${basedir}/monitor-os"
+			includes="project.xml"
+			goals="allDeploy"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal>
+
+	<goal name="monitor-osv.clean"
+	  		description="Clean Bookshelf">
+		<maven:reactor
+			basedir="${basedir}/bookshelf"
+			includes="project.xml"
+			goals="allClean"
+			postProcessing="false"
+			ignoreFailures="false"/>
+	</goal> -->
+
+</project>

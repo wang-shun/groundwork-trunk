@@ -1,0 +1,83 @@
+--- cacti/htdocs/lib/ping.php.pre_ipv6	2017-09-29 20:19:50.000000000 -0700
++++ cacti/htdocs/lib/ping.php	2017-09-29 23:11:52.839618300 -0700
+@@ -160,6 +160,11 @@
+ 
+ 						/* use traditional ping if we can't create a raw socket */
+ 						if (!(@socket_connect($this->socket, $host_ip, NULL))) {
++							$errorcode = socket_last_error();
++							if ( $errorcode == 22 && $this->is_link_local_ipv6_without_interface($host_ip) ) {
++							    echo( "<span style='color: #ff0000;'>NOTICE:  Cannot connect to host $host_ip (hint: it looks like an IPv6 Scope:Link address but is missing a %interface suffix).</span>" );
++							    cacti_log( "NOTICE:  Cannot connect to host $host_ip (hint: it looks like an IPv6 Scope:Link address but is missing a %interface suffix)." );
++							}
+ 							break;
+ 						}
+ 
+@@ -461,7 +466,17 @@
+ 			}
+ 
+ 			socket_set_nonblock($this->socket);
+-			socket_connect($this->socket, $host_ip, $this->port);
++			if (!(@socket_connect($this->socket, $host_ip, $this->port))) {
++				$errorcode = socket_last_error();
++				if ( $errorcode == 22 && $this->is_link_local_ipv6_without_interface($host_ip) ) {
++				    echo( "<br><span style='color: #ff0000;'>ERROR:  Cannot connect to host $host_ip (hint: it looks like an IPv6 Scope:Link address but is missing a %interface suffix).</span>" );
++				    cacti_log( "ERROR:  Cannot connect to host $host_ip (hint: it looks like an IPv6 Scope:Link address but is missing a %interface suffix)." );
++				    return false;
++				}
++				echo( "<br><span style='color: #ff0000;'>ERROR:  Cannot connect to host $host_ip port " . $this->port . " (error code $errorcode, " . socket_strerror($errorcode) . ").</span>" );
++				cacti_log( "ERROR:  Cannot connect to host $host_ip port " . $this->port . " (error code $errorcode, " . socket_strerror($errorcode) . ")." );
++				return false;
++			}
+ 
+ 			/* format packet */
+ 			$this->build_udp_packet();
+@@ -577,7 +592,17 @@
+ 
+ 				/* allow immediate return */
+ 				socket_set_nonblock($this->socket);
+-				@socket_connect($this->socket, $host_ip, $this->port);
++				if (!(@socket_connect($this->socket, $host_ip, $this->port))) {
++					$errorcode = socket_last_error();
++					if ( $errorcode == 22 && $this->is_link_local_ipv6_without_interface($host_ip) ) {
++					    echo( "<br><span style='color: #ff0000;'>ERROR:  Cannot connect to host $host_ip (hint: it looks like an IPv6 Scope:Link address but is missing a %interface suffix).</span>" );
++					    cacti_log( "ERROR:  Cannot connect to host $host_ip (hint: it looks like an IPv6 Scope:Link address but is missing a %interface suffix)." );
++					    return false;
++					}
++					echo( "<br><span style='color: #ff0000;'>ERROR:  Cannot connect to host $host_ip port " . $this->port . " (error code $errorcode, " . socket_strerror($errorcode) . ").</span>" );
++					cacti_log( "ERROR:  Cannot connect to host $host_ip port " . $this->port . " (error code $errorcode, " . socket_strerror($errorcode) . ")." );
++					return false;
++				}
+ 				socket_set_block($this->socket);
+ 
+ 				$r = array($this->socket);
+@@ -740,9 +765,30 @@
+ 		}
+ 	} /* end_ping */
+ 
++	function is_link_local_ipv6_without_interface($ip_address = '') {
++		/*
++		// This is not a full validation of ipv6-ness; we're only here to
++		// verify the correct prefix for a link-local address (fe80::/10)
++		// and the lack of a %interface suffix.
++		*/
++		return preg_match( '/^(?i)fe80::[a-fA-F0-9:]+$/', $ip_address );
++	}
++
+ 	function is_ipaddress($ip_address = '') {
+ 		/* check for ipv4/v6 */
+ 		if (substr_count($ip_address, ":")) {
++			$addr_parts = explode( '%', $ip_address );
++			$addr_parts_count = count($addr_parts);
++			if ( $addr_parts_count > 2 ) {
++			    return false;
++			}
++			elseif ( $addr_parts_count == 2 ) {
++			    /* verify a valid interface name, then strip it off */
++			    if ( !preg_match( '/^[a-zA-Z0-9]+$/', $addr_parts[1] ) ) {
++				return false;
++			    }
++			    $ip_address = $addr_parts[0];
++			}
+ 			/* compressed dot format */
+ 			if (substr_count($ip_address, "::")) {
+ 				$ip_address = str_replace("::", ":", $ip_address);

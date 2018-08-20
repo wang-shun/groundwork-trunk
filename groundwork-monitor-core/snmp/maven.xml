@@ -1,0 +1,208 @@
+<!--
+
+Copyright 2007 GroundWork Open Source, Inc. ("GroundWork")  
+All rights reserved. This program is free software; you can redistribute it
+and/or modify it under the terms of the GNU General Public License version 2
+as published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU General Public License for 
+more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
+-->
+
+<project default="allBuild"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+
+
+<goal name='allBuild'>
+    <attainGoal name='netsnmp' />
+	<attainGoal name='pcap' />
+	<attainGoal name='libsmi' />
+
+</goal>
+
+  <goal name="allClean"
+        description="Clean the master project and all subprojects">
+       	<delete dir="${basedir}/${com.groundwork.syslib.netsnmp}"/>
+       	<delete dir="${org.groundwork.deploy.prefix}/var/spool/snmptt"/> 
+  		<delete dir="${basedir}/${com.groundwork.nagios.pcap}"/>
+		<delete dir="${basedir}/${com.groundwork.nagios.libsmi}"/>
+   </goal>
+
+
+  <!-- START BUILDING NET-SNMP -->
+  <goal name="netsnmp" description="NET-SNMP and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.netsnmp}.tar.gz" dest="${basedir}"/>
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.netsnmp}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+
+    <!-- MAKE-->
+    <exec dir="${org.groundwork.deploy.prefix}" executable="mkdir" >
+      <arg line="-p etc"/>
+    </exec>
+  	
+    <!-- MAKE-->
+    <exec dir="${org.groundwork.deploy.prefix}" executable="mkdir" >
+      <arg line="-p nagios"/>
+    </exec>
+
+    <!-- MAKE-->
+    <exec dir="${org.groundwork.deploy.prefix}/nagios" executable="mkdir" >
+      <arg line="-p eventhandlers"/>
+    </exec>
+
+    <!-- MAKE-->
+    <exec dir="${org.groundwork.deploy.prefix}" executable="mkdir" >
+      <arg line="-p var"/>
+    </exec>
+
+    <!-- MAKE-->
+    <exec dir="${org.groundwork.deploy.prefix}/var" executable="mkdir" >
+      <arg line="-p log"/>
+    </exec>
+
+    <!-- MAKE-->
+    <exec dir="${org.groundwork.deploy.prefix}/var/log" executable="mkdir" >
+      <arg line="-p snmp"/>
+    </exec>
+
+    <exec dir="${org.groundwork.deploy.prefix}" executable="mkdir" >
+        <arg line="-p var "/>
+     </exec>
+
+    <exec dir="${org.groundwork.deploy.prefix}/var" executable="mkdir" >
+       <arg line="-p spool  "/>
+    </exec>
+
+    <exec dir="${org.groundwork.deploy.prefix}/var/spool" executable="mkdir" >
+       <arg line="-p snmptt "/>
+    </exec>
+
+  	<exec dir="${basedir}" executable="cp" >
+      <arg line="./snmpNotifyFilterTable_interface.h ./net-snmp-5.4.1/agent/mibgroup/snmp-notification-mib/snmpNotifyFilterTable"/>
+    </exec>
+    <exec dir="${basedir}" executable="cp" >
+      <arg line="./snmpNotifyFilterTable_interface.c ./net-snmp-5.4.1/agent/mibgroup/snmp-notification-mib/snmpNotifyFilterTable"/>
+    </exec>
+    <exec dir="${basedir}" executable="cp" >
+      <arg line="./snmpNotifyFilterTable_data_access.h ./net-snmp-5.4.1/agent/mibgroup/snmp-notification-mib/snmpNotifyFilterTable"/>
+    </exec>
+    <exec dir="${basedir}" executable="cp" >
+      <arg line="./snmpNotifyFilterTable_data_access.c ./net-snmp-5.4.1/agent/mibgroup/snmp-notification-mib/snmpNotifyFilterTable"/>
+    </exec>
+    <exec dir="${basedir}" executable="cp" >
+      <arg line="./snmpNotifyFilterTable_constants.h ./net-snmp-5.4.1/agent/mibgroup/snmp-notification-mib/snmpNotifyFilterTable"/>
+    </exec>
+  	
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.netsnmp}" executable="sh" >
+      <arg line="./configure    --prefix=${org.groundwork.deploy.prefix}  
+				--with-sys-location=${org.groundwork.deploy.prefix}
+				--bindir=${org.groundwork.deploy.prefix}/bin
+  				--sbindir=${org.groundwork.deploy.prefix}/sbin
+  				--libexecdir=${org.groundwork.deploy.prefix}/libexec
+  				--datadir=${org.groundwork.deploy.prefix}/share
+  				--sysconfdir=${org.groundwork.deploy.prefix}/etc/snmp
+  				--sharedstatedir=${org.groundwork.deploy.prefix}/com
+  				--localstatedir=${org.groundwork.deploy.prefix}/var
+  				--infodir=${org.groundwork.deploy.prefix}/info
+  				--mandir=${org.groundwork.deploy.prefix}/man
+  				--includedir=${org.groundwork.deploy.prefix}/include
+				--libdir=${org.groundwork.deploy.prefix}/${libdir}
+				--without-root-access 
+				--enable-shared 
+				--with-perl-modules 
+				--with-openssl=${org.groundwork.deploy.prefix} 
+				--with-default-snmp-version=3 
+				--with-sys-contact=root@localhost 
+				--with-sys-location=${org.groundwork.deploy.prefix} 
+				--with-logfile=none 
+				--with-persistent-directory=${org.groundwork.deploy.prefix}/var/net-snmp"/>
+    </exec>
+    
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.netsnmp}" executable="make" >
+      <arg line=""/>
+    </exec>
+
+    <!-- MAKE-->
+    <j:set var="__skip_test__" value="${maven.test.skip}" />
+    <j:if test="${!__skip_test__.equals('true')}">
+    <exec dir="${basedir}/${com.groundwork.syslib.netsnmp}" executable="make" >
+      <arg line="test"/>
+    </exec>
+    </j:if>
+
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.netsnmp}" executable="make" >
+      <arg line="install"/>
+    </exec>
+
+  </goal>   
+  <!-- STOP BUILDING NET-SNMP -->
+	
+	<!-- START BUILDING libsmi -->
+	  <goal name="libsmi" description="Build cactid and install it into /usr/local/groundwork">
+  
+	    <!-- UNZIP/UNTAR -->
+	    <untar compression="gzip" src="${org.groundwork.build.share}/nagios/${com.groundwork.nagios.libsmi}.tar.gz" dest="${basedir}"/>
+	
+		<!-- MAKE -->
+			<exec dir="${basedir}/${com.groundwork.nagios.libsmi}" executable="chmod" >
+			<arg line="-R +x ./"/>
+		</exec>
+	  	
+	    <!-- RUN CONFIGURE -->
+	    <exec dir="${basedir}/${com.groundwork.nagios.libsmi}" executable="sh" >
+			<arg line="./configure    --prefix=${org.groundwork.deploy.prefix} 
+							--libdir=${org.groundwork.deploy.prefix}/${libdir}" />
+	    </exec>
+	    <!-- MAKE-->
+	    <exec dir="${basedir}/${com.groundwork.nagios.libsmi}" executable="make" >
+	      <arg line=""/>
+	    </exec>
+	    <!-- MAKE-->
+	    <exec dir="${basedir}/${com.groundwork.nagios.libsmi}" executable="make" >
+	      <arg line="install"/>
+	    </exec>
+	  	  	
+  </goal> 
+	
+	<goal name="pcap" description="Build pcap and install it into /usr/local/groundwork">
+		  
+		    <!-- UNZIP/UNTAR -->
+			<untar compression="gzip" src="${org.groundwork.build.share}/nagios/${com.groundwork.nagios.pcap}.tar.gz" dest="${basedir}"/>
+			
+			<!-- MAKE -->
+			<exec dir="${basedir}/${com.groundwork.nagios.pcap}" executable="chmod" >
+			  <arg line="-R +x ./"/>
+			</exec>
+			
+			<!-- RUN CONFIGURE -->
+			<exec dir="${basedir}/${com.groundwork.nagios.pcap}" executable="sh" >
+			  <arg line="./configure    --prefix=${org.groundwork.deploy.prefix}
+			  							--libdir=${org.groundwork.deploy.prefix}/${libdir}
+			  	"/>
+			</exec>
+			<!-- MAKE-->
+			<exec dir="${basedir}/${com.groundwork.nagios.pcap}" executable="make" >
+			  <arg line=""/>
+			</exec>
+			<!-- MAKE-->
+			<exec dir="${basedir}/${com.groundwork.nagios.pcap}" executable="make" >
+			  <arg line="install"/>
+			</exec>
+		</goal> 	
+</project>

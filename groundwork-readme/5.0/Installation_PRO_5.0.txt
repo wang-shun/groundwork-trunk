@@ -1,0 +1,484 @@
+Installation rev 1.4	Current Release: GroundWork Monitor Professional 5.0.2
+
+Copyright 2006 GroundWork Open Source Solutions, Inc. ("GroundWork"). All rights reserved. Use is subject to GroundWork 
+commercial license terms. GroundWork Monitor Professional is released under the terms of the various public and 
+commercial licenses. For information on licensing and open source elements please see GroundWork Monitor Professional 
+IP Ingredients at http://www.groundworkopensource.com/products/pro-ipingredients.html. For a list of open source software 
+and the associated licenses included with this software, see http://www.groundworkopensource.com/products/pro-
+licensefaq.html. GroundWork, GroundWork Open Source, GroundWork Monitor Professional, GroundWork Monitor Small 
+Business, GroundWork Monitor Open Source, GroundWork Foundation, GroundWork Status Viewer, Monarch, and 
+GroundWork Guava are trademarks of GroundWork Open Source, Inc. Other trademarks, logos and service marks (each, a 
+"Mark") used in GroundWork’s products, including Nagios, which is a registered trademark of Ethan Galstad, are the 
+property of other third parties. These Marks may not be used without the prior written consent of GroundWork Open Source 
+or the third party that owns the respective Mark.
+
+Table of Contents
+1	PURPOSE
+2	PREREQUISITES
+3	PREREQUISITE INSTALLATION AND CONFIGURATION
+4	NEW INSTALLATION
+5	MIGRATING FROM AN EXISTING NAGIOS INSTALLATION TO A NEW GROUNDWORK SERVER
+6	VERIFYING THE OPERATION OF GROUNDWORK MONITOR PROFESSIONAL
+7	UPGRADING FROM PREVIOUS VERSIONS
+8	SUPPORT
+----------
+1	PURPOSE
+Important Note: The distributed Readme document should be reviewed prior to the installation or 
+upgrade of GroundWork Monitor Professional 5.0.
+
+The purpose of this “Installation” document is to outline system hardware requirements, pre-installation 
+planning, and steps for a new installation or an upgrade of the GroundWork Monitor Professional 5.0 
+product. Additionally, the documents “Readme” and “Release Notes” include bug fixes and known issues; 
+and new features in this release, respectively. All documents are distributed in .txt and .pdf formats.
+----------
+2	PREREQUISITES
+Supported Operating Systems
+GroundWork Monitor Professional now supports both 32-bit and 64-bit machines with an extended list of 
+supported Operating Systems. GroundWork adds supported distributions only after rigorous testing. 
+These supported operating systems are recommended for stability and performance reasons. We highly 
+recommend placing GroundWork Monitor Professional on a dedicated server to ensure adequate 
+performance, especially if there are a large number of devices to monitor via polling. The GroundWork 
+Monitor Professional 5.0 RPM-based installer enables all components to be installed together on standard 
+versions of commercial Linux distribution.
+Current Supported OS for 32-bit Machines
+GroundWork Monitor Professional currently runs on Linux and supports the following Operating 
+Systems running on 32-bit. See the list below for future OS support for 32-bit and 64-bit machines.
+-	Red Hat Linux Enterprise WS 4.0 32 bit
+-	Red Hat Linux Enterprise ES 4.0 32 bit
+-	SuSE Linux Enterprise Server 9.x 32 bit
+-	SuSE Linux Enterprise Server 10.1 32 bit
+-	CentOS 4.3
+Future Supported OS for 32-bit and 64-bit Machines
+-	Red Hat Enterprise Linux WS 4.0 64 bit
+-	Red Hat Enterprise Linux ES 4.0 64 bit
+-	SuSE Linux Enterprise Server 10.1 64 bit
+-----
+Software Prerequisites
+-	MySQL Professional version 5.0.18 or higher
+-	Java SDK version 1.5
+-----
+Browser Recommendations
+GroundWork recommends the following web browsers when using GroundWork Monitor Professional:
+-	Firefox 1.x
+-	Internet Explorer 6.x
+-----
+Hardware Recommendations
+The minimum hardware configuration for a single GroundWork Monitor server is as listed below. 
+Assuming that the system is configured to monitor 100 Hosts that are polled at default intervals, and that 
+standard Service Profiles are used, the minimum configuration will suffice. In extreme cases, more 
+powerful hardware (increased CPU speed and quantity, and RAM) can be used to extend the system. 
+Minimum Hardware Configuration for Networks (< 100 devices)
+-	One Intel Pentium 4 CPU, 1 GHz or better 
+-	1 GB RAM
+-	40 GB hard disk
+-	CD ROM drive
+Recommended Hardware Configuration for Networks (> 100 devices)
+-	One Intel Pentium 4 CPU, 2.8 GHz or better
+-	2 GB RAM
+-	80 GB hard disk
+-	CD ROM drive
+Recommended Hardware Configuration for Networks (> 150 devices)
+-	Two Intel Pentium 4 CPU, 2.8 GHz or better
+-	4 GB RAM
+-	160 GB hard disk
+-	CD ROM drive
+----------
+3	PREREQUISITE INSTALLATION AND CONFIGURATION
+Step 1 - Java Installation
+Java is required, careful attention must be paid to the steps needed to properly configure the environment, 
+specifically the JAVA_HOME and PATH environment variables. The typical Java Development Kit 
+distribution comes as a bin file from Sun Microsystems. You can download the build 06 Sun JAVA SDK 
+1.5.0-06 i586 for Linux from this link http://www.groundworkopensource.com/downloads/JAVA/jdk-
+1_5_0_06-linux-i586-rpm.bin. Note: You must login to the GroundWork Support Center at 
+http://www.groundworkopensource.com/support/index.html to download from this link. If you try to 
+download the file directly, without logging into the Support Center first, you will receive an access denied 
+error. Or go to the Sun Microsystems site at http://www.sun.com/ for the latest build.
+1.	Copy the file into a temporary folder on your hard disk.
+2.	Make the file executable with the command: chmod+x <filename>
+3.	Execute the binary file (e.g. ./jdk-1_5_0_06-linux-i586-rpm.bin), which will extract the installable 
+rpm file.
+4.	You will be prompted to accept the license.
+5.	Make sure you are root. Install the Java SDK by running the command:
+rpm -Uhv jdk-1_5_0_06-linux-i586.rpm
+The installer puts all files into: /usr/java
+6.	Set the environment variable: JAVA_HOME
+You will need to add the following two environment variables to: /etc/profile
+export JAVA_HOME=/usr/java/jdk1.5.0_06
+export PATH=$PATH:$JAVA_HOME/bin:$PATH
+7.	In most Linux systems /usr/bin/java is a link to /etc/alternatives/java which is another link to the 
+java executable. If this is the case you will need to update /etc/alternatives/java so that it points 
+to your installation of the Java SDK command ln -sf $JAVA_HOME$/bin/java /usr/bin/java.
+-----
+Step 2 - SE Linux Configuration
+The SE Linux package interferes with MySQL installation and must be disabled. It can be re-enabled after 
+installing MySQL.
+1.	Edit the /etc/selinux/config file so that it looks like:
+# This file controls the state of SELinux on the system. 
+# SELINUX= can take one of these three values: 
+# enforcing - SELinux security policy is enforced. 
+# permissive - SELinux prints warnings instead of enforcing. 
+# disabled - SELinux is fully disabled.
+SELINUX=disabled
+# SELINUXTYPE= type of policy in use. Possible values are: 
+# targeted - Only targeted network daemons are protected. 
+# strict - Full SELinux protection. 
+#SELINUXTYPE=targeted
+2.	If you change these settings you may need to reboot your system before installing MySQL.
+-----
+Step 3 - Perl-DBI Installation
+GroundWork Monitor Professional requires Perl-DBI-1.40-5.i386.rpm to be installed on Red Hat and 
+CentOS servers prior to MySQL. To download Perl DBI 1.40-5 i386 for Linux select this link 
+http://www.groundworkopensource.com/downloads/files/mysql/perl-DBI-1.40-5.i386.rpm. Note: You must 
+login to the GroundWork Support Center at http://www.groundworkopensource.com/support/index.html to 
+download from this link. If you try to download the file directly, without logging into the Support Center first, 
+you will receive an access denied error.
+-----
+Step 4 - MySQL Configuration
+MySQL 5 is distributed with GroundWork Monitor Professional, and is licensed as a commercial package. 
+GroundWork Monitor Professional does not install unless the commercial MySQL release is installed. 
+Installing GroundWork Monitor Professional will not delete any existing databases, and uninstalling will 
+leave all databases alone, even the GroundWork databases. GroundWork Monitor Professional requires 
+the following packages (version 5.0.18 or higher) to be installed on the system. You must upgrade MySQL 
+to the MySQL PRO version. If you are not sure if the correct version of the packages is installed, query the 
+RPM database for each package using rpm -qa |grep MySQL.
+
+Note: Upgrading an existing MySQL 4.x installation can cause the MySQL engine fails to start. 
+Configuration settings for MySQL 4.x might be incompatible with MySQL 5.0. If MySQL doesn't start 
+(server error) check if an old my.cnf file exists in /etc directory. Simply remove or rename the file and 
+MySQL will start (/etc/init.d/mysql restart).
+Downloading MySQL Pro (version 5.0.18 or higher)
+1.	Login to the Support Portal at http://www.groundworkopensource.com/support/.
+2.	Select the link Downloads>>.
+3.	Under GroundWork Monitor Releases, select the link for the GroundWork Monitor product 
+you are using (e.g. Professional 5.0, Small Business 5.0).
+4.	Next, under the displayed platforms (e.g. RHEL4, SES9) select 32 or 64 bit.
+5.	Under the Solutions section select the link for MySQL Pro.
+6.	The links to the required RPMs will be listed. Select to download.
+Installing MySQL Pro
+1.	You can install these packages by copying the appropriate MySQL rpm files for your 
+operating system and issuing the command rpm -Uvh MySQL*. This will install the MySQL 
+packages in the correct order.
+Database Access
+The installer needs root access for creating new databases and setting the permissions. If your root 
+password for MySQL is empty (not recommended, but is the default after installing MySQL) no further 
+MySQL configuration is needed and you can proceed with the installation step. If a root password has 
+been specified you can pass it to the installer by setting an environment variable.
+
+Important Note: If you use a root password for MySQL it needs to be provided to the RPMs that 
+perform the installation. Prior to launching any RPM commands you need to set the value of the 
+MySQL root password as following:
+1.	Create an environment variable MYSQL_ROOT (all UPPERCASE) with the password value 
+(e.g. export MYSQL_ROOT=password).
+2.	Set the root password as described in the below example:
+from command prompt# export MYSQL_ROOT=test
+-----
+Step 5 - Network Configuration
+MySQL uses the localhost file on /etc/hosts. Make sure that the localhost entry looks like the example 
+below. Also, make sure that localhost is first after the IP address followed by localhost.localdomain. 
+Replace 192.168.2.100 with the IP address of the system, and groundworkserver with the real Host 
+name.
+
+127.0.0.1 localhost localhost.localdomain
+192.168.2.100 groundworkserver groundworkserver.mycompany.com 
+
+Example: groundworkserver.mycompany.com is the full qualified domain name where the 
+GroundWork Monitor server is installed. Also, make sure TCP port 3306 is not blocked by your firewall 
+rules. This port is for communication to MySQL server.
+----------
+4	NEW INSTALLATION
+Installation of GroundWork Monitor Professional means installing the software in a new, clean 
+environment where there isn’t any pre-existing GroundWork Monitor data. This install package implements 
+all GroundWork Monitor Professional components in 3 RPM files:
+1.	Foundation RPM: groundwork-foundation-pro-1.5.y-yy.noarch.rpm
+2.	Core RPM: groundwork-monitor-core-5.0.y-yy.zzzz.zzzz.rpm
+3.	PRO RPM: groundwork-monitor-pro-5.0.y-yy.zzzz.noarch.rpm
+Important Note: Throughout the installation instructions the actual file names structure may vary 
+depending on the particular product edition, version, build, and platform as describe here in our example:
+Example Files:
+-	Foundation RPM: groundwork-foundation-pro-1.5.1-59.noarch.rpm
+-	Core RPM: groundwork-monitor-core-5.0.1-41.rhel4.i386.rpm
+-	PRO RPM: groundwork-monitor-pro-5.0.1-70.noarch.rpm
+Example Structure: g r o u n d w o r k - r p m - w w - x . x . y - y y . z z z z . z z z z 
+-	groundwork is the common prefix.
+-	rpm is the RPM type; foundation (Foundation), monitor (Core), monitor (PRO)
+-	ww is the GroundWork Monitor Edition; Open Source (os), Small Business (sb), or 
+Professional (pro) Note: The Core RPM uses core as its GroundWork Monitor Edition.
+-	x.x is the version number; Foundation 1.5, GroundWork 5.0.
+-	y-yy represents the build number; Foundation RPM 1-59, Core RPM 1-41, PRO RPM 1-70.
+-	zzzz.zzzz is the platform; Red Hat rhel4.i386 or SuSE sles9.
+-----
+Downloading the RPMs
+If you are a GroundWork customer and have licensed GroundWork Monitor Professional, full product 
+downloads, including over 40 monitoring profiles, are available via our customer support section.
+1.	Login to the Support Portal at http://www.groundworkopensource.com/support/.
+2.	Select the link Downloads>>.
+3.	Under GroundWork Monitor Releases, select the link for the GroundWork Monitor product you 
+are downloading (e.g. Professional 5.0, Small Business 5.0).
+4.	Next, under the displayed platforms (e.g. RHEL4, SES9) select 32 or 64 bit.
+5.	Under the Solutions section select the link for the GroundWork Monitor product you want to 
+download (e.g. GroundWork Monitor Professional v5.0 i386 for Red Hat).
+6.	Select the link to download the RPMs (e.g. 
+http://www.groundworkopensource.com/downloads/Monitor/Pro5.0/login.php).
+7.	Enter the indicated Username and Password.
+8.	After the download, untar using the command appropriate for your product edition:
+GWMPRO: tar -xzvf GroundWorkMonitorPro_5.0.tar.gz which extracts the 3 RPMs and current 
+Installation, Readme, and Release Notes files.
+GWMSB: tar -xzvf GroundWorkMonitorSB_5.0.tar.gz which extracts the 2 RPMs and current 
+Installation, Readme, and Release Notes files.
+-----
+Installing the Package
+1.	To perform the installation you need to be root on the system.
+2.	This installation places all files in the directory /usr/local/groundwork.
+3.	GroundWork's version of Apache is installed with this package. If you are running Apache on your 
+system, it will be stopped during the installation process, but not removed. Any content served will 
+be served by the GroundWork version of Apache, but you should be aware that patches applied 
+using the usual patch distribution systems will not be applied to the running version of Apache.
+4.	The GroundWork Monitor Professional package should be installed on a standalone system to 
+avoid this scenario.
+5.	Install the RPMs by following these steps in sequence and verifying that there are no errors after 
+each one is complete:
+1.	Foundation RPM. This will install the GroundWork Foundation components.
+rpm -Uvh groundwork-foundation-pro-1.5.y-yy.noarch.rpm
+2.	Core RPM. This will install GroundWork Monitor components.
+rpm -Uvh groundwork-monitor-core-5.0.y-yy.zzzz.zzzz.rpm
+3.	PRO RPM. This will install GroundWork Monitor Professional version components.
+rpm -Uvh groundwork-monitor-pro-5.0.y-yy.zzzz.noarch.rpm 
+-----
+Uninstalling the Package
+Important Note: rpm -e removes all traces of GroundWork Monitor, including any config files. You should 
+back up all the RRDs, config files, and log files at a minimum if you want to keep these around. It is good 
+practice to do this whenever performing a software install.
+1.	To check which version you have installed, enter the command:
+rpm -qa | grep groundwork.
+2.	Once you know your current installed version, enter the following command for the appropriate 
+package:
+rpm -e groundwork-monitor- w w-x.x.y-yy.zzzz.zzzz
+-----
+Accessing GroundWork Monitor Professional 5.0
+1.	Go to the URL http://<hostaddress>/.
+2.	The default Administrator User ID and Password is admin/admin. Use this ID to define Users, 
+Groups, Roles, and Packages.
+3.	The Administrator role also provides access to the Configuration option, which allows you to 
+configure the Nagios monitoring system.
+4.	An Operator role is pre-defined for you (Operator User ID and password is joe/joe) with access 
+to GroundWork Monitor Professional applications such as Status, Reports, and Bookshelf. Nagios 
+files are installed in the following directories:
+-	Binaries: /usr/local/groundwork/nagios/bin
+-	Configuration: /usr/local/groundwork/nagios/etc
+-	Eventhandlers: /usr/local/groundwork/nagios/eventhandlers
+-	Plugins: /usr/local/groundwork/nagios/libexec
+-	Share: /usr/local/groundwork/nagios/share
+-	Logs: /usr/local/groundwork/nagios/var
+-	Command: /usr/local/groundwork/nagios/var/spool
+-	CGIs: /usr/local/groundwork/apache2/cgi-bin
+----------
+5	MIGRATING FROM AN EXISTING NAGIOS INSTALLATION TO A NEW GROUNDWORK SERVER
+Basic Method
+The steps below will show you how to set up a GroundWork Server and import an existing Nagios 
+configuration.
+1.	Copy the existing Nagios configuration files to /usr/local/groundwork/nagios/etc.
+2.	Adjust the paths in nagios.cfg and nagios.cgi to /usr/local/groundwork/nagios/etc.
+3.	For example, if your Nagios cfgs files are in /usr/local/nagios/etc, you just need the files 
+referenced in your nagios.cfg and the cgi.cfg. Nothing else. Put them in 
+/usr/local/groundwork/nagios/etc. Adjust the path in the nagios.cfg and the cgi.cfg. Be sure 
+they are owned by Nagios (chown nagios.nagios *.cfg) so that the load can read them.
+4.	Log into GroundWork Monitor Professional as an Administrator (admin/admin).
+5.	Click the Application Launcher and select the Configuration option.
+6.	Confirm your configuration by loading the Nagios configuration, select Control>Load.
+7.	Next, select Pre Flight Test, and then Commit.
+----------
+6	VERIFYING THE OPERATION OF GROUNDWORK MONITOR PROFESSIONAL
+Checking Nagios Operations
+The following process is only valid if the Single Sign On option of the Guava PHP framework is disabled 
+for Nagios. This feature is enabled by default and prevents access to Nagios except from the GroundWork 
+Monitor Professional login. If you have disabled the Single Sign On, you can access Nagios with the 
+following procedure.
+1.	Open a browser to the Nagios URL http://<hostname>/nagios/.
+2.	Check to see that the Nagios page appears.
+3.	Select Service Detail. You should see the local Host monitoring Services.
+-----
+Checking Guava Framework
+1.	Point your browser to http://YOUR_SERVER/.
+2.	Log into GroundWork Monitor Professional as an Operator (joe/joe).
+3.	Click the Application Launcher and select the Status option. 
+4.	Review the Overview status page.
+5.	Select the NetView menu option.
+6.	Open the Host and Service information. Check that the status information is correct.
+7.	Click the Application Launcher and select the Console option. 
+8.	Check to see if Console messages are appearing.
+-----
+Checking the connection between Nagios and GroundWork Foundation
+1.	If the Status Viewer status and Nagios Service detail do not match, check the following:
+-	Check to see if the nagios2collage_status.pl is executing with the following command:
+ps -ef | grep nagios2collage.
+-	If this process is not running, restart gwservices with the following command: 
+/etc/init.d/gwservices restart.
+2.	If the Console events do not appear, check the following:
+-	Check to see if the nagios2collage_event.pl is executing with the following command: 
+ps -ef | grep nagios2collage.
+-	If this process is not running, restart gwservices with the following command: 
+/etc/init.d/gwservices restart.
+-----
+Checking SNMPTRAP operation
+The GroundWork Monitor Professional server is by default enabled as a SNMP trap receiver. The SNMP 
+trap (snmptrapd) and the SNMP trap translator or daemons must be running. To check these, issue the 
+command ps -ef | grep snmp. You should see the following processes:
+-	/usr/local/groundwork/sbin/snmptrapd -On -C -c 
+/usr/local/groundwork/etc/snmp/snmptrapd.conf -Lf 
+/usr/local/groundwork/var/log/snmp/snmptrapd.log
+-	/usr/local/groundwork/bin/perl /usr/local/groundwork/sbin/snmptt --daemon --ini 
+/usr/local/groundwork/etc/snmp/snmptt.ini
+In order for GroundWork Monitor Professional to process traps, the MIBs from the originating devices 
+must be defined to the SNMP trap translator. To import MIBs, follow the instructions in section SNMP Trap 
+Processing, Importing Device MIBs in Bookshelf. SNMP trap events received by GroundWork Monitor 
+Professional will show in the Console application.
+To test this, you can send a test trap to the console with the following command. This will send a generic 
+cold start trap.
+-	snmptrap -v 1 -c public localhost "" "" 0 0 ""
+If you are not receiving traps, check the following:
+-	The SNMP trap receiver port 162 must be open. Ensure the firewall rules on the GroundWork 
+Monitor Professional server open this port. To see the iptable settings to allow this, reference the 
+file /usr/local/groundwork/etc/iptables.
+-	The MIB configuration may not allow this trap to be processed. To see all traps received, whether 
+they are defined or not, check the snmptrapd log file name.
+You can trace the progress of trap processing by looking at the following log files:
+-	/usr/local/groundwork/var/log/snmp/snmptrapd.log
+All SNMP traps received by the snmptrapd daemon.
+-	/usr/local/groundwork/var/log/snmp/snmpttunknown.log
+All traps not recognized by snmptt.  If your trap is recorded in this log, the MIB may not be 
+imported into snmptt.
+-	/usr/local/groundwork/var/log/snmp/snmptt.debug
+Traps received and translated by snmptt daemon, and commands executed.
+-	/usr/local/groundwork/var/log/snmp/gwprocesstrap.log
+Traps processed and inserted into the GroundWork Foundation database.
+----------
+7	UPGRADING FROM PREVIOUS VERSIONS
+Upgrade Steps
+This section covers the upgrade steps for the following product versions. Any specific version upgrade 
+differences are indicated in the Notes section of each step. Note: GroundWork Monitor Professional is an 
+extension to the GroundWork Monitor Small Business installation. Follow the Steps 1, 2 and 5 below to 
+upgrade your existing GroundWork Monitor Small Business 5.0 installation to GroundWork Monitor 
+Professional 5.0. For a GroundWork Monitor Professional 5.0 to 5.x patch upgrade follow the Steps 1, 2, 
+and 5. If you are upgrading from other GroundWork Monitor products please contact support.
+
+-	GWMON Small Business 5.0 to GWMON Professional 5.0 (Follow steps 1, 2 and 5)
+-	GWMON Professional 4.5 to GWMON Professional 5.0
+-	GWMON Professional 5.0 to 5.x - Patch Upgrade (Follow steps 1, 2, and 5)
+-----
+Step 1 - Root Password
+If you use a root password for MySQL it needs to be provided to the RPMs that perform the installation. 
+Prior to launching any RPM commands you need to set the value of the MySQL root password as follows:
+-	Create an environment variable MYSQL_ROOT (all UPPERCASE) with the password value:
+Example: export MYSQL_ROOT=password
+-	Set the root password:
+Example: from command prompt# export MYSQL_ROOT=test
+-----
+Step 2 - Downloading the RPMs
+Download the GroundWork Monitor Professional RPMs to a local folder on the machine you have a 
+previous version of GroundWork Monitor installed. The packages are:
+-	Foundation RPM: groundwork-foundation-pro-1.5.y-yy.noarch.rpm
+-	Core RPM: groundwork-monitor-core-5.0.y-yy.zzzz.zzzz.rpm
+-	PRO RPM: groundwork-monitor-pro-5.0.y-yy.zzzz.noarch.rpm
+If you are a GroundWork customer and have licensed GroundWork Monitor Professional, full product 
+downloads, including over 40 monitoring profiles, are available via our customer support portal.
+1.	Login to the Support Portal at http://www.groundworkopensource.com/support/.
+2.	Select the link Downloads>>.
+3.	Under GroundWork Monitor Releases, select the link for the GroundWork Monitor product you 
+are downloading (e.g. Professional 5.0, Small Business 5.0).
+4.	Next, under the displayed platforms (e.g. RHEL4, SES9) select 32 or 64 bit.
+5.	Under the Solutions section select the link for the GroundWork Monitor product you want to 
+download (e.g. GroundWork Monitor Professional v5.0 i386 for Red Hat).
+6.	Select the link to download the RPMs (e.g. 
+http://www.groundworkopensource.com/downloads/Monitor/Pro5.0/login.php).
+7.	Enter the indicated Username and Password.
+8.	After the download, untar using the command appropriate for your product edition and platform 
+which will extract a number of RPMs and current Installation, Readme, and Release Notes files. 
+For example:
+GWMPRO: tar -xzvf GroundWorkMonitorPro_5.0.x_RH-32.tar.gz, extracts 3 RPMs.
+GWMSB: tar -xzvf GroundWorkMonitorSB_5.0.x_Suse-9-32.tar.gz, extracts 2 RPMs.
+-----
+Step 3 - Backing Up
+1.	Backup custom changes you may have made to your GroundWork Monitor system:
+-	Plugins: /usr/local/groundwork/nagios/libexec
+-	CGI Graphs: /usr/local/groundwork/apache2/cgi-bin/
+-	Eventhandlers: /usr/local/groundwork/nagios/eventhandlers
+2.	Backup existing RRD files and your current Nagios configuration. This will create three TAR files 
+in the current repository.
+-	tar cfz GWMON-xxx-rrd.tar.gz /usr/local/groundwork/rrd
+-	tar cfz GWMON-xxx-nagios.tar.gz  /usr/local/groundwork/nagios/etc
+-	tar cfz GWMON-xxx-users.tar.gz /usr/local/groundwork/users
+3.	Configuration Backup
+-	Backup your configuration database. Enter the following command to create the backup 
+file monarch_backup.sql:
+mysqldump monarch > monarch_backup.sql
+-	Monarch Backup
+Backup the following files and folders before removing GroundWork Monitor and restore 
+after the 5.0 installation.
+tar cfz GWMON-xxx-monarchbackup.tar.gz /usr/local/groundwork/monarch/backup
+tar cfz GWMON-xxx-performance.tar.gz 
+/usr/local/groundwork/performance/performance_views
+If you have done custom work to these files backup the following:
+Note: Does not apply to GroundWork Monitor 4.0 to GroundWork Monitor Professional 
+5.0 upgrade.
+tar cfz GWMON-xxx-monarchcallout.tar.gz 
+/usr/local/groundwork/monarch/lib/MonarchCallOut.pm
+tar cfz GWMON-xxx-monarchexternals.tar.gz 
+/usr/local/groundwork/monarch/lib/MonarchExternals.pm
+-----
+Step 4 - Uninstall the previous version of GroundWork Monitor
+1.	To obtain the current version run the command:
+rpm -qa |grep groundwork.
+2.	Use the package name to uninstall. If the package name is groundwork-monitor-pro-4.5.26 run 
+the command:
+rpm -e groundwork-monitor-pro-4.5.26
+3.	Verify that no instances of SNMP Trap translators SNMPTT are running with the command:
+ps aux |grep snmptt
+If any instances are running kill the processes with the command:
+kill -9 ProcessID.
+-----
+Step 5 - Upgrade to GroundWork Monitor Professional 5.0
+1.	Note: For GWMON OS 4.5 or GWMON PRO 4.5 to GWMON PRO 5.0 upgrades only, in your 
+shell set an environment variable: export MIGRATE4550=yes
+2.	Install the RPMs by following these steps in sequence and verifying that there are no errors after 
+each one is complete:
+1.	Foundation RPM - This will install the GroundWork Foundation components.
+rpm -Uvh groundwork-foundation-pro-1.5.y-yy.noarch.rpm
+2.	Core RPM - This will install GroundWork Monitor components.
+rpm -Uvh groundwork-monitor-core-5.0.y-yy.zzzz.zzzz.rpm
+3.	PRO RPM - This will install GroundWork Monitor Professional version components.
+rpm -Uvh groundwork-monitor-pro-5.0.y-yy.zzzz.noarch.rpm 
+-----
+Step 6 – Copy your custom files
+1.	Copy your custom plugins and eventhandlers to the new system's directory:
+/usr/local/groundwork/nagios/libexec
+2.	Copy your custom CGI files to the new system's directory:
+/usr/local/groundwork/apache2/cgi-bin/graph/.
+3.	Use the Configuration tool in GroundWork Monitor Professional to change the references in the 
+Host and Service extended info to URL /graphs/cgi-bin/<cgi_program>.
+-----
+Step 7 - Restore the RRD created by the previous version of GroundWork Monitor
+-	tar xfz GWMON-xxx-rrd.tar.gz -C/
+-	change the ownership for the rrd files: chown -R nagios.nagios /usr/local/groundwork/rrd
+-	tar xfz GWMON-xxx-monarchbackup.tar.gz -C/
+-	tar xfz GWMON-xxx-performance.tar.gz -C/
+-	tar xfz GWMON-xxx-monarchcallout.tar.gz -C/
+-	tar xfz GWMON-xxx-monarchexternals.tar.gz -C/
+-	tar xfz GWMON-xxx-nagios.tar.gz -C/
+-	tar xfz GWMON-xxx-users.tar.gz -C/
+----------
+8	SUPPORT/FEEDBACK/PROBLEM REPORTS/DISCUSSION
+GroundWork Monitor Professional Support
+Product support is available through a GroundWork subscription agreement. GroundWork Subscription 
+Customers have full access to a range of support offerings, including our enterprise knowledgebase, 
+download area and trouble-ticket center. For a complete overview of our support offerings and severity 
+level descriptions, please go to GroundWork Support at 
+http://www.groundworkopensource.com/support/options.html or email us at 
+support@groundworkopensource.com. 
+
+Existing subscription customers can access support online by logging into the GroundWork Support 
+Center at http://www.groundworkopensource.com/support/. Usernames and passwords are provided to 
+you by your GroundWork representative. Please see the GroundWork Community Page at http:// 
+www.groundworkopensource.com/community/.
+
+		
+© GroundWork Open Source, Inc.		Page 1 of 11

@@ -1,0 +1,84 @@
+*** noma_2.0.3/share/config/config.php.in.orig	Mon Nov 21 03:25:24 2011
+--- noma_2.0.3/share/config/config.php.in	Mon Aug 20 17:23:29 2012
+***************
+*** 62,67 ****
+--- 62,68 ----
+              'dbFilePath'		    => $conf['db']['sqlite3']['dbfile']
+      );
+      $dbConfMySQL = $conf['db']['mysql'];
++     $dbConfPostgreSQL = $conf['db']['postgresql'];
+      $language = $conf['frontend']['language'];
+      $debug = $conf['frontend']['debug']['logging'];
+      $log_file = $conf['frontend']['debug']['file'];
+***************
+*** 106,112 ****
+              );
+  
+      // Database type to use for NoMa (not NDO/IDO!)
+!     // options: 'mysql' | 'sqlite3'
+      $dbType = 'sqlite3';
+  
+  
+--- 107,113 ----
+              );
+  
+      // Database type to use for NoMa (not NDO/IDO!)
+!     // options: 'mysql' | 'postgresql' | 'sqlite3'
+      $dbType = 'sqlite3';
+  
+  
+***************
+*** 132,146 ****
+              'persistent'		=> '0',
+              );
+  
+  
+      // Database type to use for NDO / IDO
+!     // options: 'mysql'
+      $dbTypeNDO = 'mysql';
+  
+      // NDO access - only required if host_service_preview is true
+      // Currently only supports one backend to query for preview.
+      $dbNDO = array (
+!             // type options: 'mysql'
+              'type'                  => 'mysql',
+              'host'                  => 'localhost',
+              'user'                  => 'nagios',
+--- 133,157 ----
+              'persistent'		=> '0',
+              );
+  
++     // NoMa PostgreSQL database options
++     $dbConfPostgreSQL = array (
++             'type'			=> 'postgresql',    // Dont change this value!
++             'host'			=> 'localhost',
++             'user'			=> 'noma',
++             'password'		=> 'noma',
++             'database'		=> 'noma',
++             'persistent'		=> '0',
++             );
++ 
+  
+      // Database type to use for NDO / IDO
+!     // options: 'mysql' | 'postgresql'
+      $dbTypeNDO = 'mysql';
+  
+      // NDO access - only required if host_service_preview is true
+      // Currently only supports one backend to query for preview.
+      $dbNDO = array (
+!             // type options: 'mysql' | 'postgresql'
+              'type'                  => 'mysql',
+              'host'                  => 'localhost',
+              'user'                  => 'nagios',
+***************
+*** 263,268 ****
+--- 274,282 ----
+  if ($dbType == 'mysql'){
+      $dbConf = $dbConfMySQL;
+  };
++ if ($dbType == 'postgresql'){
++     $dbConf = $dbConfPostgreSQL;
++ };
+  if ($dbType == 'sqlite3'){
+      $dbConf = $dbConfSQLite3;
+  };

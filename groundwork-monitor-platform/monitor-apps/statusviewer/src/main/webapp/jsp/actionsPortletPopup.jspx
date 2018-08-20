@@ -1,0 +1,556 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<jsp:root version="1.2" xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<jsp:directive.page contentType="text/html;charset=ISO-8859-1"
+		pageEncoding="ISO-8859-1" />
+
+	<!-- Panel Pop-up for Integration with Action Portlet links  -->
+	<ice:panelPopup id="actionsPortlet_panelPopupExecute"
+		autoPosition="manual" modal="true" rendered="#{actionHandler.popupVisible}"
+		style="z-index:999; top: 15%; left: 100px; position:fixed; background: #FFFFFF;" styleClass="icePnlPopTbl">
+		<f:facet name="header">
+			<ice:panelGrid id="actionsPortlet_panelPopupTitleHdr" cellpadding="0"
+				cellspacing="0" columns="3" style="text-align: left;" width="100%">
+				<ice:column id="actionsPortlet_PanelPopup_HdrCol1">
+					<ice:outputText id="actionsPortlet_txtPopupTitle" styleClass="popHeader"
+						value="#{actionHandler.childMenuValue}">
+					</ice:outputText>
+				</ice:column>
+				<ice:column id="actionsPortlet_PanelPopup_HdrCol2">
+					<div class="cust_poupmodes"><span
+						title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}">
+						<ice:commandButton id="actionsPortlet_cmdButtonClosePanelPopup"
+						type="button" 
+						image="/css/css-images/popup_modeBtn_close.gif"
+						
+						actionListener="#{actionHandler.closePopup}"
+						title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+						 alt="Close" />
+					 </span></div>
+				</ice:column>
+
+			</ice:panelGrid>
+		</f:facet>
+		<f:facet name="body">
+			<ice:panelGrid id="actionsPortletPopup_panelgridMain" columns="2"
+				width="800px" style="valign:top">
+				
+						 
+				<table id="tbl_outer">
+					<tr>
+						<td width="65%"><ice:column id="actionsPortlet_colCmdOptions"
+							styleClass="icePnlGrdRow2">
+							<div style="padding-bottom: 12px;"><ice:outputText
+								id="actionsPortlet_txtCmdOptions"
+								styleClass="icePnlGrdCol2 padbottom10"
+								style="font-family:Verdana, Arial, Helvetica, sans-serif;font-size: 14px;font-weight:bold;color:#585858;text-align:left;border-collapse:collapse;"
+								value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_commandsOptions']}">
+							</ice:outputText></div>
+							<ice:panelGrid id="actionsPortlet_panelgridHostName" columns="2"
+								rendered="#{visibilityBean.hostName}">
+								<ice:column id="actionsPortlet_PanelPopup_HstNameCol1"
+									styleClass="padformtitle">
+									<ice:outputText id="actionsPortlet_txtHostName"
+										styleClass="iceOutTxt"
+										 style="width:100px; display:inline-block;"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_hostname']}"></ice:outputText>
+								</ice:column>
+								<ice:column id="actionsPortlet_PanelPopup_HstNameCol2"
+									styleClass="padformtitle">
+									<ice:outputText id="actionsPortlet_txtHostNameValue"
+										value="#{commandParamsBean.hostName}"></ice:outputText>
+								</ice:column>
+							</ice:panelGrid>
+
+							<ice:panelGrid id="actionsPortlet_panelgridNodeType" columns="2">
+								<ice:column id="actionsPortlet_PanelPopup_NodeTypeCol1"
+									styleClass="padformtitle" >
+									<ice:outputText id="actionsPortlet_txtNodeType"
+									style="width:100px; display:inline-block;"
+										styleClass="iceOutTxt" value="#{commandParamsBean.nodeType}"></ice:outputText>
+								</ice:column>
+								<ice:column id="actionsPortlet_PanelPopup_NodeTypeCol2"
+									styleClass="padformtitle">
+									<ice:outputText id="actionsPortlet_txtNodeNameValue"
+										value="#{commandParamsBean.nodeTypeValue}"></ice:outputText>
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.serviceDesc}"
+								id="actionsPortlet_panelgridServiceDesc" columns="2">
+								<ice:column styleClass="padformtitle"
+									id="actionsPortlet_PanelPopup_SrvcDescCol1">
+									<ice:outputText id="actionsPortlet_txtServiceDesc"
+										styleClass="iceOutTxt"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_service']}"></ice:outputText>
+								</ice:column>
+								<ice:column id="actionsPortlet_PanelPopup_SrvcDescCol2"
+									styleClass="padformtitle">
+									<ice:outputText id="actionsPortlet_txtServiceDescValue"
+										value="#{commandParamsBean.serviceDesc}"></ice:outputText>
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.checkTime}"
+								id="actionsPortlet_panelgridCheckTime" columns="3">
+								<ice:column styleClass="padformtitle"
+									id="actionsPortlet_PanelPopup_ChkTimeCol1">
+									<ice:outputText id="actionsPortlet_txtCheckTime"
+										styleClass="iceOutTxt"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_checkTime']}"></ice:outputText>
+								</ice:column>
+								<ice:column styleClass="padformtitle"
+									id="actionsPortlet_PanelPopup_ChkTimeCol2">
+									<ice:inputText id="actionsPortlet_txtCheckTimeValue"
+										value="#{commandParamsBean.startTime}">
+									</ice:inputText>
+								</ice:column>
+								<ice:column styleClass="padformtitle"
+									id="actionsPortlet_PanelPopup_ChkTimeCol3">
+									<ice:outputLabel id="actionsPortlet_lblCheckTimeFormat"
+										styleClass="iceOutTxt"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_checkTimeFormat']}"></ice:outputLabel>
+								</ice:column>
+								<ice:column id="actionsPortlet_PanelPopup_ChkTimeCol4">
+									<h:message for="actionsPortlet_txtCheckTimeValue"
+										showDetail="true" showSummary="false"
+										style="color: red; width: 350px;font-weight:normal;" />
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.enableForHostsToo}"
+								id="actionsPortlet_panelgridEnableForHostsToo" columns="2">
+								<ice:column id="actionsPortlet_PanelPopup_EnblHstsTooCol1"
+									styleClass="padformtitle">
+									<ice:outputText id="actionsPortlet_txtEnableForHostsToo"
+										styleClass="iceOutTxt"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_enableForHostsToo']}"></ice:outputText>
+								</ice:column>
+								<ice:column id="actionsPortlet_txtEnableForHostsTooCol2"
+									styleClass="padformtitle">
+									<ice:selectBooleanCheckbox
+										id="actionsPortlet_chkBoxEnableForHostsToo" required="false"
+										immediate="true"
+										value="#{commandParamsBean.enabledForHostsToo}"
+										autocomplete="off"></ice:selectBooleanCheckbox>
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.disabledForHostsToo}"
+								id="actionsPortlet_panelgridDisabledForHostsToo" columns="2">
+								<ice:column id="actionsPortlet_txtDisableForHostsTooCol1"
+									styleClass="padformtitle">
+									<ice:outputText id="actionsPortlet_txtDisabledForHostsToo"
+										styleClass="iceOutTxt"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_disableForHostsToo']}"></ice:outputText>
+								</ice:column>
+								<ice:column id="actionsPortlet_txtDisableForHostsTooCol2">
+									<ice:selectBooleanCheckbox styleClass="padformtitle"
+										id="actionsPortlet_chkBoxDisabledForHostsToo" required="false"
+										immediate="true"
+										value="#{commandParamsBean.disabledForHostsToo}"
+										autocomplete="off">
+									</ice:selectBooleanCheckbox>
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.ackHostServiceToo}"
+								id="actionsPortlet_panelgridAckHostServiceToo" columns="2">
+								<ice:column id="actionsPortlet_txtAckSrvcsTooCol1"
+									styleClass="padformtitle">
+									<ice:outputText id="actionsPortlet_txtAckHostServiceToo"
+										styleClass="iceOutTxt"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_ackHostServicesToo']}"></ice:outputText>
+								</ice:column>
+								<ice:column id="actionsPortlet_txtAckSrvcsTooCol2"
+									styleClass="padformtitle">
+									<ice:selectBooleanCheckbox
+										id="actionsPortlet_chkBoxAckHostServiceToo" required="false"
+										immediate="true"
+										value="#{commandParamsBean.ackThisHostsServicesToo}"
+										autocomplete="off">
+									</ice:selectBooleanCheckbox>
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.sendNotification}"
+								id="actionsPortlet_panelgridSendNotification" columns="2">
+								<ice:column id="actionsPortlet_SndNotfctnCol1"
+									styleClass="padformtitle">
+									<ice:outputText id="actionsPortlet_txtSendNotification"
+										styleClass="iceOutTxt"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_sendNotification']}"></ice:outputText>
+								</ice:column>
+								<ice:column id="actionsPortlet_SndNotfctnCol2"
+									styleClass="padformtitle">
+									<ice:selectBooleanCheckbox
+										id="actionsPortlet_chkSendNotification" required="false"
+										immediate="true" value="#{commandParamsBean.sendNotification}"
+										autocomplete="off">
+									</ice:selectBooleanCheckbox>
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.persistentComment}"
+								id="actionsPortlet_panelgridPersistentComment" columns="2">
+								<ice:column id="actionsPortlet_prstntCmntCol1"
+									styleClass="padformtitle">
+									<ice:outputText id="actionsPortlet_txtPersistentComment"
+										styleClass="iceOutTxt"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_persistentComment']}"></ice:outputText>
+								</ice:column>
+								<ice:column id="actionsPortlet_prstntCmntCol2"
+									styleClass="padformtitle">
+									<ice:selectBooleanCheckbox
+										id="actionsPortlet_chkBoxPersistentComment" required="false"
+										immediate="true"
+										value="#{commandParamsBean.persistentComment}"
+										autocomplete="off">
+									</ice:selectBooleanCheckbox>
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.forceCheck}"
+								id="actionsPortlet_panelgridForceCheck" columns="2">
+								<ice:column id="actionsPortlet_frcChkCol1"
+									styleClass="padformtitle">
+									<ice:outputText id="actionsPortlet_txtForceCheck"
+										styleClass="iceOutTxt"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_forceCheck']}"></ice:outputText>
+								</ice:column>
+								<ice:column id="actionsPortlet_frcChkCol2"
+									styleClass="padformtitle">
+									<ice:selectBooleanCheckbox id="actionsPortlet_chkBoxForceCheck"
+										required="false" immediate="true"
+										value="#{commandParamsBean.forceCheck}" autocomplete="off">
+									</ice:selectBooleanCheckbox>
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.author}"
+								id="actionsPortlet_panelgridAuthor" columns="2">
+								<ice:column id="actionsPortlet_AuthrCol1"
+									styleClass="padformtitle">
+									<ice:outputLabel styleClass="iceOutTxt"
+										id="actionsPortlet_lblAuthor"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_author']}"></ice:outputLabel>
+								</ice:column>
+								<ice:column id="actionsPortlet_AuthrCol2"
+									styleClass="padformtitle">
+									<ice:outputLabel id="actionsPortlet_lblAuthorValue"
+										value="#{commandParamsBean.authorName}"></ice:outputLabel>
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.comment}"
+								id="actionsPortlet_panelgridComment" columns="3">
+								<ice:column id="actionsPortlet_CmtTxtCol1"
+									styleClass="padformtitle">
+									<ice:outputLabel styleClass="iceOutTxt"
+										id="actionsPortlet_lblComment"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_outputtext_comment']}"></ice:outputLabel>
+								</ice:column>
+								<ice:column id="actionsPortlet_CmtTxtCol2"
+									styleClass="padformtitle">									
+									<ice:inputTextarea id="actionsPortlet_txtComment"
+										value="#{commandParamsBean.comment}" rows="3" cols="25">										
+									</ice:inputTextarea>
+								</ice:column>
+								<ice:column id="actionsPortlet_CmtTxtCol3">
+									<h:message for="actionsPortlet_txtComment" showDetail="true"
+										showSummary="false" style="color: red; width: 300px;font-weight:normal;" />
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.triggeredBy}"
+								id="actionsPortlet_panelgridTriggeredBy" columns="2">
+								<ice:column id="actionsPortlet_TrggrdCol1"
+									styleClass="padformtitle">
+									<ice:outputLabel id="actionsPortlet_lblTriggeredBy"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_triggeredBy']}"
+										styleClass="iceOutTxt"></ice:outputLabel>
+								</ice:column>
+								<ice:column id="actionsPortlet_TrggrdCol2"
+									styleClass="padformtitle">
+									<ice:selectOneMenu id="actionsPortlet_menuTriggeredBy"
+										value="#{commandParamsBean.triggeredBy}">
+										<f:selectItem itemValue="0"
+											itemLabel="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_notApplicable']}" />
+									</ice:selectOneMenu>
+								</ice:column>
+							</ice:panelGrid>
+
+							<ice:panelGrid rendered="#{visibilityBean.startTime}"
+								id="actionsPortlet_panelgridStartTime" columns="4">
+								<ice:column id="actionsPortlet_StrtTimeCol1"
+									styleClass="padformtitle">
+									<ice:outputLabel styleClass="iceOutTxt"
+										id="actionsPortlet_lblStartTime"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_startTime']}"></ice:outputLabel>
+								</ice:column>
+								<ice:column id="actionsPortlet_StrtTimeCol2"
+									styleClass="padformtitle">
+									<ice:inputText id="actionsPortlet_txtStartTime" 
+										required="true"										
+										partialSubmit="true"
+										valueChangeListener="#{commandParamsBean.startTimeChanged}"
+										value="#{commandParamsBean.startTime}"></ice:inputText>
+								</ice:column>
+								<ice:column id="actionsPortlet_StrtTimeCol3"
+									styleClass="padformtitle">
+									<ice:outputLabel id="actionsPortlet_lblStartTimeFormat"
+										styleClass="iceOutTxt"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_checkTimeFormat']}"></ice:outputLabel>
+								</ice:column>
+								<ice:column id="actionsPortlet_StrtTimeCol4">
+									<h:message for="actionsPortlet_txtStartTime" showDetail="true"
+										showSummary="false"
+										style="color:red; width:350px; font-weight:normal;" />
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.endTime}"
+								id="actionsPortlet_panelgridEndTime" columns="4">
+								<ice:column id="actionsPortlet_EndTimeCol1"
+									styleClass="padformtitle">
+									<ice:outputLabel styleClass="iceOutTxt"
+										id="actionsPortlet_lblEndTime"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_endTime']}">
+									</ice:outputLabel>
+								</ice:column>
+								<ice:column id="actionsPortlet_EndTimeCol2"
+									styleClass="padformtitle">
+									<ice:inputText id="actionsPortlet_txtEndTime" required="true"
+										partialSubmit="true"
+										valueChangeListener="#{commandParamsBean.endTimeChanged}"
+										value="#{commandParamsBean.endTime}">
+									</ice:inputText>
+								</ice:column>
+								<ice:column id="actionsPortlet_EndTimeCol3"
+									styleClass="padformtitle">
+									<ice:outputLabel id="actionsPortlet_lblEndTimeFormat"
+										styleClass="iceOutTxt"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_checkTimeFormat']}"></ice:outputLabel>
+								</ice:column>
+								<ice:column id="actionsPortlet_EndTimeCol4">
+									<h:message for="actionsPortlet_txtEndTime" showDetail="true"
+										showSummary="false"
+										style="color: red; width: 350px;font-weight:normal;" />
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.type}"
+								id="actionsPortlet_panelgridType" columns="2">
+								<ice:column id="actionsPortlet_TypCol1"
+									styleClass="padformtitle">
+									<ice:outputLabel id="actionsPortlet_lblType"
+										styleClass="iceOutTxt"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_type']}"
+										for="actionsPortlet_menuType">
+									</ice:outputLabel>
+								</ice:column>
+								<ice:column id="actionsPortlet_TypCol2"
+									styleClass="padformtitle">
+									<ice:selectOneMenu id="actionsPortlet_menuType"
+										value="#{commandParamsBean.fixed}" partialSubmit="true">
+										<f:selectItem itemValue="0"
+											itemLabel="#{message['com_groundwork_portal_statusviewer_actionsPortlet_itemLabel_flexible']}" />
+										<f:selectItem itemValue="1"
+											itemLabel="#{message['com_groundwork_portal_statusviewer_actionsPortlet_itemLabel_fixed']}" />
+									</ice:selectOneMenu>
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.duration}"
+								id="actionsPortlet_panelgridDuration1" columns="1">
+								<ice:column id="actionsPortlet_DurtnCol1"
+									styleClass="padformtitle">
+									<ice:outputLabel styleClass="iceOutTxt"
+										id="actionsPortlet_lblDuration"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_fixed']}">
+									</ice:outputLabel>
+									<!--</ice:column>
+								<ice:column id="actionsPortlet_DurtnCol2"
+									styleClass="padformtitle">-->
+									<ice:inputText styleClass="padright15"
+										id="actionsPortlet_txtHours"
+										value="#{commandParamsBean.durationHours}" 
+										size="5"
+										maxlength="4">
+									</ice:inputText>
+									<ice:outputLabel id="actionsPortlet_lblHours"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_hours']}">
+									</ice:outputLabel>
+									<h:message for="actionsPortlet_txtHours" showDetail="true"
+										showSummary="false" style="color: red; width: 350px;font-weight:normal;" />
+								</ice:column>								
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.duration}"
+								id="actionsPortlet_panelgridDuration2" columns="1">
+								<ice:column id="actionsPortlet_DurtnCol3"
+									styleClass="padformtitle">
+									<ice:outputLabel styleClass="iceOutTxt"
+										id="actionsPortlet_lblDuration2"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_fixed']}">
+									</ice:outputLabel>
+									<ice:inputText id="actionsPortlet_txtMinutes"										
+										value="#{commandParamsBean.durationMinutes}" 
+										size="5"
+										maxlength="4">
+									</ice:inputText>
+									<ice:outputLabel id="actionsPortlet_lblMinutes"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_minutes']}">
+									</ice:outputLabel>
+									<h:message for="actionsPortlet_txtMinutes" showDetail="true"
+										showSummary="false" style="color: red; width: 350px;font-weight:normal;" />
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.childHosts}"
+								id="actionsPortlet_panelgridChildHosts" columns="3">
+								<ice:column id="actionsPortlet_ChldHstsCol1"
+									styleClass="padformtitle">
+									<ice:outputLabel id="actionsPortlet_lblChildHosts"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_childhosts']}"
+										styleClass="iceOutTxt">
+									</ice:outputLabel>
+								</ice:column>
+								<ice:column id="actionsPortlet_ChldHstsCol2"
+									styleClass="padformtitle">
+									<ice:selectOneMenu id="actionsPortlet_menuChildHosts"
+										value="#{commandParamsBean.childHosts}">
+										<f:selectItems value="#{actionHandler.childHostOptions}" />
+									</ice:selectOneMenu>
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.notificationDelay}"
+								id="actionsPortlet_panelgridNotificationDelay" columns="3">
+								<ice:column id="actionsPortlet_NtfcnDelayCol1"
+									styleClass="padformtitle">
+									<ice:outputLabel styleClass="iceOutTxt"
+										id="actionsPortlet_lblNotificationDelay"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_notificationDelay']}">
+									</ice:outputLabel>
+								</ice:column>
+								<ice:column id="actionsPortlet_NtfcnDelayCol2"
+									styleClass="padformtitle">
+									<ice:inputText id="actionsPortlet_txtNotificationDelay"
+										maxlength="5"
+										value="#{commandParamsBean.notificationDelay}">
+									</ice:inputText>
+								</ice:column>
+								<ice:column id="actionsPortlet_NtfcnDelayCol3">
+									<h:message for="actionsPortlet_txtNotificationDelay"
+										showDetail="true" showSummary="false"
+										style="color: red; width: 400px;font-weight:normal;" />
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid
+								rendered="#{visibilityBean.schDowntimeForHostsToo}"
+								id="actionsPortlet_panelgridSchDowntimeForHostsToo" columns="2">
+								<ice:column id="actionsPortlet_SchDwnTmHsts2Col1"
+									styleClass="padformtitle">
+									<ice:outputText id="actionsPortlet_txtSchDowntimeForHostsToo"
+										styleClass="iceOutTxt"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_scheduleDownTimeForHostsToo']}"></ice:outputText>
+								</ice:column>
+								<ice:column id="actionsPortlet_SchDwnTmHsts2Col2"
+									styleClass="padformtitle">
+									<ice:selectBooleanCheckbox
+										id="actionsPortlet_chkBoxAckSchDowntimeForHostsToo"
+										required="false" immediate="true"
+										value="#{commandParamsBean.scheduleDowntimeForHostsToo}"
+										autocomplete="off"></ice:selectBooleanCheckbox>
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.checkResult}"
+								id="actionsPortlet_panelgridCheckResult" columns="2">
+								<ice:column id="actionsPortlet_chkRsltCol1"
+									styleClass="padformtitle">
+									<ice:outputLabel id="actionsPortlet_checkResult"
+										styleClass="iceOutTxt"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_checkResult']}"
+										for="actionsPortlet_checkResult">
+									</ice:outputLabel>
+								</ice:column>
+								<ice:column id="actionsPortlet_chkRsltCol2"
+									styleClass="padformtitle">
+									<!-- TODO - populating this drop down should be dynamic,based on the context,service/Host -->
+									<ice:selectOneMenu id="actionsPortlet_menuCheckResult"
+										value="#{commandParamsBean.checkResult}">
+										<f:selectItems value="#{actionHandler.monitorStatusList}"></f:selectItems>
+									</ice:selectOneMenu>
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.checkOutput}"
+								id="actionsPortlet_panelgridCheckOutput" columns="2">
+								<ice:column id="actionsPortlet_chkOutPtCol1"
+									styleClass="padformtitle">
+									<ice:outputLabel styleClass="iceOutTxt"
+										id="actionsPortlet_lblCheckOutput"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_checkOutput']}"></ice:outputLabel>
+								</ice:column>
+								<ice:column id="actionsPortlet_chkOutPtCol2"
+									styleClass="padformtitle">
+									<ice:inputText id="actionsPortlet_txtCheckOutputValue" maxlength="200"
+										value="#{commandParamsBean.checkOutput}">
+									</ice:inputText>
+									<h:message for="actionsPortlet_txtCheckOutputValue"
+										showDetail="true" showSummary="false"
+										style="color: red; width: 100px ;font-weight:normal;" />
+								</ice:column>
+							</ice:panelGrid>
+							<ice:panelGrid rendered="#{visibilityBean.performanceData}"
+								id="actionsPortlet_panelgridPerformanceData" columns="2">
+								<ice:column id="actionsPortlet_PerfDtaCol1"
+									styleClass="padformtitle">
+									<ice:outputLabel styleClass="iceOutTxt"
+										id="actionsPortlet_lblPerformanceData"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_label_performanceData']}"></ice:outputLabel>
+								</ice:column>
+								<ice:column id="actionsPortlet_PerfDtaCol2"
+									styleClass="padformtitle">
+									<ice:inputText id="actionsPortlet_txtPerformanceDataValue" 
+									maxlength="200"
+									value="#{commandParamsBean.performanceData}"></ice:inputText>
+									<h:message for="actionsPortlet_txtPerformanceDataValue"
+										showDetail="true" showSummary="false"
+										style="color: red; width: 100px;font-weight:normal;" />
+								</ice:column>
+							</ice:panelGrid>
+							<table border="0" align="center">
+								<tr>
+									<td><ice:commandButton type="submit"
+										actionListener="#{actionHandler.submitCommand}"
+										partialSubmit="false" styleClass="portlet-filter-button"
+										title="#{message['com_groundwork_portal_statusviewer_actionsPortlet_button_submit']}"
+										id="actionsPortlet_btnSubmit"
+										value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_button_submit']}"
+										style="align:right"></ice:commandButton></td>
+								</tr>
+							</table>
+						</ice:column></td>
+						<td valign="top"><ice:column id="actionsPortlet_colCmdDes"
+							style="text-align:top">
+							<div style="border-left: 1px solid #d0d0d0; padding-left: 12px;">
+							<div style="padding-bottom: 12px;"><ice:outputText
+								style="font-family:Verdana, Arial, Helvetica, sans-serif;font-size: 14px;font-weight:bold;color:#585858;text-align:left;border-collapse:collapse;"
+								id="actionsPortlet_txtCmdDesc"
+								styleClass="icePnlGrdCol2 padleft19 padbottom10"
+								value="Command Description">
+							</ice:outputText></div>
+
+							<ice:outputText id="actionsPortlet_txtCmdDescValue"
+								value="#{visibilityBean.commandDesc}">
+							</ice:outputText></div>
+						</ice:column></td>
+					</tr>
+				</table>
+			</ice:panelGrid>
+		</f:facet>
+	</ice:panelPopup>
+
+</jsp:root>

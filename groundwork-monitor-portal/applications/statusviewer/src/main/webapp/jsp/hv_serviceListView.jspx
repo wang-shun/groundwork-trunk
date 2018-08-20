@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<ice:panelGroup>
+			<ice:inputHidden id="hiddenServiceListNavField"
+			value="#{serviceListHandler.serviceListNavHiddenField}"></ice:inputHidden>
+			<ice:inputHidden id="SLhiddenServiceListField"
+				value="#{serviceListHandler.serviceListHiddenField}"></ice:inputHidden>
+			<!--  error / info message -->
+			<ice:panelGroup
+				rendered="#{serviceListHandler.dataTableBean.message}"
+				id="SLpanelsGroupError">
+				<ice:column id="SLcolumnError"
+					rendered="#{serviceListHandler.dataTableBean.error}">
+					<ui:include src="/jsp/error.jspx">
+						<ui:param name="errorMessage"
+							value="#{serviceListHandler.dataTableBean.errorMessage}" />
+					</ui:include>
+				</ice:column>
+				<ice:column id="SLcolumninfo"
+					rendered="#{serviceListHandler.dataTableBean.info}">
+					<ui:include src="/jsp/info.jspx">
+						<ui:param name="infoMessage"
+							value="#{serviceListHandler.dataTableBean.infoMessage}" />
+					</ui:include>
+				</ice:column>
+				<ice:commandButton id="SLcmdRetryNow"
+					value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+					actionListener="#{serviceListHandler.reloadPage}">
+				</ice:commandButton>
+			</ice:panelGroup>
+
+			<ice:panelGroup id="SLpanelgridPORTLET"
+				rendered="#{!serviceListHandler.dataTableBean.message}">
+				<!-- Text showing total services -->
+				<br />
+				<ice:panelGroup id="SLpnlgrpTotal">
+					<ice:dataPaginator id="SLeventsPagerUpper"
+						for="SLtblService" fastStep="5"
+						pageCountVar="pageCount" pageIndexVar="pageIndex" paginator="true"
+						paginatorMaxPages="20" rowsCountVar="rowsCount"
+						displayedRowsCountVar="displayedRowsCountVar"
+						renderFacetsIfSinglePage="false">
+						<ice:outputFormat
+							value="#{message['com_groundwork_portal_statusviewer_servicelist_outputtext_total']}{0}"
+							styleClass="iceOutTxt">
+							<f:param value="#{rowsCount}" />
+						</ice:outputFormat>
+					</ice:dataPaginator>
+				</ice:panelGroup>
+				<br />
+
+				<!-- Table showing description of services -->
+				<ice:panelGroup id="SLpnlgrpServiceTable">
+					<ice:dataTable id="SLtblService" var="service"
+						value="#{serviceListHandler.currentDataTableBean}" cellspacing="0"
+						sortColumn="#{serviceListHandler.dataTableBean.sortColumnName}"
+						rows="#{serviceListHandler.dataTableBean.tableRows}"
+						styleClass="iceDatTbl_typB" headerClasses="iceDatTblColHdr1_typB"
+						columnClasses="iceDatTblCol1_typB"
+						rowClasses="iceDatTblRow1_typB iceDatTblRow2_typB">
+						<!-- Fields rows and first are for pagination -->
+
+						<!-- Column for SERVICE NAME & corresponding HOST NAME-->
+						<ice:column id="SLcolumnName" styleClass="borderLeft">
+							<f:facet name="header">
+								<ice:commandSortHeader id="SLsortColHeader"
+									actionListener="#{serviceListHandler.dataTableBean.sort}"
+									columnName="serviceDescription" arrow="true">
+									<ice:outputText styleClass="iceCmdLnk" id="SLtxtColumnName"
+										value="#{message['com_groundwork_portal_statusviewer_servicelist_outputtext_servicename']}"></ice:outputText>
+								</ice:commandSortHeader>
+							</f:facet>
+							<ice:panelGroup id="SLslist_pnlgrplst" style="margin-top:5px;">
+								<ice:graphicImage id="SLimgStatusIcon" style="float:left;"
+									value="#{service.serviceStatus.iconPath}" />
+								<!-- SERVICE NAME -->
+								<ice:outputLink id="SLLinkServiceName" value="#{service.url}"
+									style="height:20px; float:left; text-decoration: none;" onclick="blockNavigation();" rendered="#{!empty service.url}">
+									<ice:outputText
+										style="color: #666699;font-weight:normal;padding-bottom: 7px;"
+										styleClass="iceOutLbl" id="SLtxtNameService"
+										value="#{service.serviceName}" />
+								</ice:outputLink>
+								<ice:outputText
+										style="font-weight:normal;padding-bottom: 7px;"
+										styleClass="iceOutLbl" id="SLonlytxtNameService"
+										value="#{service.serviceName}" rendered="#{empty service.url}"/>
+								
+								<!-- HOST NAME -->
+								<ice:outputLink id="SLLinkHostName" value="#{service.parentURL}"
+									style="float:left; text-decoration: none;" onclick="blockNavigation();" rendered="#{!empty service.parentURL}">
+									<ice:outputText
+										style="color: #666699;font-weight:normal;"
+										id="SLtxtNameHost" value="(#{service.hostName})" />
+								</ice:outputLink>
+								<ice:outputText
+										style="font-weight:normal;"
+										id="SLonlytxtNameHost" value="(#{service.hostName})" rendered="#{empty service.parentURL}"/>
+							</ice:panelGroup>
+						</ice:column>
+
+						<!-- Column for DURATION -->
+						<ice:column id="SLcolumnDuration" styleClass="borderLeft">
+							<f:facet name="header">
+								<ice:outputText styleClass="iceCmdLnk" id="SLtxtDurationHeader"
+									value="#{message['com_groundwork_portal_statusviewer_servicelist_outputtext_duration']}"></ice:outputText>
+							</f:facet>
+							<ice:outputText id="SLtxtDuration" value="#{service.duration}"></ice:outputText>
+						</ice:column>
+
+						<!-- Column for STATUS INFORMATION DETAILS -->
+						<ice:column id="SLcolumnStatusInfo" styleClass="borderLeft">
+							<f:facet name="header">
+								<ice:outputText styleClass="iceCmdLnk" id="SLtxtStatusInfoHeader"
+									value="#{message['com_groundwork_portal_statusviewer_servicelist_outputtext_statusinformationdetails']}"></ice:outputText>
+							</f:facet>
+								<ice:outputText id="SLtxtStatusInfo"
+									title="header=[] body=[#{service.statusInfoTooltip}]"
+									value="#{service.statusInfoDetails }"></ice:outputText>
+						</ice:column>
+
+						<!-- Column for ACKNOWLEDGED -->
+						<ice:column id="SLslcolumnAck" styleClass="borderLeft">
+							<f:facet name="header">
+								<ice:outputText id="SLsltxtAckHeader" styleClass="iceCmdLnk"
+									value="#{message['com_groundwork_portal_statusviewer_servicelist_outputtext_acknowledged']}" />
+							</f:facet>
+							<ice:panelGroup rendered="#{service.acknowledgeStatus}"
+								id="SLpanelgroupAcknowledged">
+
+								<!-- YES/NO Text -->
+								<ice:outputText id="SLsltxtAck" style="float:left;"
+									value="#{service.serviceAcknowledged}" />
+
+
+								<!-- Acknowledge ICON = shown only if not yet acknowledged -->
+								<ice:graphicImage id="SLslimgAck"
+									title="#{message['com_groundwork_portal_statusviewer_hostList_tooltip_notAcknowledged']}"
+									value="/images/service-ack.gif"
+									style="float:left;"
+									rendered="#{service.serviceAcknowledged == 'No' and userRoleBean.userInAdminOrOperatorRole}">
+								</ice:graphicImage>
+
+								<!-- Acknowledge LINK -->
+								<ice:commandLink id="SLsllinkAck"
+									rendered="#{service.serviceAcknowledged == 'No' and userRoleBean.userInAdminOrOperatorRole}"
+									actionListener="#{serviceListHandler.showAcknowledgementPopup}"
+									value="#{message['com_groundwork_portal_statusviewer_serviceList_linktext_Acknowledge']}"
+									styleClass="none_decoration" >
+									<f:attribute name="serviceName" value="#{service.serviceName}" />
+									<f:attribute name="hostName" value="#{service.hostName}" />
+								</ice:commandLink>
+
+							</ice:panelGroup>
+
+							<!-- For OK/PENDING SERVICES -->
+							<ice:outputText id="SLtxtAckforUpPendingStatus" rendered="#{!service.acknowledgeStatus}"
+									value="#{message['com_groundwork_portal_statusviewer_serviceListPortlet_not_applicable']}" />
+						</ice:column>
+					</ice:dataTable>
+					<ice:panelGroup id="SLslpnlPaginator">
+						<ice:dataPaginator id="SLeventsPagerBottom"
+							for="SLtblService" fastStep="5"
+							pageCountVar="pageCount" pageIndexVar="pageIndex"
+							paginator="true" paginatorMaxPages="20" rowsCountVar="rowsCount"
+							displayedRowsCountVar="displayedRowsCountVar"
+							renderFacetsIfSinglePage="false">
+							<ice:outputFormat value="{0} of {1}">
+								<f:param value="#{pageIndex}" />
+								<f:param value="#{pageCount}" />
+							</ice:outputFormat>
+							<f:facet name="first">
+								<ice:graphicImage url="/images/arrow-first.gif"
+									id="SLslist_imgFirst" style="border:none;" title="First Page" />
+							</f:facet>
+							<f:facet name="last">
+								<ice:graphicImage url="/images/arrow-last.gif"
+									id="SLslist_imgLast" style="border:none;" title="Last Page" />
+							</f:facet>
+							<f:facet name="previous">
+								<ice:graphicImage url="/images/arrow-previous.gif"
+									id="SLslist_imgPrev" style="border:none;" title="Previous Page" />
+							</f:facet>
+							<f:facet name="next">
+								<ice:graphicImage url="/images/arrow-next.gif"
+									id="SLslist_imgNext" style="border:none;" title="Next Page" />
+							</f:facet>
+							<f:facet name="fastforward">
+								<ice:graphicImage url="/images/arrow-ff.gif" id="SLslist_imgFF"
+									style="border:none;" title="Fast Forward" />
+							</f:facet>
+							<f:facet name="fastrewind">
+								<ice:graphicImage url="/images/arrow-fr.gif" id="SLslist_imgFR"
+									style="border:none;" title="Fast Backwards" />
+							</f:facet>
+						</ice:dataPaginator>
+					</ice:panelGroup>
+				</ice:panelGroup>
+			</ice:panelGroup>
+		</ice:panelGroup>
+	</ui:define>
+</ui:composition>

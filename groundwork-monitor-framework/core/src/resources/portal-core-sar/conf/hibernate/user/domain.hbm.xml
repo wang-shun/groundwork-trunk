@@ -1,0 +1,171 @@
+<?xml version="1.0"?>
+<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+	~ JBoss, a division of Red Hat ~ ~ Copyright 2006, Red Hat Middleware, LLC, 
+	and individual ~ ~ contributors as indicated by the @authors tag. See the 
+	~ ~ copyright.txt in the distribution for a full listing of ~ ~ individual 
+	contributors. ~ ~ ~ ~ This is free software; you can redistribute it and/or 
+	modify it ~ ~ under the terms of the GNU Lesser General Public License as 
+	~ ~ published by the Free Software Foundation; either version 2.1 of ~ ~ 
+	the License, or (at your option) any later version. ~ ~ ~ ~ This software 
+	is distributed in the hope that it will be useful, ~ ~ but WITHOUT ANY WARRANTY; 
+	without even the implied warranty of ~ ~ MERCHANTABILITY or FITNESS FOR A 
+	PARTICULAR PURPOSE. See the GNU ~ ~ Lesser General Public License for more 
+	details. ~ ~ ~ ~ You should have received a copy of the GNU Lesser General 
+	Public ~ ~ License along with this software; if not, write to the Free ~ 
+	~ Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA ~ ~ 
+	02110-1301 USA, or see the FSF site: http://www.fsf.org. ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+<!DOCTYPE hibernate-mapping PUBLIC
+   "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+   "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+	<class name="org.jboss.portal.identity.db.HibernateUserImpl"
+		table="jbp_users">
+		<cache usage="read-write" />
+		<id name="key" column="jbp_uid" type="java.lang.Long">
+			<generator class="native">
+				<param name="sequence">user_seq</param>
+			</generator>
+		</id>
+		<property name="userName" column="jbp_uname" type="java.lang.String"
+			update="false" insert="true" unique="true" />
+		<map name="dynamic" table="jbp_user_prop" lazy="false" sort="unsorted"
+			cascade="all">
+			<cache usage="read-write" />
+			<key column="jbp_uid" />
+			<index column="jbp_name" type="java.lang.String" />
+			<element column="jbp_value" type="java.lang.String" not-null="false"
+				unique="false" />
+		</map>
+		<property name="givenName" column="jbp_givenname" type="java.lang.String"
+			update="true" insert="true" unique="false" />
+		<property name="familyName" column="jbp_familyname" type="java.lang.String"
+			update="true" insert="true" unique="false" />
+		<property name="password" column="jbp_password" type="java.lang.String"
+			update="true" insert="true" unique="false" />
+		<property name="realEmail" column="jbp_realemail" type="java.lang.String"
+			update="true" insert="true" unique="false" />
+		<property name="fakeEmail" column="jbp_fakeemail" type="java.lang.String"
+			update="true" insert="true" unique="false" />
+		<property name="registrationDate" column="jbp_regdate" type="java.util.Date"
+			update="false" insert="true" unique="false" />
+		<property name="viewRealEmail" column="jbp_viewrealemail"
+			type="boolean" update="true" insert="true" unique="false" />
+		<property name="enabled" column="jbp_enabled" type="boolean"
+			update="true" insert="true" unique="false" />
+		<set name="roles" table="jbp_role_membership" lazy="false"
+			inverse="false" cascade="none" sort="unsorted">
+			<cache usage="read-write" />
+			<key column="jbp_uid" />
+			<many-to-many class="org.jboss.portal.identity.db.HibernateRoleImpl"
+				column="jbp_rid" outer-join="true" />
+		</set>
+	</class>
+	<class name="org.jboss.portal.identity.db.HibernateRoleImpl"
+		table="jbp_roles">
+		<cache usage="read-write" />
+		<id name="key" column="jbp_rid" type="java.lang.Long">
+			<generator class="native">
+				<param name="sequence">user_seq</param>
+			</generator>
+		</id>
+		<property name="name" column="jbp_name" type="java.lang.String"
+			update="false" insert="true" unique="true" />
+		<property name="displayName" column="jbp_displayname" type="java.lang.String"
+			update="true" insert="true" unique="true" />
+		<set name="users" table="jbp_role_membership" lazy="true" inverse="true"
+			cascade="none" sort="unsorted">
+			<cache usage="read-write" />
+			<key column="jbp_rid" />
+			<many-to-many class="org.jboss.portal.identity.db.HibernateUserImpl"
+				column="jbp_uid" outer-join="false" />
+		</set>
+	</class>
+	<class
+		name="com.groundworkopensource.portal.identity.extendedui.HibernateExtendedRole"
+		table="gw_ext_role_attributes">
+
+		<id name="id" column="jbp_rid" type="java.lang.Long">
+			<generator class="assigned" />
+		</id>
+		<property name="name" column="jbp_name" type="java.lang.String" />
+		<property name="dashboardLinksDisabled" column="dashboard_links_disabled"
+			type="boolean" />
+		<property name="hgList" column="hg_list" type="java.lang.String"
+			length="4096" />
+		<property name="sgList" column="sg_list" type="java.lang.String"
+			length="4096" />
+		<property name="defaultHostGroup" column="defaultHostGroup"
+			type="java.lang.String" />
+		<property name="defaultServiceGroup" column="defaultServiceGroup"
+			type="java.lang.String" />
+		<property name="restrictionType" column="restrictionType"
+			type="java.lang.String" />
+		<property name="actionsEnabled" column="actions_enabled"
+			type="boolean" />
+	</class>
+
+
+	<class
+		name="com.groundworkopensource.portal.identity.extendedui.HibernateEntityType"
+		table="gw_entitytype">
+		<cache usage="read-write" />
+		<id name="entityTypeId" column="entitytype_id" type="java.lang.Byte">
+			<generator class="assigned" />
+		</id>
+		<property name="entityType" column="entitytype" type="java.lang.String" />
+	</class>
+
+	<class
+		name="com.groundworkopensource.portal.identity.extendedui.HibernateCustomGroup"
+		table="gw_customgroup" lazy="false">
+		<cache usage="read-write" />
+		<id name="groupId" column="group_id" type="java.lang.Long">
+			<generator class="native">
+				<param name="sequence">custom_group_seq</param>
+			</generator>
+		</id>
+		<property name="groupName" column="group_name" type="java.lang.String" />
+		<many-to-one name="entityType" column="entitytype_id"
+			class="com.groundworkopensource.portal.identity.extendedui.HibernateEntityType"
+			lazy="false" />
+		<set name="parents" table="gw_customgroup_collection" lazy="false" inverse="false"
+			cascade="all">
+			<key>
+				<column name="group_id" />
+			</key>
+			<many-to-many
+				class="com.groundworkopensource.portal.identity.extendedui.HibernateCustomGroup"
+				column="parent_id" />
+		</set>
+		<set name="elements" lazy="false" inverse="false" cascade="save-update"
+			order-by="element_id">
+			<key>
+				<column name="group_id" />
+			</key>
+			<one-to-many
+				class="com.groundworkopensource.portal.identity.extendedui.HibernateCustomGroupElement" />
+		</set>
+		<property name="groupState" column="group_state" type="java.lang.String" />
+		<property name="createdBy" column="createdby" type="java.lang.String" />
+		<property name="createdTimeStamp" column="createdtimestamp"
+			type="java.sql.Timestamp" />
+		<property name="lastModifiedTimeStamp" column="lastmodifiedtimestamp"
+			type="java.sql.Timestamp" />
+	</class>
+
+
+	<class
+		name="com.groundworkopensource.portal.identity.extendedui.HibernateCustomGroupElement"
+		table="gw_customgroup_element">
+		<cache usage="read-write" />
+		<composite-id>
+			<key-property name="elementId" column="element_id" type="java.lang.Long" />
+			<key-many-to-one name="group" column="group_id"
+				class="com.groundworkopensource.portal.identity.extendedui.HibernateCustomGroup" />
+			<key-many-to-one name="entityType" column="entitytype_id"
+				class="com.groundworkopensource.portal.identity.extendedui.HibernateEntityType" />
+		</composite-id>
+	</class>
+
+</hibernate-mapping>

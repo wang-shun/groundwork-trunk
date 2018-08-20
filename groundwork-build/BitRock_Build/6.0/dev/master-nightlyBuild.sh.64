@@ -1,0 +1,33 @@
+#!/bin/bash -x
+#Copyright (C) 2008  GroundWork Open Source Solutions info@groundworkopensource.com
+#
+
+# Get the date for today's directory
+export DATE=$(date +%d-%m-%y)
+HOMEDIR=/root/build
+LOGDIR=$HOMEDIR/logs
+
+# Copy the updated scipts from box 211
+scp -rp root@172.28.113.211:/root/build/*BitRock*.sh /root/build
+
+# Start the builds
+date
+cd $HOMEDIR
+echo "Start Building Pro using BitRock Installer"
+. nightlyBuildBitRockPro.sh
+tar zcf $HOMEDIR/BitRock/groundwork-pro.tar.gz $HOMEDIR/BitRock/groundwork
+
+scp -rp $HOMEDIR/BitRock/groundwork-pro.tar.gz root@morat:/var/www/html/builds/groundwork-pro-$NewBuildNumber-$bitrock_os.tar.gz
+
+# Delete old tar files
+OldTarFile=$(cat $RUN_DIR/logs/TarFileList.$bitrock_os | awk '{ print $1; }')
+ssh root@morat rm -f /var/www/html/builds/$OldTarFile
+# Make a new list of tar files
+cat $RUN_DIR/logs/TarFileList.$bitrock_os | awk '{ print $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14}' > $RUN_DIR/logs/TarFileList.$bitrock_os.tmp
+NewTarFileList=$(cat $RUN_DIR/logs/TarFileList.$bitrock_os.tmp)
+echo "$NewTarFileList groundwork-pro-$NewBuildNumber-$bitrock_os.tar.gz" > $RUN_DIR/logs/TarFileList.$bitrock_os
+
+date
+
+echo "master-nightlyBuild.sh is done..."
+

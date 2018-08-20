@@ -1,0 +1,65 @@
+*** nagios-plugins-1.4.16/plugins-scripts/subst.in.orig	2012-06-27 10:32:47.000000000 -0700
+--- nagios-plugins-1.4.16/plugins-scripts/subst.in	2012-08-07 12:40:41.584710100 -0700
+***************
+*** 1,7 ****
+  #!/usr/bin/awk
+  
+  function which(c,path) {
+! 	cmd = "test -x " c;
+  
+  	if (system(cmd)==0) {
+  		return c;
+--- 1,7 ----
+  #!/usr/bin/awk
+  
+  function which(c,path) {
+! 	cmd = "test -x '" c "'";
+  
+  	if (system(cmd)==0) {
+  		return c;
+***************
+*** 9,15 ****
+  
+  	sub(/\/.*\//,"",c);
+    for (dir in path) {
+! 			cmd = "test -x " path[dir] "/" c;
+  			if (system(cmd)==0) {
+  					return path[dir] "/" c;
+  			} 
+--- 9,15 ----
+  
+  	sub(/\/.*\//,"",c);
+    for (dir in path) {
+! 			cmd = "test -x '" path[dir] "/" c "'";
+  			if (system(cmd)==0) {
+  					return path[dir] "/" c;
+  			} 
+***************
+*** 43,49 ****
+  # scripting language (first line)
+  
+  /^#! ?\/.*\/python/ {sub(/^#! ?\/.*\/python/,"#! @PYTHON@");}
+! /^#! ?\/.*\/perl/ {sub(/^#! ?\/.*\/perl/,"#! @PERL@");}
+  /^#! ?\/.*\/[a-z]{0,2}awk/ {sub(/^#! ?\/.*\/[a-z]{0,2}awk/,"#! @AWK@");}
+  /^#! ?\/.*\/sh/ {sub(/^#! ?\/.*\/sh/,"#! @SHELL@");}
+  
+--- 43,49 ----
+  # scripting language (first line)
+  
+  /^#! ?\/.*\/python/ {sub(/^#! ?\/.*\/python/,"#! @PYTHON@");}
+! /^#! ?\/.*\/perl/ {sub(/^#! ?\/.*\/perl/,"#!@PERL@");}
+  /^#! ?\/.*\/[a-z]{0,2}awk/ {sub(/^#! ?\/.*\/[a-z]{0,2}awk/,"#! @AWK@");}
+  /^#! ?\/.*\/sh/ {sub(/^#! ?\/.*\/sh/,"#! @SHELL@");}
+  
+***************
+*** 59,64 ****
+--- 59,67 ----
+  }
+  
+  # add to libexecdir to INC for perl utils.pm
++ /^use/ { if (/lib/) { if (/utils.pm|"."/ ) { sub(/use\s+lib\s+(utils.pm|".")\s*;/,"\
++ # This will be handled instead by the perlapp compiler.\n\
++ # use lib '.';  # would have been substituted with the install directory" ) } } }
+  /^use/ { if (/lib/) { if (/utils.pm|"."/ ) {sub(/utils.pm|"."/,led() )} } }
+  
+  

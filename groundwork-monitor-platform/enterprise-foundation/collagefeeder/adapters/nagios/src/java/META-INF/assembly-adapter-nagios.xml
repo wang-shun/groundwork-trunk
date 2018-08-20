@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans-2.0.dtd">
+
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+-->
+
+<!--
+	Spring assembly for Nagiso specific adapters to normalize Nagios service checks
+	and events into the Collage backend.
+	This spring assembly needs to be referenced in the adapter.properties files
+	that is used by the listener service. 
+-->
+
+<beans>
+
+<!--
+ List all the BeanID that have implemented the initialize method. The bean Id's defined as a comma
+ separated list will be called during the loading of the assembly
+-->
+
+<bean id="NagiosAdapterProperties" class="com.groundwork.feeder.adapter.impl.AdapterProperties">
+	<constructor-arg type="java.lang.String"><value>adapter.host_status,adapter.service_status,adapter.nagios_log,adapter.turbo_noc_event</value></constructor-arg>
+  </bean>
+
+<bean id="adapter.host_status" scope="prototype"
+       class="com.groundwork.feeder.adapter.impl.HostStatus" />
+       
+<bean id="adapter.service_status" scope="prototype"
+       class="com.groundwork.feeder.adapter.impl.ServiceStatus" />
+       
+<bean id="adapter.nagios_log" scope="prototype"
+       class="com.groundwork.feeder.adapter.impl.NagiosLog" />
+
+<bean id="adapter.turbo_noc_event" scope="prototype"
+       class="com.groundwork.feeder.adapter.impl.TurboNocEvent" />
+       
+       
+       
+</beans>

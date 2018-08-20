@@ -1,0 +1,3010 @@
+#!/usr/bin/perl -w --
+# Note:  We don't use a GW-supplied version of perl for this script because
+# its copy of IO::Socket::SSL (version 0.97 as of GW6.1) does not include
+# full support for a non-blocking socket.  Instead, we use the OS-supplied
+# copy of perl, and provide our own copies of any additional packages we
+# need for this script.
+
+# Generate a GroundWork Monitor Quickstart, Core, or equivalent license.
+# Copyright (c) 2010-2014 GroundWork Open Source (www.groundworkopensource.com).
+# All rights reserved.
+
+# ================================================================
+# Documentation.
+# ================================================================
+
+# Original rough specification for this script:
+# (*) Run this script as a daemon.  Take all the ordinary precautions a daemon
+#     should (disconnect from controlling terminal, etc.).
+# (*) Have a cron job run every 5 minutes and check to see if the daemon is
+#     running.  If not, restart it, as long as the daemon's configuration file
+#     is set to specify that it should be running.
+# (*) Cycle around every so often to check for new incoming email on a
+#     preconfigured address, retrieved as an IMAP client via an SSL connection.
+# (*) When you receive a new unseen email, parse it to extract an order number,
+#     the customer name, and the customer email address.
+# (*) To generate the license, post the order number and customer name to a
+#     preconfigured URL with query parameters.
+# (*) Obtain the result from the URL, which will contain the license.
+# (*) Generate an outgoing email containing the license key according to an
+#     external email template, and send the result to the email address you
+#     got from the incoming email.
+# (*) Write an audit trail documenting the fact that you sent out this license
+#     key, temporarily using a logfile for the audit trail, perhaps to be
+#     converted at a future time to a database call.
+# There are many, many extra validation and exception cases to add to that
+# initial outline.
+
+# Installation process:
+# (*) When this script supports it, configure the web server that supplies the license
+#     keys to only use HTTPS for these requests.
+# (*) Un-tar the tarball in which all the files in this package are provided.  Then:
+#         make build
+#         make clean
+# (*) Configure the settings in the configuration file (generate_quickstart_license.conf).
+# (*) [This step is probably not needed.] Log in to the incoming-email account and
+#     create the following folders:
+#	Inbox                 # incoming requests
+#	Bounced               # bounced license-key or audit responses
+#	Invalid Requests      # bad (rejected) requests
+#	Processed Requests    # requests already dealt with
+#	Repeat Requests       # probably not -- how to detect?
+#	Unprocessed Requests  # what might go here?
+# (*) Generate some dummy orders, both valid and invalid for a variety of reasons, and
+#     send them in to the order account.  Verify that the script operates correctly.
+# (*) Install a cron job to start the script and to periodically re-start it should it
+#     fail.  For example, you could use:
+#         */5 * * * * /home/license/automailer/quickstart_automailer start
+#     to run the start script every 5 minutes.  The quickstart_automailer script is
+#     smart enough to detect if the script is already running, and not try to start it
+#     again if that is so.
+
+# Sanity checking:
+# (*) Is there a way to check some other system to validate that this is a real order
+#     (i.e., that this order number exists in our ordering system)?  yes, we have a
+#     URL for that -- but might need authenticated access to it.
+# (*) What if a customer requests multiple times?  Do we check for that?  No, but the
+#     same order number will yield the same license key (the last one generated for
+#     this same order number).  And if we enable the audit email address, somebody
+#     might notice is that is happening a lot.
+# (*) Where does the license-key generator look up the licensed capabilities, to see
+#     if they have been extended past the standard Quickstart/Core values by some later
+#     upgrade, when a new license request appears on the same order number?
+# (*) Do we send any confirmation email back to somebody within our own organization?
+# (*) Establish a cron job to make sure this script is restarted in case it dies for
+#     any reason, and to send out an email to our own personnel if that happens.
+
+# Technical issues:
+# (*) Make sure you process an incoming email completely before deleting it, so we are
+#     never in danger of either processing the same incoming email twice or reading an
+#     incoming email and deleting it without fully processing it so the incoming request
+#     is lost.  Log the fact that you received it, and the fact that you processed it,
+#     and the fact that you deleted it.
+# (*) Avoiding duplicate or lost handling of a given order number is one good reason we
+#     ought to consult and update a database, to see if this order has previously been
+#     processed.  And if so, we should have a configured email address to send a
+#     notification to, of the difficulty the script is having.
+# (*) Thunderbird mangles the generated license-key email body content if the user
+#     tries to forward the email.  Replying to the email and changing the reply address
+#     still works, though.  This has something to do with the base64 encoding we use.
+#     We could potentially back off from using that encoding now that we have much
+#     shorter lines in the license key that fit in the 998-character line length limit
+#     of standard email, and use the 'quoted-printable' encoding instead.  But that
+#     still doesn't carry forward the included images, and does strange things with the
+#     "=" characters in the key, interpreting them as lead-ins for escape sequences.
+#     If we explicitly quote the message body using MIME::QuotedPrint::encode() before
+#     we send it as 'quoted-printable'. that fixes the escaping within the license key
+#     in a forwarded email, but breaks the original HTML display of the email.  Using
+#     the '8bit' encoding does both display the HTML correctly and get the email to
+#     forward cleanly, but I suppose there is no guarantee that it will get through all
+#     the mail transports between here and the customer.  See RFC 1652 ("SMTP Service
+#     Extension for 8bit-MIMEtransport") for details of mail transport for unencoded
+#     8bit data.  So for the time being, and because we're not all that terribly
+#     interested in making it easy to forward the license-key emails, we will leave
+#     the encoding as base64.
+
+# To do:
+# (*) Make the SKU ("Model:") in the incoming request a config parameter to validate.
+# (*) Check Simon's slides for what should appear in the audit log.
+# (*) Produce documentation for Support handling of various scenarios:
+#     (+) meanings of the various mail folders used by this script
+#     (+) how to regenerate a key (move the "Processed Requests" email back to Inbox)
+#     (+) look at Invalid/Unprocessed requests to see what went wrong
+#     (+) someday, set up the Processed Requests mailbox to delete requests older than,
+#         say, six months
+# (*) Write the companion cron-job script, or put this under "supervise" (but then,
+#     document how to easily disable it) by the "down" file and killing, or whatever.
+# (*) Handle bounced email.  Distinguish the bounced email from incoming original
+#     requests, so we do not loop forever trying to send out a license key on a
+#     bounced response.  Forward bounced email to our configured support address.
+# (*) Decide on a standard anchoring of the installed base directory.
+# (*) Add a specfile and bundle everything into an RPM?
+# (*) Implement a config-file option for choosing between examine() [read-only access
+#     to the incoming-account email] and select() [full read/write access], to allow
+#     safe testing without hacking the script itself.
+# (*) Validate that all the Perl packages we build and install in our makefile are
+#     actualy used, and not just orphaned as a result of changes in direction during
+#     the development cycle.
+# (*) Look at the full set of headers seen in incoming email and generated in outgoing
+#     email, to see if we need more validation or control applied.  Are they any other
+#     common headers we should validate or generate?
+# (*) Drop the send-ssl-email script, or fold its extension to SSL into our standard
+#     GroundWork sendEmail script, and contribute it back to our standard product
+#     (with advice not to really use if security is a concern, since it exposes an
+#     email-account password on the command line).  Perhaps generlize the script to
+#     handle the passwords more securely.
+# (*) test backslash escaping of @'s in the config file
+# (*) look at the Sent folder; can I put an automatic expiration date on items in
+#     the folder?
+# (*) add singleton-lock logic to prevent two copies of this script from running at
+#     the same time on the same machine (use a file lock on a nearby file, perhaps
+#     either the config file or the script itself)
+# (*) Make a list of capabilities of this script, to present in training to those
+#     folks who will administer it.
+# (*) Make a formal README document listing all that training stuff.
+# (*) Construct a Mail::IMAPClient patch (referring to IO::Socket::SSL as well) for
+#     incoming email in SSL.
+# (*) Construct a MIME::Lite patch for outgoing email in SSL.
+# (*) Save Lite.pm or all the edits needed to prepare our modified copy.
+# (*) As a means of ensuring we have more than one copy of the accumulated audit log
+#     data, periodically copy that file off-machine (say, once per day).  That could
+#     be done by emailing a copy of the file to a designated address.  That need not
+#     necessarily be done by this script; a cron job might be the right approach, so
+#     it would continue to execute each day even if this script is not running.
+# (*) Bugs to report:
+#     (+) Lite.pm: SSL SMTP
+#     (+) blocking socket for IMAP SSL
+#     (+) IMAPClient search vs. when $@ gets cleared:
+#	    The Mail::IMAPClient->search() documentation is dead wrong about how
+#	    $@ is treated.  It is *not* cleared automatically before search() is
+#	    called.  Thus we must do so ourselves.
+#     (+) JIRA for sendEmail extension to support SSL
+# (*) perhaps provide Return-Path and Errors-To headers in outgoing email, to
+#     provide guidance to the remote mail server as to where to send the email
+#     (this might avoid some forwarding issues, with undelivered email looking
+#     like spam and being misdirected by GMail/Postini into the forwarded
+#     account's Spam folder)
+
+# To do later:
+# (*) Why do we lose <pre> and the overflow-x scrollbar when Thunderbird thinks
+#     the email is Junk and sanitizes the HTML?  Is there some way around this?
+# (*) For that matter, can we figure out why Thunderbird thinks our email is
+#     Junk in the first place, and avoid that classification?
+
+# Expected fixed format of the incoming email (although the order total, product
+# details, and order comments may vary, and certain other details may have
+# changed over the evolution of this script and not been reflected here):
+#
+#	From: GroundWork Open Source <webmaster@groundworkopensource.com>
+#	Reply-To: GroundWork Open Source <webmaster@groundworkopensource.com>
+#	Date: Thu, 17 Dec 2009 10:37:08 -0800
+#	To: <license_reg@gwos.com>
+#	Subject: New Order number 439 at GroundWork Open Source
+#	
+#	Order number: 439 <https://www.groundworkopensource.com/exchange/admin/store/orders/439>
+#	Customer: Sam Spade - sspade@detectives.com
+#	Order total: $49.00
+#	Shipping method: Standard delivery
+#	
+#	Products:
+#	- 1 x Enterprise Quickstart - $49.00
+#	  Model: FLXQS1
+#	
+#	
+#	Order comments:
+#	Please provide Invoice in PDF format
+#
+# Or as the body actually appears as an HTML-formatted message:
+#
+#	<p>
+#	Order number: <a href="https://www.groundworkopensource.com/exchange/admin/store/orders/450">450</a><br />
+#	Customer: Randy Ran - yingde@gmail.com<br />
+#	Order total: $49.00<br />
+#	Shipping method: Standard delivery
+#	</p>
+#	
+#	<p>
+#	Products:<br />
+#	- 1 x Enterprise Quickstart - $49.00<br />
+#	&nbsp;&nbsp;Model: FLXQS1<br />
+#	    <br />
+#	</p>
+#	
+#	<p>
+#	Order comments:<br />
+#	<i>No comments left.</i>
+#	</p>
+#
+# Expected format of the generated license is roughly as follows (with whitespace formatting
+# and long-line content cleaned up here for presentation).  I would have much preferred that
+# the <LicenseKey> text end with a single trailing newline, as it would prevent problems in
+# the field editing the installed license-key file, but I lost that battle.
+#
+#	<?xml version="1.0" encoding="UTF-8"?>
+#	<LicenseKeyDetail>
+#	<OrderId>547</OrderId>
+#	<CustomerName>Jake Castellanos</CustomerName>
+#	<LicenseKey>#Wed Jan 13 13:01:42 PST 2010
+#	property_param_11=HHTmbaiLHVTYbwiTdiJRVHi ... and so forth ... wwLRJLVTJYLbnTJTVTbF
+#	property_param_10=30819f300d06092a864886f ... and so forth ... a2c1db1fd70203010001
+#	creationDate=1263416502927
+#	startDate=1263415291000
+#	property_param_9=miLmJYRH
+#	property_param_8=dFJJsawVnYsLHLwTmHFRTiaVsLwmnJRiTLbaRVHTHiLdRnTa
+#	property_param_7=nwaHwRHTmwLdsdnFHsmwFYLRiFsdTJLRVYRVmFYLibRwmsLV
+#	property_param_6=nYLHiJ
+#	property_param_5=wJFbHi
+#	property_param_4=nRYmiRLbsmdHLsbVJVnJFLmV ... and so forth ... aYnHJJFFHHHHYVibsYYY
+#	property_param_3=mR
+#	property_param_2=YHnJwiJHTFaR
+#	property_param_1=aiFFFs
+#	property_orderID=147
+#	expireAfterFirstRun=1295037691000
+#	signature=0a55451400cdfeea186fcd64a0cfe5c ... and so forth ... 00abe19c197008db4410
+#	expirationDate=1295037691000
+#	property_param_12=VisJJwsFHndJaJbmsaHnmVdwRLLHdidwRRwRHmVdYTwbHadR</LicenseKey>
+#	</LicenseKeyDetail>
+#
+# If any unexpected exception occurs while generating the license key, the servlet
+# will return XML with a null text value for the LicenseKey element, or we will get
+# an undefined value as a complete response from the Apache web server.
+
+# ================================================================
+# Perl setup.
+# ================================================================
+
+use strict;
+
+use attributes;
+
+# This is where we'll pick up any Perl packages not in the standard Perl
+# distribution, to make this a self-contained package anchored in a single
+# directory.
+use FindBin qw($Bin);
+use lib "$Bin/perl/lib";
+
+use Encode;
+use POSIX qw(strftime);
+use Errno qw(EAGAIN);
+use TypedConfig;
+use IO::Socket::SSL;
+use Mail::IMAPClient;
+use HTML::Entities;
+# In modern releases of URI::Escape, uri_escape_utf8() is supposed to be exported by default;
+# but (at least in the copy we are likely to reference here) we find it is not.
+use URI::Escape qw(:DEFAULT uri_escape_utf8);
+use LWP::UserAgent;
+use XML::Simple;
+use MIME::Lite;
+use Digest::MD5 qw(md5_hex);
+
+my $PROGNAME = "generate_quickstart_license";
+
+# Be sure to update this as changes are made to this script!
+my $VERSION = '0.0.9';
+
+# ================================================================
+# Command-line execution options and working variables.
+# ================================================================
+
+my $config_file = "$Bin/generate_quickstart_license.conf";
+
+my $debug_config = 0;
+
+# For convenient interactive debugging during development.
+# You can set $reflect_log_to_tty dynamically via the -o option.
+my $reflect_log_to_tty = 0;
+my $stdout_is_a_tty    = (-t STDOUT);
+
+my $run_interactively = 0;
+my $do_one_request    = 0;
+my $do_one_cycle      = 0;
+
+# ================================================================
+# Global configuration variables, to be read from the config file.
+# ================================================================
+
+my $enable_processing         = undef;
+my $enable_output_to_customer = undef;
+my $output_to_debug_target    = undef;
+my $obfuscate_license_key     = undef;
+
+my $debug_level   = undef;
+my $DEBUG_NONE    = undef;
+my $DEBUG_FATAL   = undef;
+my $DEBUG_ERROR   = undef;
+my $DEBUG_WARNING = undef;
+my $DEBUG_NOTICE  = undef;
+my $DEBUG_STATS   = undef;
+my $DEBUG_INFO    = undef;
+my $DEBUG_DEBUG   = undef;
+
+my $incoming_email_server   = undef;
+my $incoming_email_port     = undef;
+my $incoming_email_address  = undef;
+my $incoming_email_password = undef;
+
+my $outgoing_email_server   = undef;
+my $outgoing_email_port     = undef;
+my $outgoing_email_address  = undef;
+my $outgoing_email_password = undef;
+
+my $blind_copy_email_address   = undef;
+my $debug_target_email_address = undef;
+my $audit_email_address        = undef;
+my $trouble_email_address      = undef;
+
+my $valid_from_address_pattern          = undef;
+my $valid_reply_to_address_pattern      = undef;
+my $valid_to_address_pattern            = undef;
+my $valid_subject_line_pattern          = undef;
+my $valid_order_sku_pattern             = undef;
+my $valid_but_ignored_order_sku_pattern = undef;
+
+# This value is currently unused.  It's here to support testing of
+# how to specify complex regular expressions in the config file.
+# Were we to settle on that, such expressions would be used as the
+# value of $valid_but_ignored_order_sku_pattern instead.
+my $precise_valid_but_ignored_order_sku_pattern = undef;
+
+my $customer_name_pattern   = undef;
+my $customer_email_pattern  = undef;
+my $order_number_pattern    = undef;
+my $order_sku_pattern       = undef;
+my $expiration_date_pattern = undef;
+
+my $request_email_mailbox = undef;
+my $bounced_email_mailbox = undef;
+my $invalid_email_mailbox = undef;
+my $handled_email_mailbox = undef;
+
+my $license_type                            = undef;
+my $license_url                             = undef;
+my $outgoing_email_subject_template         = undef;
+my $outgoing_audit_subject_template         = undef;
+my $ignored_audit_subject_template          = undef;
+my $send_only_plain_text                    = undef;
+my $outgoing_email_plain_template_file      = undef;
+my $outgoing_email_html_template_file       = undef;
+my $outgoing_email_plain_eval_template_file = undef;
+my $outgoing_email_html_eval_template_file  = undef;
+
+my $logfile                = undef;
+my $max_logfile_size       = undef;
+my $max_logfiles_to_retain = undef;
+my $audit_trail_logfile    = undef;
+
+my $network_server_timeout         = undef;
+my $max_faults_since_trouble_email = undef;
+my $cycle_time                     = undef;
+
+# ================================================================
+# Configuration variables that perhaps ought to be migrated to
+# the config file.  These are used to extract and validate values
+# from the incoming license-key request.
+# ================================================================
+
+# (This section is a placeholder for future development, or for variables
+# that ought to be hardcoded and dispensed with, or for configuration of
+# possibly transient features that may never make it into the external
+# configuration file.)
+
+# Choose which types of incoming email we will support.
+# This currently affects how Reply-To headers are checked.
+my $allow_netsuite_email = 1;
+my $allow_ubercart_email = 1;
+
+# FIX LATER:  This choice ought to be hardcoded, and this variable dispensed with.
+my $use_imap_bodypart_string = 1;
+
+# ================================================================
+# Global working variables.
+# ================================================================
+
+my $logtime = '';
+
+use constant ERROR_STATUS    => 0;
+use constant STOP_STATUS     => 1;
+use constant RESTART_STATUS  => 2;
+use constant CONTINUE_STATUS => 3;
+
+our $alarm_received     = 0;
+our $shutdown_requested = 0;
+
+my $imap = undef;
+
+my $qualified_hostname   = undef;
+my $unqualified_hostname = undef;
+
+my $message_count = 0;
+
+my $outgoing_email_plain_template      = undef;
+my $outgoing_email_html_template       = undef;
+my $outgoing_email_plain_eval_template = undef;
+my $outgoing_email_html_eval_template  = undef;
+my %outgoing_email_image               = ();
+
+my $faults_since_trouble_email = 0;
+
+# ================================================================
+# Program.
+# ================================================================
+
+exit (main() == ERROR_STATUS) ? 1 : 0;
+
+# ================================================================
+# Supporting subroutines.
+# ================================================================
+
+sub freeze_logtime {
+    $logtime = '[' . ( scalar localtime ) . '] ';
+}
+
+sub log_message {
+    print LOG @_, "\n";
+    if ($reflect_log_to_tty && $stdout_is_a_tty) {
+	print @_, "\n";
+    }
+}
+
+sub log_timed_message {
+    freeze_logtime();
+    log_message $logtime, @_;
+}
+
+sub log_shutdown {
+    log_timed_message "=== Shutdown requested; terminating (process $$). ===";
+}
+
+# Open the audit log, append the message, and close the file.
+# This protects us against any problems with the file perhaps
+# disappearing while the script runs for a long time.
+sub log_audit_message {
+    my $audit_status = 0;
+    if (open(AUDIT, '>>', $audit_trail_logfile)) {
+	$audit_status = 1;
+	freeze_logtime();
+	$audit_status = 0 if !print AUDIT $logtime, @_, "\n";
+	$audit_status = 0 if !close AUDIT;
+    }
+    return $audit_status;
+}
+
+sub open_logfile {
+    if (! open (LOG, '>>', $logfile)) {
+	print "FATAL:  Can't open log file '$logfile': $!\n";
+	sleep 10;  # Don't have supervise restart us immediately, in a tight loop.
+	return 0;
+    }
+
+    # Autoflush the log output on every single write, to allow debugging mysterious failures.
+    LOG->autoflush(1);
+
+    if (!$run_interactively) {
+	# In daemon mode (only), we re-open the STDERR stream as a duplicate of the
+	# logfile stream, to capture any output written to STDERR (from, say, the
+	# MIME::Lite->send() Debug option for exposing the process of generating
+	# email in detail).  To capture such detail, we turn on that Debug option
+	# if our own $DEBUG_DEBUG level is enabled.
+	if (! open (STDERR, '>>&LOG')) {
+	    log_timed_message "ERROR:  Can't redirect STDERR to '$logfile': $!\n";
+	}
+	else {
+	    # Autoflush the error output on every single write, to avoid problems
+	    # with block i/o and badly interleaved output lines on LOG and STDERR.
+	    LOG->autoflush(1);
+	}
+    }
+
+
+    return 1;
+}
+
+sub close_logfile {
+    close(LOG);
+}
+
+sub rotate_logfile {
+    # Implement our own locally-controlled log rotation, so a long-running daemon
+    # doesn't fill the entire disk partition with a single huge log file.  We don't
+    # close and re-open the logfile until we rotate all the files, so we still have
+    # a place to log file rotation failures, should they arise.
+    if (tell(LOG) > $max_logfile_size) {
+	if ($max_logfiles_to_retain > 1) {
+	    log_timed_message "=== On $unqualified_hostname, process $$ is rotating logfiles. ===" if $DEBUG_NOTICE;
+	    my $num = $max_logfiles_to_retain - 1;
+	    my $newname = "$logfile.$num";
+	    while ( --$num >= 0 ) {
+		my $oldname = $num ? "$logfile.$num" : $logfile;
+		if (!rename($oldname, $newname)) {
+		    log_message "ERROR:  Cannot rename $oldname to $newname" if $DEBUG_ERROR;
+		}
+		$newname = $oldname;
+	    }
+	}
+	else {
+	    truncate LOG, 0;
+	}
+	close_logfile();
+	if (!open_logfile()) {
+	    return 0;
+	}
+    }
+    return 1;
+}
+
+# We classify a NBSP (non-breaking space) character as a control here
+# to make it visibly different from an ordinary SPACE.  Newline is
+# visible because it adjusts the cursor position, and we want line
+# breaks to remain unaltered.
+sub IsInvisibleControl {
+    return <<'END';
++utf8::IsC
++a0
+-0a
+END
+}
+
+# Derived from (but improved upon) code presented in "perldoc perluniintro".
+sub printable_string {
+    join('',
+	map { $_ > 255 ?                             # if wide character ...
+	      sprintf("\\x{%04X}", $_) :             # \x{....}
+	      chr($_) =~ /\p{IsInvisibleControl}/ ?  # else if control character or nbsp ...
+	      sprintf("\\x%02X", $_) :               # \x..
+	      $_ > 127 ?                             # elseif non-ASCII ...
+	      sprintf("\\x%02X", $_) :               # \x..
+	      chr($_)                                # else as themselves
+	} unpack("U*", $_[0])                        # unpack Unicode characters
+    );
+}
+
+sub main {
+    my $command_line_status = parse_command_line();
+    if ($command_line_status != CONTINUE_STATUS) {
+	return $command_line_status;
+    }
+
+    # Daemonize, if we don't have a command-line argument saying not to.
+    if (!$run_interactively) {
+	make_daemon();
+    }
+
+    # Set up termination-signal handling, for both automated (SIGTERM)
+    # and interactive (SIGINT, perhaps SIGQUIT) use.  We also handle
+    # SIGHUP the same way, until such time as we convert to using it
+    # for re-reading the configuration file and re-initializing.
+    local $SIG{INT}  = \&handle_exit_signal;
+    local $SIG{QUIT} = \&handle_exit_signal;
+    local $SIG{TERM} = \&handle_exit_signal;
+    local $SIG{HUP}  = \&handle_exit_signal;
+
+    # Read the configuration file.
+    if (!read_config_file()) {
+	return ERROR_STATUS;
+    }
+
+    # Stop if this is just a debugging run.
+    return STOP_STATUS if $debug_config;
+
+    if (!open_logfile()) {
+	return ERROR_STATUS;
+    }
+
+    log_timed_message "=== Starting up (process $$). ===";
+
+    if (!$enable_processing) {
+	log_timed_message "FATAL:  Stopping execution (process $$) because processing is not enabled in the config file.";
+	close_logfile();
+	return STOP_STATUS;
+    }
+
+    if (!initialize()) {
+	log_timed_message "FATAL:  Stopping execution (process $$) because initialization failed.";
+	close_logfile();
+	return ERROR_STATUS;
+    }
+
+    # Loop, looking for and processing incoming email.
+    while (!$shutdown_requested) {
+	my $cycle_status = cycle();
+	if ($cycle_status != CONTINUE_STATUS) {
+	    log_timed_message "=== Cycle processing result is not to continue; will exit (process $$). ===";
+	    close_logfile();
+	    return $cycle_status;
+	}
+	log_timed_message "--- taking a siesta ---" if $DEBUG_NOTICE;
+	sleep $cycle_time;
+
+	if (!rotate_logfile()) {
+	    log_timed_message "=== Problem with rotating the logfile; will exit (process $$). ===";
+	    close_logfile();
+	    return ERROR_STATUS;
+	}
+    }
+
+    log_shutdown if $shutdown_requested;
+
+    close_logfile();
+
+    return $shutdown_requested ? STOP_STATUS : RESTART_STATUS;
+}
+
+sub print_usage {
+    print "usage:  generate_quickstart_license [-h] [-v] [-c config_file] [-d] [-i] [-r|-s] [-o]\n";
+    print "where:  -h:  print this help message\n";
+    print "        -v:  print the version number\n";
+    print "        -c config_file:  specify an alternate config file\n";
+    print "             (default is $config_file)\n";
+    print "        -d:  dump the config file entries (to debug them)\n";
+    print "        -i:  run interactively, not as a persistent daemon\n";
+    print "        -r:  process just a single valid request, then stop\n";
+    print "        -s:  run just a single cycle, then stop\n";
+    print "        -o:  write log messages also to standard output\n";
+    print "The -o option is illegal unless -i is also specified.\n";
+}
+
+# We could have perhaps used Getopt::Long to simplify this.
+sub parse_command_line {
+    while ( scalar(@ARGV) >= 1 ) {
+	if ( $ARGV[0] eq '-h' || $ARGV[0] eq '--help' ) {
+	    print_usage();
+	    return STOP_STATUS;
+	}
+	if ( $ARGV[0] eq '-v' || $ARGV[0] eq '--version' ) {
+	    print "$PROGNAME Version:  $VERSION\n";
+	    print "Copyright 2009 GroundWork Open Source, Inc. (\"GroundWork\").\n";
+	    print "All rights reserved.\n";
+	    return STOP_STATUS;
+	}
+	if ( ( $ARGV[0] eq '-c' || $ARGV[0] eq '--config' ) && defined($ARGV[1]) ) {
+	    $config_file = $ARGV[1];
+	    shift @ARGV;
+	    shift @ARGV;
+	    next;
+	}
+	if ( $ARGV[0] eq '-d' || $ARGV[0] eq '--debug' ) {
+	    $debug_config = 1;
+	    shift @ARGV;
+	    next;
+	}
+	if ( $ARGV[0] eq '-i' || $ARGV[0] eq '--interactive' ) {
+	    $run_interactively = 1;
+	    shift @ARGV;
+	    next;
+	}
+	if ( $ARGV[0] eq '-r' || $ARGV[0] eq '--request' ) {
+	    $do_one_request = 1;
+	    shift @ARGV;
+	    next;
+	}
+	if ( $ARGV[0] eq '-s' || $ARGV[0] eq '--single-cycle' ) {
+	    $do_one_cycle = 1;
+	    shift @ARGV;
+	    next;
+	}
+	if ( $ARGV[0] eq '-o' || $ARGV[0] eq '--output-to-tty' ) {
+	    $reflect_log_to_tty = 1;
+	    shift @ARGV;
+	    next;
+	}
+	print_usage();
+	return ERROR_STATUS;
+    }
+    if ($do_one_request && $do_one_cycle) {
+	print "Error:  The -r and -s options are mutually exclusive.\n";
+	print_usage();
+	return ERROR_STATUS;
+    }
+    if (!$run_interactively && $reflect_log_to_tty) {
+	print_usage();
+	return ERROR_STATUS;
+    }
+    return CONTINUE_STATUS;
+}
+
+sub do_fork {
+    my $retries = 5;
+    while (--$retries >= 0) {
+	my $pid;
+	if ($pid = fork) {
+	    # successful fork; we're in the parent
+	    return $pid;
+	} elsif (defined $pid) {
+	    # successful fork; we're in the child
+	    return 0;
+	} elsif ($! == EAGAIN) {
+	    # unsuccessful but supposedly recoverable fork error; wait, then loop around and try again
+	    sleep 5;
+	} else {
+	    # weird fork error
+	    die "Cannot fork: $!\n";
+	}
+    }
+}
+
+# For details on what is done here to make a daemon process, and why, see:
+# * "How to Write a UNIX Daemon":  http://cjh.polyplex.org/software/daemon.pdf
+#   (this old USENIX article is the original bible on this topic)
+# * Proc::Daemon from CPAN
+# We prefer to write our own version so we know exactly what it is doing,
+# and can tweak it a bit, but the same principles are being followed.
+sub make_daemon {
+    # Make ourself immune to background job control write checks.
+    $SIG{TTOU} = 'IGNORE';
+    $SIG{TTIN} = 'IGNORE';
+    $SIG{TSTP} = 'IGNORE';
+
+    # We ought to close all open file descriptors, especially stdin, stdout, stderr,
+    # primarily to disconnect from any controlling terminal.
+    #
+    # However, Perl's i/o layer objects later on if, say, we try to open a file that uses one
+    # of these file descriptors (0, 1, or 2) in a manner different from how it is usually
+    # used (for example, read-only on file descriptor 1).  Presumably this is to provide a
+    # warning against opening these "system" file descriptors (see $SYSTEM_FD_MAX or $^F)
+    # in a way that would be inappropriate for actual use as STDIN, STDOUT, or STDERR.  So the
+    # simplest approach to dropping any connection to a controlling terminal is to open all of
+    # these channels to /dev/null.  But I've seen some advice that due to strange behavior of
+    # the Perl i/o layer, we might have to do the open() calls without preceding close() calls,
+    # or the open() calls won't connect the STDIN, STDOUT, and STDERR file handles to the file
+    # descriptors we expect.  Whether or not that's true, doing it this way is at least safe.
+    # close STDERR;
+    # close STDOUT;
+    # close STDIN;
+    # Opening these file descriptors to a safe place instead of leaving them closed also
+    # prevents lots of error messages from appearing in our logfile when odd parts of the
+    # code (e.g., stuff buried in library modules) tries to access these file handles.
+    open STDIN,  '<', '/dev/null';
+    open STDOUT, '>', '/dev/null';
+    open STDERR, '>', '/dev/null';
+    # FIX LATER:  Figure out if we can reliably and efficiently discover what other i/o
+    # channels might be open, and close them all.
+
+    # Disassociate from our process group and controlling terminal.
+    if (do_fork()) {
+	# successful fork; we're in the parent
+	exit 0;
+    }
+    # parent has exited, child remains; make it a session leader (not just a process group leader);
+    # the preceding fork was necessary to guarantee that this call succeeds
+    POSIX::setsid();
+
+    ## # Do not reacquire a controlling terminal.  To ensure that, become immune from process group leader death ...
+    ## $SIG{HUP} = 'IGNORE';
+    ## # ... then become non-process-group leader.
+    ## if (do_fork()) {
+    ##     # successful fork; we're in the parent
+    ##     exit 0;
+    ## }
+    # But in fact we don't want to do that, because the whole point of our exercise here is to become
+    # our own process group leader, so all descendants will be killed along with us when our process
+    # group is killed.  So we'll just have to be careful not to reacquire a controlling terminal,
+    # either by watching what actions we take (don't open any terminal devices), or by forking and
+    # having the parent just sleep forever waiting for the shutdown signal to come in.
+
+    # child has exited; grandchild remains
+
+    # Change current directory to '/', to prevent "filesystem busy" problems during unmounts.
+    chdir '/';
+
+    # Reset the file mode creation mask to an appropriate value,
+    # to override whatever got inherited from the parent process.
+    umask 022;
+}
+
+# Mostly here, we just depend on TypedConfig's dying behavior in case problems arise while
+# reading the configuration file, rather than trying to catch errors directly in this routine.
+# Validation of the config-file values is mostly carried out in initialize() instead.
+sub read_config_file {
+    my $config = TypedConfig->secure_new ($config_file, $debug_config);
+
+    # Whether to process anything.  Turn this off if you want to disable
+    # this process completely in case it gets run some time when you're
+    # not expecting it to.
+    $enable_processing = $config->get_boolean ('enable_processing');
+
+    # Whether any output email should be generated.
+    $enable_output_to_customer = $config->get_boolean ('enable_output_to_customer');
+
+    # Whether output to the client should be redirected to the
+    # debug_target_email_address specified below.
+    $output_to_debug_target = $config->get_boolean ('output_to_debug_target');
+
+    # Whether to obfuscate the license key before sending out email.
+    $obfuscate_license_key = $config->get_boolean ('obfuscate_license_key');
+
+    # Global Debug Level Flag.
+    $debug_level = $config->get_number ('debug_level');
+
+    # Variables to be used as quick tests to see if we're interested in
+    # particular debug messages.
+    $DEBUG_NONE    = $debug_level == 0;  # turn off all debug info
+    $DEBUG_FATAL   = $debug_level >= 1;  # the application is about to die
+    $DEBUG_ERROR   = $debug_level >= 2;  # the application has found a serious problem, but will attempt to recover
+    $DEBUG_WARNING = $debug_level >= 3;  # the application has found an anomaly, but will try to handle it
+    $DEBUG_NOTICE  = $debug_level >= 4;  # the application wants to inform you of a significant event
+    $DEBUG_STATS   = $debug_level >= 5;  # the application wants to log statistical data for later analysis
+    $DEBUG_INFO    = $debug_level >= 6;  # the application wants to log a potentially interesting event
+    $DEBUG_DEBUG   = $debug_level >= 7;  # the application wants to log detailed debugging data
+
+    # Where to read incoming messages.  Only connections via SSL are supported.
+    $incoming_email_server   = $config->get_scalar ('incoming_email_server');
+    $incoming_email_port     = $config->get_number ('incoming_email_port');
+    $incoming_email_address  = $config->get_scalar ('incoming_email_address');
+    $incoming_email_password = $config->get_scalar ('incoming_email_password');
+
+    # What email account to use when sending outgoing messages.
+    # Only connections via SSL (GMail port 465) are supported.
+    $outgoing_email_server   = $config->get_scalar ('outgoing_email_server');
+    $outgoing_email_port     = $config->get_number ('outgoing_email_port');
+    $outgoing_email_address  = $config->get_scalar ('outgoing_email_address');
+    $outgoing_email_password = $config->get_scalar ('outgoing_email_password');
+
+    # Where to send a blind copy of all email sent either to the customer or
+    # to the debug target.
+    $blind_copy_email_address = $config->get_scalar ('blind_copy_email_address');
+
+    # Fixed target account to send outgoing messages to instead of the email
+    # address extracted from incoming email, for debugging purposes.
+    $debug_target_email_address = $config->get_scalar ('debug_target_email_address');
+
+    # [Not yet supported.]  Where to send an email notifying that the license key
+    # has been successfully sent out, if desired.  This might help with our order
+    # workflow, to trigger subsequent manual actions such as updating SalesForce.
+    # Set this to an empty string if no such email should be sent.
+    $audit_email_address = $config->get_scalar ('audit_email_address');
+
+    # Where to send notices of script malfunctions.
+    $trouble_email_address = $config->get_scalar ('trouble_email_address');
+
+    # Regular expression patterns to validate particular headers in an
+    # incoming license request.
+    $valid_from_address_pattern     = $config->get_scalar ('valid_from_address_pattern');
+    $valid_reply_to_address_pattern = $config->get_scalar ('valid_reply_to_address_pattern');
+    $valid_to_address_pattern       = $config->get_scalar ('valid_to_address_pattern');
+    $valid_subject_line_pattern     = $config->get_scalar ('valid_subject_line_pattern');
+
+    # Regular expresson pattern to match to validate order SKUs that are to
+    # have license keys automatically generated and emailed by this script.
+    $valid_order_sku_pattern = $config->get_scalar ('valid_order_sku_pattern');
+
+    # Regular expression pattern to match to validate order SKUs that don't
+    # match valid_order_sku_pattern but are otherwise considered valid.
+    # Such SKUs will be recognized as valid, but license key generation
+    # for these orders will be processed manually.  For ease of constructing
+    # a complex pattern specifying multiple SKUs, white space in this regular
+    # expression will be ignored.
+    # For simplified ongoing maintenance, in production we might use a general
+    # wildcard pattern rather than detailing individual valid SKUs.  That will
+    # matter to our downstream code, which needs to behave properly even though
+    # incoming SKUs might match both the $valid_order_sku_pattern and the
+    # $valid_but_ignored_order_sku_pattern.
+    $valid_but_ignored_order_sku_pattern = $config->get_scalar ('valid_but_ignored_order_sku_pattern');
+
+    # If we need precision, we would want a pattern something like the following
+    # (or some derivative that might involve partial wildcards).  White space in
+    # this regular expression will be ignored.
+    # [This variable is currently demanded and recognized but unused.]
+    $precise_valid_but_ignored_order_sku_pattern = $config->get_scalar ('precise_valid_but_ignored_order_sku_pattern');
+
+    # Regular expresson patterns used to extract critical information from
+    # incoming license-key requests.  Each of these must include a single
+    # pair of parentheses to capture a field from the email body, except
+    # for the $order_number_pattern which must include two such pairs.
+    $customer_name_pattern   = $config->get_scalar ('customer_name_pattern');
+    $customer_email_pattern  = $config->get_scalar ('customer_email_pattern');
+    $order_number_pattern    = $config->get_scalar ('order_number_pattern');
+    $order_sku_pattern       = $config->get_scalar ('order_sku_pattern');
+    $expiration_date_pattern = $config->get_scalar ('expiration_date_pattern');
+
+    # Names of relevant mail folders.
+    $request_email_mailbox = $config->get_scalar ('request_email_mailbox');
+    $bounced_email_mailbox = $config->get_scalar ('bounced_email_mailbox');
+    $invalid_email_mailbox = $config->get_scalar ('invalid_email_mailbox');
+    $handled_email_mailbox = $config->get_scalar ('handled_email_mailbox');
+
+    # The type of license we are issuing from this automailer server.
+    $license_type = $config->get_scalar ('license_type');
+
+    # Where to probe to fetch a license, including substitutable parameters.
+    $license_url = $config->get_scalar ('license_url');
+
+    # The Subject: line on an outgoing license-key email to the customer.
+    $outgoing_email_subject_template = $config->get_scalar ('outgoing_email_subject_template');
+
+    # The Subject: lines on the audit email sent to the $audit_email_address specified above.
+    $outgoing_audit_subject_template = $config->get_scalar ('outgoing_audit_subject_template');
+    $ignored_audit_subject_template  = $config->get_scalar ('ignored_audit_subject_template');
+
+    # Whether to send only a plain-text message, or both plain and HTML formattings.
+    $send_only_plain_text = $config->get_boolean ('send_only_plain_text');
+
+    # Where to find the full text of the outgoing email.
+    $outgoing_email_plain_template_file      = $config->get_scalar ('outgoing_email_plain_template_file');
+    $outgoing_email_html_template_file       = $config->get_scalar ('outgoing_email_html_template_file');
+    $outgoing_email_plain_eval_template_file = $config->get_scalar ('outgoing_email_plain_eval_template_file');
+    $outgoing_email_html_eval_template_file  = $config->get_scalar ('outgoing_email_html_eval_template_file');
+
+    # Where to log ordinary operational messages, especially for debugging.
+    # A relative pathname specified here will be interpreted relative to the
+    # directory in which the automailer lives and runs.
+    $logfile = $config->get_scalar ('logfile');
+
+    # We need to absolutize a relative path to the $logfile right away
+    # before we attempt to use $logfile to open the file, so we do that
+    # work here instead of within initialize().
+    $logfile = "$Bin/$logfile" if $logfile !~ m{^/};
+
+    # How large (in MBytes) the logfile is allowed to get before it is
+    # automatically rotated at the end of a processing cycle.
+    $max_logfile_size = $config->get_number ('max_logfile_size');
+    $max_logfile_size *= 1024 * 1024;  # convert from MB to bytes
+
+    # How many total logfiles will be retained when the logfile is rotated.
+    $max_logfiles_to_retain = $config->get_number ('max_logfiles_to_retain');
+
+    # Where to log info about what licenses have been issued, when and to whom.
+    # A relative pathname specified here will be interpreted relative to the
+    # directory in which the automailer lives and runs.
+    $audit_trail_logfile = $config->get_scalar ('audit_trail_logfile');
+
+    # We absolutize the $audit_trail_logfile just as we did above for $logfile,
+    # and we do so here rather than in initialize() primarily to keep similar
+    # code together in the same place.
+    $audit_trail_logfile = "$Bin/$audit_trail_logfile" if $audit_trail_logfile !~ m{^/};
+
+    # Max time (seconds) to wait for network server activity.
+    $network_server_timeout = $config->get_number ('network_server_timeout');
+
+    # How many times to ignore possibly-transient trouble before reporting it.
+    $max_faults_since_trouble_email = $config->get_number ('max_faults_since_trouble_email');
+
+    # How often to check for incoming email, in seconds.
+    $cycle_time = $config->get_number ('cycle_time');
+
+    return 1;
+}
+
+# Here we both validate the configuration file entries, and initialize working variables.
+# This validation was deferred because we wanted to have the log file open while we run
+# this checking, in case we discover problems in the setup.
+sub initialize {
+    my $config_is_okay = 1;
+
+    use Sys::Hostname;
+    $qualified_hostname = hostname();
+    ($unqualified_hostname = $qualified_hostname) =~ s/\..*//;
+
+    my $from_address     = undef;
+    my $reply_to_address = undef;
+    my $to_address       = undef;
+
+    if (!is_valid_email_address($incoming_email_address)) {
+	log_message 'ERROR:  Invalid email address specified for incoming_email_address.' if $DEBUG_ERROR;
+	$config_is_okay = 0;
+    }
+    if (!is_valid_email_address($outgoing_email_address)) {
+	log_message 'ERROR:  Invalid email address specified for outgoing_email_address.' if $DEBUG_ERROR;
+	$config_is_okay = 0;
+    }
+    if ($blind_copy_email_address ne '' && !is_valid_email_address($blind_copy_email_address)) {
+	log_message 'ERROR:  Invalid email address specified for blind_copy_email_address.' if $DEBUG_ERROR;
+	$config_is_okay = 0;
+    }
+    if (!is_valid_email_address($debug_target_email_address)) {
+	log_message 'ERROR:  Invalid email address specified for debug_target_email_address.' if $DEBUG_ERROR;
+	$config_is_okay = 0;
+    }
+    if ($audit_email_address ne '' && !is_valid_email_address($audit_email_address)) {
+	log_message 'ERROR:  Invalid email address specified for audit_email_address.' if $DEBUG_ERROR;
+	$config_is_okay = 0;
+    }
+    if (!is_valid_email_address($trouble_email_address)) {
+	log_message 'ERROR:  Invalid email address specified for trouble_email_address.' if $DEBUG_ERROR;
+	$config_is_okay = 0;
+    }
+    if ($audit_email_address eq $incoming_email_address) {
+	# It's no good if the audit address is the same as the incoming address --
+	# since this is an automated process, no human will ever be looking at such
+	# email, so the purpose of sending it will be defeated.
+	log_message 'ERROR:  The audit_email_address cannot match the incoming_email_address.' if $DEBUG_ERROR;
+	$config_is_okay = 0;
+    }
+    if ($audit_email_address eq $outgoing_email_address) {
+	# It's no good if the audit address is the same as the outgoing address --
+	# GMail won't send email back to the original sender, and our audit emails
+	# would effectively be lost.
+	log_message 'ERROR:  The audit_email_address cannot match the outgoing_email_address.' if $DEBUG_ERROR;
+	$config_is_okay = 0;
+    }
+    if ($trouble_email_address eq $outgoing_email_address) {
+	# It's no good if the trouble address is the same as the outgoing address --
+	# GMail won't send email back to the original sender, and our trouble emails
+	# would effectively be lost.
+	log_message 'ERROR:  The trouble_email_address cannot match the outgoing_email_address.' if $DEBUG_ERROR;
+	$config_is_okay = 0;
+    }
+    # FIX LATER:  If the pattern allows more than one email address, this will only check the last one;
+    # we ought to generalize the checking to validate all addresses found in the pattern.  Also, if the
+    # pattern here allows generalized addresses (e.g., from anyone in a given domain), validation of
+    # such a pattern will be more complex than just matching a fixed user@domain string.
+    if ($valid_from_address_pattern =~ /<([^<]+)>\$$/) {
+	$from_address = $1;
+    }
+    if (!is_valid_email_address($from_address)) {
+	log_message 'ERROR:  Invalid email address specified for valid_from_address_pattern.' if $DEBUG_ERROR;
+	$config_is_okay = 0;
+    }
+    # FIX LATER:  If the pattern allows more than one email address, this will only check the last one;
+    # we ought to generalize the checking to validate all addresses found in the pattern.  Also, if the
+    # pattern here allows generalized addresses (e.g., from anyone in a given domain), validation of
+    # such a pattern will be more complex than just matching a fixed user@domain string.
+    if ($valid_reply_to_address_pattern =~ /<([^<]+)>\$$/) {
+	$reply_to_address = $1;
+    }
+    if (!is_valid_email_address($reply_to_address)) {
+	log_message 'ERROR:  Invalid email address specified for valid_reply_to_address_pattern.' if $DEBUG_ERROR;
+	$config_is_okay = 0;
+    }
+    if ($valid_to_address_pattern =~ /([-.\w]+@[-.\w]+)/) {
+	$to_address = $1;
+    }
+    if (!is_valid_email_address($to_address)) {
+	log_message 'ERROR:  Invalid email address specified for valid_to_address_pattern.' if $DEBUG_ERROR;
+	$config_is_okay = 0;
+    }
+
+    $valid_from_address_pattern          = qr{$valid_from_address_pattern};
+    $valid_reply_to_address_pattern      = qr{$valid_reply_to_address_pattern};
+    $valid_to_address_pattern            = qr{$valid_to_address_pattern};
+    $valid_subject_line_pattern          = qr{$valid_subject_line_pattern};
+    $valid_order_sku_pattern             = qr{$valid_order_sku_pattern};
+    $valid_but_ignored_order_sku_pattern = qr{$valid_but_ignored_order_sku_pattern}x;
+
+    $precise_valid_but_ignored_order_sku_pattern = qr{$precise_valid_but_ignored_order_sku_pattern}x;
+
+    $customer_name_pattern   = qr{$customer_name_pattern};
+    $customer_email_pattern  = qr{$customer_email_pattern};
+    $order_number_pattern    = qr{$order_number_pattern};
+    $order_sku_pattern       = qr{$order_sku_pattern};
+    $expiration_date_pattern = qr{$expiration_date_pattern};
+
+    $config_is_okay &= read_template_file(
+	'outgoing_email_plain_template_file',
+	$outgoing_email_plain_template_file,
+	\$outgoing_email_plain_template
+    );
+    $config_is_okay &= read_template_file(
+	'outgoing_email_html_template_file',
+	$outgoing_email_html_template_file,
+	\$outgoing_email_html_template
+    );
+    $config_is_okay &= read_template_file(
+	'outgoing_email_plain_eval_template_file',
+	$outgoing_email_plain_eval_template_file,
+	\$outgoing_email_plain_eval_template
+    );
+    $config_is_okay &= read_template_file(
+	'outgoing_email_html_eval_template_file',
+	$outgoing_email_html_eval_template_file,
+	\$outgoing_email_html_eval_template
+    );
+
+    # Look for image references in the outgoing email HTML templates, and replace
+    # them with tags that we will later replace with Content-ID references and
+    # corresponding image parts when we generate multi-part email messages.
+    if (defined $outgoing_email_html_template) {
+	%{ $outgoing_email_image{$outgoing_email_html_template_file} } = ();
+	my $tag_number = 0;
+	pos($outgoing_email_html_template) = 0;
+	while ($outgoing_email_html_template =~ m{http:[^:]+/([^/]+\.(?:gif|png))}gc) {
+	    my $image_url  = $&;
+	    my $image_file = $1;
+	    log_message "INFO:  Found an HTTP URL for $image_file in the HTML template." if $DEBUG_INFO;
+	    if ( -f "$Bin/$image_file" ) {
+		log_message "INFO:  Replacing the URL for $image_file in the HTML template." if $DEBUG_INFO;
+		++$tag_number;
+		my $image_tag = "{IMAGE_$tag_number}";
+		$outgoing_email_image{$outgoing_email_html_template_file}{$image_tag} = "$Bin/$image_file";
+		pos($outgoing_email_html_template) -= length($image_url);
+		my $new_pos = pos($outgoing_email_html_template) + length($image_tag);
+		$outgoing_email_html_template =~ s<http:[^:]+/[^/]+\.(?:gif|png)><$image_tag>;
+		pos($outgoing_email_html_template) = $new_pos;
+	    }
+	    else {
+		log_message "WARNING:  Cannot find a local copy of the image file $image_file" if $DEBUG_WARNING;
+	    }
+	}
+    }
+    if (defined $outgoing_email_html_eval_template) {
+	%{ $outgoing_email_image{$outgoing_email_html_eval_template_file} } = ();
+	my $tag_number = 0;
+	pos($outgoing_email_html_eval_template) = 0;
+	while ($outgoing_email_html_eval_template =~ m{http:[^:]+/([^/]+\.(?:gif|png))}gc) {
+	    my $image_url  = $&;
+	    my $image_file = $1;
+	    log_message "INFO:  Found an HTTP URL for $image_file in the HTML eval template." if $DEBUG_INFO;
+	    if ( -f "$Bin/$image_file" ) {
+		log_message "INFO:  Replacing the URL for $image_file in the HTML eval template." if $DEBUG_INFO;
+		++$tag_number;
+		my $image_tag = "{IMAGE_$tag_number}";
+		$outgoing_email_image{$outgoing_email_html_eval_template_file}{$image_tag} = "$Bin/$image_file";
+		pos($outgoing_email_html_eval_template) -= length($image_url);
+		my $new_pos = pos($outgoing_email_html_eval_template) + length($image_tag);
+		$outgoing_email_html_eval_template =~ s<http:[^:]+/[^/]+\.(?:gif|png)><$image_tag>;
+		pos($outgoing_email_html_eval_template) = $new_pos;
+	    }
+	    else {
+		log_message "WARNING:  Cannot find a local copy of the image file $image_file" if $DEBUG_WARNING;
+	    }
+	}
+    }
+
+    return $config_is_okay;
+}
+
+# I think we should have been able to use a symbolic reference here to eliminate
+# the second parameter to this function, but I cannot seem to make it work.
+sub read_template_file {
+    my $config_parameter = shift;
+    my $template_file    = shift;
+    my $template_ref     = shift;
+    my $read_status      = 1;
+
+    # Validate the configured pathname to make sure it's not something like "/etc/passwd".
+    # That's most easily done by making sure the pathname doesn't contain any "/" characters,
+    # and insisting that the file is to be read from the directory where this script lives.
+    if ($template_file =~ m{/}) {
+	log_message "ERROR:  The $config_parameter must live in the same directory as $PROGNAME" if $DEBUG_ERROR;
+	$read_status = 0;
+    }
+    else {
+	if (open (TEMPLATE, '<', "$Bin/$template_file")) {
+	    my @all_lines = <TEMPLATE>;
+	    $$template_ref = join ( '', @all_lines );
+	    if ($$template_ref eq '') {
+		log_message "ERROR:  The $config_parameter is empty." if $DEBUG_ERROR;
+		$read_status = 0;
+	    }
+	    if (!close(TEMPLATE)) {
+		log_message "ERROR:  I/O problem; cannot close the $config_parameter." if $DEBUG_ERROR;
+		$read_status = 0;
+	    }
+	}
+	else {
+	    log_message "ERROR:  Cannot open the $config_parameter." if $DEBUG_ERROR;
+	    $read_status = 0;
+	}
+    }
+    return $read_status;
+}
+
+sub cycle {
+    log_timed_message "--- running a cycle ---" if $DEBUG_NOTICE;
+    my $got_valid_request = 0;
+    my $fatal_condition   = 0;
+
+    # Check for new incoming email on a preconfigured address, retrieved as an
+    # IMAP client via an SSL connection.
+    my $open_imap_status = open_imap_connection();
+    if ($open_imap_status != CONTINUE_STATUS) {
+	return $open_imap_status;
+    }
+
+    my $uids = find_messages();
+
+    # Note:  We are not required here to take any measures to ensure that a single
+    # customer does not purchase multiple Quickstart/Core licenses, as opposed to
+    # signing up for proper per-node licensing for larger installations, and sending
+    # out trouble or audit email if they attempt to do so.  Monitoring for that kind
+    # of purchasing activity will, for the time being, be done manually.  Presumably,
+    # any filtering we apply for this situation will be done before the license key
+    # generation request is submitted, as it will be too late once this script sees
+    # the additional requests and processes them.
+
+    while (1) {
+	if ($shutdown_requested) {
+	    $fatal_condition = 1;
+	    last;
+	}
+
+	log_timed_message "INFO:  Looking for incoming messages." if $DEBUG_INFO;
+
+	# (*) Read the next email message in the $request_email_mailbox folder.
+	# fetch_message() will update the list of UIDs, discarding whichever ones it realizes
+	# are not what we're looking for as well as the one it returns.  That allows us to
+	# pass back the list of remaining message UIDs on the next iteration of this loop.
+	my ($fetch_status, $message_uid, $from_header, $reply_to_header, $to_header, $subject_order_number, $body_charset, $email_body)
+	  = fetch_message($uids);
+	if ($fetch_status != CONTINUE_STATUS) {
+	    close_imap_connection();
+	    return $fetch_status;
+	}
+
+	# Quit for this cycle if there are no more messages.
+	last if (! defined $email_body);
+
+	# Note that the email body for one of our valid license key requests comes back
+	# encoded in UTF-8, if the request comes from NetSuite.  This is specified as the
+	# CHARSET value in the $imap->get_bodystructure($message_uid)->bodyparms hash if
+	# you care to look, say to validate that assumption.  (Our re-keygen script, used
+	# for requests sent from Marketo, does not currently set the CHARSET value, and
+	# does not encode in UTF-8, so we must adapt to that situation below.  [That was
+	# previously the case; we now believe it has been fixed, at least when Unicode
+	# characters are present.]  When the key generator is finally upgraded to accept
+	# full percent-encoded UTF-8 in the URL and return proper UTF-8 in its response
+	# [now done], we need to revisit the re-keygen script [talk to Jesse about it]
+	# and have it send in UTF-8 and declare its Content-Type charset as UTF-8 [this
+	# is apparently done now].)  That will affect our downstream interpretation of
+	# the email body content.  In particular, customer names are somewhat likely to
+	# contain at least characters from ISO-8859-1 (and in production, we have seen
+	# other Unicode characters beyond that, including Cyrillic), so we must keep
+	# careful track of the character encoding throughout our handling of that field.
+
+	# (*) When you receive an incoming email, parse it to extract an order number,
+	#     the order SKU, the customer name, and the customer email address.  Validate
+	#     that the order number is actually an integer.  If possible, either when the
+	#     message is first fetched or back here, also run these checks:
+	#     * validate the sender of the license key request (must be directly from a
+	#       particular configured address)
+	#     * validate the subject line of the email (its complete format, and that it
+	#       contains the same order number as the body of the request)
+	#     * validate the order SKU
+	#     * possible future feature:  validate the customer name and email address
+	#       against the order number by consulting an external database (or web page);
+	#       this feature is not yet implemented because for now we'll have a human
+	#       watching the order stream for signs of impertinence
+	#     * possible future feature:  in fetch_message(), validate that the sender of
+	#       the license key request is not forged or faked in any way, say by sending
+	#       through various unexpected proxies before it gets to our incoming account
+	#     If any of these validations fail, log that fact, move the email to the
+	#     $invalid_email_mailbox folder, send an email to the $trouble_email_address,
+	#     and otherwise abandon any further action regarding this incoming message.
+
+	my $utf8_customer_name      = undef;
+	my $unicode_customer_name   = undef;
+	my $printable_customer_name = undef;
+	my $customer_email          = undef;
+	my $order_number            = undef;
+	my $order_sku               = undef;
+	my $is_eval_order           = undef;
+	my $expiration_date         = '';
+
+	# We could have matched both customer name and email in one pattern,
+	# but using separate patterns is better for future generality.
+	if ($email_body =~ $customer_name_pattern) {
+	    my $customer_name = $1;
+	    # We need to decode the $customer_name differently depending on the character set
+	    # which is listed in the Content-Type of the incoming email body.  We have seen
+	    # these combinations, at least, in the incoming email:
+	    # Needs decoding:
+	    #     Content-Type: text/html; charset=UTF-8
+	    # Should not be decoded:
+	    #     Content-Type: text/html
+	    if (defined($body_charset) && $body_charset =~ /^UTF-8$/i) {
+		$unicode_customer_name = decode('utf8', $customer_name);
+	    }
+	    else {
+		# We presume the incoming name is actually ISO-8859-1 or something similar
+		# which can be directly interpreted as Unicode without decoding.  (Exercise
+		# for the reader:  what are the differences between ISO-8859-1 and ISO-8859-15,
+		# and which Unicode characters correspond to these differences?)  If our working
+		# assumption fails, we will need to further distinguish some other charset type
+		# and take corresponding action to decode it into Unicode.
+		$unicode_customer_name = $customer_name;
+	    }
+
+	    # We clean up the incoming customer name before doing anything else with it, because
+	    # we have sometimes seen issues with strange Unicode characters showing up in it that
+	    # cause problems downstream.  How the customer manages to type in such characters
+	    # (such as odd control characters), we don't know.  But we strip them out here.
+	    #
+	    # We turn soft hyphens into ordinary hyphens partly because their similar appearance
+	    # would probably cause confusion and failure down the road, and partly because they
+	    # are categorized as Unicode control characters rather than printing characters.
+	    # See http://www.cs.tut.fi/~jkorpela/shy.html for details.  For now, we'll leave
+	    # non-breaking spaces alone, not translating them to ordinary spaces.
+	    $unicode_customer_name =~ s/\xAD/-/g;
+	    $unicode_customer_name =~ s/\pC//g;
+	    $unicode_customer_name =~ s/^\s+|\s+$//g;
+	    $unicode_customer_name =~ s/\s+/ /g;
+
+	    $utf8_customer_name = encode('utf8', $unicode_customer_name);
+
+	    # We would get "Wide character in print" errors when we print() if we have Unicode characters
+	    # in the customer name beyond those that can be represented in a single byte.  And even some
+	    # Unicode characters in the range 128..255 don't show up in a log message for some reason, at
+	    # least not visibly so when viewed in a terminal window or the vim editor.  So for printing
+	    # to a log file, we must avoid having the customer name contain such things as Cyrillic
+	    # characters that we cannot display in an ordinary xterm terminal window.  To that end, we
+	    # capture a form of the customer name that transforms non-printable characters into printable
+	    # hex escape sequences.  They won't be terribly readable, but they'll be unambiguous and printable.
+	    $printable_customer_name = printable_string($unicode_customer_name) if defined $unicode_customer_name;
+	}
+	if ($email_body =~ $customer_email_pattern) {
+	    $customer_email = $1;
+	}
+	if ($email_body =~ $order_number_pattern) {
+	    # Our old validation, when we had two copies of the order number in the body
+	    # of the license key request email, would compare both of them to the order
+	    # number in the Subject line.  But now our pattern just captures one field.
+	    # $order_number = $1 if ($subject_order_number eq "$1" && "$1" eq "$2");
+	    $order_number = $1 if ($subject_order_number eq "$1");
+	}
+	if ($email_body =~ $order_sku_pattern) {
+	    $order_sku = $1;
+	}
+	if ($email_body =~ $expiration_date_pattern) {
+	    $expiration_date = $1;
+	}
+	$is_eval_order = defined($order_number) && ($order_number =~ /^EVAL/);
+
+	if ($DEBUG_DEBUG) {
+	    log_message '---   Customer name: ', defined($printable_customer_name) ? $printable_customer_name : '(undefined)';
+	    log_message '---  Customer email: ', defined($customer_email)          ? $customer_email          : '(undefined)';
+	    log_message '---    Order number: ', defined($order_number)            ? $order_number            : '(undefined)';
+	    log_message '---       Order SKU: ', defined($order_sku)               ? $order_sku               : '(undefined)';
+	    log_message '--- Expiration date: ', ($expiration_date ne '')          ? $expiration_date         : '(undefined)';
+	}
+
+	my $is_bad_message = 0;
+	if (!is_valid_customer_name($unicode_customer_name)) {
+	    $is_bad_message = 1;
+	    log_message 'ERROR:  Got invalid customer name: ',
+	      defined($unicode_customer_name) ? $unicode_customer_name : '(empty)'
+	      if $DEBUG_ERROR;
+	}
+	if (!is_valid_email_address($customer_email)) {
+	    $is_bad_message = 1;
+	    log_message 'ERROR:  Got invalid customer email address: ', defined($customer_email) ? $customer_email : '(empty)' if $DEBUG_ERROR;
+	}
+	if (!is_valid_order_number($order_number)) {
+	    $is_bad_message = 1;
+	    log_message 'ERROR:  Got invalid order number: ', defined($order_number) ? $order_number : '(empty)' if $DEBUG_ERROR;
+	}
+	if (!is_valid_expiration_date($is_eval_order, $expiration_date)) {
+	    $is_bad_message = 1;
+	    log_message 'ERROR:  Got invalid expiration date for ', ($is_eval_order ? 'an eval:  ' : 'a purchase:  '),
+	      (($expiration_date ne '') ? $expiration_date : '(empty)') if $DEBUG_ERROR;
+	}
+	if (!is_valid_order_sku($order_sku)) {
+	    # We wanted to check for ignored SKUs before checking for ordinary valid SKUs, rather than only checking
+	    # for ignored SKUs if they are not simply-valid, to ensure that we really do ignore these SKUs in case the
+	    # valid-but-ignored and simply-valid patterns are accidentally set to overlap in what they will match.
+	    # However, in practice the valid-but-ignored pattern may be intentionally set to a very general wildcarded
+	    # pattern, which would sweep up all the simply-valid SKUs and force them to be manually processed.  So we
+	    # need to check for simply-valid SKUs first, and check for ignored SKUs only if that test fails.
+	    if (is_valid_but_ignored_order_sku($order_sku)) {
+		# These orders will be handled manually, so no license key will be generated here.
+		move_message ($message_uid, $handled_email_mailbox);
+		log_message 'NOTICE:  Got valid but ignored order SKU: ', defined($order_sku) ? $order_sku : '(empty)' if $DEBUG_NOTICE;
+		my $audit_status = log_audit_message "Order $order_number (for SKU $order_sku) is to be handled manually.\n";
+		if (!$audit_status) {
+		    send_trouble_email(
+			"Cannot write to audit log",
+			"Operational Error:",
+			"The $license_type license key generator on $unqualified_hostname failed to write to its audit log."
+		    );
+		    # If the script is unable to do its duty, stop before we make an even worse mess.
+		    log_timed_message 'FATAL:  Stopping execution because of previous errors.' if $DEBUG_FATAL;
+		    $fatal_condition = 1;
+		}
+		if ($audit_email_address ne '') {
+		    my $outgoing_audit_subject = $ignored_audit_subject_template;
+		    $outgoing_audit_subject =~ s/{ORDER_NUMBER}/$order_number/g;
+		    my $send_status = send_audit_email(
+			$outgoing_audit_subject,
+			"Order $order_number (SKU $order_sku) must be processed manually."
+		    );
+		    if (!$send_status) {
+			send_trouble_email(
+			    "Cannot send audit email",
+			    "Operational Error:",
+			    "The $license_type license key generator on $unqualified_hostname failed to send an audit email."
+			);
+			# If the script is unable to do its duty, stop before we make an even worse mess.
+			log_timed_message 'FATAL:  Stopping execution because of previous errors.' if $DEBUG_FATAL;
+			$fatal_condition = 1;
+		    }
+		}
+		$got_valid_request = 1;
+
+		# In development mode, where we just want to test a single valid incoming message at a time,
+		# we want to abort the looping at this point, rather than continuing to look for additional
+		# messages, since otherwise we'll probably chew through a bunch of similar messages and just
+		# have to manually move them back to the $request_email_mailbox for further testing.
+		last if $do_one_request;
+
+		last if $fatal_condition;
+		next;
+	    }
+	    $is_bad_message = 1;
+	    log_message 'ERROR:  Got invalid order SKU: ', defined($order_sku) ? $order_sku : '(empty)' if $DEBUG_ERROR;
+	}
+	if ($is_bad_message) {
+	    # Abandon this incoming email message (treat it as an invalid request,
+	    # so we move it aside and don't need to process it again in future cycles).
+	    move_message ($message_uid, $invalid_email_mailbox);
+
+	    # If this looked almost like a proper request (which means we got here), but say
+	    # perhaps failed only the order SKU test, then we ought to send trouble email so
+	    # somebody can look into whether the validation process needs adjustment.
+	    send_trouble_email(
+		"Invalid license-key request",
+		"Invalid Request:",
+		"The $license_type license key generator on $unqualified_hostname found an invalid request:",
+		'',
+		'      Customer name: ' . (defined($unicode_customer_name) ? $unicode_customer_name : '(undefined)'),
+		'     Customer email: ' . (defined($customer_email)        ? $customer_email        : '(undefined)'),
+		'       Order number: ' . (defined($order_number)          ? $order_number          : '(undefined)'),
+		'          Order SKU: ' . (defined($order_sku)             ? $order_sku             : '(undefined)'),
+		'    Expiration date: ' . (($expiration_date ne '')        ? $expiration_date       : '(undefined)'),
+		'',
+		"See the log file ($logfile) for details.",
+		"This request has been moved to the $invalid_email_mailbox mailbox."
+	    );
+	    next;
+	}
+
+	# FIX LATER:
+	# (*) In theory, we might want to validate that this order number has not already
+	#     been issued a license.  We would then want to log that fact, move the email
+	#     to a secondary mailbox folder, and send a trouble email.  We would then need
+	#     a means to manually override this logic, in case we find there is a valid
+	#     reason to re-send a particular license key.
+	#
+	#     In practice, since the license server will return the same license upon
+	#     a repeat request, all we really need to do here is to verify that all the
+	#     details of the request, not just the order number, still match our other
+	#     internal systems.  That would prevent a hacker from hijacking an order
+	#     number and sending its license key to some other email address.  If we
+	#     do discover a bad order, it should be moved to the $invalid_email_mailbox
+	#     folder, and an email should be sent to the $trouble_email_address.
+	#
+	#     For the time being, we are depending instead on the various other tests we
+	#     have in place to validate incoming orders, and (after the fact) on the human
+	#     who will watch the order stream as exhibited in the audit emails we generate.
+
+	# (*) To generate the license, post the order number and customer name to a
+	#     preconfigured URL with query parameters.
+	my $url_encoded_order_number  = uri_escape($order_number);
+
+	# This comment should now be obsolete.  See the following block of comments.
+	#
+	# The license-key generator will declare its result in UTF-8 encoded form, and it won't
+	# do any kind of transcoding on the incoming customer name, so we need to supply it in
+	# UTF-8 format to begin with.  This is necessary to avoid XMLin() bungling the parsing
+	# of the response below.
+	#     my $url_encoded_customer_name = uri_escape($utf8_customer_name);
+	# Well, that's what I thought before.  But in practice, if we send utf-8, then we will
+	# end up sending a string such as "%C3%84" which the license key generator will interpret
+	# as two ISO-8859-1 bytes and then translate into "Ã&#132;" in its output.  So in fact
+	# the key generator is transcoding what it receives.  To limit the damage, we must
+	# attempt to pass fewer bytes in, so actual ISO-8859-1 characters get passed as such
+	# (percent-encoded where necessary), will be interpreted as such by the key generator,
+	# and will be returned as literal unencoded ISO-8859-1 characters.  This won't match
+	# the claimed encoding="UTF-8" of the returned XML, which is its own problem, but our
+	# XMLin() parser will return the literal unencoded ISO-8859-1 characters as we desire.
+	# What will happen to non-ISO-8859-1 Unicode characters is that they will cause the
+	# uri_escape() just below to croak; the ultimate solution there will need to be to get
+	# the key generator to accept percent-encoded UTF-8 in the URI and pass back actual
+	# UTF-8 in its response.  If and when that happens, the code here will need to be
+	# changed to use either the original uri_escape($utf8_customer_name) call above (but
+	# probably not) or this:
+	#     my $url_encoded_customer_name = uri_escape_utf8($unicode_customer_name);
+	# and the code below will need to be revisited to make sure we are getting back the
+	# response charset we expect and that we are extracting the characters in the final
+	# encoding we expect.
+	# my $url_encoded_customer_name = uri_escape($unicode_customer_name);
+	#
+	# That was the best we could do, previously.
+
+	# We believe that we are now receiving a proper UTF-8 Customer Name, and that the
+	# license key generator will now cleanly accept a percent-encoded UTF-8 string and
+	# return a proper UTF-8 encoded string in its result as its <?xml?> tag declares.
+	# Under these conditions, it is finally time to use a clean mechanism to handle
+	# Unicode characters.  Either of these should do the trick:
+	# my $url_encoded_customer_name = uri_escape($utf8_customer_name);
+	# my $url_encoded_customer_name = uri_escape_utf8($unicode_customer_name);
+	my $url_encoded_customer_name = uri_escape_utf8($unicode_customer_name);
+
+	my $completed_license_url = $license_url;
+	$completed_license_url =~ s/{ORDER_NUMBER}/$url_encoded_order_number/g;
+	$completed_license_url =~ s/{CUSTOMER_NAME}/$url_encoded_customer_name/g;
+	# FIX LATER:  We should also pass the customer email address and the order SKU
+	# to the license generator, for validation at that level and/or for capture into
+	# the license database maintained by the license generator.
+
+	# (*) Obtain the result from the URL, which will contain the license.
+	# The default "<>" string we use is of a form that XMLin() interprets as an XML string rather
+	# than as a filename, so it doesn't get confused as to the nature of we are passing it.
+	my $license_key = '<>';
+	# FIX LATER:  The license server ought to insist on a given From: header,
+	# and we should be forced to set it here.
+	# FIX LATER:  The license server ought to insist on a given User-Agent: header
+	# (which is to say, it should not generally accept requests from popular browsers,
+	# but only from this script and perhaps some similar infrastructure).
+	# FIX LATER:  The license server ought to only accept connections from within
+	# the GroundWork network infrastructure.
+	# FIX LATER:  The license server ought to insist on a given Referer.
+	my $user_agent = LWP::UserAgent->new();
+	# Tell the license-key generator who is asking, based on where the incoming request
+	# was directed.  This address will have been validated when we fetched the message.
+	$user_agent->from($to_header);
+	# Impose a rather arbitrary returned-content size limit, to avoid potential
+	# overflows in the unlikely case of a server malfunction from affecting us here.
+	$user_agent->max_size(16384);
+	# We mean what we say when we ask a given URL for a license key.
+	# Don't allow any redirection to some secondary source.
+	$user_agent->max_redirect(0);
+	# FIX LATER:  At some point we should lock this down to only allow requesting a
+	# license key via HTTPS.  In the meantime ...
+	$user_agent->protocols_allowed(['http', 'https']);
+	# Shorten the request timeout from the default to two minutes.  We generally
+	# expect the request to take much less than this, typically under 30 seconds,
+	# but if the license server perhaps runs on a VM, that period might stretch out
+	# for reasons completely unrelated to the load on the license server itself.
+	$user_agent->timeout(120);
+	log_message "DEBUG:  URL used to fetch license key:\n", $completed_license_url if $DEBUG_DEBUG;
+
+	# We capture the amount of time taken to procure the license, mostly so we can
+	# tell when we get back an empty response whether it is at all likely that it's
+	# because we timed out on the client side before the server responded.
+	my $before = time;
+	my $response = $user_agent->get($completed_license_url);
+	my $after = time;
+	log_timed_message 'STATS:  Generating a license took about ', ($after - $before), ' seconds.' if $DEBUG_STATS;
+	if (!$response->is_success()) {
+	    log_timed_message "ERROR:  Cannot contact the license server: ", $response->status_line if $DEBUG_ERROR;
+	    if ( ++$faults_since_trouble_email >= $max_faults_since_trouble_email ) {
+		$license_url =~ m{^https?://([-.\w]*)/};
+		my $license_server = $1;
+		send_trouble_email(
+		    "License server cannot contact the license server",
+		    "Operational Error:",
+		    "The $license_type license key generator on $unqualified_hostname",
+		    "cannot contact the license key server on $license_server.",
+		    "See the log file ($logfile) for details."
+		);
+		$faults_since_trouble_email = 0;
+	    }
+	    # We abandon this incoming request in this cycle, since we cannot obtain the
+	    # corresponding license key right now, but we should see it again in the next cycle.
+	    next;
+	}
+	# Note that we may get a server error message like "400 URL missing" as the
+	# URL content if we were unable to successfully generate a key, which is part
+	# of why we check for an error just above (aside from general paranoia).
+
+	# We intentionally use the raw $response->content() instead of the $response->decoded_content()
+	# because we need the UTF-8 form of the response, not the decoded Unicode form.  The $license_key
+	# XML declares itself to be in a UTF-8 encoding, so that is what we must pass to the XMLin() parser.
+	$license_key = $response->content();
+
+	# Rather too often, we're getting back an empty result from the license-key server,
+	# with no indication as to why it failed to produce a useable result.  We need to protect
+	# ourselves against that condition, as well as any other malfunction we can easily detect.
+	# So we perform some minimal sanity checking before passing the XML string to the XML parser.
+	if (!defined($license_key) || $license_key !~ /^\s*<.*>\s*$/s) {
+	    if ($DEBUG_ERROR) {
+		if (!defined ($license_key)) {
+		    log_message "--- bad license key (undefined)";
+		}
+		elsif (length($license_key) == 0) {
+		    log_message "--- bad license key (zero length)";
+		}
+		else {
+		    # We intentionally don't convert what is probably a UTF-8 $license_key to Unicode before
+		    # making it printable, because we want to see all the original bytes for diagnostic purposes.
+		    # That means that UTF-8 character sequences will be more difficult to interpret, but so be it.
+		    log_message '--- bad license key is ', length($license_key), " bytes:\n", printable_string($license_key);
+		}
+	    }
+	    $license_key = '<>';  # "safe" empty value in case we slip up and go downstream
+	    log_timed_message "ERROR:  License key for order $order_number comes back mangled." if $DEBUG_ERROR;
+	    if ( ++$faults_since_trouble_email >= $max_faults_since_trouble_email ) {
+		$license_url =~ m{^https?://([-.\w]*)/};
+		my $license_server = $1;
+		send_trouble_email(
+		    "License server failed to return an XML message",
+		    "Operational Error:",
+		    "The $license_type license key generator on $unqualified_hostname is not getting",
+		    "a valid XML message returned for license key requests from",
+		    "the license key server on $license_server.",
+		    "See the log file ($logfile) for details."
+		);
+		$faults_since_trouble_email = 0;
+	    }
+	    # We need to abandon this incoming message, in this cycle, since there is no point in
+	    # sending an empty license key to the customer.  We'll process it again in the next cycle.
+	    next;
+	}
+
+	# We intentionally don't convert what is probably a UTF-8 $license_key to Unicode before
+	# making it printable, because we want to see all the original bytes for diagnostic purposes.
+	# That means that UTF-8 character sequences will be more difficult to interpret, but so be it.
+	log_message '--- license key is ', length($license_key), " bytes:\n", printable_string($license_key) if $DEBUG_DEBUG;
+
+	# The license key generator returns a response which HTTP::Message will interpret as either
+	# US-ASCII (probably if no high bits are set) or UTF-8 (generally if some high bits are set).
+	# Those encodings we know we can cope with, as they both represent valid UTF-8 strings.  If
+	# we unexpectedly get something else, let's abort and figure out why.
+	#
+	# We have now seen 'ISO-8859-1' as well, when we got a strange character in a license key request
+	# from a customer, who gave his name as "Edvardas KuÄ*inskas - e.kucinskas@ubl.lt", where the "*"
+	# was \u008D (not a graphic ISO-8859-1 character).  Given that the spelling of the email address
+	# is significantly different, this looks rather suspect, as though the initial data entry somehow
+	# got corrupted.  The email to the license key automailer came in looking like this:
+	#
+	#     Content-Type: text/html; charset=UTF-8
+	#     Content-Transfer-Encoding: quoted-printable
+	#     <p class=3Dtext>Order Number: SO893<br />Customer: Edvardas Ku=C3=84=C2=8Di=
+	#     nskas - e.kucinskas@ubl.lt<br />Name: <br />Order Total: 59.00<br />Shippin=
+	#
+	# so that (suitably decoded) is what the license key automailer had to deal with.
+	# The decoding appears this way (expressed as utf8):
+	#
+	#     o   m   e   r   :       E   d   v   a   r   d   a   s       K
+	#     u 303 204 302 215   i   n   s   k   a   s       -       e   .
+	#
+	# where the octal "303 204 302 215" sequence is "C3 84 C2 8D" in hex.
+	#
+	# The C384 character is UTF-8 for \u00C4 which is a "latin capital letter A diaeresis".
+	# The C28D character is UTF-8 for \u008D which is a "reverse line feed".
+	#
+	# We deal with the reverse line feed now by early filtering of the customer name, stripping out
+	# all control characters before using it for anything else.  Then we will treat whatever is left
+	# by assuming that the Unicode characters we received are actually restricted to ISO-8859-1 (or
+	# perhaps ISO-8859-15; a single-byte encoding in either case) as we pass the values to the key
+	# generator [that's no longer true; now we pass percent-encoded UTF-8], and that we will get
+	# back a single-byte encoding (claimed to have a charset of US-ASCII or ISO-8859-1 or even
+	# UTF-8 if possible) [that's no longer true; now we should be getting back proper UTF-8].
+	# If we do receive some non-ISO-8859-1 Unicode characters in the incoming email, we probably
+	# won't handle them correctly for the time being.  [That should all be cleaned up now.]
+	#
+	my $response_charset = $response->content_charset;
+	if (!defined($response_charset) || $response_charset !~ /^(?:US-ASCII|UTF-8|ISO-8859-1)$/) {
+	    log_timed_message "ERROR:  License key response charset: ",
+	      defined($response_charset) ? "'$response_charset'" : '(undefined)'
+	      if $DEBUG_ERROR;
+	    log_timed_message "ERROR:  License server did not return expected US-ASCII, UTF-8, or ISO-8859-1 encoded response."
+	      if $DEBUG_ERROR;
+	    if ( ++$faults_since_trouble_email >= $max_faults_since_trouble_email ) {
+		$license_url =~ m{^https?://([-.\w]*)/};
+		my $license_server = $1;
+		send_trouble_email(
+		    "License server failed to return a usable response",
+		    "Operational Error:",
+		    "The $license_type license key generator on $unqualified_hostname is not",
+		    "getting an expected charset encoding (US-ASCII, UTF-8, or ISO-8859-1)",
+		    "on license key requests from the license key server on $license_server.",
+		    "See the log file ($logfile) for details."
+		);
+		$faults_since_trouble_email = 0;
+	    }
+	    # We abandon this incoming request in this cycle, because the license server
+	    # has apparently malfunctioned.  We'll pick it up again next time around.
+	    next;
+	}
+
+	# (*) Parse the result, which should be an XML string.
+
+	# Note:  XMLin() bungles the parsing if the CustomerName field contains certain high-order ISO-8859-1
+	# characters, such as the accented character in:
+	#     <CustomerName>Jörg Eisenhardt</CustomerName>
+	# which, interpreted as UTF-8, don't parse properly into Unicode.
+	# (Or at least, I've seen that in some testing, though not in other testing.)
+	# That's because the $license_key string starts with
+	#     <?xml version="1.0" encoding="UTF-8"?>
+	# which declares it to be UTF-8 instead of ISO-8859-1 or Unicode.  We earlier attempted to deal with that
+	# above by passing in the (percent-encoded) UTF-8 form of the customer name into the license-key request.
+	# [And we are doing so again, now that the key generator is fixed to pass back proper UTF-8 characters.]
+	# But we found that doesn't actually work properly.  So now we're passing in a percent-encoded Unicode
+	# form of the customer name, and if in fact the Unicode characters are ISO-8859-1, we will get back a
+	# clean ISO-8859-1 string, and there will be no problem of interpretation.  This does not handle the
+	# case of non-ISO-8859-1 characters.  Fixing that will require reworking the key generator to accept
+	# percent-encoded UTF-8 in the URI and emitting proper UTF-8 encoded output to match the <?xml?>
+	# declaration.  [We believe that is now the case.]  We will also need to test once such changes are
+	# made, to ensure that both LWP::UserAgent and its underlying HTTP::Message don't mess with the
+	# returned data before we receive it back here, and that we do get a properly tagged response charset
+	# when all is said and done.
+
+	# If we get non-ASCII ISO-8859-1 characters within the <CustomerName> field, they may look like the
+	# beginning of a UTF-8 sequence which might not actually be interpretable as such.  [That needs a
+	# separate test, for an ISO-8859-1 character such as ø (0xF8).]  And that can cause the parsing to
+	# fail.  So we need to either encode what we got back as UTF-8 to match the claimed encoding, or we
+	# need to change the claimed encoding to match what we actually have.  For now, we attempt the
+	# latter fix-up.  The need for this should disappear once the key generator is upgraded to both
+	# accept and emit proper UTF-8.
+	# [This adjustment is now disabled, given that the key generator is now upgraded.]
+	# $license_key =~ s/encoding="UTF-8"/encoding="$response_charset"/;
+
+	my $xml_tree = eval { XMLin($license_key, KeepRoot => 1) };
+	if ($@) {
+	    log_timed_message 'ERROR:  Cannot extract license key from XML: ', $@ if $DEBUG_ERROR;
+	    next;
+	}
+	my $OrderId      = $xml_tree->{LicenseKeyDetail}->{OrderId};
+	my $CustomerName = $xml_tree->{LicenseKeyDetail}->{CustomerName};
+	my $LicenseKey   = $xml_tree->{LicenseKeyDetail}->{LicenseKey};
+
+	# The only reason to enable these lines is in development or serious debugging,
+	# if we find the XML parser is failing to deliver the field values that we expect.
+	if (0 && $DEBUG_DEBUG) {
+	    log_message "===============================================================";
+	    log_message "OrderId:\n$OrderId";
+	    log_message printable_string("CustomerName:\n$CustomerName");
+	    log_message "LicenseKey:\n$LicenseKey";
+	    log_message "===============================================================";
+	}
+	# FIX MAJOR:  Once we get sequence numbers on incoming eval orders, we
+	# need to disable this test and just use $order_number unconditionally.
+	my $actual_order_number = $is_eval_order ? $OrderId : $order_number;
+
+	# (*) Error check:  make sure the OrderId and CustomerName match the order_number
+	#     and customer_name, and that the $LicenseKey is non-empty.
+	my $is_bad_license = 0;
+	if (!defined($OrderId) || $OrderId ne $order_number) {
+	    # FIX MAJOR:  Once we get sequence numbers on incoming eval orders, we
+	    # need to disable this test and just execute the body unconditionally.
+	    if (!$is_eval_order || $OrderId !~ /^$order_number\d+?/) {
+		$is_bad_license = 1;
+		log_timed_message
+		  "ERROR:  OrderId in the generated license key for order $order_number does not match the request's order number."
+		  if $DEBUG_ERROR;
+	    }
+	}
+	if (!defined($CustomerName) || $CustomerName ne $unicode_customer_name) {
+	    $is_bad_license = 1;
+	    log_timed_message "NOTICE:  Customer name in request is '", printable_string($unicode_customer_name),
+	      "', while customer name in license key is '", printable_string($CustomerName), "'.";
+	    log_timed_message
+	      "ERROR:  CustomerName in the generated license key for order $order_number does not match the request's customer name."
+	      if $DEBUG_ERROR;
+	}
+	if (!defined($LicenseKey) || length($LicenseKey) == 0) {
+	    $is_bad_license = 1;
+	    log_timed_message
+	      "ERROR:  LicenseKey in the generated license key for order $order_number is undefined or empty."
+	      if $DEBUG_ERROR;
+	}
+	if ($is_bad_license) {
+	    # Since we believe we passed valid parameters to the license key generator,
+	    # this has to be treated as an external failure rather than as something
+	    # wrong with the incoming request.  So we will just move on and process it
+	    # again in the next cycle.
+	    # FIX LATER:  At least generate a trouble email if this happens too much.
+	    next;
+	}
+
+	if (!$enable_output_to_customer) {
+	    log_timed_message 'NOTICE:  Output to customer is disabled in the config file.';
+	}
+	else {
+	    # (*) Generate an outgoing email containing the license key according to
+	    #     external email templates (such as $outgoing_email_plain_template_file
+	    #     and $outgoing_email_html_template_file).  Make substitutions as needed:
+	    #     include the order number and license key, and the customer name (as
+	    #     a greeting).  Simon also wants the customer number in the outgoing
+	    #     email, but we don't have access to it in the current license request.
+	    #     Send the result to the email address you got from the incoming email.
+
+	    my $outgoing_email_subject = $outgoing_email_subject_template;
+	    $outgoing_email_subject =~ s/{ORDER_NUMBER}/$actual_order_number/g;
+
+	    if ($obfuscate_license_key && defined($LicenseKey)) {
+		# Keep the overall form, but replace the true key, so we don't accidentally
+		# send out valid keys during testing.
+		$LicenseKey =~ s{=([0-9a-zA-Z]+)}{'='.substr('0123456789ABCDEF'x(int(length($1)/16)+1),0,length($1))}eg;
+	    }
+
+	    # We include a single newline after the $LicenseKey as we substitute it into
+	    # the email body to make up for the fact that we don't get a trailing newline
+	    # at the end of the last line when we fetch the value from the license server.
+	    my $outgoing_email_plain_body = $is_eval_order ? $outgoing_email_plain_eval_template : $outgoing_email_plain_template;
+	    $outgoing_email_plain_body =~ s/{CUSTOMER_NAME}/$unicode_customer_name/g;
+	    $outgoing_email_plain_body =~ s/{CUSTOMER_ADDRESS}/$customer_email/g;
+	    $outgoing_email_plain_body =~ s/{ORDER_NUMBER}/$actual_order_number/g;
+	    $outgoing_email_plain_body =~ s[{LICENSE_KEY}][\n$LicenseKey\n];
+	    $outgoing_email_plain_body =~ s/{EXPIRATION_DATE}/$expiration_date/g;
+
+	    my $html_encoded_customer_name  = HTML::Entities::encode($unicode_customer_name);
+	    my $html_encoded_customer_email = HTML::Entities::encode($customer_email);
+
+	    my $outgoing_email_html_body = $is_eval_order ? $outgoing_email_html_eval_template      : $outgoing_email_html_template;
+	    my $template_file            = $is_eval_order ? $outgoing_email_html_eval_template_file : $outgoing_email_html_template_file;
+	    # First, replace the image tags in $outgoing_email_html_body with cid: references.
+	    my %image_cid    = ();
+	    my $message_part = 0;
+	    foreach my $image_tag (sort keys %{ $outgoing_email_image{$template_file} }) {
+		$image_cid{$image_tag} = unique_content_id(++$message_part);
+		$outgoing_email_html_body =~ s/$image_tag/cid:$image_cid{$image_tag}/;
+	    }
+	    # Then replace the rest of the designated substitution strings.
+	    # We include one newline at the end of $LicenseKey to make up for the fact
+	    # that we don't get a trailing newline at the end of the last line when we
+	    # fetch the value from the license server.  And we add one extra newline
+	    # after that to make it slightly easier to copy/paste the full value from
+	    # the email into the license-key screen in GroundWork Monitor.  That extra
+	    # newline makes the email a little uglier because it introduces a bit of
+	    # extra vertical space between the key text and the horizontal scrollbar,
+	    # but in this case convenience wins out over appearance.
+	    $outgoing_email_html_body =~ s/{CUSTOMER_NAME}/$html_encoded_customer_name/g;
+	    $outgoing_email_html_body =~ s/{CUSTOMER_ADDRESS}/$html_encoded_customer_email/g;
+	    $outgoing_email_html_body =~ s/{ORDER_NUMBER}/$actual_order_number/g;
+	    $outgoing_email_html_body =~ s[{LICENSE_KEY}][\n<pre>\n$LicenseKey\n\n</pre>\n];
+	    $outgoing_email_html_body =~ s/{EXPIRATION_DATE}/$expiration_date/g;
+
+	    # We want the From field in the received email to say 'GWOS Support <orders@gwos.com>', partly
+	    # because that looks more formal and also because we don't want to expose the license-key
+	    # request $incoming_email_address to external users.  But because GMail will override the
+	    # email address in the From: header with the actual email account used to send the message,
+	    # that will only happen either if the email is actually sent from the orders@gwos.com account,
+	    # or if the incoming email account is set up in GMail so that all email sent from it appears to
+	    # come from the specified outgoing email account.  This outgoing account must therefore exist
+	    # and be different from the account we will use to accept incoming license requests.  We then
+	    # want to set up incoming email to the "orders@gwos.com" account (which will receive any bounced
+	    # outgoing email) to be automatically forwarded to "support@gwos.com".  The only issue then is
+	    # that the Sent folder containing the issued-licenses email will be in a different account from
+	    # the one we use to accept incoming requests, which is not a significant problem.
+
+	    # It's better to use Unicode here rather than UTF-8 for the customer name within
+	    # $outgoing_email_target.  MIME::Lite will translate this to its UTF-8 form in
+	    # the To: header, so the mail will go through cleanly, while all the rest of our
+	    # references to $outgoing_email_target within this script will then act cleanly.
+	    my $outgoing_email_target = $output_to_debug_target ?
+	      # We used to use:
+	      # "Developer <$debug_target_email_address>" : "\"$unicode_customer_name\" <$customer_email>";
+	      # but NetSuite is not passing through actual Customer Name data, instead substituting
+	      # Organization data instead.  With that in play, it doesn't make sense to prepend the
+	      # customer name to the email address in the To: field of the outgoing email.
+	      "$debug_target_email_address" : "$customer_email";
+
+	    # FIX LATER:  Possibly these From and Reply-To values should be drawn from the config file.
+	    # Note that the address given within <> in the From option will be overridden by GMail,
+	    # while the similar address in the Reply-To option will be left as we specify it here.
+	    my $message = MIME::Lite->new(
+		'From'     => 'GWOS Support <orders@gwos.com>',
+		'Reply-To' => 'GWOS Support <support@gwos.com>',
+		'To'       => $outgoing_email_target,
+		'Subject'  => $outgoing_email_subject,
+		'Type'     => 'multipart/alternative'
+	    );
+	    if ($blind_copy_email_address ne '') {
+		$message->add( 'Bcc' => $blind_copy_email_address );
+	    }
+
+	    # We need end-to-end transparency in spite of the possibly very long lines we need to send.
+	    # To get that, we must set the Content-Transfer-Encoding of the email parts that contain the
+	    # embedded license key to something that will not introduce extraneous line breaks within
+	    # the content and thus invalidate the key.  (Plain-text email and several MIME encoding
+	    # types are limited to 998 characters [plus CRLF] per line, which is shorter than the 1118
+	    # characters per line that we are seeing in some of our generated license keys.)  See
+	    # RFC-2822 "Internet Message Format" and RFC-2045 "Multipurpose Internet Mail Extensions
+	    # (MIME) Part One: Format of Internet Message Bodies" for details.
+
+	    # In the future, if we put the Customer Name back into the outgoing email body, we may need
+	    # to declare the charset of the body to be UTF-8, as it may contain some Unicode characters.
+	    $message->attach(
+		Type     => 'text/plain',
+		Data     => $outgoing_email_plain_body,
+		Encoding => 'base64'
+	    );
+
+	    if (!$send_only_plain_text) {
+		my $pretty_part = MIME::Lite->new(
+		    'Type' => 'multipart/related'
+		);
+
+		# Note that we may need to revisit the Type charset here in the future if we put the
+		# Customer Name back into the body, and it contains Unicode characters beyond those
+		# in ISO-8859-1.  In that case, a UTF-8 encoding may be required before the base64
+		# encoding is applied.  See http://www.perlmonks.org/?node_id=830401 for possible
+		# clues if this situation is ever encountered.
+		$pretty_part->attach(
+		    Type => 'text/html',
+		    Data => $outgoing_email_html_body,
+		    Encoding => 'base64'
+		);
+
+		foreach my $image_tag (keys %{ $outgoing_email_image{$template_file} }) {
+		    # Use the filename extension as the MIME image type.
+		    $outgoing_email_image{$template_file}{$image_tag} =~ /\.([^.]+)$/;
+		    $pretty_part->attach(
+			Type => "image/$1",
+			# Use the proper Content-ID for this part of the message.
+			Id   => "<$image_cid{$image_tag}>",
+			# As an alternative to reading the image files every time we generate a new outgoing
+			# email message, we could have slurped in the image bits on startup and referred to
+			# them as Data here.  Perhaps we'll do that in some future version of this script.
+			Path => $outgoing_email_image{$template_file}{$image_tag}
+		    );
+		}
+
+		$message->attach($pretty_part);
+	    }
+
+	    # We would like to ensure that all outgoing email is encrypted with SSL on
+	    # its way to the email server.  That is done by several external settings:
+	    #
+	    # (*) The outgoing email account is set up to only allow HTTPS access.
+	    # (*) We use an email server port designed to allow only HTTPS access.
+	    # (*) We use a locally-modified copy of MIME::Lite that supports SSL.
+	    #
+	    # FIX LATER:  In the future, we would also like to provide here an "SSL"
+	    # option to the $message->send() call, with a non-zero value to force
+	    # the use of SSL internally to this script.
+
+	    # This send() requires several things to support SSL:
+	    # (1) A modified copy of perl/lib/MIME/Lite.pm that simply replaces all occurrences
+	    #     of Net::SMTP with Net::SMTP::SSL instead.  We ought to make a version that
+	    #     allows the user to choose between Net::SMTP and Net::SMTP::SSL depending on
+	    #     whether a non-zero SSL option is supplied (defaulting off, the prior behavior).
+	    # (2) Supplying an SSL port (the "Port" option here) explicitly to the send() call.
+	    my $send_status = eval {
+		$message->send(
+		    'smtp',
+		    $outgoing_email_server,
+		    Port     => $outgoing_email_port,
+		    AuthUser => $outgoing_email_address,
+		    AuthPass => $outgoing_email_password,
+		    Debug    => $DEBUG_DEBUG
+		);
+	    };
+	    if (!$send_status) {
+		log_timed_message 'ERROR:  Failed to send email to: ', $outgoing_email_target if $DEBUG_ERROR;
+		log_message $@ if ($DEBUG_ERROR && $@);
+		# Since we could not send the license key email to the customer, we abandon
+		# this incoming request for now and reprocess it again in the next cycle.
+		next;
+	    }
+	    else {
+		log_timed_message 'INFO:  Success in sending email to: ', $outgoing_email_target if $DEBUG_INFO;
+	    }
+
+	    # (*) If the outgoing email was properly sent, move the incoming email from the
+	    #     $request_email_mailbox folder to the $handled_email_mailbox folder.
+	    move_message ($message_uid, $handled_email_mailbox);
+
+	    # (*) Write an audit trail documenting the fact that you sent out this license
+	    #     key, temporarily using a logfile for the audit trail, perhaps to be
+	    #     converted at a future time to a database call.  Data to be captured in the
+	    #     audit log include:  date/time of license generation; notes on license use
+	    #     (derived from the incoming email, which may take multiple forms over time as
+	    #     multiple different forms of request are permitted, from different sources);
+	    #     hash of the license file for Network Service tracking; email address from
+	    #     which the license key request was made.
+
+	    # Record the license key checksum as our Network Service hash in the audit log.
+	    # The $LicenseKey obtained from the license server does not include a newline at
+	    # the end of the last line, but that is the way the key will be stored and the
+	    # hash will be computed by GroundWork Monitor, so that is what we must do here.
+	    my $network_service_hash = md5_hex($LicenseKey);
+	    log_timed_message "INFO:  Network Service hash for order $actual_order_number is:  $network_service_hash";
+
+	    my $timestamp = strftime ("%F@%T_%Z", localtime);
+	    my $audit_status = log_audit_message
+	      "Sent license key for order $actual_order_number (SKU $order_sku),\n",
+	      "    customer '$printable_customer_name' to '$outgoing_email_target'\n",
+	      "    upon request from '$from_header'\n",
+	      "    (reply to '" . (defined($reply_to_header) ? $reply_to_header : '[address not supplied]') . "').\n",
+	      "    Network Service hash for order $actual_order_number is:  $network_service_hash\n",
+	      "    LICENSE,$timestamp,$actual_order_number,$network_service_hash\n";
+	    if (!$audit_status) {
+		send_trouble_email(
+		    "Cannot write to audit log",
+		    "Operational Error:",
+		    "The $license_type license key generator on $unqualified_hostname failed to write to its audit log."
+		);
+		# If the script is unable to do its duty, stop before we make an even worse mess.
+		log_timed_message 'FATAL:  Stopping execution because of previous errors.' if $DEBUG_FATAL;
+		$fatal_condition = 1;
+	    }
+
+	    if ($audit_email_address ne '') {
+		my $outgoing_audit_subject = $outgoing_audit_subject_template;
+		$outgoing_audit_subject =~ s/{ORDER_NUMBER}/$actual_order_number/g;
+		$send_status = send_audit_email(
+		    $outgoing_audit_subject,
+		    "A $license_type license for order $actual_order_number (SKU $order_sku) has been issued from",
+		    "$unqualified_hostname to customer $unicode_customer_name at: $outgoing_email_target"
+		);
+		if (!$send_status) {
+		    send_trouble_email(
+			"Cannot send audit email",
+			"Operational Error:",
+			"The $license_type license key generator on $unqualified_hostname failed to send an audit email."
+		    );
+		    # If the script is unable to do its duty, stop before we make an even worse mess.
+		    log_timed_message 'FATAL:  Stopping execution because of previous errors.' if $DEBUG_FATAL;
+		    $fatal_condition = 1;
+		}
+	    }
+	}
+	$got_valid_request = 1;
+
+	# In development mode, where we might not actually be processing a message and moving it
+	# out of the way, we want to abort the looping at this point, rather than continuing to
+	# look for additional messages, since otherwise we'll just loop forever reprocessing the
+	# same message over and over.
+	last if $do_one_request;
+
+	last if $fatal_condition;
+    }
+
+    # Close the IMAP connection.
+    close_imap_connection();
+
+    # quit after just one valid request -- used mainly for development testing
+    if ( $do_one_request && $got_valid_request ) {
+	log_timed_message 'NOTICE:  Exiting after one valid request, per command option.' if $DEBUG_NOTICE;
+    }
+
+    # quit after just one cycle -- used mainly for development testing
+    if ( $do_one_cycle ) {
+	log_timed_message 'NOTICE:  Exiting after one cycle, per command option.' if $DEBUG_NOTICE;
+    }
+
+    return (($do_one_request && $got_valid_request) || $do_one_cycle || $fatal_condition) ? STOP_STATUS : CONTINUE_STATUS;
+}
+
+sub is_valid_customer_name {
+    my $unicode_customer_name = shift;
+    return 0 if !defined($unicode_customer_name);
+    return 1;
+}
+
+sub is_valid_email_address {
+    my $email_address = shift;
+    return 0 if !defined($email_address);
+    # FIX LATER:  Impose more-stringent validation pattern matching here:
+    # (*) Make sure the $email_address only contains one email address.
+    # (*) Make sure that email address is well-formed according to RFC standards.
+    # Take a look at the Email::Valid module (and its dependencies) for this purpose.
+    # It requires either Net::DNS or nslookup for DNS checks, and Net::Domain::TLD is
+    # required for checking the validity of top-level domains.  But look at its small
+    # list of outstanding bugs before you commit to depending on it to validate
+    # customer email addresses.  Also see RFC-3696 for further information.
+    return 0 if $email_address =~ /\s/;
+    return 0 if $email_address !~ /.\@./;
+    return 1;
+}
+
+sub is_valid_expiration_date {
+    my $is_eval_order   = shift;
+    my $expiration_date = shift;
+    if ($is_eval_order) {
+	# For now, just allow expiration dates of the form "04 October 2010".
+        if ($expiration_date =~ /^(\d+) (\w+) (\d+)$/) {
+	    # In a future version, we could further validate by verifying that the
+	    # full month name is valid, and that the month-day falls within the
+	    # expected range, and that the year falls within the expected range.
+	    return 1;
+	}
+	else {
+	    return 0;
+	}
+    }
+    else {
+        return ($expiration_date eq '') ? 1 : 0;
+    }
+}
+
+sub is_valid_order_number {
+    my $order_number = shift;
+    return 0 if !defined($order_number);
+    return 1;
+}
+
+sub is_valid_order_sku {
+    my $order_sku = shift;
+    return 0 if !defined($order_sku);
+    return 0 if "$order_sku" !~ $valid_order_sku_pattern;
+    return 1;
+}
+
+sub is_valid_but_ignored_order_sku {
+    my $order_sku = shift;
+    return 0 if !defined($order_sku);
+    return 0 if "$order_sku" !~ $valid_but_ignored_order_sku_pattern;
+    return 1;
+}
+
+# See http://en.wikipedia.org/wiki/MIME#Content-ID for why we do this.
+sub unique_content_id {
+    my $message_part = shift;
+    ++$message_count if $message_part == 1;
+    my $pid = $$;
+    my $timestamp = time;
+    return "$message_part.$message_count.$pid.$timestamp\@$qualified_hostname";
+}
+
+sub catch_alarm {
+    my $signame = shift;
+    $alarm_received = 1;
+    die "caught a SIG$signame signal\n";
+}
+
+# The absolutely critical part of this routine is to set the socket into
+# non-blocking mode.  Without that, the IO::Socket::SSL SSL.pm read()
+# routine calls Net::SSLeay::ssl_read_all(), which blocks forever after
+# it has read a response from the IMAP server, still looking for more
+# data to fill the maximum buffer size.  That could be worked around
+# within the SSL.pm read() routine by calling Net::SSLeay::ssl_read_CRLF()
+# instead, but that's a very general change which may well not be the
+# proper solution for other uses of IO::Socket::SSL.  This problem ought
+# to be reported to the IO::Socket::SSL and/or Net::SSLeay maintainers,
+# as well as the Mail::IMAPClient maintainer, since if this is necessary,
+# the "Ssl => 1" option in Mail::IMAPClient->new() call ought to default
+# to doing this for you already, rather than forcing you to provide your
+# own SSL socket which you have explicitly set non-blocking.
+#
+# Partly because we provide our own socket, but also because we want detailed
+# error handling and diagnostics in case of failure, we break up the connection
+# creation into all its constituent parts rather than trying to collapse them
+# together as is possible when dealing with a Mail::IMAPClient object.
+
+sub open_imap_connection {
+    my $socket = undef;
+    local $SIG{ALRM} = \&catch_alarm;
+
+    # Opening a socket here could potentially hang, so we enclose this section with an alarm timeout.
+    # Connect to the IMAP server via SSL.
+    log_timed_message "INFO:  Trying to create an SSL socket." if $DEBUG_INFO;
+    $alarm_received = 0;
+    alarm($network_server_timeout);
+    eval {
+	eval {
+	    $socket = IO::Socket::SSL->new(
+		Proto    => 'tcp',
+		PeerAddr => $incoming_email_server,
+		PeerPort => $incoming_email_port,
+		Blocking => 0
+	    );
+	    alarm(0);
+	};
+	alarm(0);
+    };
+    if ($@) {
+	if ($alarm_received) {
+	    log_timed_message 'ERROR:  Initial connection to IMAP at ',
+	      (defined($incoming_email_server) ? $incoming_email_server : 'an undefined server'),
+	      ' at ',
+	      (defined($incoming_email_port) ? "port $incoming_email_port" : 'an undefined port'),
+	      ' timed out!'
+	      if $DEBUG_ERROR;
+	}
+	else {
+	    # chomp $@;
+	    log_timed_message 'ERROR:  Cannot connect to IMAP at ',
+	      (defined($incoming_email_server) ? $incoming_email_server : 'an undefined server'),
+	      ' at ',
+	      (defined($incoming_email_port) ? "port $incoming_email_port" : 'an undefined port'),
+	      $@ ? " ($@)" : $alarm_received ? ' (timed out)' : '', '; aborting!'
+	      if $DEBUG_ERROR;
+	}
+	return ERROR_STATUS;
+    }
+    if (!$socket) {
+	log_timed_message "FATAL:  Cannot create a socket to the IMAP server!" if $DEBUG_FATAL;
+	return ERROR_STATUS;
+    }
+
+    # Build up a client attached to the SSL socket.
+    log_timed_message "INFO:  Trying to create an IMAP object and log in." if $DEBUG_INFO;
+    # We don't set the Server or Port in the $imap object because we
+    # supply an already-open SSL socket ourselves.
+    $imap = Mail::IMAPClient->new(
+	Socket => $socket,
+	Ssl    => 1
+    );
+    if (!$imap) {
+	log_timed_message "FATAL:  Cannot create a Mail::IMAPClient object!" if $DEBUG_FATAL;
+	close $socket;
+	return ERROR_STATUS;
+    }
+    if (!$imap->IsConnected()) {
+	log_timed_message "ERROR:  Mail::IMAPClient object is not connected to the IMAP server!" if $DEBUG_ERROR;
+	close_imap_connection();
+	return ERROR_STATUS;
+    }
+
+    # FIX LATER:  What does this do?  Might this be appropriate?
+    # $imap->Debug(1) if $DEBUG_DEBUG;
+
+    # Logging in here could potentially hang, so we enclose this section with an alarm timeout.
+    $imap->User($incoming_email_address);
+    $imap->Password($incoming_email_password);
+    my $login_status = undef;
+    $alarm_received = 0;
+    alarm($network_server_timeout);
+    eval {
+	eval {
+	    $login_status = $imap->login;
+	    alarm(0);
+	};
+	alarm(0);
+    };
+    if ($@ || !$login_status) {
+	if ($alarm_received) {
+	    log_timed_message 'ERROR:  Logging in to IMAP at ',
+	      (defined($incoming_email_server) ? $incoming_email_server : 'an undefined server'),
+	      ' at ',
+	      (defined($incoming_email_port) ? "port $incoming_email_port" : 'an undefined port'),
+	      ' timed out!'
+	      if $DEBUG_ERROR;
+	}
+	else {
+	    # chomp $@;
+	    log_timed_message 'ERROR:  Cannot log in to IMAP at ',
+	      (defined($incoming_email_server) ? $incoming_email_server : 'an undefined server'),
+	      ' at ',
+	      (defined($incoming_email_port) ? "port $incoming_email_port" : 'an undefined port'),
+	      $@ ? " ($@)" : $alarm_received ? ' (timed out)' : '', '; aborting!'
+	      if $DEBUG_ERROR;
+	}
+	close_imap_connection();
+	return ERROR_STATUS;
+    }
+    if (!$imap->IsAuthenticated()) {
+	log_timed_message "ERROR:  Mail::IMAPClient object is not authenticated to the IMAP server!" if $DEBUG_ERROR;
+	close_imap_connection();
+	return ERROR_STATUS;
+    }
+
+    return CONTINUE_STATUS;
+}
+
+sub close_imap_connection {
+    if ($imap) {
+	# FIX THIS:  How do we know this construction closes the underlying socket in all cases?
+	if ($imap->IsConnected) {
+	    $imap->disconnect;
+	}
+	else {
+	    # Since we supply our own socket, we might need to destroy it
+	    # ourselves if we don't call disconnect() to do it for us.
+	    my $imap_socket = $imap->Socket;
+	    close $imap_socket if defined $imap_socket;
+	}
+	# If $imap had an explicit destructor, we would call it here.
+	# But I cannot find one.
+	# $imap->DESTROY;
+	$imap = undef;
+    }
+}
+
+sub move_message {
+    my $message_uid = shift;
+    my $mailbox     = shift;
+
+    # The Mail::IMAPClient doesn't say what the exists() method will return
+    # if an error occurs.  This is at the least a documention problem, that
+    # ought to be reported as a bug.  So we take precautions here to avoid
+    # confusing an error return from an actual valid true/false value.
+
+    # The Mail::IMAPClient->delete_message() method supposedly won't actually apply
+    # the \Deleted flag unless the current folder is in Selected state (i.e., we must
+    # have used Mail::IMAPClient->select() instead of Mail::IMAPClient->examine() to
+    # open the current folder).  But in practice, it's working even after an examine().
+    # This anomaly remains unexplained.  Perhaps Mail::IMAPClient changes the current
+    # state while it is doing the Mail::IMAPClient->copy() operation, or perhaps GMail
+    # does not adhere to the RFC3501 (IMAP4rev1) standard.
+
+    # We're suspicious that perhaps Mail::IMAPClient->exists() and perhaps
+    # other routines used here do not automatically clear $@ before they run.
+    # So we do so ourselves.
+    $@ = undef;
+    my $mailbox_exists = eval {
+	$imap->exists($mailbox);
+    };
+    if ($@) {
+	log_timed_message "ERROR:  Cannot determine if mailbox '$mailbox' exists: ", $imap->LastError if $DEBUG_ERROR;
+	return 0;
+    }
+    if (!$mailbox_exists && !$imap->create($mailbox)) {
+	log_timed_message "ERROR:  Cannot create the mailbox '$mailbox': ", $imap->LastError if $DEBUG_ERROR;
+	return 0;
+    }
+    if (!$imap->copy($mailbox, $message_uid)) {
+	log_timed_message "ERROR:  Cannot copy message to mailbox '$mailbox': ", $imap->LastError if $DEBUG_ERROR;
+	return 0;
+    }
+    if (!$imap->delete_message($message_uid)) {
+	log_timed_message "ERROR:  Cannot copy message to mailbox '$mailbox': ", $imap->LastError if $DEBUG_ERROR;
+	return 0;
+    }
+    if (!$imap->expunge()) {
+	log_timed_message "ERROR:  Cannot expunge $request_email_mailbox: ", $imap->LastError if $DEBUG_ERROR;
+	return 0;
+    }
+
+    return 1;
+}
+
+sub find_messages {
+    my $uids = undef;
+
+    if (!$imap->select($request_email_mailbox)) {
+	log_timed_message "ERROR:  Cannot select $request_email_mailbox: " , $imap->LastError if $DEBUG_ERROR;
+	if ( ++$faults_since_trouble_email >= $max_faults_since_trouble_email ) {
+	    send_trouble_email(
+		"License automailer failed to access mailbox",
+		"Operational Error:",
+		"The $license_type license key generator on $unqualified_hostname",
+		"cannot select the incoming email folder '$request_email_mailbox'.",
+		"See the log file ($logfile) for details."
+	    );
+	    $faults_since_trouble_email = 0;
+	}
+	return $uids;
+    }
+
+    # FIX LATER
+    # Ideally, we'd like to restrict the request to just the first N emails,
+    # so we don't have to burden the server by asking for a potentially huge
+    # list of everything available.  That could be done by using a search
+    # constraint such as "1:100".  However, we would then need to query using
+    # Message Sequence Numbers, while we want instead to get back Unique
+    # Identifier message attributes.  We haven't had the time to see if
+    # our $imap object can be configured so as to use one type of message
+    # identifier in the search while getting back a different type of
+    # message identifier in the response.  For details, see Section 6.4.8
+    # of RFC 3501, where an example like this is shown for the UID command.
+    #
+    # If we did ask for just the first N emails, that would effectively
+    # throttle the throughput of this script if we just call find_messages()
+    # once per cycle.  So that's another consideration in how and how often
+    # we run the query.
+    #
+    # We also thought about trying to define search constraints in the config
+    # file, for fields such as FROM "..." SUBJECT "..." or perhaps others,
+    # making sure the strings are properly quoted for use in this context.
+    # That might get us only the messages we really care about, but it would
+    # not clean up any other debris that accumulates over time.
+
+    my $search_constraints = '';
+    if ($search_constraints eq '') {
+	$search_constraints = 'ALL';
+    }
+
+    # The Mail::IMAPClient->search() documentation is dead wrong about how $@
+    # is treated.  It is *not* cleared automatically before search() is called.
+    # Thus we must do so ourselves.
+    $@ = undef;
+    $uids = $imap->search($search_constraints);
+    if ($@) {
+	log_timed_message "ERROR:  Cannot search $request_email_mailbox: ", $@ if $DEBUG_ERROR;
+	if ( ++$faults_since_trouble_email >= $max_faults_since_trouble_email ) {
+	    send_trouble_email(
+		"License automailer failed to read mailbox",
+		"Operational Error:",
+		"The $license_type license key generator on $unqualified_hostname",
+		"cannot search the incoming email folder '$request_email_mailbox'.",
+		"See the log file ($logfile) for details."
+	    );
+	    $faults_since_trouble_email = 0;
+	}
+	return $uids;
+    }
+
+    return $uids;
+}
+
+sub fetch_message {
+    my $uids                 = shift;
+    my $message_uid          = undef;
+    my $from_header          = undef;
+    my $reply_to_header      = undef;
+    my $to_header            = undef;
+    my $subject_header       = undef;
+    my $subject_order_number = undef;
+    my $body_charset         = undef;
+    my $email_body           = undef;
+
+    # If there are no matching messages, $uids will be undefined instead of
+    # pointing to an empty array, so we need to test for that.
+    if ($uids) {
+	while (@$uids) {
+	    $message_uid          = undef;
+	    $from_header          = undef;
+	    $reply_to_header      = undef;
+	    $subject_order_number = undef;
+	    $body_charset         = undef;
+	    $email_body           = undef;
+
+	    if ($shutdown_requested) {
+		return STOP_STATUS, $message_uid, $from_header, $reply_to_header, $to_header, $subject_order_number, $body_charset, $email_body;
+	    }
+
+	    $message_uid = shift @$uids;
+
+	    log_timed_message "DEBUG:  Fetching UID $message_uid" if $DEBUG_DEBUG;
+
+	    # FIX LATER:  This parse_headers() call does not necessarily return the outermost
+	    # headers as they are possibly visible within GMail itself (we need to test for that,
+	    # when the incoming email belongs to a GMail thread).  If the GMail web interface has
+	    # be used to move a bounced email back and forth between folders, the entire thread
+	    # gets moved, and somehow the outermost (mail delivery failure) headers are no longer
+	    # retrieved (though they can be see through the GMail web interface), but those of
+	    # the original email are, instead.  This looks like a stupid problem with GMail's
+	    # strange use of folders.  It might have something to do with which parts of the
+	    # email are marked as seen and as-yet unseen.  So far in testing, this behavior
+	    # mostly affects our ability to move around delivery failure messages at will and
+	    # have them reprocessed here.  If you need that capability, the best thing to do
+	    # is to avoid GMail and to move messages within Thunderbird, which does not group
+	    # related email into inseparable threads and keeps the individual messages separated.
+
+	    my $headers_ref = $imap->parse_headers($message_uid, 'From', 'Reply-To', 'To', 'Subject');
+	    if (!$headers_ref) {
+		log_timed_message 'ERROR:  Parsing of message headers failed: ', $imap->LastError if $DEBUG_ERROR;
+		next;
+	    }
+	    $from_header     = $headers_ref->{'From'    }->[0];
+	    $reply_to_header = $headers_ref->{'Reply-To'}->[0];
+	    $to_header       = $headers_ref->{'To'      }->[0];
+	    $subject_header  = $headers_ref->{'Subject' }->[0];
+
+	    if ($DEBUG_DEBUG) {
+		log_message "---     From: $from_header"     if defined $from_header;
+		log_message "--- Reply-To: $reply_to_header" if defined $reply_to_header;
+		log_message "---       To: $to_header"       if defined $to_header;
+		log_message "---  Subject: $subject_header"  if defined $subject_header;
+	    }
+
+	    # We want to send trouble email if our sent license keys bounce back to us.  For that to
+	    # happen, we need to recognize bounced email in our input mailbox.  Once we start sending
+	    # out license keys through a separate email account and not from the same account as is
+	    # used for incoming requests, we would theoretically need to separately probe for incoming
+	    # mail on that other account and do this processing for bounced email on messages we find
+	    # there instead.  Then we would want to make this logic automatically configured, so it
+	    # recognizes whether we are using the same account or not and adapts its behavior accordingly.
+	    # But in practice, if we use a separate account, the bounced emails won't come back to the
+	    # input of the license automailer, so we won't ordinarily need to process them.  Instead,
+	    # the separate outgoing email account will be set up to automatically forward email to the
+	    # trouble account, so there is really no extra work to do here.
+	    #
+	    # Note that GMail will neither send email to you that you sent from your own account nor
+	    # forward email back to the original sender's account.  (I suppose that possibly breaks
+	    # some possible mail-forwarding loops, but it's otherwise rather annoying to encounter
+	    # this undocumented, mysterious mail-delivery failure.)  So if the trouble account is
+	    # the same as the outgoing account, no trouble email sent by the outgoing account will
+	    # ever be received by the trouble account.  And with forwarding set up from the outgoing
+	    # account to the trouble account, any email sent externally from the trouble account
+	    # to the outgoing account will never be sent back (forwarded) to the trouble account.
+	    # All of which means that we cannot operate this script with the trouble account being
+	    # the same as the outgoing account.
+
+	    if ($from_header =~ /Mail Delivery Subsystem/ && $subject_header eq 'Delivery Status Notification (Failure)') {
+		my $body_text = undef;
+
+		# FIX THIS:  see Mail::IMAPClient::BodyStructure (or perhaps better,
+		# Mail::IMAPClient->get_bodystructure($message_uid)) for how to determine
+		# the overall structure of the email message
+		# my $body_structure = $imap->fetch("$message_uid (BODY)");
+
+		# FIX THIS:  Consider using $imap->bodypart_string() here instead.
+		# But if you try that, look carefully at what part of the body you are trying to validate below.
+		# FIX LATER:  In theory, we want to extract the actual text of the message and drop
+		# the additional IMAP lines that we find within $body_text.  That is not currently
+		# interfering with our downstream use of the message text, but it would be cleaner.
+		# Perhaps $imap->bodypart_string() would do that for us.
+		$body_text = $imap->fetch("$message_uid (BODY[TEXT]<0.65536>)");
+		if ($body_text) {
+		    (my $outgoing_email_subject_pattern = $outgoing_email_subject_template) =~ s/{ORDER_NUMBER}/([^\r\n]+)/;
+		    (my $outgoing_audit_subject_pattern = $outgoing_audit_subject_template) =~ s/{ORDER_NUMBER}/([^\r\n]+)/;
+		    my $body = join("\n", @$body_text);
+		    if ($body =~ $outgoing_email_subject_pattern) {
+			my $order_number = $1;
+			log_timed_message "ERROR:  Prior outgoing license key email for order '$order_number' has bounced." if $DEBUG_ERROR;
+			send_trouble_email(
+			    "Failed to send license key to customer",
+			    "Operational Error:",
+			    "The $license_type license key generator on $unqualified_hostname",
+			    "has received a bounced license key email for order '$order_number'.",
+			    "See the $bounced_email_mailbox mail folder for details."
+			);
+		    }
+		    elsif ($body =~ $outgoing_audit_subject_pattern) {
+			my $order_number = $1;
+			log_timed_message "ERROR:  Prior outgoing audit email for order '$order_number' has bounced." if $DEBUG_ERROR;
+			send_trouble_email(
+			    "Failed to send license key audit email",
+			    "Operational Error:",
+			    "The $license_type license key generator on $unqualified_hostname",
+			    "has received a bounced audit email for order '$order_number'.",
+			    "See the $bounced_email_mailbox mail folder for details."
+			);
+		    }
+		    # Get this message out of the way so we don't continually reprocess it in future cycles.
+		    move_message ($message_uid, $bounced_email_mailbox);
+		}
+		else {
+		    # In early testing, we often got this error message here:
+		    # "error while reading data from server: Resource temporarily unavailable"
+		    # so we have to expect failure in the ordinary course of operation.
+		    log_timed_message 'ERROR:  Fetch of bounced message body failed: ', $imap->LastError if $DEBUG_ERROR;
+
+		    # Since we cannot yet see the details of this message,
+		    # we just leave it untouched for processing in the next cycle.
+		}
+		# Step to the next incoming email.
+		next;
+	    }
+
+	    # Validate the email headers to make sure this license request originates
+	    # from where we expect it to for this instance of the license server,
+	    # since anyone can send email to this incoming email address.
+	    # These validation patterns are specified in the config file.
+	    my $has_bad_header = 0;
+	    if (!defined($from_header) || $from_header !~ $valid_from_address_pattern) {
+		$has_bad_header = 1;
+		log_message 'ERROR:  Got invalid "From:" header: ',
+		  defined($from_header) ? $from_header : '(empty)' if $DEBUG_ERROR;
+	    }
+	    if ($allow_netsuite_email && !$allow_ubercart_email) {
+		# NetSuite is not providing any Reply-To header, so we check for that condition
+		# as a back-handed way of validating the email request.  If it ever does, we can
+		# easily flip back to the mode of insisting on it and validating its content.
+		if (defined($reply_to_header)) {
+		    $has_bad_header = 1;
+		    log_message 'ERROR:  Got "Reply-To:" header when none expected: ', $reply_to_header
+		      if $DEBUG_ERROR;
+		}
+	    }
+	    elsif ($allow_netsuite_email && $allow_ubercart_email) {
+		# We need to allow a Reply-To header to be absent or present, since we might get
+		# email in either NetSuite or UberCart formats, but if the header is present, it
+		# has to match our configured pattern.
+		if (defined($reply_to_header) && $reply_to_header !~ $valid_reply_to_address_pattern) {
+		    $has_bad_header = 1;
+		    log_message 'ERROR:  Got invalid "Reply-To:" header: ',
+		      defined($reply_to_header) ? $reply_to_header : '(empty)' if $DEBUG_ERROR;
+		}
+	    }
+	    else {
+		# Here we're only allowing UberCart email, in which case we need to insist both
+		# that we get a Reply-To header and that it match our configured pattern.
+		if (!defined($reply_to_header) || $reply_to_header !~ $valid_reply_to_address_pattern) {
+		    $has_bad_header = 1;
+		    log_message 'ERROR:  Got invalid "Reply-To:" header: ',
+		      defined($reply_to_header) ? $reply_to_header : '(empty)' if $DEBUG_ERROR;
+		}
+	    }
+	    if (!defined($to_header) || $to_header !~ $valid_to_address_pattern) {
+		$has_bad_header = 1;
+		log_message 'ERROR:  Got invalid "To:" header: ',
+		  defined($to_header) ? $to_header : '(empty)' if $DEBUG_ERROR;
+	    }
+	    if (!defined($subject_header) || $subject_header !~ $valid_subject_line_pattern) {
+		$has_bad_header = 1;
+		log_message 'ERROR:  Got invalid "Subject:" header: ',
+		  defined($subject_header) ? $subject_header : '(empty)' if $DEBUG_ERROR;
+	    }
+	    if ($has_bad_header) {
+		move_message ($message_uid, $invalid_email_mailbox);
+
+		# The account from which we are drawing requests should not be on any email aliases,
+		# so it should only be receiving incoming messages which are legitimate license-key
+		# requests.  In case something else is going on, we let a human know about it.
+		# We include the Subject from the bogus request in the Subject of our notification
+		# email mostly to attempt to individuate this message so GMail doesn't collapse it
+		# into a thread of similar emails and make it near-invisible.  GMail's behavior in
+		# that regard is infuriating, and this workaround may not always be successful.
+		send_trouble_email(
+		    "Bogus license-key request" . (defined($subject_header) ? ": $subject_header" : ''),
+		    "Bogus Request:",
+		    "The $license_type license key generator on $unqualified_hostname found a bogus request:",
+		    '',
+		    '        From: ' . (defined($from_header)     ? $from_header     : '(undefined)'),
+		    '    Reply-To: ' . (defined($reply_to_header) ? $reply_to_header : '(undefined)'),
+		    '          To: ' . (defined($to_header)       ? $to_header       : '(undefined)'),
+		    '     Subject: ' . (defined($subject_header)  ? $subject_header  : '(undefined)'),
+		    '',
+		    "See the log file ($logfile) for details.",
+		    "This request has been moved to the $invalid_email_mailbox mailbox."
+		);
+		next;
+	    }
+
+	    my $body_text = undef;
+
+	    # FIX LATER:  We could further validate the incoming request by demanding that:
+	    # my $body_structure = $imap->get_bodystructure($message_uid);
+	    # * the body type/subtype be "TEXT/HTML", by calling $body_structure->bodytype and $body_structure->bodysubtype
+	    # * the body encoding be "8BIT", by calling $body_structure->bodyenc
+	    # * the body CHARSET be "UTF-8", by calling $body_structure->bodyparms and examining the returned hash
+	    # * the body size be reasonable, by calling $body_structure->bodysize
+	    # * the body structure be empty, by calling $body_structure->bodystructure and verifying it's an empty array
+	    # * the body text line count be reasonable, by calling $body_structure->textlines
+	    # Note that NetSuite has been seen to generate both "7bit" and "quoted-printable" values
+	    # for the Content-Transfer-Encoding, instead of the "8BIT" produced by the previous code
+	    # that sent us license key requests.  So now that is something we need to check, so we
+	    # can decode the results properly and not be subject to unexpected line wrapping.
+
+	    # We want to extract the actual text of the message and drop the additional IMAP lines
+	    # that we find within $body_text if we grab the full raw server response using $imap->fetch().
+	    # In early testing, the extra lines did not interfere with our downstream use of the message
+	    # text.  However, later on we started getting a quoted-printable encoding, and at that point
+	    # we needed to have a clean message body that we could decode without any danger of confusion
+	    # from the extram IMAP lines.  $imap->bodypart_string() will retrieve just the message
+	    # body for us, though it doesn't deal with the content decoding.  For that, we need an
+	    # additional step.
+	    if ($use_imap_bodypart_string) {
+		# In this code branch, we actually just retrieve a single body part,
+		# which is not necessarily the entire message body.
+		# FIX LATER:  Possibly, we might want/need to use $body_structure to find out which
+		# message body part number we want to retrieve.  But for now, we will just assume
+		# the incoming message contains a single part, and that's what we go for.
+		my $body_structure = $imap->get_bodystructure($message_uid);
+		my $part_number = 1;
+		$body_text = $imap->bodypart_string($message_uid, $part_number, 65536, 0);
+		if (defined($body_structure) && defined($body_text)) {
+		    # Note:  $body_structure->bodyenc() emits a "does not have a bodyenc" message on STDERR
+		    # if it cannot figure out what the encoding is (this happens for a multipart email; see
+		    # below).  To suppress that message, we first reach around the object implementation
+		    # and test for it directly, as there doesn't seem to be some other way to do this.
+		    # The real error is upstream, when $imap->get_bodystructure() failed to provide this
+		    # component of the message.
+		    my $body_content_transfer_encoding = undef;
+		    if (exists $body_structure->{'bodyenc'}) {
+			$body_content_transfer_encoding = $body_structure->bodyenc();
+		    }
+		    if (defined($body_content_transfer_encoding) && $body_content_transfer_encoding =~ /^quoted-printable$/i) {
+			# Theoretically, if the incoming email was declared as "Content-Type: text/html; charset=UTF-8"
+			# then we should see $bodyparms->{CHARSET} as "UTF-8".  But in practice we see that value is
+			# being presented as undef instead.  That's only slightly better than having the incoming email
+			# declared as "Content-Type: text/html" which gives us 'NIL' for $bodyparms instead of a hashref.
+			my $bodyparms = $body_structure->{'bodyparms'};
+			if (ref $bodyparms) {
+			    # For the time being, per the comment above, we take this as evidence that we have UTF-8
+			    # even though the $bodyparms->{CHARSET} may be undef.  However, this branch has not yet
+			    # been tested.
+			    $body_charset = 'UTF-8';
+			}
+			$email_body = MIME::QuotedPrint::decode($body_text);
+		    }
+		    elsif (defined($body_content_transfer_encoding) &&
+		      ($body_content_transfer_encoding =~ /^7bit$/i || $body_content_transfer_encoding =~ /^8bit$/i)) {
+			# Theoretically, if the incoming email was declared as "Content-Type: text/html; charset=UTF-8"
+			# then we should see $bodyparms->{CHARSET} as "UTF-8".  But in practice we see that value is
+			# being presented as undef instead.  That's only slightly better than having the incoming email
+			# declared as "Content-Type: text/html" which gives us 'NIL' for $bodyparms instead of a hashref.
+			my $bodyparms = $body_structure->{'bodyparms'};
+			if (ref $bodyparms) {
+			    # For the time being, per the comment above, we take this as evidence that we have UTF-8
+			    # even though the $bodyparms->{CHARSET} is probably undef.
+			    $body_charset = 'UTF-8';
+			}
+			$email_body = $body_text;
+		    }
+		    elsif (!defined($body_content_transfer_encoding) &&
+			# To disable this branch (support for multi-part incoming email), uncomment the following line.
+			# 0 &&
+			# Test for having a multi-part email (Content-Type: multipart/alternative).
+			$body_structure->bodytype() eq 'MULTIPART') {
+			# We have seen the $body_content_transfer_encoding be completely undefined when an
+			# incoming email is multipart and the Content-Transfer-Encoding is actually specified
+			# as "7bit" for both the entire message body and each of the individual parts (both
+			# text/plain and text/html).  This has been seen in early testing of mail from Marketo.
+			# Unfortunately, single-part email is not yet supported by Marketo. it's a pending
+			# feature request:
+			#     https://marketo.helpstream.biz/Question.jsp?id=31793dfef95f4f013663b8476afd7714&from=SearchAll_10
+			# So we probably cannot disable this branch in the short term.
+
+			# This section is just for development, to illustrate the structure of the available
+			# data structures.  We won't necessarily use these structures directly, preferring
+			# class methods to access them when possible, but sometimes you first need to know
+			# what is available, in exactly the form that is actually present.
+			if (0) {
+			    foreach my $key ( sort keys %$body_structure ) {
+				log_message "body_structure: $key => "
+				  . ( defined( $body_structure->{$key} ) ? $body_structure->{$key} : '(undefined)' );
+				## body structure: bodyparms => HASH(0xb9e5a90)
+				if ( ref $body_structure->{$key} eq 'HASH' ) {
+				    if ( %{ $body_structure->{$key} } ) {
+					foreach my $subkey ( sort keys %{ $body_structure->{$key} } ) {
+					    log_message "body_structure $key: $subkey => "
+					      . (
+						defined( $body_structure->{$key}{$subkey} )
+						? $body_structure->{$key}{$subkey}
+						: '(undefined)' );
+					}
+				    }
+				    else {
+					log_message "body_structure $key hash has no subkeys";
+				    }
+				}
+				## body structure: bodystructure => ARRAY(0xb9d24b0)
+				elsif ( ref $body_structure->{$key} eq 'ARRAY' ) {
+				    foreach my $elem ( @{ $body_structure->{$key} } ) {
+					## body_structure bodystructure element: Mail::IMAPClient::BodyStructure=HASH(0x97b7680)
+					log_message "body_structure $key element: " . ( defined($elem) ? $elem : '(undefined)' );
+					if ( attributes::reftype($elem) eq 'HASH' ) {
+					    if (%$elem) {
+						foreach my $elemkey ( sort keys %{$elem} ) {
+						    log_message "body_structure $key element $elem elemkey $elemkey: "
+						      . ( defined( $elem->{$elemkey} ) ? $elem->{$elemkey} : '(undefined)' );
+						    if ( ref $elem->{$elemkey} eq 'HASH' ) {
+							if ( %{ $elem->{$elemkey} } ) {
+							    foreach my $elemsubkey ( sort keys %{ $elem->{$elemkey} } ) {
+								log_message "body_structure $key element $elem hash $elemkey subkey $elemsubkey: "
+								  . (
+								    defined( $elem->{$elemkey}{$elemsubkey} )
+								    ? $elem->{$elemkey}{$elemsubkey}
+								    : '(undefined)' );
+							    }
+							}
+							else {
+							    log_message "body_structure $key element $elem hash $elemkey has no subkeys";
+							}
+						    }
+						}
+					    }
+					    else {
+						log_message "body_structure $key element $elem has no subkeys";
+					    }
+					}
+				    }
+				}
+			    }
+			}
+
+			# Probe the individual message parts to find the one we're interested in.
+			my $part_number = 0;
+			foreach my $part (@{ $body_structure->{'bodystructure'} }) {
+			    ++$part_number;
+			    # We're looking for part type "TEXT/HTML" since that is what our configured
+			    # content-match patterns are based on.
+			    my $part_type = $part->bodytype() . '/' . $part->bodysubtype();
+			    if ($part_type =~ m{^TEXT/HTML$}i) {
+				$body_text = $imap->bodypart_string($message_uid, $part_number, 65536, 0);
+
+				# FIX LATER:  We used to make an unwarranted assumption here about the charset
+				# encoding of the email body part.  If/when this assumption fails, we will
+				# need to dig further into the body structure and decide on that basis what
+				# to assign here as the $body_charset value.  This needs to be tested with
+				# some multi-part Marketo emails containing and not containing some accented
+				# characters.
+				#
+				# We used to just assume the following:
+				#     $body_charset = 'UTF-8';
+				# We are essentially fetching this element here:
+				#     $body_structure->{bodystructure}[$part_number - 1]{bodyparms}{CHARSET}
+				my $bodyparms = $part->bodyparms();
+				$body_charset = ref $bodyparms eq 'HASH' ? $bodyparms->{CHARSET} : 'UTF-8';
+				log_message "body_charset: $body_charset" if $DEBUG_DEBUG;
+
+				# We are essentially fetching this element here:
+				#     $body_structure->{bodystructure}[$part_number - 1]{bodyenc}
+				# For $body_content_transfer_encoding, we expect either '7BIT' or 'QUOTED-PRINTABLE'.
+				$body_content_transfer_encoding = $part->bodyenc();
+				log_message "body_content_transfer_encoding: $body_content_transfer_encoding" if $DEBUG_DEBUG;
+
+				if (defined($body_content_transfer_encoding) && $body_content_transfer_encoding =~ /^quoted-printable$/i) {
+				    $email_body = MIME::QuotedPrint::decode($body_text);
+				}
+				else {
+				    $email_body = $body_text;
+				}
+				# FIX LATER:  This output is effectively already duplicated below,
+				# so we should probably just drop this log message.
+				# log_message "email_body:\n" . printable_string($email_body) if $DEBUG_DEBUG;
+			    }
+			}
+			if (!defined $email_body) {
+			    log_timed_message 'ERROR:  cannot find a text/html part of the incoming email';
+			}
+
+			# This code branch is somewhat workable, but deprecated.  It selects the entire message body,
+			# including all message parts.  One problem with that is that we won't have a clear idea of
+			# the charset encoding of the specific body part we're interested in.
+			if (0) {
+			    if (0) {
+				# This legacy code branch is obsolescent and just here for possible emergency use.
+				$body_text = $imap->fetch("$message_uid (BODY[TEXT]<0.65536>)");
+				# Here, we assume that no content decoding is needed
+				# (which is now seen to sometimes be a bad assumption).
+				# We do this join conditionally so we don't try to dereference an undefined value.
+				$email_body = join( "\n", @$body_text ) if ($body_text);
+			    }
+			    else {
+				# Here we use the entire message body, which has the following problems:
+				# * the $imap->body_string() construction won't be limited to 64K characters;
+				#   to so limit, we would need to use our legacy construction (just above),
+				#   which has its own forms of ugliness:
+				# * the $imap->body_string() construction will not include the mail headers,
+				#   but will include both the multipart boundaries and the per-part headers.
+				# So this has to be considered a hack.  The only reason we're doing it is because
+				# we have temporarily hacked our Marketo pattern matches to find stuff in both parts.
+				# That was basically a mistake, and we're going to see if we can fix that.  Then
+				# we could perhaps move back to selecting a single part, but make it specifically
+				# the text/html part, by looking at the body structure to figure that out rather
+				# than just assuming it is part 2.
+				$body_text = $imap->body_string($message_uid);
+				$email_body = $body_text;
+			    }
+			}
+		    }
+		    if (!defined $email_body) {
+			# The Content-Transfer-Encoding could be "binary" or "base64", or just completely undefined
+			# (which can happen if the incoming email is multipart and the content encoding is specified
+			# in the individual parts but not for the entire message body; see the code above).
+			# Possibly in some future release we will cover those cases, but now for now.
+			log_timed_message 'ERROR:  found unsupported content transfer encoding: ',
+			  defined($body_content_transfer_encoding) ? $body_content_transfer_encoding : '(undefined)'
+			  if $DEBUG_ERROR;
+
+			move_message ($message_uid, $invalid_email_mailbox);
+
+			# The account from which we are drawing requests should not be on any email aliases,
+			# so it should only be receiving incoming messages which are legitimate license-key
+			# requests.  In case something else is going on, we let a human know about it.
+			# We include the Subject from the bogus request in the Subject of our notification
+			# email mostly to attempt to individuate this message so GMail doesn't collapse it
+			# into a thread of similar emails and make it near-invisible.  GMail's behavior in
+			# that regard is infuriating, and this workaround may not always be successful.
+			send_trouble_email(
+			    "Bogus license-key request" . (defined($subject_header) ? ": $subject_header" : ''),
+			    "Bogus Request:",
+			    "The $license_type license key generator on $unqualified_hostname found a bogus request:",
+			    '',
+			    '        From: ' . (defined($from_header)     ? $from_header     : '(undefined)'),
+			    '    Reply-To: ' . (defined($reply_to_header) ? $reply_to_header : '(undefined)'),
+			    '          To: ' . (defined($to_header)       ? $to_header       : '(undefined)'),
+			    '     Subject: ' . (defined($subject_header)  ? $subject_header  : '(undefined)'),
+			    '     Content-Transfer-Encoding: ' . (defined($body_content_transfer_encoding)  ? $body_content_transfer_encoding  : '(undefined)'),
+			    '',
+			    "See the log file ($logfile) for details.",
+			    "This request has been moved to the $invalid_email_mailbox mailbox."
+			);
+			next;
+		    }
+		}
+	    }
+	    else {
+		# This legacy code branch is obsolescent and just here for possible emergency use.
+		$body_text = $imap->fetch("$message_uid (BODY[TEXT]<0.65536>)");
+		# Here, we assume that no content decoding is needed
+		# (which is now seen to sometimes be a bad assumption).
+		# We do this join conditionally so we don't try to dereference an undefined value.
+		$email_body = join( "\n", @$body_text ) if ($body_text);
+	    }
+	    if ($body_text) {
+		if ($DEBUG_DEBUG) {
+		    log_message '--- Message body:';
+		    log_message '================================================================';
+		    # We intentionally don't convert what is possibly a UTF-8 $email_body to Unicode before
+		    # making it printable, because we want to see all the original bytes for diagnostic purposes.
+		    # That means that UTF-8 character sequences will be more difficult to interpret, but so be it.
+		    log_message printable_string($email_body);
+		    log_message '================================================================';
+		}
+
+		$subject_header =~ $valid_subject_line_pattern;
+		$subject_order_number = $1;
+		log_message '### Subject order number: ', $subject_order_number if $DEBUG_INFO;
+
+		last;
+	    }
+	    else {
+		# In early testing, we often got this error message here:
+		# "error while reading data from server: Resource temporarily unavailable"
+		# so we have to expect failure in the ordinary course of operation.
+		log_timed_message 'ERROR:  Fetch of request message body failed: ', $imap->LastError if $DEBUG_ERROR;
+
+		# Just skip this message in this cycle.  We'll process it again in the next cycle.
+	    }
+	}
+    }
+
+    return CONTINUE_STATUS, $message_uid, $from_header, $reply_to_header, $to_header, $subject_order_number, $body_charset, $email_body;
+}
+
+sub send_secondary_email {
+    my $outgoing_email_target  = shift;
+    my $outgoing_email_subject = shift;
+    my @outgoing_email_body    = @_;
+
+    # We want the From field in the received email to say 'GWOS Support <orders@gwos.com>', partly
+    # because that looks more formal and also because we don't want to expose the license-key
+    # request $incoming_email_address to external users.  But because GMail will override the
+    # email address in the From: header with the actual email account used to send the message,
+    # that will only happen either if the email is actually sent from the orders@gwos.com account,
+    # or if the incoming email account is set up in GMail so that all email sent from it appears to
+    # come from the specified outgoing email account.  This outgoing account must therefore exist
+    # and be different from the account we will use to accept incoming license requests.  We then
+    # want to set up incoming email to the "orders@gwos.com" account (which will receive any bounced
+    # outgoing email) to be automatically forwarded to "support@gwos.com".  The only issue then is
+    # that the Sent folder containing the secondary (audit and trouble) email will be in a different
+    # account from the one we use to accept incoming requests, which is not a significant problem.
+
+    # FIX LATER:  Possibly these From and Reply-To values should be drawn from the config file.
+    # Note that the address given within <> in the From option will be overridden by GMail,
+    # while the similar address in the Reply-To option will be left as we specify it here.
+    my $message = MIME::Lite->new(
+	'From'     => 'GWOS Support <orders@gwos.com>',
+	'Reply-To' => 'GWOS Support <support@gwos.com>',
+	'To'       => $outgoing_email_target,
+	'Subject'  => $outgoing_email_subject,
+	'Type'     => 'multipart/alternative'
+    );
+
+    # Here we make sure that any Unicode characters in this email are handled properly, both
+    # so MIME::Lite can apply the quoted-printable encoding, and so they are visible to the
+    # ultimate mail receiver.  See http://www.perlmonks.org/?node_id=830401 for more info.
+    my $mail_body = join( "\n", @outgoing_email_body ) . "\n";
+    utf8::encode( $mail_body );
+
+    $message->attach(
+	Type     => 'text/plain; charset=UTF-8',
+	Data     => $mail_body,
+	Encoding => 'quoted-printable'
+    );
+
+    # We would like to ensure that all outgoing email is encrypted with SSL on
+    # its way to the email server.  That is done by several external settings:
+    #
+    # (*) The outgoing email account is set up to only allow HTTPS access.
+    # (*) We use an email server port designed to allow only HTTPS access.
+    # (*) We use a locally-modified copy of MIME::Lite that supports SSL.
+    #
+    # FIX LATER:  In the future, we would also like to provide here an "SSL"
+    # option to the $message->send() call, with a non-zero value to force
+    # the use of SSL internally to this script.
+
+    # This send() requires several things to support SSL:
+    # (1) A modified copy of perl/lib/MIME/Lite.pm that simply replaces all occurrences
+    #     of Net::SMTP with Net::SMTP::SSL instead.  We ought to make a version that
+    #     allows the user to choose between Net::SMTP and Net::SMTP::SSL depending on
+    #     whether a non-zero SSL option is supplied (defaulting off, the prior behavior).
+    # (2) Supplying an SSL port (the "Port" option here) explicitly to the send() call.
+    my $send_status = eval {
+	$message->send(
+	    'smtp',
+	    $outgoing_email_server,
+	    Port     => $outgoing_email_port,
+	    AuthUser => $outgoing_email_address,
+	    AuthPass => $outgoing_email_password,
+	    Debug    => $DEBUG_DEBUG
+	);
+    };
+    if (!$send_status) {
+	log_timed_message 'ERROR:  Failed to send email to: ', $outgoing_email_target if $DEBUG_ERROR;
+	log_message $@ if ($DEBUG_ERROR && $@);
+	return 0;
+    }
+    else {
+	log_timed_message 'INFO:  Success in sending email to: ', $outgoing_email_target if $DEBUG_INFO;
+    }
+
+    return 1;
+}
+
+sub send_audit_email {
+    my $subject = shift;
+    my @body    = @_;
+    return send_secondary_email($audit_email_address, $subject, @body);
+}
+
+sub send_trouble_email {
+    my $subject = shift;
+    my @body    = @_;
+    return send_secondary_email($trouble_email_address, $subject, @body);
+}
+
+sub handle_exit_signal {
+    my $signame = shift;
+    $shutdown_requested = 1;
+
+    # for developer debugging only
+    log_timed_message "NOTICE:  Received SIG$signame; aborting!" if $DEBUG_NOTICE;
+}
+
+# For initial debugging only.
+sub printstack {
+    my $i = 0;
+    while (my ($package, $filename, $line, $subroutine) = caller($i++)) {
+	print STDERR "${package}, ${filename} line $line (${subroutine})\n";
+    }
+}

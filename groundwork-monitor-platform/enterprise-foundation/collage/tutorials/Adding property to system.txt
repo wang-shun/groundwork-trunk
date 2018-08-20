@@ -1,0 +1,29 @@
+Tutorial: Adding a new property to the system
+
+Use case:
+Add a new Property called isStateChanged of type boolean for the ApplicationType Nagios.
+
+Note: ApplicationType Nagios has some build in utility functions for handling Nagios 1.x/2.x attributes/properties
+
+Database updates
+----------------
+
+Schema changes: None since the properties are all handled through seed data.
+
+Seed data:
+Add a new Propert Type:
+INSERT INTO PropertyType(Name, Description, isBoolean) VALUES ("isStateChanged", "LogMessage property for Consolidation", 1);
+
+Bind it to the Application (NAGIOS) and Entity type (LOG_MESSAGE):
+
+INSERT INTO ApplicationEntityProperty(ApplicationTypeID, EntityTypeID, PropertyTypeID, SortOrder) VALUES ((SELECT ApplicationTypeID FROM ApplicationType WHERE Name='NAGIOS'),(SELECT EntityTypeID FROM EntityType WHERE Name='LOG_MESSAGE'),(SELECT PropertyTypeID FROM PropertyType WHERE Name = 'isStateChanged'),64);
+
+Collage Framework updates
+-------------------------
+
+Since the new property is for Nagios the utility class for Nagios needs to be extended:
+com.groundwork.collage.util.Nagios in impl/common
+
+Update the AdminImpl where the new property needs to be passed in
+
+Update the feeders that call into the Admin and make sure the property can be passed in

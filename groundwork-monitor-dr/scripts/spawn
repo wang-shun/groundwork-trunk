@@ -1,0 +1,101 @@
+#!/bin/bash -e
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+# This script is here to provide a one-step process for deploying to a remote
+# machine for testing purposes.  It is not part of the RPM distribution itself,
+# as it is intended only for development, not for production use.  We presume
+# the software has been previously checked out in your own ~/svn/monitor-dr
+# directory on the remote machine, as it is that copy that will be used for
+# this work.
+
+# It's easier to run this script if you set up password-less logins between
+# your source and target machines, as you will be running this a lot during
+# the development process.
+
+# Choose the machine on which the software will be built, installed, and run.
+target=honor
+myname=`whoami`
+
+print_usage() {
+    echo "usage:  spawn [build [all]]"
+    echo "where:  spawn build all     # update, build (even perl packages), install"
+    echo "where:  spawn build         # update, build (no perl packages), install"
+    echo "where:  spawn clean         # clean, then install the last-build RPM"
+    echo "where:  spawn               # just install the last-built RPM"
+}
+
+if [ $# -gt 2 ]; then
+    print_usage
+    exit 1
+fi
+
+clean=0
+if [ $# -ge 1 -a "$1" = 'clean' ]; then
+    clean=1
+    shift
+fi
+build=0
+if [ $# -ge 1 -a "$1" = 'build' ]; then
+    build=1
+    shift
+fi
+all=0
+if [ $# -ge 1 -a "$1" = 'all' ]; then
+    all=1
+    shift
+fi
+if [ $# -ge 1 ]; then
+    print_usage
+    exit 1
+fi
+
+if [ $build -eq 1 ]; then
+    ssh $target << eof
+    cd svn/monitor-dr
+    rm -f config/replication.conf
+    svn update
+    if ( $all == 1 ) then
+	make all
+    else
+	make perl_modules logs
+    endif
+    make buildclean
+    make rpms
+eof
+fi
+
+ssh $target -l root << eof
+echo "=== Uninstalling the previous RPM ..."
+rpm -e groundwork-disaster-recovery
+echo "=== Installing the current RPM ..."
+rpm -Uvh /home/$myname/svn/monitor-dr/rpmbuild/RPMS/groundwork-disaster-recovery-?.?.?-*.x86_64.rpm
+
+if [ $clean -eq 1 ]; then
+    echo "=== Cleaning old replication state ..."
+    rm -f /home/$myname/svn/monitor-dr/var/replication_state
+fi
+
+# Hack the permissions on the var directory so we can write to it to create our
+# database credentials files there in our standard location, even when we are
+# running as a non-root user while running develoment tests.  This is strictly
+# for development purposes; folks, don't try this at home!
+chmod 777 /usr/local/groundwork/replication/var
+
+# Oddly, after installing the RPM, we're going to run the development copy instead.
+# That will change in a future version of this script, where we will run the installed
+# copy as the nagios user.
+echo "=== Running the Replication Engine ..."
+su - $myname -c "
+    /usr/bin/perl -pi -e 's/enable-processing: no/enable-processing: yes/;'		\
+		      -e 's/^replication-state-file:.*//;'				\
+		      -e 's/^# replication-state-file:/replication-state-file:/;'	\
+		      -e 's/^actions-base-dir:.*//;'					\
+		      -e 's/^# actions-base-dir:/actions-base-dir:/;'			\
+		      -e 's/^replication-log-file:.*//;'				\
+		      -e 's/^# replication-log-file:/replication-log-file:/;'		\
+	/home/$myname/svn/monitor-dr/config/replication.conf
+"
+su - $myname -c "/home/$myname/svn/monitor-dr/bin/replication_state_engine -i >& /dev/null &"
+eof

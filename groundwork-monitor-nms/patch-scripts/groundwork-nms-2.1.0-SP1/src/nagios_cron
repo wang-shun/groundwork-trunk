@@ -1,0 +1,12 @@
+SHELL=/bin/bash
+PATH=/usr/local/groundwork/common/bin:/usr/local/groundwork/common/sbin
+
+50 23 * * * /usr/local/groundwork/core/reports/utils/dashboard_data_load.pl > /usr/local/groundwork/core/reports/utils/log/dashboard_data_load.log 2>&1
+0 1 * * * /usr/local/groundwork/core/reports/utils/dashboard_avail_load.pl > /usr/local/groundwork/core/reports/utils/log/dashboard_avail_load.log 2>&1
+0 0 * * * /usr/local/groundwork/common/bin/find /tmp/ -maxdepth 0 -name 'sess_*' -cmin +480 -exec rm \{} \;
+0 0 * * * /usr/local/groundwork/common/bin/find /usr/local/groundwork/nagios/var/archives/ -follow -name 'nagios-*' -mtime +60 -exec rm \{} \;
+0 3 * * * /usr/local/groundwork/log-reporting/bin/importer.pl
+0 4,8,12,16,20 * * * (/usr/local/groundwork/nms/tools/perl/bin/perl /usr/local/groundwork/nms/applications/nedi/nedi.pl -clo ; /usr/local/groundwork/nms/tools/automation/scripts/extract_nedi.pl )> /dev/null 2>&1
+0 0 * * * /usr/local/groundwork/nms/tools/perl/bin/perl /usr/local/groundwork/nms/applications/nedi/nedi.pl -clob > /dev/null 2>&1
+*/5 * * * * /usr/local/groundwork/common/bin/cacti_cron.sh > /dev/null 2>&1
+

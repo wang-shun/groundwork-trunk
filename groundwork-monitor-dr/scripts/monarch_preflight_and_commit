@@ -1,0 +1,390 @@
+#!/usr/local/groundwork/perl/bin/perl --
+#!/usr/local/groundwork/perl/bin/perl -w --
+# Note:  We'd like to use the -w flag on the line above, but the GW 6.1.1
+# and earlier releases contain so many poor Perl constructions (typically,
+# depending on default actions to happen when undefined values are used in
+# expressions) that the warning messages would overwhelm our output.
+# Hopefully, we will whittle those down over successive releases until
+# we can confidently enable such warnings.
+#
+# monarch_preflight_and_commit
+# CLI script to perform preflight check and commit of Monarch to Nagios
+#
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+#
+# Requirements:
+#
+#   - This script is for use with GroundWork Monitor 6.0.1 or later releases.
+#   - This script should be run ONLY as user nagios.
+#
+# Changelog:
+# 2007-09-20 - original version
+# 2008-03-06 - revised to cut down the number of phases of file writing
+# 2010-05-28 - rewritten from scratch to perform a synchronized commit
+
+# ================================================================
+# Tasks
+# ================================================================
+
+# To do:
+# (*) Once we move synchronized_commit() to MonarchStorProc.pm, drop the
+#     copy included here and just reference that copy.  Note that there
+#     are some subtle differences between how that routine is currently
+#     present in monarch.cgi and the version we use here that would
+#     have to get resolved before we can move it to MonarchStorProc.pm.
+# (*) Use the -w flag once we can.
+# (*) Implement the companion script to deploy to child servers as well.
+
+# ================================================================
+# Perl Setup
+# ================================================================
+
+use strict;
+use lib qq(/usr/local/groundwork/core/monarch/lib);
+use MonarchStorProc;
+
+# ================================================================
+# Configuration Variables
+# ================================================================
+
+# It's time we stop the silly practice of backing up BEFORE you perform a Commit.
+# While in many other contexts it makes sense to save the current state before
+# making changes, in this particular case it makes no sense at all.  That's because
+# in fact, the critical changes have already been made -- in the monarch database.
+# A backup BEFORE a Commit would preserve the present (old) nagios/etc/ files in
+# the same timestamped backup with the (new) already-changed monarch configuration.
+# That's silly and confusing.  Better is to consistently back up everything only
+# AFTER a successful Commit.  Then you have a self-consistent set of nagios/etc/
+# files and the matching monarch database that generated them, and you know that
+# this represents a configuration that was successfully deployed.  Hence you can
+# confidently roll back to this setup at a future time.
+#
+# For ordinary standalone usage of this script, you will want to enable this
+# (via command-line option ONLY).  But for automated use (say, in a Disaster
+# Recovery context) where backups are already handled external to this script,
+# you will want to disable this.
+my $back_up_after_commit = undef;
+
+# We force the user account to be set from the commmand line, so we can record
+# when a commit operation was initiated to support a particular application
+# such as Disaster Recovery replication.
+my $user_acct = undef;
+
+# This parameter might need local tuning under adverse circumstances.
+my $max_commit_lock_attempts = 20;
+
+# ================================================================
+# Global Variables
+# ================================================================
+
+my $backup_dir   = undef;
+my $monarch_home = undef;
+my $nagios_bin   = undef;
+my $nagios_etc   = undef;
+my $nagios_ver   = undef;
+
+our $shutdown_requested = 0;
+
+# ================================================================
+# Subroutines
+# ================================================================
+
+sub handle_exit_signal {
+    my $signame = shift;
+    $shutdown_requested = 1;
+
+    # for developer debugging only
+    # print "ERROR:  Received SIG$signame; aborting!\n";
+}
+
+sub initialize {
+    my %where = ();
+    my %objects = StorProc->fetch_list_hash_array( 'setup', \%where );
+    if ($objects{'error'}) {
+	print $objects{'error'};
+	return 0;
+    }
+    $backup_dir   = $objects{'backup_dir'}[2];
+    $monarch_home = $objects{'monarch_home'}[2];
+    $nagios_bin   = $objects{'nagios_bin'}[2];
+    $nagios_etc   = $objects{'nagios_etc'}[2];
+    $nagios_ver   = $objects{'nagios_version'}[2];
+    return ($backup_dir && $monarch_home && $nagios_bin && $nagios_etc && $nagios_ver) ? 1 : 0;
+}
+
+sub synchronized_commit {
+    my $in_progress_lock;
+    my $commit_lock;
+    my $errors;
+    my $pids;
+    my @errors = ();
+    my $shutdown_message = 'Shutdown requested; will exit.';
+    my @results = ();
+    my @timings = ();
+
+    # We catch SIGTERM, SIGINT, and SIGQUIT so we can stop and clean up when we are asked nicely. 
+    local $SIG{INT}  = \&handle_exit_signal;
+    local $SIG{QUIT} = \&handle_exit_signal;
+    local $SIG{TERM} = \&handle_exit_signal;
+
+    use MonarchLocks;
+
+    $errors = Locks->open_and_lock( \*in_progress_lock, $Locks::in_progress_file, $Locks::EXCLUSIVE, $Locks::NON_BLOCKING );
+    if (@$errors) {
+	my @blocking_errors = ();
+	if (defined fileno \*in_progress_lock) {
+	    my ($pid_errors, $pid_blocks, $pids) = Locks->get_blocking_pids( \*in_progress_lock, $Locks::in_progress_file, $Locks::EXCLUSIVE );
+	    if (@$pid_blocks) {
+		push @blocking_errors, 'Another pre-flight or commit operation is already in progress.';
+		push @blocking_errors, 'Underlying detail:' if @$pid_blocks || @$pid_errors;
+		push @blocking_errors, @$pid_blocks;
+	    }
+	    push @blocking_errors, @$pid_errors;
+	    Locks->close_and_unlock( \*in_progress_lock );
+	}
+	push @errors, @blocking_errors;
+	push @errors, @$errors if !@blocking_errors;  # excessive detail
+	return \@errors, \@results, \@timings;
+    }
+
+    if ( !Locks->lock_file_exists( \*in_progress_lock, $Locks::in_progress_file ) ) {
+	Locks->close_and_unlock( \*in_progress_lock );
+	push @errors, 'Another pre-flight or commit operation just completed; please re-try your operation if needed.';
+	return \@errors, \@results, \@timings;
+    }
+
+    require MonarchFile;
+
+    my $starttime;
+    my $majortime;
+    my $phasetime;
+
+    StorProc->start_timing( \$starttime );
+    $majortime = $starttime;
+    $phasetime = $starttime;
+
+    my $files;
+    my $time_ref;
+    ( $files, $errors, $time_ref ) =
+      Files->build_files( $user_acct, '', 'preflight', '', $nagios_ver, $nagios_etc, "$monarch_home/workspace", '' );
+    StorProc->capture_timing( \@timings, \$phasetime, 'file building' );
+    push @errors, @{$errors};
+    push @timings, @$time_ref;
+
+    unless (@errors) {
+	@results = StorProc->pre_flight_check( $nagios_bin, $monarch_home );
+	StorProc->capture_timing( \@timings, \$phasetime, 'pre-flight' );
+	StorProc->capture_timing( \@timings, \$majortime, 'Verification steps (file building and pre-flight)', 'Summary' );
+	my $res_str = pop @results;
+	push @results, $res_str;
+	unless ( $res_str =~ /Things look okay/ ) {
+	    push @errors, @results;
+	    push @errors, "\n";
+	    push @errors, "Make the necessary corrections and run pre flight check.";
+	}
+    }
+
+    if (@errors) {
+	Locks->unlink_and_close( \*in_progress_lock, $Locks::in_progress_file );
+	return \@errors, \@results, \@timings;
+    }
+
+    if ($shutdown_requested) {
+	Locks->unlink_and_close( \*in_progress_lock, $Locks::in_progress_file );
+	push @errors, $shutdown_message;
+	return \@errors, \@results, \@timings;
+    }
+
+    for ( my $lock_attempts = 1; $lock_attempts <= $max_commit_lock_attempts; ++$lock_attempts ) {
+	$errors = Locks->open_and_lock( \*commit_lock, $Locks::commit_lock_file, $Locks::EXCLUSIVE, $Locks::NON_BLOCKING );
+	last if !@$errors;
+	my @blocking_errors = ();
+	my $pid_errors;
+	my $pid_blocks;
+	my $pids = [];
+	if (defined fileno \*commit_lock) {
+	    ($pid_errors, $pid_blocks, $pids) = Locks->get_blocking_pids( \*commit_lock, $Locks::commit_lock_file, $Locks::EXCLUSIVE );
+	    if (@$pid_blocks) {
+		push @blocking_errors, 'Feeders are still operating.';
+		push @blocking_errors, 'Underlying detail:' if @$pid_blocks || @$pid_errors;
+		push @blocking_errors, @$pid_blocks;
+	    }
+	    push @blocking_errors, @$pid_errors;
+	    Locks->close_and_unlock( \*commit_lock );
+	}
+
+	if ($lock_attempts >= $max_commit_lock_attempts) {
+	    push @errors, @blocking_errors;
+	    push @errors, @$errors if !@blocking_errors;  # excessive detail
+	    Locks->unlink_and_close( \*in_progress_lock, $Locks::in_progress_file );
+	    StorProc->capture_timing( \@timings, \$phasetime, 'waiting for synchronization file lock' );
+	    return \@errors, \@results, \@timings;
+	}
+	else {
+	    ## Uncomment the following lines to identify feeders that refuse to quickly release their locks.
+	    ## push @errors, "Lock attempt $lock_attempts:";
+	    ## push @errors, @blocking_errors;
+	    ## ## push @errors, @$errors;
+	}
+
+	kill( 'TERM', @$pids ) if @$pids;
+	sleep 3;
+	if ($shutdown_requested) {
+	    Locks->unlink_and_close( \*in_progress_lock, $Locks::in_progress_file );
+	    push @errors, $shutdown_message;
+	    StorProc->capture_timing( \@timings, \$phasetime, 'waiting for synchronization file lock' );
+	    return \@errors, \@results, \@timings;
+	}
+    }
+
+    utime undef, undef, $Locks::commit_lock_file;
+    StorProc->capture_timing( \@timings, \$phasetime, 'waiting for synchronization file lock' );
+
+    unless (@errors) {
+	my $res = Files->copy_files( "$monarch_home/workspace", $nagios_etc );
+	StorProc->capture_timing( \@timings, \$phasetime, 'file copying' );
+	if ( $res =~ /Error/ ) { push @errors, $res }
+    }
+    unless (@errors) {
+	my $res = Files->rewrite_nagios_cfg( "$monarch_home/workspace", $nagios_etc );
+	StorProc->capture_timing( \@timings, \$phasetime, 'file rewriting' );
+	if ( defined($res) && $res =~ /Error/ ) { push @errors, $res }
+    }
+    if ($shutdown_requested) {
+	push @errors, 'Shutdown has been requested; Commit has been aborted!';
+    }
+    unless (@errors) {
+	my ($time_ref, $results) = StorProc->timed_commit($monarch_home);
+	push @timings, @$time_ref;
+	my $got_commit_errors = 0;
+	foreach (@$results) {
+	    if (/error/i) {
+		if (!/<h7>/) {
+		    $_ = '<h7>' . $_ . '</h7>';
+		}
+		$got_commit_errors = 1;
+	    }
+	}
+	if ($got_commit_errors) {
+	    unshift( @results, '<h7>Error(s) occurred during processing; see below.</h7>' );
+	}
+	push @results, @$results;
+	StorProc->capture_timing( \@timings, \$majortime, 'File install, Nagios reload, Foundation sync, and Callout submit', 'Summary' );
+	StorProc->capture_timing( \@timings, \$starttime, 'Full commit, including all phases,', 'Summary' );
+	if ($shutdown_requested) {
+	    push @errors, 'Shutdown has been requested; Commit has been aborted!';
+	}
+    }
+
+    Locks->close_and_unlock( \*commit_lock );
+    Locks->unlink_and_close( \*in_progress_lock, $Locks::in_progress_file );
+
+    return \@errors, \@results, \@timings;
+}
+
+sub process_is_already_running {
+    my $process_name = shift;
+    my $procs = `ps -C .perl.bin --no-headers -o pid,args`;
+    my @procs = split (/\n/, $procs);
+    foreach my $proc (@procs) {
+	if ($proc =~ m#^\s*(\d+)\s+.*$process_name#) {
+	    # Found a competing process?
+	    return 1 if $1 != $$;
+	}
+    }
+    # No conflicting process found.
+    return 0;
+}
+
+sub print_usage {
+    print <<EOF;
+usage:  monarch_preflight_and_commit {{-b|--no-backup}|{+b|--backup}}
+	    {--user=username|-u username}
+where:  You must specify whether or not you want to automatically
+	back up the monarch database and nagios/etc/ files after a
+	successful commit operation.  You must also specify the user
+	name which is recorded in the generated nagios/etc/ files.
+EOF
+}
+
+sub parse_options {
+    while (@ARGV) {
+	my $arg = shift @ARGV;
+	if ($arg eq '-b' || $arg eq '--no-backup') {
+	    $back_up_after_commit = 0;
+	}
+	elsif ($arg eq '+b' || $arg eq '--backup') {
+	    $back_up_after_commit = 1;
+	}
+	elsif ($arg =~ /^--user=(\w+)$/) {
+	    $user_acct = $1;
+	}
+	elsif ($arg eq '-u' && @ARGV && $ARGV[0] =~ /^\w+$/) {
+	    $user_acct = shift @ARGV;
+	}
+	else {
+	    print_usage();
+	    return 0;
+	}
+    }
+    if (!defined($back_up_after_commit) || !defined($user_acct)) {
+	print_usage();
+	return 0;
+    }
+    return 1;
+}
+
+sub main {
+    (my $process_name = $0) =~ s#.*/##;
+    if (process_is_already_running($process_name)) {
+	print "FATAL:  Another Monarch preflight-and-commit process is already running.\n";
+	return 0;
+    }
+
+    if (not parse_options()) {
+	print "FATAL:  $process_name cannot process command-line arguments.\n";
+	return 0;
+    }
+
+    eval {
+	my $auth = StorProc->dbconnect();
+    };
+    if ($@) {
+	print $@;
+	print "FATAL:  $process_name cannot connect to the database.\n";
+	return 0;
+    }
+    if (not initialize()) {
+	print "FATAL:  $process_name cannot initialize before running a commit operation.\n";
+	return 0;
+    }
+    my ($errors, $results, $timings) = synchronized_commit();
+    if (1) {
+	grep s/ \[[\d.]+ \.\. [\d.]+\]*//, @$timings;
+    }
+    if (@$errors) {
+	print join("\n", @$errors), "\n";
+	print join("\n", @$timings), "\n" if @$timings;
+    }
+    else {
+	print join("\n", @$timings), "\n" if @$timings;
+	print join("\n", @$results), "\n";
+	if ($back_up_after_commit) {
+	    my ( $backup_dir, $backup_errors ) = StorProc->backup( $nagios_etc, $backup_dir );
+	    if (@$backup_errors) {
+		push @$errors, @$backup_errors;
+		print "\n", join("\n", @$errors), "\n";
+	    }
+	    else {
+		print "\nNew configuration has been backed up to: $backup_dir\n";
+	    }
+	}
+    }
+    my $result = StorProc->dbdisconnect();
+
+    return @$errors ? 0 : 1;
+}
+
+# Here is the entire substance of this script, in a one-liner:
+exit (main() ? 0 : 1);

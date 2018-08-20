@@ -1,0 +1,63 @@
+# GWOSgdma preinstall script
+
+# FIX LATER:
+# In the future, perhaps implement a request script that will ask the
+# adminstrator what UID and GID values to use for the created account,
+# if it does not already exist.  Also note the difference between what
+# is available in a client machine's environment and what is available
+# on the machine from which this patch is being applied, which could
+# be a server which manages a diskless client's files.
+
+SOLARIS_VERSION='uname -r'
+
+# Create the gdma user and group if they do not already exist.
+if /usr/bin/id gdma 1>/dev/null 2>&1; then
+    # The gdma user already exists.  For now, we'll assume
+    # the same is true for the gdma group, without checking.
+    : do nothing
+else
+    # The gdma user does not exist.  Build it up, in stages.  Use the
+    # home directory expected by our package, and a disabled password.
+    #
+    # FIX LATER:  check to see if the gdma group exists before we try to
+    # create it, so that doesn't become a problem blocking installation
+    #
+    # Create the gdma group first ...
+    echo 'Adding the "gdma" group ...'
+    if /usr/sbin/groupadd gdma; then
+	: it worked, so we do nothing special here
+    else
+	echo 'Cannot create the "gdma" group; aborting!'
+	# Kill the install right now, before we do some damage
+	# that we cannot automatically back out later.
+	exit 1
+    fi
+    echo 'Adding the "gdma" user ...'
+    # Then add the user ...
+    if /usr/sbin/useradd -c "GroundWork Agent" -d /opt/groundwork/home/gdma -e "" -f 0 -g gdma -s /bin/sh gdma; then
+	: it worked, so we do nothing special here
+    else
+	echo 'Cannot create the "gdma" user; aborting!'
+	# Kill the install right now, before we do some damage
+	# that we cannot automatically back out later.
+	exit 1
+    fi
+    #
+    echo 'Disabling the "gdma" user'"'"'s password ...'
+    # Then disable the user's password ...
+    if [ "$SOLARIS_VERSION" = "5.10" ]; then
+	passwdlockoption=-N
+    else
+	passwdlockoption=-l
+    fi
+    if /usr/bin/passwd $passwdlockoption gdma; then
+	: it worked, so we do nothing special here
+    else
+	echo 'Cannot set the "gdma" user password; aborting!'
+	# Kill the install right now, before we do some damage
+	# that we cannot automatically back out later.
+	exit 1
+    fi
+fi
+
+exit 0

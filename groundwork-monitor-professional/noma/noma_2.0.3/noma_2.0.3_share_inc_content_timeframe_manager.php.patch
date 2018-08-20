@@ -1,0 +1,21 @@
+*** noma_2.0.3/share/inc/content_timeframe_manager.php.orig	Thu Jan  8 08:13:55 2015
+--- noma_2.0.3/share/inc/content_timeframe_manager.php	Wed Jan 28 17:45:54 2015
+***************
+*** 139,146 ****
+  		// From DB
+                  $templateSubContent->assign('ID', $timeframeData['id']);
+                  $templateSubContent->assign('TIMEFRAME_NAME', $timeframeData['timeframe_name']);
+!                 $templateSubContent->assign('TIME_VALID_DATETIME_FROM', $timeframeData['dt_validFrom']);
+!                 $templateSubContent->assign('TIME_VALID_DATETIME_TO', $timeframeData['dt_validTo']);
+                  $templateSubContent->assign('TIME_MONDAY_TIME_FROM', $timeframeData['time_monday_start']);
+                  $templateSubContent->assign('TIME_TUESDAY_TIME_FROM', $timeframeData['time_tuesday_start']);
+                  $templateSubContent->assign('TIME_WEDNESDAY_TIME_FROM', $timeframeData['time_wednesday_start']);
+--- 139,146 ----
+  		// From DB
+                  $templateSubContent->assign('ID', $timeframeData['id']);
+                  $templateSubContent->assign('TIMEFRAME_NAME', $timeframeData['timeframe_name']);
+!                 $templateSubContent->assign('TIME_VALID_DATETIME_FROM', array_key_exists('dt_validFrom', $timeframeData) ? $timeframeData['dt_validFrom'] : $timeframeData['dt_validfrom']);
+!                 $templateSubContent->assign('TIME_VALID_DATETIME_TO', array_key_exists('dt_validTo', $timeframeData) ? $timeframeData['dt_validTo'] : $timeframeData['dt_validto']);
+                  $templateSubContent->assign('TIME_MONDAY_TIME_FROM', $timeframeData['time_monday_start']);
+                  $templateSubContent->assign('TIME_TUESDAY_TIME_FROM', $timeframeData['time_tuesday_start']);
+                  $templateSubContent->assign('TIME_WEDNESDAY_TIME_FROM', $timeframeData['time_wednesday_start']);

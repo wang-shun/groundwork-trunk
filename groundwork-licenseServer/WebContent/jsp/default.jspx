@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<jsp:root version="1.2" xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<jsp:directive.page contentType="text/html;charset=UTF-8"
+		pageEncoding="UTF-8" />
+	<f:view>
+		<ice:outputDeclaration doctypeRoot="HTML"
+			doctypePublic="-//W3C//DTD HTML 4.01 Transitional//EN"
+			doctypeSystem="http://www.w3.org/TR/html4/loose.dtd" />
+		<html>
+		<head>
+		<title>Groundwork Order Generator 6.1</title>
+		
+		</head>
+		<body>
+		<ui:composition template="/templates/template.xhtml">
+			<ui:define name="content">
+				<link href="../xmlhttp/css/rime/rime.css" rel="stylesheet"
+			type="text/css" />
+				<ice:graphicImage value="/images/gwlogo.gif"></ice:graphicImage>
+				<ice:form >
+
+					<!-- Static Tab Set -->
+					<ice:panelGroup id="tabSetTabs">
+						<ice:panelTabSet id="icePnlTbSet" selectedIndex="0"
+							tabPlacement="top"
+							tabChangeListener="#{LicenseManagementBean.tabSelection}">
+
+							<!-- Panel Tab 1 Create order-->
+							<ice:panelTab rendered="true" label="New Order"
+								title="Create a new order">
+								<ui:include src="order_Input.jspx" />
+							</ice:panelTab>
+
+
+							<!-- Panel Tab 2 Create Flex key-->
+							<ice:panelTab rendered="true" label="Create Flex Key"
+								title="Create a new flexible license key">
+								<ui:include src="generateFlexkey.jspx" />
+							</ice:panelTab>
+
+							<!-- Panel Tab 3 Create license key-->
+							<ice:panelTab rendered="true" label="Create key from Order"
+								title="Create license key from Order">
+								<ui:include src="generatekey.jspx" />
+							</ice:panelTab>
+							<!-- Panel Tab 4 Edit-->
+							<ice:panelTab rendered="true" label="Edit Order"
+								title="Edit Order">
+								<ui:include src="edit_order.jspx" />
+
+							</ice:panelTab>
+							<ice:panelTab rendered="true" label="Support Key Generation"
+								title="Support Key Generation">
+								<ui:include src="generateSupportKey.jspx" />
+
+							</ice:panelTab>
+
+						</ice:panelTabSet>
+					</ice:panelGroup>
+				</ice:form>
+			</ui:define>
+		</ui:composition>
+		</body>
+		</html>
+	</f:view>
+</jsp:root>

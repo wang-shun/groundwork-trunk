@@ -1,0 +1,816 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0014)about:internet -->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Adobe RoboHelp 8" />
+<title>NRPE MSSQL</title>
+<link rel="StyleSheet" href="../../Bookshelf.css" type="text/css" />
+<script type="text/javascript" language="JavaScript">
+//<![CDATA[
+function reDo() {
+  if (innerWidth != origWidth || innerHeight != origHeight)
+     location.reload();
+}
+if ((parseInt(navigator.appVersion) == 4) && (navigator.appName == "Netscape")) {
+        origWidth = innerWidth;
+        origHeight = innerHeight;
+        onresize = reDo;
+}
+onerror = null; 
+//]]>
+</script>
+<style type="text/css">
+/*<![CDATA[*/
+<!--
+div.WebHelpPopupMenu { position:absolute;
+left:0px;
+top:0px;
+z-index:4;
+visibility:hidden; }
+-->
+/*]]>*/
+</style>
+
+<script type="text/javascript" language="javascript1.2" src="../../whmsg.js">
+</script>
+<script type="text/javascript" language="javascript" src="../../whver.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../whproxy.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../whutils.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../whlang.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../whtopic.js">
+</script>
+</head>
+<body>
+<script type="text/javascript" language="javascript1.2">
+//<![CDATA[
+<!--
+if (window.gbWhTopic)
+{
+        var strUrl = document.location.href;
+        var bc = 0;
+        var n = strUrl.toLowerCase().indexOf("bc-");
+        if(n != -1)
+        {
+                document.location.href = strUrl.substring(0, n);
+                bc = strUrl.substring(n+3);
+        }
+
+        if (window.addTocInfo)
+        {
+        addTocInfo("GROUNDWORK PROFILES\nNRPE Profiles\nNRPE MSSQL");
+addButton("show",BTN_TEXT,"Show Table of Contents","","","","",0,0,"","","");
+
+        }
+        if (window.writeBtnStyle)
+                writeBtnStyle();
+
+        if (window.writeIntopicBar)
+                writeIntopicBar(1);
+
+        
+        
+
+        if (window.setRelStartPage)
+        {
+        setRelStartPage("../../Bookshelf.htm");
+
+                autoSync(0);
+                sendSyncInfo();
+                sendAveInfoOut();
+        }
+}
+else
+        if (window.gbIE4)
+                document.location.reload();
+
+//-->
+//]]>
+</script><script type="text/javascript" language="JavaScript1.2" src="../../ehlpdhtm.js">
+</script><script type="text/javascript" language="javascript">
+//<![CDATA[
+document.write("<p  style=\"text-align:right;color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;\">");
+AddMasterBreadcrumbs("../../Bookshelf.htm", "color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;", "&gt;", "Home", "../../Welcome_to_GroundWork_Monitor/index.htm");
+document.write("<a style=\"color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;\" href=\"../profiles_aboutprofiles.htm\">GROUNDWORK PROFILES<\/a> &gt; <a style=\"color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;\" href=\"profiles_nrpedns.htm\">NRPE Profiles<\/a> &gt; NRPE MSSQL<\/p>");
+//]]>
+</script>
+<p>&#160;</p>
+<h1><a name="MiniTOCBookMark1" id="MiniTOCBookMark1"></a><img src="../../Shared_Images/square.gif" alt="square.gif" style="border: none;" width="15" height="15" border="0" /> GroundWork Profiles</h1>
+<h3 align="right"><a href="../profiles_aboutprofiles.htm"><img src="../../Shared_Images/homeicon.gif" alt="homeicon.gif" style="border: none;" width="33" height="27" border="0" /></a> <img src="../../Shared_Images/printicon.gif" onclick="window.print()" alt="Print Page" title="Print Page" style="border: none;" width="31" height="27" border="0" /> <a href="mailto:support@groundworkopensource.com?subject=NRPE MSSQL Profile" title="Send Comments"><img src="../../Shared_Images/commentsicon.gif" alt="commentsicon.gif" style="border: none;" width="33" height="27" border="0" /></a></h3>
+<h2><a name="MiniTOCBookMark2" id="MiniTOCBookMark2"></a>NRPE MSSQL Profile</h2>
+<p align="left">Table&#160;of&#160;Contents:&#160;<a class="dropspot" href="javascript:TextPopup(this)" id="MTHotSpot843" name="MTHotSpot843"><span class="MTText">Show</span><span class="MTText" style="display: none;">Hide</span></a></p>
+<script type="text/javascript" language="JavaScript1.2">
+//<![CDATA[
+TextPopupInit('MTHotSpot843', 'MTPOPUP843');
+//]]>
+</script>
+<div align="left" class="droptext" id="MTPOPUP843" style="display: none;">
+<ul style="text-align:left; list-style-type: circle;">
+<li><a href="#MiniTOCBookMark3">Services Configuration</a></li>
+<li><a href="#MiniTOCBookMark4">Profile Package</a></li>
+<li><a href="#MiniTOCBookMark5">Installation</a></li>
+<li><a href="#MiniTOCBookMark6">Implementation</a></li>
+</ul>
+</div>
+<p>This profile monitors a Microsoft SQL Server using Nagios Remote Plugin Executor (NRPE). NRPE is used by the Nagios server to communicate with the Windows server.</p>
+<h3><a name="MiniTOCBookMark3" id="MiniTOCBookMark3"></a>Services Configuration</h3>
+<ul style="list-style: url('../../Shared_Images/bullet01.gif');">
+<li class="p-Bullet1">
+<p class="Bullet1"><span style="font-weight: bold;"><b>SERVICE</b></span> - Definitions in Monarch are stored under this name.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1"><span style="font-weight: bold;"><b>COMMAND LINE</b></span> - Service command name with arguments to be passed to the plugin.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1"><span style="font-weight: bold;"><b>PLUGIN COMMAND LINE</b></span> - Plugin script called by Nagios for this Service.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1"><span style="font-weight: bold;"><b>EXTENDED INFO</b></span> - The Extended Service Info definition, typically used for generating graphs.</p>
+</li>
+</ul>
+<p><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>Note:</b></font></span> Command lines displayed below are intended to be single line commands.</p>
+<table cellspacing="0" width="700">
+<col style="width: 15%;" />
+<col style="width: 35%;" />
+<col style="width: 35%;" />
+<col style="width: 15%;" />
+<tr style="vertical-align: top;">
+<td style="border: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#1B3A83">
+<p class="NormalTableBoldCenter">Service</p>
+</td>
+<td style="border-top: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#1B3A83">
+<p class="NormalTableBoldCenter">Command Line</p>
+</td>
+<td style="border-top: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#1B3A83">
+<p class="NormalTableBoldCenter">Plugin Command Line</p>
+</td>
+<td style="border-top: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#1B3A83">
+<p class="NormalTableBoldCenter">Extended Info</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_mssql_buffer_cache_hits</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_mssql_buffer_cache_hits!80!50</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -t 60 -H $HOSTADDRESS$ -c get_mssql_buf_cache_hit -a "$HOSTADDRESS$" "$ARG1$" "$ARG2$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">number_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_mssql_deadlocks</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_mssql_deadlocks!Name=</p>
+<p class="CourierTable">_Total!50!100</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -t 60 -H $HOSTADDRESS$ -c get_mssql_deadlocks -a "$HOSTADDRESS$" "$ARG1$" "$ARG2$" "$ARG3$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">number_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_mssql_full_scans</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_mssql_full_scans!10!20</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -t 60 -H $HOSTADDRESS$ -c get_mssql_fullscans -a "$HOSTADDRESS$" "$ARG1$" "$ARG2$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">number_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_mssql_lock_wait_time</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_mssql_lock_wait_time!Name=</p>
+<p class="CourierTable">_Total!1000!1500</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -t 60 -H $HOSTADDRESS$ -c get_mssql_lock_wait_time -a "$HOSTADDRESS$" "$ARG1$" "$ARG2$" "$ARG3$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">number_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_mssql_lock_waits</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_mssql_lock_waits!Name=</p>
+<p class="CourierTable">_Total!4!6</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -t 60 -H $HOSTADDRESS$ -c get_mssql_lock_waits -a "$HOSTADDRESS$" "$ARG1$" "$ARG2$" "$ARG3$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">number_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_mssql_log_growths</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_mssql_log_growths!Name=</p>
+<p class="CourierTable">_Total!5!8</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -t 60 -H $HOSTADDRESS$ -c get_mssql_log_growth -a "$HOSTADDRESS$" "$ARG1$" "$ARG2$" "$ARG3$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">number_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_mssql_log_used_db_master</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_mssql_log_used!Name=</p>
+<p class="CourierTable">master!30!40</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -t 60 -H $HOSTADDRESS$ -c get_mssql_log_used -a "$HOSTADDRESS$" "$ARG1$" "$ARG2$" "$ARG3$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">percent_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_mssql_log_used_db_model</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_mssql_log_used!Name=</p>
+<p class="CourierTable">model!40!50</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -t 60 -H $HOSTADDRESS$ -c get_mssql_log_used -a "$HOSTADDRESS$" "$ARG1$" "$ARG2$" "$ARG3$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">percent_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_mssql_log_used_db_msdb</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_mssql_log_used!Name=</p>
+<p class="CourierTable">msdb!40!50</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -t 60 -H $HOSTADDRESS$ -c get_mssql_log_used -a "$HOSTADDRESS$" "$ARG1$" "$ARG2$" "$ARG3$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">percent_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_mssql_log_used_db</p>
+<p class="CourierTable">_mssqlsystemresource</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_mssql_log_used!Name=</p>
+<p class="CourierTable">mssqlsystemresource!40!50</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -t 60 -H $HOSTADDRESS$ -c get_mssql_log_used -a "$HOSTADDRESS$" "$ARG1$" "$ARG2$" "$ARG3$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">percent_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_mssql_log_used_db_tempdb</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_mssql_log_used!Name=</p>
+<p class="CourierTable">tempdb!40!50</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -t 60 -H $HOSTADDRESS$ -c get_mssql_log_used -a "$HOSTADDRESS$" "$ARG1$" "$ARG2$" "$ARG3$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">percent_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_mssql_memory_grants_pending</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_mssql_memory_grants</p>
+<p class="CourierTable">_pending!1!5</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -t 60 -H $HOSTADDRESS$ -c get_mssql_memgrantspending -a "$HOSTADDRESS$" "$ARG1$" "$ARG2$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">number_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_mssql_transactions</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_mssql_transactions!Name=</p>
+<p class="CourierTable">_Total!10!20</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -t 60 -H $HOSTADDRESS$ -c get_mssql_transactions -a "$HOSTADDRESS$" "$ARG1$" "$ARG2$" "$ARG3$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">number_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_mssql_users</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_mssql_users!1!5</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -t 60 -H $HOSTADDRESS$ -c get_mssql_users -a "$HOSTADDRESS$" "$ARG1$" "$ARG2$" "$ARG3$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">number_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_service_DcomLaunch</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_service!DcomLaunch</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -H $HOSTADDRESS$ -t 60 -c get_service -a "$HOSTADDRESS$" "$ARG1$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">percent_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_service_Dfs</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_service!Dfs</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -H $HOSTADDRESS$ -t 60 -c get_service -a "$HOSTADDRESS$" "$ARG1$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">percent_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_service_msftesql</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_service!msftesql</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -H $HOSTADDRESS$ -t 60 -c get_service -a "$HOSTADDRESS$" "$ARG1$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">percent_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_service_MSSQLServerADHelper</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_service!MSSQLServerADHelper</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -H $HOSTADDRESS$ -t 60 -c get_service -a "$HOSTADDRESS$" "$ARG1$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">percent_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_service_SQLBrowser</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_service!SQLBrowser</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -H $HOSTADDRESS$ -t 60 -c get_service -a "$HOSTADDRESS$" "$ARG1$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">percent_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_service_SQLSERVERAGENT</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_service!SQLSERVERAGENT</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -H $HOSTADDRESS$ -t 60 -c get_service -a "$HOSTADDRESS$" "$ARG1$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">percent_graph</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">nrpe_service_W32Time</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_nrpe_service!W32Time</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 35%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_nrpe -H $HOSTADDRESS$ -t 60 -c get_service -a "$HOSTADDRESS$" "$ARG1$"</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 15%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">percent_graph</p>
+</td>
+</tr>
+</table>
+<h3><a name="MiniTOCBookMark4" id="MiniTOCBookMark4"></a>Profile Package</h3>
+<p>This package includes the following files:</p>
+<p>Profile Definitions</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">service_profile_nrpe_MSSQL.xml</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">perfconfig_nrpe_MSSQL.xml</p>
+</li>
+</ul>
+<p>Plugins Scripts</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">check_nrpe</p>
+</li>
+</ul>
+<p>NRPE scripts (installed on the monitored Windows Server)</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">nrpe_nt.zip</p>
+</li>
+</ul>
+<p>Performance Graphing Programs</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">number_graph.cgi</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">percent_graph.cgi</p>
+</li>
+</ul>
+<h3><a name="MiniTOCBookMark5" id="MiniTOCBookMark5"></a>Installation</h3>
+<p>GroundWork Monitor includes many monitoring profiles for a variety of devices, systems and applications. Profiles already imported on a new GroundWork installation include Service Ping, SNMP Network, and SSH UNIX. The GroundWork Monitor Configuration tool is used to import updated Profiles and Profiles that require additional setup; the Profile XML file and its companion Performance Configuration definition file. Services can also be imported in addition to Service Profiles in the Profile Importer. The import process is documented under <span style="font-weight: bold;"><b>GROUNDWORK PROFILES &gt; <a href="../profiles_importingprofiles.htm" style="font-weight: bold;">Importing Profiles</a></b></span>.</p>
+<h3><a name="MiniTOCBookMark6" id="MiniTOCBookMark6"></a><b style="font-weight: bold;">Implementation</b></h3>
+<h4><a name="MiniTOCBookMark7" id="MiniTOCBookMark7"></a>Command Parameters</h4>
+<p>Command parameters are in the Configuration Services section with the following names and default values.</p>
+<p class="Bullet1">nrpe_mssql_buffer_cache_hits</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Uses check_nrpe plugin to connect to NRPE on $HOSTADDRESS$ and execute the get_mssql_buf_cache_hit command as defined in nrpe.cfg.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Database Instance, default is _Total</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG2$ - Warning threshold, default is 80</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG3$ - Critical threshold, default is 160</p>
+</li>
+</ul>
+<p class="Bullet1">nrpe_mssql_deadlocks</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet2">Uses check_nrpe plugin to connect to NRPE on $HOSTADDRESS$ and execute the get_mssql_deadlocks command as defined in nrpe.cfg.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet2">$ARG1$ - Database Instance, default is _Total</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet2">$ARG2$ - Warning threshold, default is 50</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet2">$ARG3$ - Critical threshold, default is 100</p>
+</li>
+</ul>
+<p class="Bullet1">nrpe_mssql_full_scans</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet2">Uses check_nrpe plugin to connect to NRPE on $HOSTADDRESS$ and execute the get_mssql_fullscans command as defined in nrpe.cfg.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet2">$ARG1$ - Warning threshold, default is 10</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet2">$ARG2$ - Critical threshold, default is 20</p>
+</li>
+</ul>
+<p class="Bullet1">nrpe_mssql_lock_wait_time</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Uses check_nrpe plugin to connect to NRPE on $HOSTADDRESS$ and execute the get_mssql_lock_wait_time command as defined in nrpe.cfg.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Database Instance, default is _Total</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG2$ - Warning threshold, default is 1000</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG3$ - Critical threshold, default is 1500</p>
+</li>
+</ul>
+<p class="Bullet1">nrpe_mssql_lock_waits</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet2">Uses check_nrpe plugin to connect to NRPE on $HOSTADDRESS$ and execute the get_mssql_lock_waits command as defined in nrpe.cfg.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet2">$ARG1$ - Database Instance, default is _Total</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet2">$ARG2$ - Warning threshold, default is 4</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet2">$ARG3$ - Critical threshold, default is 6</p>
+</li>
+</ul>
+<p class="Bullet1">nrpe_mssql_log_growths</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet2">Uses check_nrpe plugin to connect to NRPE on $HOSTADDRESS$ and execute the get_mssql_log_growth command as defined in nrpe.cfg.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet2">$ARG1$ - Database Instance, default is _Total</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet2">$ARG2$ - Warning threshold, default is 5</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet2">$ARG3$ - Critical threshold, default is 8</p>
+</li>
+</ul>
+<p>nrpe_mssql_log_used_db_&lt;INSTANCENAME&gt;</p>
+<p>nrpe_mssql_log_used_db_master</p>
+<p>nrpe_mssql_log_used_db_model</p>
+<p>nrpe_mssql_log_used_db_msdb</p>
+<p>nrpe_mssql_log_used_db_mssqlsystemresource</p>
+<p>nrpe_mssql_log_used_db_tempdb</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Where INSTANCENAME is equal to the database instance name on the target host.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">Uses check_nrpe plugin to connect to NRPE on $HOSTADDRESS$ and execute the get_mssql_log_used command as defined in nrpe.cfg.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Database Instance, default is INSTANCENAME</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG2$ - Warning threshold, default is 30/40</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG3$ - Critical threshold, default is 40/50</p>
+</li>
+</ul>
+<p>nrpe_mssql_memory_grants_pending</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Uses check_nrpe plugin to connect to NRPE on $HOSTADDRESS$ and execute the get_mssql_memgrantspending command as defined in nrpe.cfg.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Warning threshold, default is 1</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG2$ - Critical threshold, default is 5</p>
+</li>
+</ul>
+<p>nrpe_mssql_transactions</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Uses check_nrpe plugin to connect to NRPE on $HOSTADDRESS$ and execute the get_mssql_transactions command as defined in nrpe.cfg.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Database Instance, default is _Total</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG2$ - Warning threshold, default is 10</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG3$ - Critical threshold, default is 20</p>
+</li>
+</ul>
+<p class="Bullet1">nrpe_mssql_users</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Uses check_nrpe plugin to connect to NRPE on $HOSTADDRESS$ and execute the get_mssql_users command as defined in nrpe.cfg.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Database Instance, default is _Total</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG2$ - Warning threshold, default is 1</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG3$ - Critical threshold, default is 5</p>
+</li>
+</ul>
+<p>nrpe_service</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Uses check_nrpe plugin to connect to NRPE on $HOSTADDRESS$ and execute the get_service command as defined in the nrpe.cfg.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Service Name (not Display Name!)</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">OK if service is running</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">CRITICAL is service is stopped.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">UNKNOWN is service is not installed.</p>
+</li>
+</ul>
+<h4><a name="MiniTOCBookMark8" id="MiniTOCBookMark8"></a>Performance Graphing Parameters</h4>
+<p>The following parameters are used to generate performance charts. These parameters are set using the Configuration&gt;Performance tool in GroundWork Monitor.</p>
+<p>nrpe_mssql_buffer_cache_hits</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the buffer cache hit ratio for the database server.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">Nagios service description must contain the string "mssql_buffer_cahce_hits".</p>
+</li>
+</ul>
+<p>nrpe_mssql_deadlocks</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the number of deadlocks per second for a specified database.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">Nagios service description must contain the string "mssql_deadlocks".</p>
+</li>
+</ul>
+<p>nrpe_mssql_full_scans</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the number of full table scans per second for the database server.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">Nagios service description must contain the string "mssql_full_scans".</p>
+</li>
+</ul>
+<p>nrpe_mssql_lock_wait_time</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the average lock wait time in ms for a specified database.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">Nagios service description must contain the string "mssql_lock_wait_time".</p>
+</li>
+</ul>
+<p class="Bullet1">nrpe_mssql_lock_waits</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the number of lock waits per second for a specified database.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">Nagios service description must contain the string "mssql_lock_waits".</p>
+</li>
+</ul>
+<p>nrpe_mssql_log_growths</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the number of log growths for a specified database.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">Nagios service description must contain the string "mssql_log_growths".</p>
+</li>
+</ul>
+<p class="Bullet1">nrpe_mssql_log_used_db_master</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the percentage log space used for the database "master".</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">Nagios service description must contain the string "mssql_log_used_db".</p>
+</li>
+</ul>
+<p class="Bullet1">nrpe_mssql_log_used_db_model</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the percentage log space used for the database "model".</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">Nagios service description must contain the string "mssql_log_used_db".</p>
+</li>
+</ul>
+<p>nrpe_mssql_log_used_db_msdb</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the percentage log space used for the database "msdb".</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">Nagios service description must contain the string "mssql_log_used_db".</p>
+</li>
+</ul>
+<p>nrpe_mssql_log_used_db_mssqlsystemresource</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the percentage log space used for the database "mssqlsystemresource".</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">Nagios service description must contain the string "mssql_log_used_db".</p>
+</li>
+</ul>
+<p>nrpe_mssql_log_used_db_tempdb</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the percentage log space used for the database "tempdb".</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">Nagios service description must contain the string "mssql_log_used_db".</p>
+</li>
+</ul>
+<p>nrpe_mssql_memory_grants_pending</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the number of memory grants pending on the database server.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">Nagios service description must contain the string "mssql_memory_grants_pending".</p>
+</li>
+</ul>
+<p>nrpe_mssql_transactions</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the number of transactions per second for a specified database.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">Nagios service description must contain the string "mssql_transactions".</p>
+</li>
+</ul>
+<p>nrpe_mssql_users</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the number of users connected to a specified database.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">Nagios service description must contain the string "mssql_users".</p>
+</li>
+</ul>
+<h4><a name="MiniTOCBookMark9" id="MiniTOCBookMark9"></a>Implementation Notes</h4>
+<p>The <span class="CodeInline">nrpe.cfg</span> file on the Windows server maps commands issued by the GroundWork server to scripts in the <span class="CodeInline">c:\nrpe_nt</span> directory. Commands issued by this profile are installed with this package. If new NRPE commands are added, this file must be modified. Go to the GroundWork Support Portal - GroundWork Connect at <a href="http://www.groundworkconnect.com" target="_blank">http://www.groundworkconnect.com</a> and search for <span style="font-style: italic; font-weight: bold;"><i><b>Installing GroundWork WMI NRPE</b></i></span>.</p>
+<div style="width: 100%; position: relative;" id="footer">
+<p class="Footer" style="font-size: 7pt; line-height: Normal; margin-top: 6pt; margin-bottom: 4pt;">GroundWork, Inc. ©2011</p>
+</div>
+<script type="text/javascript" language="javascript1.2">
+//<![CDATA[
+<!--
+if (window.writeIntopicBar)
+        writeIntopicBar(0);
+
+
+highlightSearch();
+//-->
+//]]>
+</script>
+</body>
+</html>

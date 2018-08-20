@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<portlet-app xmlns="http://java.sun.com/xml/ns/portlet/portlet-app_1_0.xsd"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/portlet/portlet-app_1_0.xsd /opt/SUNWps/dtd/portlet.xsd"
+	version="1.0" name="Ganglia-Integration">
+    <portlet>
+	<portlet-name>GWGangliaThresholdsPortlet</portlet-name>
+	<description>This portlet allows the administrator to configure thresholds for Ganglia-collected metrics. These thresholds are compared to the incoming metric values as the data is fed into Nagios, to tell whether the metrics are in a warning or critical condition. Thresholds may be set at a global level, at a per-cluster level, or at an individual-host level.</description>
+	<display-name>Ganglia Metric Threshold Configuration Portlet</display-name>
+	<portlet-class>org.groundwork.portlet.iframe.GWOSIFramePortlet</portlet-class>
+	<supports>
+	    <mime-type>text/html</mime-type>
+	    <portlet-mode>VIEW</portlet-mode>
+	</supports>
+	<portlet-info>
+	    <title>Ganglia Threshold Configuration</title>
+	</portlet-info>
+	<init-param>
+	    <name>URL</name>
+	    <value><![CDATA[http://localhost/ganglia-integration/GangliaConfigAdmin.cgi]]></value>
+	</init-param>
+	<init-param>
+	    <name>ATTACH_UID</name>
+	    <value>true</value>
+	</init-param>
+	<init-param>
+	    <name>allow_remote_url</name>
+	    <value>false</value>
+	</init-param>
+    </portlet>
+    <portlet>
+	<portlet-name>GWGangliaViewsPortlet</portlet-name>
+	<description>This portlet provides links to a locally configured set of Ganglia web servers, to make it easy to jump to those external pages from within GroundWork Monitor.</description>
+	<display-name>Ganglia Web Server Views Portlet</display-name>
+	<portlet-class>org.groundwork.portlet.iframe.GWOSIFramePortlet</portlet-class>
+	<supports>
+	    <mime-type>text/html</mime-type>
+	    <portlet-mode>VIEW</portlet-mode>
+	</supports>
+	<portlet-info>
+	    <title>Ganglia Web Server Views</title>
+	</portlet-info>
+	<init-param>
+	    <name>URL</name>
+	    <value><![CDATA[http://localhost/ganglia-integration/GangliaWebServers.cgi]]></value>
+	</init-param>
+	<init-param>
+	    <name>ATTACH_UID</name>
+	    <value>true</value>
+	</init-param>
+	<init-param>
+	    <name>allow_remote_url</name>
+	    <value>false</value>
+	</init-param>
+    </portlet>
+</portlet-app>

@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<ice:inputHidden id="PMhiddenField"
+			value="#{PerformanceMeasurementBean.perfHiddenField}"></ice:inputHidden>
+	
+		<!-- panel group render when message is set true -->
+		<ice:panelGroup rendered="#{PerformanceMeasurementBean.message}"
+			id="PMpanelsgrpError">
+			<ice:column id="PMcolumnError"
+				rendered="#{PerformanceMeasurementBean.error}">
+				<ui:include src="/jsp/error.jspx">
+					<ui:param name="errorMessage"
+						value="#{PerformanceMeasurementBean.errorMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:column id="PMcolumninfo"
+				rendered="#{PerformanceMeasurementBean.info}">
+				<ui:include src="/jsp/info.jspx">
+					<ui:param name="infoMessage"
+						value="#{PerformanceMeasurementBean.infoMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:commandButton id="PMcmdRetryNow"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{PerformanceMeasurementBean.reloadPage}"></ice:commandButton>
+		</ice:panelGroup>
+		<ice:panelGroup rendered="#{!PerformanceMeasurementBean.message}"
+			id="PMpanelsgrpError1"
+			style="padding-left:108px;">
+			<table >
+				<tr>
+					<td><ice:message for="perfmeasurement_Portlet_startDateTime" showDetail="true"
+						showSummary="false"
+						style="color:red; width:350px; font-weight:normal;"
+						rendered="#{PerformanceMeasurementBean.selectedTime == '-1'}"></ice:message>
+					<ice:message for="perfmeasurement_Portlet_endDateTime" showDetail="true"
+						showSummary="false"
+						style="color:red; width:350px; font-weight:normal;"
+						rendered="#{PerformanceMeasurementBean.selectedTime == '-1'}"></ice:message></td>
+				</tr>
+				<tr align="right">
+					<td>
+					<ice:panelGroup rendered="#{!PerformanceMeasurementBean.inStatusViewer}"><ice:outputLabel
+						for="perfmeasurement_Portlet_menuTimeSelector"
+						id="perfmeasurement_Portlet_lblTimeSelector"
+						value="#{message['com_groundwork_portal_statusviewer_hostAvailabilityPortlet_label_time']}">
+					</ice:outputLabel> <!-- Time selector drop down list as selectOneMenu component --> <ice:selectOneMenu
+						id="perfmeasurement_Portlet_menuTimeSelector"
+						value="#{PerformanceMeasurementBean.selectedTime}" valueChangeListener="#{PerformanceMeasurementBean.selectedTimeChangeListener}">
+						<f:selectItems
+							value="#{PerformanceMeasurementBean.timeSelectorList}" />
+					</ice:selectOneMenu> <!-- 'Apply' command button --> <span style="padding-left: 5px">
+					<ice:commandButton
+						value="#{message['com_groundwork_portal_statusviewer_apply']}"
+						id="perfmeasurement_Portlet_submitApply" type="submit"
+						actionListener="#{PerformanceMeasurementBean.applyTimeFilter}"
+						styleClass="cust_portlet_filter_button">
+					</ice:commandButton></span>
+					<ice:panelGrid columns="2" id="perfmeasurement_Portlet_custstartendtimegroup" rendered="#{PerformanceMeasurementBean.selectedTime == '-1'}"><!-- Custom Start date and end Date -->
+								<div ><ice:outputText id="perfmeasurement_Portlet_startdatelbl"
+									value="#{message['com_groundwork_portal_statusviewer_perf_measurement_label_start_Date']}"></ice:outputText> <ice:inputText
+									id="perfmeasurement_Portlet_startDateTime"
+									value="#{PerformanceMeasurementBean.custStartDate}"
+									validator="#{PerformanceMeasurementBean.validateStartDateTime}"></ice:inputText>
+								<ice:graphicImage value="/images/date-time.png"
+									onclick="datePicker(this);" onmouseover="datePicker(this);"></ice:graphicImage></div>
+								<div ><ice:outputLabel
+									id="perfmeasurement_Portlet_enddatelbl" for="perfmeasurement_Portlet_endDateTime" value="#{message['com_groundwork_portal_statusviewer_perf_measurement_label_end_Date']}"></ice:outputLabel>
+								<ice:inputText id="perfmeasurement_Portlet_endDateTime"
+									value="#{PerformanceMeasurementBean.custEndDate}"
+									validator="#{PerformanceMeasurementBean.validateEndDateTime}"></ice:inputText>
+								<ice:graphicImage value="/images/date-time.png"
+									onclick="datePicker(this);" onmouseover="datePicker(this);"></ice:graphicImage>
+								</div>
+								</ice:panelGrid>
+					</ice:panelGroup></td>
+				</tr>
+				<tr>
+					<td><ice:dataTable id="tblperfmeasurement_Portlet"
+						value="#{PerformanceMeasurementBean.rrdGraphList}" var="rrdbean">
+						<ice:column id="column1">
+							<ice:panelCollapsible
+								id="PMpnlCollapsible"
+								actionListener="#{PerformanceMeasurementBean.collapsibleAction}"
+								expanded="#{rrdbean.expanded}" toggleOnClick="true">
+								<f:facet name="header">
+									<ice:panelGroup
+										id="PMpnlGroupCollapsible"
+										style="width:730px">
+										<ice:outputText
+											id="PMpnlCollapsible_outtxt"
+											value="#{rrdbean.collapsibleTitle}" />
+
+									</ice:panelGroup>
+								</f:facet>
+								<ice:panelGroup>
+									<ice:graphicImage 
+										value="#{rrdbean.rrdGraphBytes}"
+										rendered="#{rrdbean.rrdGraphBytes !=null}"></ice:graphicImage>
+									<ice:graphicImage id="imgRrdgraphconnectactive"
+										value="/images/connect_active.gif"
+										rendered="#{rrdbean.rrdGraphBytes ==null}"></ice:graphicImage>
+								</ice:panelGroup>
+								<f:attribute name="collapsibleTitle"
+									value="#{rrdbean.collapsibleTitle}" />
+
+							</ice:panelCollapsible>
+						</ice:column>
+					</ice:dataTable></td>
+				</tr>
+			</table>
+		</ice:panelGroup>
+	</ui:define>
+</ui:composition>

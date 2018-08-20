@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<!-- hidden filed which will initialize all the members  -->
+		<ice:inputHidden id="SIipHiddn"
+			value="#{informationPortletsHandler.informationHiddenField}"></ice:inputHidden>
+
+		<!-- error / info message -->
+		<ice:panelGroup rendered="#{informationPortletsHandler.message}"
+			id="SIpanelsSearchError">
+			<ice:column id="SIcolumnError"
+				rendered="#{informationPortletsHandler.error}">
+				<ui:include src="/jsp/error.jspx">
+					<ui:param name="errorMessage"
+						value="#{informationPortletsHandler.errorMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:column id="SIcolumninfo"
+				rendered="#{informationPortletsHandler.info}">
+				<ui:include src="/jsp/info.jspx">
+					<ui:param name="infoMessage"
+						value="#{informationPortletsHandler.infoMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:commandButton id="SIcmdRetryNow"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{informationPortletsHandler.reloadPage}"></ice:commandButton>
+		</ice:panelGroup>
+
+		<!-- top level panel grid for supporting error message (render if not error) -->
+		<ice:panelGrid border="0" id="SIpanelgridServiceInformationMain"
+			rendered="#{!informationPortletsHandler.message}">
+
+			<table width="100%" border="0" cellspacing="0" cellpadding="0">
+				<tr>
+					<td>
+					<table width="100%" border="0" cellspacing="0" cellpadding="0">
+						<!-- ######### Status Information ########## -->
+						<tr>
+							<td colspan="2" style="padding-bottom: 4px;"><span> <ice:outputText
+								style="font-size:11px; text-decoration:underline;"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_statusInformation']}"
+								id="SItxtStatusInformation"></ice:outputText> </span></td>
+						</tr>
+
+						<!-- Row == Status OK - 172.28.112.56: rta 3.451ms, lost 0% -->
+						<tr>
+							<td class="padbottom4 iceOutTxt "> <ice:outputLabel
+								for="SIpanelgrpServiceStatus"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_status']}"
+								id="SIlblServiceStatus">
+							</ice:outputLabel></td>
+							<td class="padbottom4 ">
+								<div style="padding:5px; overflow:auto; height:50px; width:400px;">
+									<ice:outputText
+										value="#{informationPortletsHandler.serviceInformationBean.statusValue}"
+										id="SItxtServiceStatusValue" 
+										style="font-weight:normal; "
+										escape="false" />
+								</div>							
+							</td>
+						</tr>
+
+						<!-- Row == Acknowledged: No Acknowledge <= link to the acknowledge action
+       										OR	Acknowledged: Yes. By <username> at YYYY-MM-DD HH:MM:SS. -->
+						<tr>
+							<td class="padbottom4 iceOutTxt "> <ice:outputLabel
+								for="SIpanelgrpAcknowledgementStatus"
+								value="#{message['com_groundwork_statusviewer_acknowledged']}"
+								id="SIlblAcknowledgementStatus">
+							</ice:outputLabel></td>
+							<td class="padbottom4 "><ice:outputText
+								id="SIoutputtxtacknowledged"
+								style="font-weight:normal;"
+								value="#{informationPortletsHandler.serviceInformationBean.acknowledged}"></ice:outputText>
+							<ice:graphicImage id="SIimgacknowledged"
+								value="/images/service-ack.gif"
+								rendered="#{informationPortletsHandler.serviceInformationBean.acknowledged=='No'}"
+								title="#{message['com_groundwork_portal_statusviewer_modelpopup_title_text']}"></ice:graphicImage>
+							<ice:commandLink id="SIlinkAcknowledge"
+								value="#{message['com_groundwork_portal_statusviewer_serviceList_linktext_Acknowledge']}"
+								rendered="#{informationPortletsHandler.serviceInformationBean.acknowledged=='No' and informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole}"
+								actionListener="#{informationPortletsHandler.showServiceAcknowledgementPopup}">
+								<f:attribute name="serviceName"
+									value="#{informationPortletsHandler.serviceInformationBean.serviceName}" />
+								<f:attribute name="hostName"
+									value="#{informationPortletsHandler.serviceInformationBean.hostName}" />
+							</ice:commandLink></td>
+						</tr>
+
+						<!-- Row == In Downtime Yes/No Schedule  -->
+						<tr>
+							<td class="padbottom4 iceOutTxt"> <ice:outputLabel
+								for="SIpanelgrpServiceDowntime"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_inDowntime']}"
+								id="SIlblServiceDowntime">
+							</ice:outputLabel></td>
+							<td class="padbottom4"><ice:outputText
+								value="#{informationPortletsHandler.serviceInformationBean.scheduleDowntime}"
+								style="font-weight:normal;"
+								id="SItxtServiceDowntimeValue"></ice:outputText> <ice:commandLink
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_schedule']}"
+								rendered="#{informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole and informationPortletsHandler.serviceInformationBean.applicationType=='Nagios'}"
+								action="#{popup.openPopup}"
+								actionListener="#{informationPortletsHandler.scheduleDowntimeForService}"></ice:commandLink>
+							</td>
+						</tr>
+
+						<!-- Row == Last Notification Date/Time (count) Temporarily Enable   -->
+						<tr>
+							<td class="padbottom10 iceOutTxt borderBottomdot_info">
+							<ice:outputLabel for="SIpanelgrpLastNotification"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_lastNotification']}"
+								id="SIlblLastNotification"></ice:outputLabel></td>
+							<td class="padbottom10 borderBottomdot_info"><ice:outputText
+								value="#{informationPortletsHandler.serviceInformationBean.lastNotificationTime}"
+								style="font-weight:normal;"
+								id="SItxtLastNotificationTime"></ice:outputText> <ice:outputText
+								value="#{informationPortletsHandler.serviceInformationBean.currentNotificationNumber}"
+								style="font-weight:normal;"
+								id="SItxtCurrentNotificationNumber"></ice:outputText> <ice:commandLink
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_enableNotifications']}"
+								action="#{popup.openPopup}"
+								actionListener="#{informationPortletsHandler.enableNotificationForService}"
+								rendered="#{!informationPortletsHandler.serviceInformationBean.notificationsEnabled and informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole and informationPortletsHandler.serviceInformationBean.applicationType=='Nagios'}"
+								id="SIcmdLinkEnableNotifications">
+							</ice:commandLink> <ice:commandLink
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_disableNotifications']}"
+								action="#{popup.openPopup}"
+								actionListener="#{informationPortletsHandler.disableNotificationForService}"
+								rendered="#{informationPortletsHandler.serviceInformationBean.notificationsEnabled and informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole and informationPortletsHandler.serviceInformationBean.applicationType=='Nagios'}"
+								id="SIcmdLinkDisableNotifications">
+							</ice:commandLink></td>
+						</tr>
+
+						<!-- ######### Check Information ########## -->
+						<tr>
+							<td style="padding-top: 4px; padding-bottom: 4px; width: 34%;"><ice:outputText
+								style="font-size:11px; text-decoration:underline;"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_checkInformation']}"
+								id="SItxtCheckInformation"></ice:outputText></td>
+							<td class="padbottom4 padtop4"></td>
+						</tr>
+
+						<!-- Last Check YYYY-MM-DD HH:MM:SS -->
+						<tr>
+							<td class="padbottom4 iceOutTxt"> <ice:outputLabel
+								for="SIpanelgrpLastCheck"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_lastCheck']}"
+								id="SIlblLastCheck">
+							</ice:outputLabel></td>
+							<td class="padbottom4">
+							<ice:outputText
+								value="#{informationPortletsHandler.serviceInformationBean.lastCheckTime}"
+								style="font-weight:normal;"
+								id="SItxtLastCheckTime">
+							</ice:outputText> 
+							</td>
+						</tr>
+						
+						<!-- Next Check YYYY-MM-DD HH:MM:SS (Active/Passive) Schedule -->
+						<tr>
+							<td class="padbottom4 iceOutTxt"> <ice:outputLabel
+								for="SIpanelgrpNextCheck"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_nextCheck']}"
+								id="SIlblNextCheck"></ice:outputLabel></td>
+							<td class="padbottom4"><ice:outputText
+								value="#{informationPortletsHandler.serviceInformationBean.nextCheckTime}"
+								style="font-weight:normal;"
+								id="SItxtNextCheckTime"></ice:outputText> <ice:outputText
+								value=" #{informationPortletsHandler.serviceInformationBean.checkType} "
+								style="font-weight:normal;"
+								id="SItxtCheckTypeValue"></ice:outputText> <ice:commandLink
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_schedule']}"
+								rendered="#{informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole and informationPortletsHandler.serviceInformationBean.applicationType=='Nagios'}"
+								action="#{popup.openPopup}"
+								actionListener="#{informationPortletsHandler.rescheduleNextCheckForService}"></ice:commandLink>
+							</td>
+						</tr>
+
+						<!-- Check Attempt  2 of 3 (Soft) Disable Check -->
+						<tr>
+							<td class="padbottom4 iceOutTxt"> <ice:outputLabel
+								for="SIpanelgrpCheckAttempt"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_checkAttempt']}"
+								id="SIlblCheckAttempt"></ice:outputLabel></td>
+							<td class="padbottom4"><ice:outputText
+								value="#{informationPortletsHandler.serviceInformationBean.currentCheckAttempts} of #{informationPortletsHandler.serviceInformationBean.maxCheckAttempts}"
+								style="font-weight:normal;"
+								id="SItxtCheckAttemptValue"></ice:outputText> <ice:outputText
+								value=" #{informationPortletsHandler.serviceInformationBean.stateType} "
+								style="font-weight:normal;"
+								id="SItxtServiceStateType"></ice:outputText> <ice:commandLink
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_disableCheck']}"
+								action="#{popup.openPopup}"
+								actionListener="#{informationPortletsHandler.disableActiveChecksForService}"
+								rendered="#{informationPortletsHandler.serviceInformationBean.activeChecksEnabled and informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole and informationPortletsHandler.serviceInformationBean.applicationType=='Nagios'}"
+								id="SIcmdLinkDisableActiveChecks">
+							</ice:commandLink> <ice:commandLink
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_enableCheck']}"
+								action="#{popup.openPopup}"
+								actionListener="#{informationPortletsHandler.enableActiveChecksForService}"
+								rendered="#{!informationPortletsHandler.serviceInformationBean.activeChecksEnabled and informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole and informationPortletsHandler.serviceInformationBean.applicationType=='Nagios'}"
+								id="SIcmdLinkEnableActiveChecks">
+							</ice:commandLink></td>
+						</tr>
+
+						<!-- Latency / Duration 123 / 456  Warning -->
+						<tr>
+							<td class="padbottom4 iceOutTxt"> <ice:outputLabel
+								for="SIpanelgrpLatencyAndDuration"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_latencyAndDuration']}"
+								id="SIlblLatencyAndDuration"></ice:outputLabel></td>
+							<td class="padbottom4"><ice:outputText
+								value="#{informationPortletsHandler.serviceInformationBean.latency} / #{informationPortletsHandler.serviceInformationBean.duration}"
+								style="font-weight:normal;"
+								id="SItxtServiceLatencyAndDuration"></ice:outputText> <ice:panelGroup
+								rendered="#{informationPortletsHandler.serviceInformationBean.showLatencyWarning}"
+								id="SIpanelLatencyWarning">
+								<ice:graphicImage id="SIimgWarning"
+									url="/images/icon_alert_yellow.gif"></ice:graphicImage>
+								<ice:outputText style="color:#fe351d; font-weight:normal;"
+									value="#{informationPortletsHandler.serviceInformationBean.latencyThresholdWarning}"									
+									id="SItxtLatencyThresholdWarning"></ice:outputText>
+							</ice:panelGroup></td>
+						</tr>
+
+						<!-- % State Change 10% -->
+						<tr>
+							<td class="padbottom10 iceOutTxt borderBottomdot_info">
+							<ice:outputLabel for="SIpanelgrpPercentageStateChange"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_perecentageStateChange']}"
+								id="SIlblPercentageStateChange"></ice:outputLabel></td>
+							<td class="padbottom10 borderBottomdot_info"><ice:outputText
+								value="#{informationPortletsHandler.serviceInformationBean.percentageStateChange}%"
+								style="font-weight:normal;"
+								id="SItxtPercentageStateChangeValue"></ice:outputText></td>
+						</tr>
+
+						<!-- ######### Related Links ########## -->
+						<tr>
+							<td style="padding-top: 4px; padding-bottom: 4px;">
+							<ice:outputText
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_relatedLinks']}"
+								id="SItxtRelatedLinks" style="font-size:11px;">
+							</ice:outputText>
+							</td>
+							<td class="padbottom4"></td>
+						</tr>
+						<tr>
+							<td colspan="2" class="padbottom4" >
+							<ice:outputLink
+								target="_blank" id="SIlnkNagios"
+								value="#{informationPortletsHandler.serviceInformationBean.nagiosLink}"
+								style="text-decoration: none"
+								rendered="#{informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole and informationPortletsHandler.serviceInformationBean.applicationType=='Nagios'}">
+								<ice:outputText value="Nagios"
+									style="color:#666699;font-size:9px;font-weight:normal" />
+							</ice:outputLink> 
+							
+							<ice:outputText id="SIOutputTxtFiller1" value=" | "
+								rendered="#{informationPortletsHandler.serviceInformationBean.customLink1URLValue != null and 
+								informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole}" />
+
+							<ice:outputLink target="_blank" id="SIlnkCustomLink1"
+								value="#{informationPortletsHandler.serviceInformationBean.customLink1URL}"
+								rendered="#{informationPortletsHandler.serviceInformationBean.customLink1URLValue != null and 
+								informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole}"
+								style="text-decoration: none">
+								<ice:outputText id="SIOutputTxtCustomLink1"
+									title="Custom Link 1 : #{informationPortletsHandler.serviceInformationBean.customLink1URL}"
+									value="#{informationPortletsHandler.serviceInformationBean.customLink1URLValue}"
+									style="color:#666699;font-size:9px;font-weight:normal" />
+							</ice:outputLink> 
+							<ice:outputText id="SIOutputTxtFiller2" value=" | "
+								rendered="#{informationPortletsHandler.serviceInformationBean.customLink2URLValue != null and 
+								informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole}" />
+
+							<ice:outputLink target="_blank" id="SIlnkCustomLink2"
+								value="#{informationPortletsHandler.serviceInformationBean.customLink2URL}"
+								rendered="#{informationPortletsHandler.serviceInformationBean.customLink2URLValue != null and 
+								informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole}" 
+								style="text-decoration: none">
+								<ice:outputText id="SIOutputTxtCustomLink2"
+									title="Custom Link 2 : #{informationPortletsHandler.serviceInformationBean.customLink2URL}"
+									value="#{informationPortletsHandler.serviceInformationBean.customLink2URLValue}"
+									style="color:#666699;font-size:9px;font-weight:normal" />
+							</ice:outputLink> 
+							<ice:outputText id="SIOutputTxtFiller3" value=" | "
+								rendered="#{informationPortletsHandler.serviceInformationBean.customLink3URLValue != null and 
+								informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole}" />
+
+							<ice:outputLink target="_blank" id="SIlnkCustomLink3"
+								value="#{informationPortletsHandler.serviceInformationBean.customLink3URL}"
+								rendered="#{informationPortletsHandler.serviceInformationBean.customLink3URLValue != null and 
+								informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole}"
+								style="text-decoration: none">
+								<ice:outputText id="SIOutputTxtCustomLink3"
+									title="Custom Link 3 : #{informationPortletsHandler.serviceInformationBean.customLink3URL}"
+									value="#{informationPortletsHandler.serviceInformationBean.customLink3URLValue}"
+									style="color:#666699;font-size:9px;font-weight:normal" />
+							</ice:outputLink> 
+							<ice:outputText id="SIOutputTxtFiller4" value=" | "
+								rendered="#{informationPortletsHandler.serviceInformationBean.customLink4URLValue != null and 
+								informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole}" />
+
+							<ice:outputLink target="_blank" id="SIlnkCustomLink4"
+								value="#{informationPortletsHandler.serviceInformationBean.customLink4URL}"
+								rendered="#{informationPortletsHandler.serviceInformationBean.customLink4URLValue != null and 
+								informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole}"
+								style="text-decoration: none">
+								<ice:outputText id="SIOutputTxtCustomLink4"
+									title="Custom Link 4 : #{informationPortletsHandler.serviceInformationBean.customLink4URL}"
+									value="#{informationPortletsHandler.serviceInformationBean.customLink4URLValue}"
+									style="color:#666699;font-size:9px;font-weight:normal" />
+							</ice:outputLink> 
+							<ice:outputText id="SIOutputTxtFiller5" value=" | "
+								rendered="#{informationPortletsHandler.serviceInformationBean.customLink5URLValue != null and 
+								informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole}" />
+
+							<ice:outputLink target="_blank" id="SIlnkCustomLink5"
+								value="#{informationPortletsHandler.serviceInformationBean.customLink5URL}"
+								rendered="#{informationPortletsHandler.serviceInformationBean.customLink5URLValue != null and 
+								informationPortletsHandler.serviceInformationBean.userInAdminOrOperatorRole}"
+								style="text-decoration: none">
+								<ice:outputText id="SIOutputTxtCustomLink5"
+									title="Custom Link 5 : #{informationPortletsHandler.serviceInformationBean.customLink5URL}"
+									value="#{informationPortletsHandler.serviceInformationBean.customLink5URLValue}"
+									style="color:#666699;font-size:9px;font-weight:normal" />
+							</ice:outputLink></td>
+						</tr>
+					</table>
+
+					</td>
+				</tr>
+			</table>
+
+
+		</ice:panelGrid>
+	</ui:define>
+</ui:composition>

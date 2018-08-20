@@ -1,0 +1,137 @@
+<?xml version="1.0"?>
+
+<!-- Copyright (C) 2009 GroundWork Open Source, Inc. (GroundWork) All rights 
+	reserved. Use is subject to GroundWork commercial license terms. -->
+
+<web-app xmlns="http://java.sun.com/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+	version="2.5">
+	<display-name>portal-console</display-name>
+	<filter>
+		<filter-name>ResourceRequestFilter</filter-name>
+		<filter-class>org.exoplatform.portal.application.ResourceRequestFilter</filter-class>
+	</filter>
+
+	<filter-mapping>
+		<filter-name>ResourceRequestFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+
+	<context-param>
+		<param-name>org.jboss.jbossfaces.JSF_CONFIG_NAME</param-name>
+		<param-value>Mojarra-1.2</param-value>
+	</context-param>
+
+	<context-param>
+		<param-name>com.icesoft.faces.debugDOMUpdate</param-name>
+		<param-value>false</param-value>
+	</context-param>
+
+	<context-param>
+		<param-name>javax.faces.STATE_SAVING_METHOD</param-name>
+		<param-value>server</param-value>
+		<!-- <description> State saving method: "client" or "server" (= default) 
+			See JSF Specification 2.5.2 </description> -->
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.connectionTimeout</param-name>
+		<param-value>90000</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.concurrentDOMViews</param-name>
+		<param-value>true</param-value>
+	</context-param>
+
+	<context-param>
+		<param-name>com.icesoft.faces.synchronousUpdate</param-name>
+		<param-value>false</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.blockingRequestHandler</param-name>
+		<param-value>push-server</param-value>
+	</context-param>
+
+	<listener>
+		<listener-class>
+			com.icesoft.faces.util.event.servlet.ContextEventRepeater</listener-class>
+	</listener>
+
+
+	<!-- Faces Servlet -->
+	<servlet>
+		<servlet-name>Faces Servlet</servlet-name>
+		<servlet-class>javax.faces.webapp.FacesServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+
+	<servlet>
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<servlet-class>
+			com.icesoft.faces.webapp.xmlhttp.PersistentFacesServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+
+	<servlet>
+		<servlet-name>Blocking Servlet</servlet-name>
+		<servlet-class>com.icesoft.faces.webapp.xmlhttp.BlockingServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet>
+		<servlet-name>ConsoleInitServlet</servlet-name>
+		<!-- <display-name>ConsoleInitServlet</display-name> <description></description> -->
+		<servlet-class>
+			com.groundworkopensource.webapp.console.ConsoleInitServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+
+	<servlet>
+		<servlet-name>Get MP3 File Servlet</servlet-name>
+		<!-- <display-name>GetMP3File</display-name> <description></description> -->
+		<servlet-class>com.groundworkopensource.webapp.console.GetMP3File</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+
+	<!-- extension mapping --><!-- <servlet-mapping> <servlet-name>Faces Servlet</servlet-name> <url-pattern>*.jsf</url-pattern> 
+		</servlet-mapping> -->
+	<servlet-mapping>
+
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<url-pattern>*.jsf</url-pattern>
+	</servlet-mapping>
+
+	<servlet-mapping>
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<url-pattern>*.iface</url-pattern>
+	</servlet-mapping>
+
+	<servlet-mapping>
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<url-pattern>/xmlhttp/*</url-pattern>
+	</servlet-mapping>
+
+	<servlet-mapping>
+		<servlet-name>Blocking Servlet</servlet-name>
+		<url-pattern>/block/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>ConsoleInitServlet</servlet-name>
+		<url-pattern>/ConsoleInitServlet</url-pattern>
+	</servlet-mapping>
+
+	<servlet-mapping>
+		<servlet-name>Get MP3 File Servlet</servlet-name>
+		<url-pattern>/getmp3</url-pattern>
+	</servlet-mapping>
+
+	<session-config>
+		<session-timeout>480</session-timeout>
+	</session-config>
+
+	<!-- Welcome files -->
+	<welcome-file-list>
+		<welcome-file>index.jsf</welcome-file>
+		<welcome-file>index.jsp</welcome-file>
+		<welcome-file>index.html</welcome-file>
+	</welcome-file-list>
+
+</web-app>

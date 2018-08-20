@@ -1,0 +1,90 @@
+--- nedi/html/log/msg.txt.orig	2018-04-10 04:32:34.000000000 -0700
++++ nedi/html/log/msg.txt	2018-06-15 01:45:11.254352426 -0700
+@@ -1,16 +1,28 @@
+-<h3>Welcome to NeDi</h3>
++<h3>Welcome to NeDi in GroundWork</h3>
+ 
+ <div class="textpad imgb tqrt">
+-You'll find the official documentation <a href="http://www.nedi.ch/documentation" target="_blank">here</a>.
+-In case you need assistance in a particular GUI module, click <img src="img/16/ring.png"> on the top for context help. Also click the general-help button <img src="img/16/idea.png"> in the help window.
++This instance of NeDi is included in GroundWork Monitor Core and Enterprise, and is fully supported by GroundWork for paying customers.
++You will find documentation on using it in the <a href="https://kb.groundworkopensource.com/display/DOC721/NeDi" target ="_blank">GroundWork Bookshelf.</a>
++NeDi is an independent open source software project in itself, and you'll find the official documentation
++<strong><a href="http://www.nedi.ch/documentation" target="_blank">here</a></strong>.
++To access context-sensitive help in any screen of this application, click the lifering <img src="img/16/ring.png">.
++You can also click the general-help button <img src="img/16/idea.png"> in the help window.
+ </div>
+ <p>
+-<div class="textpad imga half">
++<div class="textpad imga tqrt">
+ <a href="System-Setup.php"><img src="img/32/scfg.png" class="imgbtn" title="System Setup"></a><br>
+-Use the System-Setup module to get started...
++Please review the documentation linked to above.
++Once you are familiar with the concepts, you can use the System-Setup module to get started.
++Just click the icon above to reach that screen. 
++This module lets you enter (and encrypt) the SNMP read strings, passwords, and router credentials you will need to supply to get the most out of NeDi.
++You may also possibly wish to enable the System-Files module by editiing the <tt>/usr/local/groundwork/nedi/nedi.conf</tt> file and uncommenting the line:
++<pre>    #module System    Files    file    adm</pre>
++(There are some significant security concerns with enabling that module.  See the 
++<a href="https://kb.groundworkopensource.com/display/DOC721/NeDi" target ="_blank">GroundWork Bookshelf documentation on NeDi</a> for more details.)
+ </div>
++</p>
+ <p>
+-<div class="textpad imgb half">
++<div class="textpad imgb tqrt">
+ <form class="flft" method="post" target="_blank" action="System-Files.php">
+ <input type="hidden" name="typ" value="sys">
+ <input type="hidden" name="file" value="<?=$nedipath?>/nedi.conf">
+@@ -41,43 +53,17 @@
+ <a href="Devices-List.php?in[]=snmpversion&op[]=>&st[]=0&mon=1" target="_blank"><img src="img/32/bino.png" class="imgbtn flft" title="Monitor Devices"></a>
+ 
+ <a href="Monitoring-Health.php" target="_blank"><img src="img/32/hlth.png" class="imgbtn flft" title="Monitoring Health"></a>
++</p>
+ <br style="clear:both">
+-...or follow the steps above
+-</div>
+-<p>
+-<?php if( $isadmin ){ ?>
+-<div class="textpad imga half">
+-
+-<h3>Maintenance Tasks</h3>
+-
+-<a href="Monitoring-Events.php?in%5B%5D=time&op%5B%5D=%3C&st%5B%5D=<?= $now-86400*90 ?>&elm=&off=0&del=Delete"><img src="img/32/bell.png" class="alrm" title="Delete events prior <?= date($_SESSION['timf'],$now-86400*90) ?>"></a>
+-
+-
+-<form class="flft" method="post" target="_blank" action="System-NeDi.php">
+-<input type="hidden" name="mde" value="d">
+-<input type="hidden" name="skp" value="AFGgadobewitjumpv">
+-<input type="hidden" name="pin" value="1">
+-<input type="text"   name="rcm" class="m" placeholder="New Community">
+-<input type="image" class="imgbtn" src="img/32/radr.png" title="Change SNMP read community" onclick="return confirm('Set read community, <?= $cfmmsg ?>?')">
+-</form>
+-<br style="clear:both">
+-</div>
+-<p>
+-<?php } ?>
+-
+-<div class="textpad warn tqrt">
+-<a href="Other-Invoice.php" class="imgbtn flft" target="_blank"><img src="img/32/cash.png" title="Support NeDi"></a>
+-Please purchase the annual subscription to <strong>help financing NeDi's development</strong>. Depending on the amount, you'll be entitled for the latest version, additional resources and official support!
++Follow the icon links above in sequence for a general plan for discovering and monitoring your
++network. Once you have it working to your satisfaction, consider starting the
++NeDi Connector in Cloud Hub to integrate with the rest of GroundWork, or
++import your devices with the built-in automation schema. Contact
++<a href="mailto:support@gwos.com">support@gwos.com</a> for assistance.
+ </div>
++</p>
+ <p>
+ <div class="textpad imgb half">
+-<h3>Further steps</h3>
+-<ul>
+-<li>&nbsp;<img src="img/16/log.png">&nbsp; Explore the <a href="http://www.nedi.ch/documentation/" target="_blank">documentation</a>.
+-<li>&nbsp;<img src="img/16/ugrp.png">&nbsp; Join the <a href="http://forum.nedi.ch" target="_blank">community</a>.
+-<li><a href="https://plus.google.com/106414135314831644755" rel="me" title="Follow NeDi on Google+" target="_blank"><img src="http://www.nedi.ch/wp-content/uploads/g.png"  alt="Follow NeDi on Google+"  title="Follow NeDi on Google+" /> Follow NeDi on Google+</a></li>
+-<li><a href="https://www.facebook.com/pages/NeDi-Consulting/926380117394916" title="Follow NeDi on facebook" target="_blank"><img src="http://www.nedi.ch/wp-content/uploads/f.png"  alt="Like NeDi on Facebook"  title="Follow NeDi on facebook" /> Like NeDi on Facebook</a></li>
+-<li><a href="https://www.youtube.com/user/NetworkDiscovery" title="Educational shorts" target="_blank"><img src="http://www.nedi.ch/wp-content/uploads/y.png"  alt="NeDi Videos"  title="Educational shorts" />Watch NeDi video tutorials</a></li>
+-</ul>
+-<i>Some icons above are served from www.nedi.ch. The access information can be used for statistics. Edit this message by clicking <a href="?eam=1"><img src="img/16/note.png"></a></i>
++<i>Some icons above are served from www.nedi.ch. The access information may be used for statistics. You can edit this message by clicking <a href="?eam=1"><img src="img/16/note.png"></a></i>
+ </div>
++</p>

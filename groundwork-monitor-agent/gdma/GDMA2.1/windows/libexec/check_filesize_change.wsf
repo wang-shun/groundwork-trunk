@@ -1,0 +1,106 @@
+<job>
+<runtime>
+  <description>
+check_filesize_change (nrpe_nt-plugin) 1.1
+The nagios plugins come with ABSOLUTELY NO WARRANTY. You may redistribute
+copies of the plugins under the terms of the GNU General Public License.
+For more information about these matters, see the file named COPYING.
+Copyright (c) 1999-2001 Ethan Galstad/Hagen Deike (nagios@samurai.inka.de)
+
+Checks to see if the file size has not changed sence the last check
+  </description>
+  <named
+    name="h"
+    helpstring="Help"
+    type="simple"
+    required="false" 
+  />
+  <unnamed
+    name="filename"
+    helpstring="Path to the file you wish to watch"
+    many="false"
+    required="true"
+  />
+  <unnamed
+    name="temp_filename"
+    helpstring="Temporary file name"
+    many="false"
+    required="true"
+  />
+  <example>
+Example: check_filesize_change.wsf c:\winnt\system32\LogFiles\W3SCV1\ex0001.log ex001.log.temp
+</example>
+</runtime>
+<script language="VBScript">
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+'  If Wscript.Arguments.Named.Exists("h") Then
+  If Wscript.Arguments.Named.Exists("h") Or Wscript.Arguments.Count = 0 Then
+	Wscript.Echo "Plugin help screen:"
+      Wscript.Arguments.ShowUsage()
+      Wscript.Quit(0)
+  End If
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Const's and Var's
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+strTempFile = wscript.Arguments.Unnamed.Item(1)
+strFile = Wscript.Arguments.Unnamed.Item(0)
+
+
+Const intOK = 0
+Const intWarning = 1
+Const intCritical = 2
+Const intUnknown = 3
+
+Const ForReading = 1
+Const ForWriting = 2
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+' Create Filesystem Objekt
+Dim objFSO
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+
+If objFSO.FileExists(strFile) Then ' does the file exsit?
+  Set objFile = objFSO.GetFile(strFile) 'Get Path to file
+
+'  Get the date the plugin was executed the last time
+  Dim objSizeLastCheck, objFileAttribute
+  If objFSO.FileExists(strTempFile) Then 'does the temp file exsit?
+    Set objSizeLastCheck = objFSO.OpenTextFile(strTempFile, ForReading)
+    strSizeLastCheck = objSizeLastCheck.Readline
+    objSizeLastCheck.Close
+
+    'Write the new size to the file
+    Set objSizeLastCheck = objFSO.OpenTextFile(strTempFile, ForWriting, True) 
+    objSizeLastCheck.WriteLine(objFile.Size)
+    objSizeLastCheck.Close
+    
+  Else
+    Set objSizeLastCheck = objFSO.OpenTextFile(strTempFile, ForWriting, True)
+    objSizeLastCheck.WriteLine(objFile.Size)
+    objSizeLastCheck.Close
+    
+    Wscript.Echo "Temp file wasn't present. Needed to be created first..."
+    Wscript.Quit(intUnknown) 'Quit with a unknown Status
+  End if
+''''''''''''''
+  
+  If CLng(strSizeLastCheck) = CLng(objFile.Size) Then
+    Wscript.Echo "CRITICAL: File size of "& strFile &" has not changed ("& strSizeLastCheck &")"
+    Wscript.Quit(intCritical)  
+  Else
+    Wscript.Echo "OK: Filesize has changed - was "& strSizeLastCheck &", now: "& objFile.Size & "."
+    Wscript.Quit(intOK)
+  End If
+
+Else
+   Wscript.Echo "CRITICAL: File does not exsit... The file "& strFile &" was Not found."
+   Wscript.Quit(intCritical) 'Quit with a critical error
+
+End If
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+</script>
+</job>

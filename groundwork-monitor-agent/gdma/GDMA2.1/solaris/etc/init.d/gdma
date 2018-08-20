@@ -1,0 +1,50 @@
+#!/bin/sh
+#
+# chkconfig: 2345 44 56 
+# description: GroundWork Distributed Monitoring Agent
+#
+
+RETVAL=0
+
+start_gdma() {
+    /opt/groundwork/ctlscript.sh start "$2"
+    RETVAL=$?
+    if [ -d "/var/lock/subsys" ] && [ `id -u` = 0 ] && [ $RETVAL -eq 0 ] ; then
+        touch /var/lock/subsys/gdma
+    fi
+
+}
+
+stop_gdma() {
+    /opt/groundwork/ctlscript.sh stop "$2"
+    RETVAL=$?
+}
+
+restart_gdma() {
+    /opt/groundwork/ctlscript.sh restart "$2"
+    RETVAL=$?
+}
+
+status_gdma() {
+    /opt/groundwork/ctlscript.sh status "$2"
+    RETVAL=$?
+}
+
+case "$1" in
+    start)
+        start_gdma "$@"
+        ;;
+    stop)
+        stop_gdma "$@"
+        ;;
+    restart)
+        restart_gdma "$@"
+        ;;
+    status)
+        status_gdma "$@"
+        ;;
+    *)
+        /opt/groundwork/ctlscript.sh "$@"
+        RETVAL=$?
+esac
+exit $RETVAL

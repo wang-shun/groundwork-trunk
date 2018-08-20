@@ -1,0 +1,104 @@
+Fix the following issues:
+
+Critical:
+(*) [DONE; tested, but JIRA not yet resolved]  GWMON-9204:  package for
+    GW6.3 as a JBoss extension
+(*) [DONE; tested, but JIRA not yet resolved]  GWMON-9224:  don't drop
+    the jbossportal database when the RPM is installed or uninstalled
+(*) [Done now in the base-product GW6.3 release, though with the wrong
+    datatype.]  Get the RPM to send SQL to Foundation to install the
+    DeactivationTime property if it does not already exist.  That implies
+    that mysqld must be up and running during the RPM install, or that
+    a script can be run afterward to achieve the same effect.
+(*) [DONE; not yet tested.]  Uploading Eucalyptus credentials
+    should remove any previous files for that region of the form
+    euca2-admin-*-{pk,cert}.pem .
+(*) [DONE; not yet tested.]  Atomic updates of config file, with some
+    backup copies rolled out.
+(*) [DONE; not yet tested]  Implement the remaining buttons at the bottom
+    of the Cloud Connector configuration screen.
+(*) [DONE; not yet tested]  Fix logging from cloud_config.pl to display in
+    a screen separate from the standard "Cloud Connector Configuration"
+    screen, both to make it obvious that the operation has been accepted
+    and started, and to make it more obvious when the results are
+    finally returned.
+(*) GWMON-8822:  Status Viewer left-side panel stops updating; is this
+    perhaps due to pilot error rather than the Cloud Connector itself?
+(*) Log to logfile and to Foundation, from the cloud_config.pl script.
+(*) Check the exit status of the setenv scripts upon error.
+(*) Test our EC2 service-check command with a bad host or an unconfigured
+    region (no credentials yet); yields errors.  Make sure they appear
+    somewhere visible.
+(*) Scan for other FIX MAJOR and FIX THIS tags in the code.
+
+High priority:
+(*) [DONE; not yet tested]  Implement the orphaned_hosts_disposition
+    option in the batch script.  Add code to delete hosts entirely
+    from Monarch and Foundation.  Send XML to Foundation to record the
+    deactivation time timestamp property.
+(*) [DONE; not yet tested]  Deal with orphaned_host_retention_period in
+    the batch script:  add code to look up all deactivated instances
+    and delete those whose DeactivationTime property value is older than
+    the configured interval.
+(*) Make sure that messages from the Nagios plugin make it out to where
+    they are seen.  (Huh?  What plugin am I referring to here?)
+(*) Have clear conventions in the UI about which changes are brought
+    forward and which are ignored, other than what upload/remove/add do
+    for their specific actions.
+
+Medium priority:
+(*) Explain in the documentation the possibility that running the cloud
+    batch processing interactively may encounter a commit lock from
+    the same script being run from the cron job.  Explain exactly what
+    this collision looks like, and that this is not a serious failure;
+    it simply prevents problems arising from concurrent changes.
+(*) If cloud processing is disabled, the orphaned-host screen will claim
+    there are no orphans, even if there are some, without indicating
+    instead that cloud processing is disabled.  Look too at the effect
+    of disabling particular regions on orphaned-host processing.
+(*) Print some interesting statistical summary output from the
+    cloud_config.pl script; post the results of running it interactively
+    in a separate screen, or otherwise clearly demarcated.
+(*) We ought to have some visibility in the Clouds UI as to what hosts are
+    currently associated with which regions, and perhaps a few other
+    details about them such as what host profile is assigned to each.
+    Perhaps we need a screen similar to the Orphaned Hosts screen, but
+    not so involved as what ElasticFox provides.
+(*) Add host/service profiles for monitoring the Eucalyptus components
+    on a Eucalyptus server.
+(*) Update doc/ instructions to reflect new capabilities.
+(*) Should JAVA_HOME be set (to /usr/local/groundwork/java) if it is not
+    already set, in my scripts that set up environment variables for running
+    EC2 commands in a shell?  EC2_HOME, too?
+
+Low priority:
+(*) Make sure that all pushes to @errors in monarch_clouds.cgi are clearly
+    labeled with an "Error:" prefix.
+(*) Make sure all user input is properly sanitized, including trimming,
+    dropping of control characters, etc.  Look also for security issues,
+    including SQL injection vulnerabilities.
+(*) Clean out unused code from the monarch_clouds.cgi script.
+(*) Add other features described in the "Cloud Connector" GWiki page.
+
+Future:
+(*) Are there other Clouds portlet tabs that would be useful?
+(*) Investigate how to dynamically add and delete hosts in Nagios (and
+    thence in Foundation, probably using XML similar to a Commit),
+    without requiring a batch Commit operation to take place.  This
+    might require patching Nagios to implement some new commands that
+    can handle the dynamic management of internal data structures
+    while also checking for the same kinds of possible bad setup that
+    is scanned for during Nagios startup.
+(*) Allow user-selected columns to determine the sort order in the
+    Orphaned Hosts screen.
+(*) Other possibilities for the Orphaned Hosts screen:
+    (+) Allow group-select/clear of all-attached or all-unattached
+	instances.
+    (+) Use of color coding in some way.
+    (+) Display host notes in a mouseover tooltip, if non-empty.
+
+Never:
+(*) We wanted to use a chrome: URI to access an installed copy of
+    ElasticFox from a page of the Cloud Connector.  But apparently,
+    recent versions of FireFox have disabled using such URIs due to
+    security concerns.

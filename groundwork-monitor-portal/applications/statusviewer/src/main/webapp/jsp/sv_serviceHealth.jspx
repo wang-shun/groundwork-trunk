@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<ice:inputHidden id="SHserviceHelathHiddenField"
+			value="#{healthPortletsHandler.healthHiddenField}" />
+	
+		<!--  error / info message -->
+		<ice:panelGroup rendered="#{healthPortletsHandler.message}"
+			id="SHpanelsSearchError">
+			<ice:column id="SHcolumnError"
+				rendered="#{healthPortletsHandler.error}">
+				<ui:include src="/jsp/error.jspx">
+					<ui:param name="errorMessage"
+						value="#{healthPortletsHandler.errorMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:column id="SHcolumninfo"
+				rendered="#{healthPortletsHandler.info}">
+				<ui:include src="/jsp/info.jspx">
+					<ui:param name="infoMessage"
+						value="#{healthPortletsHandler.infoMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:commandButton id="SHcmdRetryNow"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{healthPortletsHandler.reloadPage}"></ice:commandButton>
+		</ice:panelGroup>
+	
+		<ice:panelGroup id="SHpanelGridServiceHealthInfo" rendered="#{!healthPortletsHandler.message}">
+			
+			<table width="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr>
+					<td width="">
+						<!-- Service State Icon-->
+						<ice:graphicImage
+							url="#{healthPortletsHandler.serviceHealthBean.status.iconPath}"
+							style="padding-right: 4px;"
+							id="SHimgServiceStateIcon" />
+					
+						<!-- service name -->
+						<ice:outputText id="SHtxtServiceName"
+							style="font-weight: bold; font-size: 15px; "
+							value="#{healthPortletsHandler.serviceHealthBean.serviceNameLabel}" 
+							title="#{healthPortletsHandler.serviceHealthBean.serviceName}"/>
+					</td>
+					<td>
+						<ice:graphicImage
+							url="/images/move_up_active.gif"
+							rendered="#{healthPortletsHandler.serviceHealthBean.userInAdminOrOperatorRole and !empty healthPortletsHandler.serviceHealthBean.hostUrl}"							
+							style="padding-right: 2px; "
+							id="imgHostForServiceActive" />
+						<!-- Link for host of this service -->
+						<ice:outputLink id="SHlnkShowHost" style="width:200px; overflow:hidden; display:inline-block;"
+							value="#{healthPortletsHandler.serviceHealthBean.hostUrl}"
+							onclick="blockNavigation();" 
+							rendered="#{healthPortletsHandler.serviceHealthBean.userInAdminOrOperatorRole and !empty healthPortletsHandler.serviceHealthBean.hostUrl}">
+							#{message['com_groundwork_portal_statusviewer_outputtext_host']}: #{healthPortletsHandler.serviceHealthBean.hostName}
+						</ice:outputLink>
+				
+						<ice:graphicImage
+							url="/images/move_up_inactive.gif"
+							rendered="#{!healthPortletsHandler.serviceHealthBean.userInAdminOrOperatorRole or empty healthPortletsHandler.serviceHealthBean.hostUrl}"							
+							style="padding-right: 2px;"
+							id="imgHostForServiceInactive" />
+						<ice:outputLink id="SHlnkShowHostuserrole"
+							value="#{healthPortletsHandler.serviceHealthBean.hostUrl}"
+					 		disabled="#{!healthPortletsHandler.serviceHealthBean.userInAdminOrOperatorRole or empty healthPortletsHandler.serviceHealthBean.hostUrl}" 
+					 		rendered="#{!healthPortletsHandler.serviceHealthBean.userInAdminOrOperatorRole or empty healthPortletsHandler.serviceHealthBean.hostUrl}">
+						<ice:outputText id="SHtxtShowHostuserrole" style="color:grey;"
+							value="#{message['com_groundwork_portal_statusviewer_outputtext_host']}: #{healthPortletsHandler.serviceHealthBean.hostName}" />
+						</ice:outputLink>
+					</td>
+				</tr>
+				
+							
+				<tr>
+					<td>
+						<!-- Service Notes -->
+						<div style="width: 220px; height: 25px; overflow: auto; padding: 5px;">
+							<ice:outputText id="txtServiceNotes"
+								style="font-weight: normal;"
+								value="#{healthPortletsHandler.serviceHealthBean.serviceNotes}" 
+								escape="false" />
+						</div>
+					</td>
+				
+					<td>
+						<ice:graphicImage
+							url="/images/move_left_active.gif"
+							rendered="#{healthPortletsHandler.serviceHealthBean.serviceGroupsCount gt '0'}"
+							style="padding-right: 2px;"
+							id="imgGroupsForServiceActive" />
+						<ice:commandLink rendered="#{healthPortletsHandler.serviceHealthBean.serviceGroupsCount gt '0'}"
+							action="#{healthPortletsHandler.openServiceGroupPopup}"
+							actionListener="#{healthPortletsHandler.serviceHealthBean.sort}"
+							id="SHcmdShowGroup" 
+							disabled="#{!healthPortletsHandler.serviceHealthBean.userInAdminOrOperatorRole}"
+							value="#{message['com_groundwork_portal_statusviewer_outputtext_groupsForThisService']} (#{healthPortletsHandler.serviceHealthBean.serviceGroupsCount})" />
+						
+						<ice:graphicImage
+							url="/images/move_left_inactive.gif"
+							rendered="#{healthPortletsHandler.serviceHealthBean.serviceGroupsCount eq '0'}"
+							style="padding-right: 2px;"
+							id="imgGroupsForServiceInactive" />
+						<ice:outputText id="SHtxtShowGroup"
+							rendered="#{healthPortletsHandler.serviceHealthBean.serviceGroupsCount eq '0'}"
+							style="color:grey;"
+							value="#{message['com_groundwork_portal_statusviewer_outputtext_groupsForThisService']} (#{healthPortletsHandler.serviceHealthBean.serviceGroupsCount})" />
+					
+						<!-- Link for dependents of this service : this code can be used as it is when "dependents" link needs to go live
+						<ice:commandLink id="SHcmdShowDependents"
+							action="#{healthPortletsHandler.openParentDependentPopup}"
+							rendered="#{healthPortletsHandler.serviceHealthBean.dependentServicesCount gt '0'}"
+							actionListener="#{healthPortletsHandler.showDependentsForService}">
+							<ice:outputText 
+								value=">  Dependent Services (#{healthPortletsHandler.serviceHealthBean.dependentServicesCount})"></ice:outputText>
+						</ice:commandLink>
+						<ice:outputText
+							rendered="#{healthPortletsHandler.serviceHealthBean.dependentServicesCount eq '0'}"
+							value=">  Dependent Services (#{healthPortletsHandler.serviceHealthBean.dependentServicesCount})"></ice:outputText>
+						-->
+						
+						<!-- Service State. E.g. Critical, Ok etc. 
+						style="color:#{healthPortletsHandler.serviceHealthBean.status.hexColor};"
+						-->
+						<br/>
+						<ice:outputText id="SHtxtServiceState"
+							value="#{healthPortletsHandler.serviceHealthBean.status.status}"
+							style="font-weight:bold;"
+							rendered="#{!healthPortletsHandler.serviceHealthBean.warningStatus}"></ice:outputText>
+						<ice:outputText id="SHtxtServiceState"
+							style="background-color: #{healthPortletsHandler.serviceHealthBean.status.hexColor}; color: rgb(0, 0, 0); font-weight:bold;"
+							value="#{healthPortletsHandler.serviceHealthBean.status.status}"
+							rendered="#{healthPortletsHandler.serviceHealthBean.warningStatus}"></ice:outputText>
+						
+						<ice:outputText id="txtHostStateSince"
+							style="font-weight: normal;"
+							value=" since #{healthPortletsHandler.serviceHealthBean.lastStateChangeDate}">
+						</ice:outputText>
+					
+						
+						<!-- Service state uptime E.g. 1 day, 2 hours, 5 mins -->
+						<br/>
+						<ice:outputText id="SHtxtServiceDuration" styleClass="txtbold"
+							value="(#{healthPortletsHandler.serviceHealthBean.serviceStateDuration})">
+						</ice:outputText>
+					</td>
+				</tr>
+			</table>
+		</ice:panelGroup>
+	
+		<!-- Popup: Groups for this service -->
+		<ice:panelPopup id="SHpanelPopupService"
+			autoPosition="manual" styleClass="icePnlPopTbl" modal="true"
+			visible="#{healthPortletsHandler.popupVisible}"
+			style="z-index:999; top: 25%; left: 400px; height: 200px; position:fixed; background: #FFFFFF;">
+			<f:facet name="header">
+				<ice:panelGrid id="SHpanelgridServicePopup"
+					columns="2" width="400px" columnClasses="txtleft">
+					<ice:column id="SHcolumnserviceDetail">
+						<ice:outputText id="SHsearchTreePortlet_txtTitle"
+							style="font-weight:bold; padding-top: 5px; padding-left: 5px;"
+							value="#{message['com_groundwork_portal_statusviewer_healthPortlet_groupsFor']}"
+							rendered="#{healthPortletsHandler.groupPopupVisible}"></ice:outputText>
+						<ice:outputText id="SHsearchTreePortlet_txtTitle"
+							value="#{message['com_groundwork_portal_statusviewer_healthPortlet_parentsFor']}"
+							styleClass="cust_popupHeader_font" style="font-size:10px;"
+							rendered="#{healthPortletsHandler.parentDependentPopupVisible}"></ice:outputText>
+						<ice:outputText id="SHsearchTreePortlet_txtTitle"
+							style="font-weight:bold; padding-top: 5px;"
+							value="#{healthPortletsHandler.serviceHealthBean.serviceNameLabel}"></ice:outputText>
+					</ice:column>
+					<ice:column id="SHcolumnCloseImage">
+						<div class="cust_poupmodes"><span title="Close Window">
+						<ice:commandButton id="SHLnkClose"
+							type="button" image="/css/css-images/popup_modeBtn_close.gif"
+							action="#{healthPortletsHandler.closePopup}"
+							title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+							 alt="Close" /></span></div>
+					</ice:column>
+				</ice:panelGrid>
+			</f:facet>
+			<f:facet name="body">
+				<ice:panelGroup id="SHpanelgroupPopup">
+					<!-- Group Popup window -->
+					<ice:panelGrid id="SHpanelgridGroupPopup"
+						width="100%" cellpadding="0" cellspacing="0"
+						rendered="#{healthPortletsHandler.groupPopupVisible}">
+						<br />
+						<ice:panelGroup id="SHgroupPopHeader"
+							style="padding-left: 5px">
+							<ice:outputText id="SHtxtGroupPopupTitle"
+								style="font-weight: bold;"
+								value="#{message['com_groundwork_statusviewer_total']}= #{healthPortletsHandler.serviceHealthBean.groupCount}"></ice:outputText>
+						</ice:panelGroup>
+						<ice:dataTable id="SHtblGroupPop" var="group"
+							value="#{healthPortletsHandler.serviceHealthBean.groupList}"
+							cellspacing="0" style="width: 100%" styleClass="iceDatTbl_typB"
+							rowClasses="iceDatTblRow1_typB,iceDatTblRow2_typB table-alternate"
+							columnClasses="iceDatTblCol1_typB"
+							headerClass="iceDatTblColHdr1_typB"
+							rows="#{healthPortletsHandler.pageSize}"
+							sortColumn="#{healthPortletsHandler.serviceHealthBean.sortGroupColumn}">
+							<ice:column id="SHcolumnGroupPopMember"
+								style="width: 70%">
+								<f:facet name="header">
+									<table border="0" cellspacing="0" cellpadding="0"
+										align="center">
+										<tr>
+											<td><ice:commandSortHeader columnName="name"
+												arrow="true" id="SHCmdSrtHdrMembr"
+												actionListener="#{healthPortletsHandler.serviceHealthBean.sortGroupList}">
+												<ice:outputText
+													id="SHtxtGroupColumnMember"
+													value="#{message['com_groundwork_portal_statusviewer_healthPortlet_MemberOf']}"></ice:outputText>
+											</ice:commandSortHeader></td>
+											<td><ice:graphicImage id="SHimgsortarrow"
+												value="/images/sort_arrow_up.gif"
+												rendered="#{healthPortletsHandler.serviceHealthBean.sortGroupColumn == null}"></ice:graphicImage></td>
+										</tr>
+									</table>
+								</f:facet>
+								<ice:outputLink id="SHlnkParent"
+									value="#{group.url}" onclick="blockNavigation();" rendered="#{!empty group.url}">
+									<ice:outputText id="SHtxtMember"
+										style="color: #5078AA;font-weight:normal;padding-bottom: 11px;"
+										value=" #{group.name}" />
+								</ice:outputLink>
+									<ice:outputText id="SHtxtMember"
+										style="font-weight:normal;"
+										value=" #{group.name}" rendered="#{empty group.url}"/>
+							</ice:column>
+							<ice:column id="SHcolumnGroupPopStatus"
+								style="width: 30%">
+								<f:facet name="header">
+									<ice:outputText id="SHtxtGroupPopStatus"
+										value="#{message['com_groundwork_portal_statusviewer_healthPortlet_status']}"></ice:outputText>
+								</f:facet>
+								<ice:graphicImage
+									id="SHimgGroupPopStatusIcon"
+									value="#{group.status.iconPath}" />
+							</ice:column>
+						</ice:dataTable>
+						<ice:dataPaginator id="SHgroupPopupPaginator"
+							for="SHtblGroupPop" paginator="true"
+							fastStep="3" paginatorMaxPages="4"
+							renderFacetsIfSinglePage="false">
+							<f:facet name="first">
+								<ice:graphicImage id="SHimgFirst"
+									url="/images/arrow-first.gif" style="border:none;"
+									title="First Page" />
+							</f:facet>
+							<f:facet name="previous">
+								<ice:graphicImage id="SHimgPrevious"
+									url="/images/arrow-previous.gif" style="border:none;"
+									title="Previous Page" />
+							</f:facet>
+							<f:facet name="next">
+								<ice:graphicImage id="SHimgNext"
+									url="/images/arrow-next.gif" style="border:none;"
+									title="Next Page" />
+							</f:facet>
+							<f:facet name="last">
+								<ice:graphicImage id="SHimgLast"
+									url="/images/arrow-last.gif" style="border:none;"
+									title="Last Page" />
+							</f:facet>
+						</ice:dataPaginator>
+						<br />
+						<div class="gen_div_right"><ice:commandButton
+							action="#{healthPortletsHandler.closePopup}"
+							title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+							id="SHbtnGroupPopClose"
+							value="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}">
+							</ice:commandButton></div>
+						</ice:panelGrid>
+	
+					</ice:panelGroup>
+				</f:facet>
+			</ice:panelPopup>				
+		</ui:define>
+	</ui:composition>
+		

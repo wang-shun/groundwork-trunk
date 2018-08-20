@@ -1,0 +1,27 @@
+--- nedi/html/System-Files.php.orig	2018-04-10 04:32:34.000000000 -0700
++++ nedi/html/System-Files.php	2018-06-18 17:14:32.905061135 -0700
+@@ -224,13 +224,15 @@
+ 		echo "\t\t\t<option value=\"$l\" ".( ($file == $l)?" selected":"").">$l\n";
+ 	}
+ }
+-foreach ($ldir as $d){
++if( !empty($ldir) ){
++    foreach ($ldir as $d){
+ 	$cfgd = substr( $d, strlen($nedipath)+6 );
+ 	echo "\t\t\t<option value=\"\" class=\"drd\" disabled>- ".urldecode($cfgd)." -\n";
+ 	foreach (glob("$d/*.cfg") as $f){
+ 		$l = substr($f,strlen($d)+1);
+ 		echo "\t\t\t<option value=\"$cfgd/$l\"".( ($file == "$cfgd/$l")?" selected":"").">$l\n";
+ 	}
++    }
+ }
+ ?>
+ 		</select>
+@@ -311,6 +313,7 @@
+ 	}elseif( $txt ){
+ 		$contents = $txt;
+ 	}
++	$contents = preg_replace("/&/", "&amp;", $contents);
+ 
+ 	if($isadmin){
+ 		if($writeto){

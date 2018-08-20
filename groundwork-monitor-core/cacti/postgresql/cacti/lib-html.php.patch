@@ -1,0 +1,30 @@
+--- cacti/htdocs/lib/html.php	2015-12-05 06:22:58.071100923 -0500
++++ cacti/htdocs-security/lib/html.php	2015-12-05 06:25:55.777329426 -0500
+@@ -20,6 +20,7 @@
+  +-------------------------------------------------------------------------+
+  | http://www.cacti.net/                                                   |
+  +-------------------------------------------------------------------------+
++ GW Patched 2015-12-05 DN
+ */
+ 
+ /* html_start_box - draws the start of an HTML box with an optional title
+@@ -383,7 +384,8 @@
+ 			print "<td " . ((($i+1) == count($header_items)) ? "colspan='$last_item_colspan' " : "") . "class='textSubHeaderDark'>" . $display_text . "</td>\n";
+ 		}else{
+ 			print "<td " . ((($i) == count($header_items)) ? "colspan='$last_item_colspan'>" : ">");
+-			print "<a class='textSubHeaderDark' href='" . htmlspecialchars($config['url_path'] . $_SERVER["PHP_SELF"] . "?sort_column=" . $db_column . "&sort_direction=" . $direction) . "'>" . $display_text . "</a>";
++			#print "<a class='textSubHeaderDark' href='" . htmlspecialchars($config['url_path'] . $_SERVER["PHP_SELF"] . "?sort_column=" . $db_column . "&sort_direction=" . $direction) . "'>" . $display_text . "</a>";
++			print "<a class='textSubHeaderDark' href='" . htmlspecialchars( $_SERVER["PHP_SELF"] . "?sort_column=" . $db_column . "&sort_direction=" . $direction) . "'>" . $display_text . "</a>";
+ 			print "</td>\n";
+ 		}
+ 
+@@ -433,7 +435,8 @@
+ 			print "<td class='textSubHeaderDark'>" . $display_text . "</td>\n";
+ 		}else{
+ 			print "<td>";
+-			print "<a class='textSubHeaderDark' href='" . htmlspecialchars($config['url_path'] . $_SERVER["PHP_SELF"] . "?sort_column=" . $db_column . "&sort_direction=" . $direction) . "'>" . $display_text . "</a>";
++			#print "<a class='textSubHeaderDark' href='" . htmlspecialchars($config['url_path'] . $_SERVER["PHP_SELF"] . "?sort_column=" . $db_column . "&sort_direction=" . $direction) . "'>" . $display_text . "</a>";
++			print "<a class='textSubHeaderDark' href='" . htmlspecialchars( $_SERVER["PHP_SELF"] . "?sort_column=" . $db_column . "&sort_direction=" . $direction) . "'>" . $display_text . "</a>";
+ 			print "</td>\n";
+ 		}
+ 	}

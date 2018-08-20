@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<ice:inputHidden id="HAipHiddn"
+			value="#{hostAvailabilityHandler.hiddenField}"></ice:inputHidden>
+		<!--  error / info message -->
+		<ice:panelGroup rendered="#{hostAvailabilityHandler.message}"
+			id="HApanelsGroupError">
+			<ice:column id="HAcolumnError"
+				rendered="#{hostAvailabilityHandler.error}">
+				<ui:include src="/jsp/error.jspx">
+					<ui:param name="errorMessage"
+						value="#{hostAvailabilityHandler.errorMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:column id="HAcolumninfo"
+				rendered="#{hostAvailabilityHandler.info}">
+				<ui:include src="/jsp/info.jspx">
+					<ui:param name="infoMessage"
+						value="#{hostAvailabilityHandler.infoMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:commandButton id="HAcmdRetryNowForHandler"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{hostAvailabilityHandler.reloadPage}"></ice:commandButton>
+		</ice:panelGroup>
+		<!--  error message - END -->
+
+		<ice:panelGroup id="HApanelgrp"
+			rendered="#{!(hostAvailabilityHandler.message)}">
+		<!--  	<table id="#{hostAvailabilityHandler.tableID}">-->
+				<table >
+				<tr>
+					<td><ice:message for="HAstartDateTime" showDetail="true"
+						showSummary="false"
+						style="color:red; width:350px; font-weight:normal;"
+						rendered="#{hostAvailabilityHandler.renderCustDates}"></ice:message><br />
+					<ice:message for="HAendDateTime" showDetail="true"
+						showSummary="false"
+						style="color:red; width:350px; font-weight:normal;"
+						rendered="#{hostAvailabilityHandler.renderCustDates}"></ice:message></td>
+				</tr>
+				<tr>
+					<td><ice:panelGrid id="HApanelgridMain">
+						<!--  PanelGrid for time selector drop-down -->
+						<table id="tbl_otr" align="left">
+
+							<tr>
+								<td><ice:panelGrid id="HApanelTime"
+									rendered="#{!hostAvailabilityHandler.message}" columns="3">
+									<!-- Label associated with time selector drop down list -->
+									<ice:outputLabel for="HAmenuTimeSelector"
+										id="HAlblTimeSelector"
+										value="#{message['com_groundwork_portal_statusviewer_hostAvailabilityPortlet_label_time']}">
+									</ice:outputLabel>
+									<!-- Time selector drop down list as selectOneMenu component -->
+									<ice:selectOneMenu id="HAmenuTimeSelector"
+										value="#{hostAvailabilityHandler.selectedTime}"
+										valueChangeListener="#{hostAvailabilityHandler.selectedHostTimeChangeListener}"	>
+										<f:selectItems
+											value="#{hostAvailabilityHandler.timeSelectorList}" />
+									</ice:selectOneMenu>
+
+									<!-- 'Apply' command button -->
+									<ice:commandButton
+										value="#{message['com_groundwork_portal_statusviewer_apply']}"
+										id="HAsubmitApply" type="submit"
+										actionListener="#{hostAvailabilityHandler.apply}"
+										styleClass="cust_portlet_filter_button">
+									</ice:commandButton>
+
+								</ice:panelGrid></td>
+							</tr>
+							<tr>
+								<td>
+								<ice:panelGroup id="HAcuststartendtimegroup" rendered="#{hostAvailabilityHandler.renderCustDates}"><!-- Custom Start date and end Date -->
+								<div style="float: left;"><ice:outputText id="HAstartdatelbl"
+									value="#{message['com_groundwork_portal_statusviewer_hostAvailabilityPortlet_label_start_Date']}"></ice:outputText> <ice:inputText
+									id="HAstartDateTime"
+									value="#{hostAvailabilityHandler.custStartDate}"></ice:inputText>
+								<ice:graphicImage value="/images/date-time.png"
+									onclick="datePicker(this);" onmouseover="datePicker(this);"></ice:graphicImage></div>
+								<div style="float: left;"><ice:outputLabel
+									id="HAenddatelbl" for="HAendDateTime" value="#{message['com_groundwork_portal_statusviewer_hostAvailabilityPortlet_label_end_Date']}"></ice:outputLabel>
+								<ice:inputText id="HAendDateTime"
+									value="#{hostAvailabilityHandler.custEndDate}"></ice:inputText>
+								<ice:graphicImage value="/images/date-time.png"
+									onclick="datePicker(this);" onmouseover="datePicker(this);"></ice:graphicImage>
+								</div>
+								</ice:panelGroup>
+								</td>
+							</tr>
+						</table>
+						<div id="HAdivBarChart" style="#{hostAvailabilityHandler.divTagStyle}"
+							><ice:panelGrid
+							id="HApanelGridHostTransitions"
+							rendered="#{!hostAvailabilityHandler.message}" columns="1">
+							<!--  Bar chart for state transitions -->
+							<ice:column id="HAcolHostTranisitionImage">
+								<!-- #{hostAvailabilityHandler.hostTransitionsBarChartImgID} -->
+								<ice:graphicImage
+									
+									rendered="#{hostAvailabilityHandler.hostTransitionsChartImage != null}"
+									value="#{hostAvailabilityHandler.hostTransitionsChartImage}"></ice:graphicImage>
+								<ice:graphicImage id="HAimgHostTransitionsBarChart"
+									value="/images/connect_active.gif"
+									rendered="#{hostAvailabilityHandler.hostTransitionsChartImage == null}"></ice:graphicImage>
+							</ice:column>
+						</ice:panelGrid></div>
+
+						<!--  Panel Grid to be displayed in there are no state transitions. -->
+						<!-- Info message for serviceAvailabilityHandler - START -->
+						<!--<ice:panelGrid
+					rendered="#{hostAvailabilityHandler.info and !hostAvailabilityHandler.message}"
+					style="width : 850px"
+					id="HApanelForInfoMessage">
+					<ui:include src="/jsp/info.jspx">
+						<ui:param name="infoMessage"
+							value="#{hostAvailabilityHandler.infoMessage}" />
+					</ui:include>
+				</ice:panelGrid>-->
+						<!--  info message - END -->
+
+					</ice:panelGrid></td>
+				</tr>
+			</table>
+		</ice:panelGroup>
+	</ui:define>
+</ui:composition>

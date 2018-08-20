@@ -1,0 +1,244 @@
+<?xml version="1.0"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Inc. info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-->
+<!DOCTYPE hibernate-mapping PUBLIC
+    "-//Hibernate/Hibernate Mapping DTD 2.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd" >
+    
+<hibernate-mapping default-lazy="false" >
+<class 
+    name="com.groundwork.collage.model.impl.LogMessage" 
+    table="LogMessage"
+>
+
+    <id
+        name="logMessageId"
+        type="java.lang.Integer"
+        column="LogMessageID"
+    >
+         <generator class="native">
+            <param name="sequence">logmessage_logmessageid_seq</param>
+         </generator>
+    </id>
+    
+    <property
+        name="textMessage"
+        type="java.lang.String"
+        column="TextMessage"
+        not-null="true"
+        length="65535"
+    />
+    <property
+        name="msgCount"
+        type="int"
+        column="MsgCount"
+        not-null="true"
+        length="11"
+    />
+    <property
+        name="firstInsertDate"
+        type="java.util.Date"
+        column="FirstInsertDate"
+        not-null="true"
+        length="19"
+    />
+    <property
+        name="lastInsertDate"
+        type="java.util.Date"
+        column="LastInsertDate"
+        not-null="true"
+        length="19"
+    />
+    <property
+        name="reportDate"
+        type="java.util.Date"
+        column="ReportDate"
+        not-null="true"
+        length="19"
+    />
+
+    <property
+        name="consolidationHash"
+        type="java.lang.Integer"
+        column="ConsolidationHash"
+        not-null="true"
+        length="11"
+    />
+    
+    <property
+        name="statelessHash"
+        type="java.lang.Integer"
+        column="StatelessHash"
+        not-null="true"
+        length="11"
+    />
+    
+    <property
+        name="stateChanged"
+        type="boolean"
+        column="isStateChanged"
+        not-null="true"
+    />
+    
+    <property
+        name="stateTransitionHash"
+        type="java.lang.Integer"
+        column="StateTransitionHash"
+        not-null="false"
+        length="11"
+    />
+    
+    <!-- Associations -->
+    
+    <many-to-one
+		name="applicationSeverity"
+		class="com.groundwork.collage.model.impl.Severity"
+		not-null="false"
+		cascade="none"
+	>
+		<column name="ApplicationSeverityID" />
+	</many-to-one>
+	
+    <many-to-one
+		name="component"
+		class="com.groundwork.collage.model.impl.Component"
+		not-null="false"
+		cascade="none"
+	>
+		<column name="ComponentID" />
+	</many-to-one>
+	
+    <many-to-one
+		name="priority"
+		class="com.groundwork.collage.model.impl.Priority"
+		not-null="false"
+		cascade="none"
+	>
+		<column name="PriorityID" />
+	</many-to-one>
+	
+    <many-to-one
+		name="typeRule"
+		class="com.groundwork.collage.model.impl.TypeRule"
+		not-null="false"
+		cascade="none"
+	>
+		<column name="TypeRuleID" />
+	</many-to-one>			    
+        
+    <!-- Monitor Status Object -->
+    <many-to-one
+		name="monitorStatus"
+		class="com.groundwork.collage.model.impl.MonitorStatus"
+		not-null="false"
+		cascade="none"
+		fetch="join"
+	>
+		<column name="MonitorStatusID" />
+	</many-to-one>
+	
+	<!-- Severity Object -->
+	<many-to-one
+		name="severity"
+		class="com.groundwork.collage.model.impl.Severity"
+		not-null="false"
+		cascade="none"
+	>
+		<column name="SeverityID" />
+	</many-to-one>
+
+	<many-to-one
+		name="applicationType"
+		class="com.groundwork.collage.model.impl.ApplicationType"
+		not-null="true"
+		cascade="none"
+		fetch="join"
+	>
+		<column name="ApplicationTypeID" />
+	</many-to-one>   
+	
+    <!-- uni-directional many-to-one association to Device -->
+    <many-to-one
+        name="device"
+        class="com.groundwork.collage.model.impl.Device"
+        not-null="true"
+        cascade="none"
+    >
+        <column name="DeviceID" />
+    </many-to-one>
+  
+    <!-- uni-directional many-to-one association to HostStatus -->
+    <many-to-one
+        name="hostStatus"
+        class="com.groundwork.collage.model.impl.HostStatus"
+        not-null="false"
+        cascade="none"
+    >
+        <column name="HostStatusID" />
+    </many-to-one>
+
+    <!-- uni-directional many-to-one association to ServiceStatus -->
+    <many-to-one
+        name="serviceStatus"
+        class="com.groundwork.collage.model.impl.ServiceStatus"
+        not-null="false"
+        cascade="none"
+    >
+        <column name="ServiceStatusID" />
+    </many-to-one>
+
+    <!-- uni-directional many-to-one association to OperationStatus -->
+    <many-to-one
+        name="operationStatus"
+        class="com.groundwork.collage.model.impl.OperationStatus"
+        not-null="false"
+        cascade="none"
+    >
+        <column name="OperationStatusID" />
+    </many-to-one>
+    
+    <!-- bi-directional one-to-many association to LogPerformanceData -->
+    <set
+        name="logPerformanceDatas"
+        lazy="true"
+        inverse="true"
+        cascade="none"
+    >
+        <key>
+            <column name="LogMessageID" />
+        </key>
+        <one-to-many 
+            class="com.groundwork.collage.model.impl.LogPerformanceData"
+        />
+    </set>
+
+    <set
+        name="propertyValues"
+        lazy="false"
+        inverse="true"
+        cascade="all,delete-orphan"
+    >
+        <key>
+            <column name="LogMessageID" />
+        </key>
+        <one-to-many 
+            class="com.groundwork.collage.model.impl.LogMessagePropertyValue"
+        />
+    </set> 
+</class>
+</hibernate-mapping>

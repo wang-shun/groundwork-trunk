@@ -1,0 +1,60 @@
+--- /usr/local/groundwork/nms/tools/httpd/conf/httpd.conf.orig	2009-10-26 11:53:59.000000000 -0700
++++ /usr/local/groundwork/nms/tools/httpd/conf/httpd.conf	2009-10-26 11:57:33.000000000 -0700
+@@ -194,17 +194,8 @@ TKTAuthSecret "changethistosomethinguniq
+ 	
+ Alias /nedi "/usr/local/groundwork/nms/applications/nedi/html"
+ <Directory "/usr/local/groundwork/nms/applications/nedi/html">
+-	AuthType Basic
+-	require valid-user
+ 	DirectoryIndex index.php
+-
+-	TKTAuthCookieName nedi_auth_tkt
+-	TKTAuthDomain groundwork.groundworkopensource.com
+-	TKTAuthTimeout 0
+-
+ 	Options FollowSymLinks Indexes
+-	AllowOverride None
+-	Order allow,deny
+ 	Allow from all
+ </Directory>
+ 
+@@ -214,18 +205,8 @@ Alias /nedi "/usr/local/groundwork/nms/a
+ 
+ Alias /cacti "/usr/local/groundwork/nms/applications/cacti"
+ <Directory "/usr/local/groundwork/nms/applications/cacti">
+-
+-	AuthType Basic
+-	require valid-user
+ 	DirectoryIndex index.php
+-
+-	TKTAuthCookieName cacti_auth_tkt
+-	TKTAuthDomain groundwork.groundworkopensource.com
+-	TKTAuthTimeout 0
+-
+ 	Options FollowSymLinks Indexes
+-	AllowOverride None
+-	Order allow,deny
+ 	Allow from all
+ </Directory>
+ 
+@@ -525,3 +506,20 @@ DefaultType text/plain
+ SSLRandomSeed startup builtin
+ SSLRandomSeed connect builtin
+ </IfModule>
++
++SetEnvIf Referer https?://\S+/portal/ framework_referer
++SetEnvIf Referer https?://\S+/cacti/ / framework_referer
++SetEnvIf Referer https?://\S+/nedi/ / framework_referer
++ 
++<Location /cacti/>
++	Order Deny,Allow
++	Deny from all
++	Allow from env=framework_referer
++</Location>
++ 
++<Location /nedi/>
++	Order Deny,Allow
++	Deny from all
++	Allow from env=framework_referer
++</Location>
++

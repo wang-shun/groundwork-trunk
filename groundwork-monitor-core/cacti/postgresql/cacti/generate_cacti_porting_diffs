@@ -1,0 +1,141 @@
+#!/bin/bash
+
+# Script to generate a patch file to reflect the changes made by
+# GroundWork, Inc. to port the following Cacti components to use
+# PostgreSQL as an alternative to using MySQL.
+#
+# * ADODB 5.14
+# * Cacti 0.8.7g
+# * Discovery plugin 0.8.5
+# * Thold plugin 0.4.2
+#
+# This will capture all the changes made to PHP code.  It does not
+# capture changes made to Spine, which will be provided separately.
+
+# The generated patch files are to be used as follows:
+#     cd {wherever}/cacti-0.8.7g  # Or whatever release you want to patch.
+#     patch -b -V simple -z .old -p0 < /tmp/cacti-0.8.7g-patch-for-postgres9
+#     patch -b -V simple -z .old -p0 < /tmp/discovery-0.8.5-patch-for-postgres9
+#     patch -b -V simple -z .old -p0 < /tmp/thold-0.4.2-patch-for-postgres9
+#     cd lib;  # Or wherever you have your ADODB library placed.
+#     patch -b -V simple -z .old -p0 < /tmp/adodb5.14-patch-for-postgres9
+
+# The diff commands below work to create the patches we need because,
+# during the porting effort, we left behind copies of all the original
+# files we had to change to move to PostgreSQL.
+#
+# Note:  The patch(1) man page says in part:
+#
+#     Avoid sending patches that compare backup file names like
+#     README.orig, since this might confuse patch into patching a backup
+#     file instead of the real file. Instead, send patches that compare
+#     the same base file names in different directories, e.g. old/README
+#     and new/README.
+#
+# We haven't followed that advice here, because we are deriving our
+# patches from the files we left behind in our porting.  Oh well, live
+# and learn.
+
+# Where we have Cacti installed.
+cd /usr/local/groundwork
+
+# These commands can be used to create a patch file for the ADODB 5.14 changes we also made
+# to support this port.  These ADODB changes are necessary for the port to run, but are not
+# being included in the Cacti patch because they belong to the separate ADODB project.
+# As such, this patch file is taken relative to the base of the ADODB distribution rather
+# than relative to the base of the Cacti distribution, so it is appropriate for the ADODB
+# maintainer to handle.  Bear that in mind when you try to apply this patch.
+(
+cd cacti/htdocs/lib;
+diff -u adodb5/adodb-error.inc.php.orig		adodb5/adodb-error.inc.php;
+diff -u /dev/null				adodb5/drivers/adodb-postgres9.inc.php;
+diff -u adodb5/lang/adodb-en.inc.php.orig	adodb5/lang/adodb-en.inc.php;
+) > /tmp/adodb5.14-patch-for-postgres9
+
+# Create a patch for the main body of Cacti PHP code.
+(
+cd cacti/htdocs;
+diff -u cdef.php.orig					cdef.php;
+diff -u cli/add_data_query.php.orig			cli/add_data_query.php;
+diff -u cli/add_graph_template.php.orig			cli/add_graph_template.php;
+diff -u cli/add_graphs.php.orig				cli/add_graphs.php;
+diff -u cli/add_perms.php.orig				cli/add_perms.php;
+diff -u cli/add_tree.php.orig				cli/add_tree.php;
+diff -u cli/host_update_template.php.orig		cli/host_update_template.php;
+diff -u cli/poller_data_sources_reapply_names.php.orig	cli/poller_data_sources_reapply_names.php;
+diff -u cli/poller_graphs_reapply_names.php.orig	cli/poller_graphs_reapply_names.php;
+diff -u cli/repair_database.php.orig			cli/repair_database.php;
+diff -u cmd.php.orig					cmd.php;
+diff -u color.php.orig					color.php;
+diff -u data_input.php.orig				data_input.php;
+diff -u data_queries.php.orig				data_queries.php;
+diff -u data_sources.php.orig				data_sources.php;
+diff -u data_templates.php.orig				data_templates.php;
+diff -u gprint_presets.php.orig				gprint_presets.php;
+diff -u graph.php.orig					graph.php;
+diff -u graph_settings.php.orig				graph_settings.php;
+diff -u graph_templates.php.orig			graph_templates.php;
+diff -u graph_templates_inputs.php.orig			graph_templates_inputs.php;
+diff -u graph_templates_items.php.orig			graph_templates_items.php;
+diff -u graph_view.php.orig				graph_view.php;
+diff -u graphs.php.orig					graphs.php;
+diff -u graphs_items.php.orig				graphs_items.php;
+diff -u graphs_new.php.orig				graphs_new.php;
+diff -u host.php.orig					host.php;
+diff -u host_templates.php.orig				host_templates.php;
+diff -u include/auth.php.orig				include/auth.php;
+diff -u include/config.php.orig				include/config.php;
+diff -u include/global.php.orig				include/global.php;
+diff -u include/global_form.php.orig			include/global_form.php;
+diff -u lib/api_automation_tools.php.orig		lib/api_automation_tools.php;
+diff -u lib/api_device.php.orig				lib/api_device.php;
+diff -u lib/api_poller.php.orig				lib/api_poller.php;
+diff -u lib/api_tree.php.orig				lib/api_tree.php;
+diff -u lib/auth.php.orig				lib/auth.php;
+diff -u lib/data_query.php.orig				lib/data_query.php;
+diff -u lib/database.php.orig				lib/database.php;
+diff -u lib/export.php.orig				lib/export.php;
+diff -u lib/functions.php.orig				lib/functions.php;
+diff -u lib/graph_export.php.orig			lib/graph_export.php;
+diff -u lib/html.php.orig				lib/html.php;
+diff -u lib/html_form_template.php.orig			lib/html_form_template.php;
+diff -u lib/html_tree.php.orig				lib/html_tree.php;
+diff -u lib/import.php.orig				lib/import.php;
+diff -u lib/plugins.php.orig				lib/plugins.php;
+diff -u lib/poller.php.orig				lib/poller.php;
+diff -u lib/rrd.php.orig				lib/rrd.php;
+diff -u lib/template.php.orig				lib/template.php;
+diff -u lib/utility.php.orig				lib/utility.php;
+diff -u plugins.php.orig				plugins.php;
+diff -u poller.php.orig					poller.php;
+diff -u poller_commands.php.orig			poller_commands.php;
+diff -u rra.php.orig					rra.php;
+diff -u settings.php.orig				settings.php;
+diff -u tree.php.orig					tree.php;
+diff -u user_admin.php.orig				user_admin.php;
+diff -u utilities.php.orig				utilities.php;
+) > /tmp/cacti-0.8.7g-patch-for-postgres9
+
+# Create a patch for the Discovery plugin.
+(
+cd cacti/htdocs;
+diff -u plugins/discovery/discover.php.orig		plugins/discovery/discover.php;
+diff -u plugins/discovery/discover_template.php.orig	plugins/discovery/discover_template.php;
+diff -u plugins/discovery/findhosts.php.orig		plugins/discovery/findhosts.php;
+diff -u plugins/discovery/setup.php.orig		plugins/discovery/setup.php;
+) > /tmp/discovery-0.8.5-patch-for-postgres9
+
+# Create a patch for the Thold plugin.
+(
+cd cacti/htdocs;
+diff -u plugins/thold/extras/apply_realms.php.orig	plugins/thold/extras/apply_realms.php;
+diff -u plugins/thold/includes/database.php.orig	plugins/thold/includes/database.php;
+diff -u plugins/thold/includes/polling.php.orig		plugins/thold/includes/polling.php;
+diff -u plugins/thold/listthold.php.orig		plugins/thold/listthold.php;
+diff -u plugins/thold/setup.php.orig			plugins/thold/setup.php;
+diff -u plugins/thold/thold.php.orig			plugins/thold/thold.php;
+diff -u plugins/thold/thold_add.php.orig		plugins/thold/thold_add.php;
+diff -u plugins/thold/thold_functions.php.orig		plugins/thold/thold_functions.php;
+diff -u plugins/thold/thold_graph.php.orig		plugins/thold/thold_graph.php;
+diff -u plugins/thold/thold_templates.php.orig		plugins/thold/thold_templates.php;
+) > /tmp/thold-0.4.2-patch-for-postgres9

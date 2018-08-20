@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ~ JBoss, a division of Red Hat                                              ~
+  ~ Copyright 2006, Red Hat Middleware, LLC, and individual                   ~
+  ~ contributors as indicated by the @authors tag. See the                    ~
+  ~ copyright.txt in the distribution for a full listing of                   ~
+  ~ individual contributors.                                                  ~
+  ~                                                                           ~
+  ~ This is free software; you can redistribute it and/or modify it           ~
+  ~ under the terms of the GNU Lesser General Public License as               ~
+  ~ published by the Free Software Foundation; either version 2.1 of          ~
+  ~ the License, or (at your option) any later version.                       ~
+  ~                                                                           ~
+  ~ This software is distributed in the hope that it will be useful,          ~
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of            ~
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU          ~
+  ~ Lesser General Public License for more details.                           ~
+  ~                                                                           ~
+  ~ You should have received a copy of the GNU Lesser General Public          ~
+  ~ License along with this software; if not, write to the Free               ~
+  ~ Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA        ~
+  ~ 02110-1301 USA, or see the FSF site: http://www.fsf.org.                  ~
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+
+<identity-ui-configuration>
+	<subscription-mode>automatic</subscription-mode>
+	<overwrite-workflow>false</overwrite-workflow>
+	<email-domain>jboss.org</email-domain>
+	<email-from>do-no-reply@jboss.com</email-from>
+	<password-generation-characters>testCharacters</password-generation-characters>
+	<default-roles>
+		<role>User</role>
+		<role>Admin</role>
+	</default-roles>
+
+	<ui-components>
+		<ui-component name="givenname">
+			<property-ref>user.name.given</property-ref>
+		</ui-component>
+		<ui-component name="familyname">
+			<property-ref>user.name.family</property-ref>
+			<converter>FamilyNameConverter</converter>
+			<required>false</required>
+		</ui-component>
+		<ui-component name="email">
+			<property-ref>user.business-info.online.email</property-ref>
+			<required>true</required>
+			<validators>
+				<validator>EmailValidator</validator>
+			</validators>
+		</ui-component>
+		<ui-component name="locale">
+			<property-ref>portal.user.locale</property-ref>
+			<values>
+				<value key="org.jboss.portal.core.identity.locale" />
+			</values>
+		</ui-component>
+		<ui-component name="interests">
+			<property-ref>portal.user.interests</property-ref>
+			<values>
+				<value key="board">snowboarding</value>
+				<value key="ski">skiing</value>
+				<value key="sledge">sledging</value>
+			</values>
+		</ui-component>
+	</ui-components>
+</identity-ui-configuration>

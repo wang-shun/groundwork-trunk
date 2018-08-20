@@ -1,0 +1,1190 @@
+This directory contains information and code regarding the work that
+GroundWork performed to port Cacti to use PostgreSQL instead of MySQL.
+We are making the modifications we developed available to the Cacti team,
+so that these extensions can be folded into the main-line Cacti releases.
+
+================================================================
+GENERAL NOTES
+================================================================
+
+The baseline for this port was Cacti 0.8.7g (cacti-0.8.7g.tar.gz) plus the
+companion Plugin Architecture 2.8 (cacti-plugin-0.8.7g-PA-v2.8.tar.gz).
+Groundwork's starting code for this porting effort had a small number
+of differences from that combination, as noted in the SPECIAL GROUNDWORK
+EXTENSIONS AND BUG FIXES TO CACTI section below.
+
+We then upgraded ADODB to release 5.14, and made it work with PostgreSQL
+9.1.1.  The ability for Cacti to work with MySQL was left in place.
+The choice of database type is made in the cacti/htdocs/include/config.php
+file, by the value of the $database_type variable (with a corresponding
+change to the $database_port value).
+
+With regard to the ADODB upgrade, in order have the least effect on the
+ability to work with MySQL, the cacti/htdocs/include/global.php file has
+been modified to choose an older version of ADODB if MySQL is being used
+(we include adodb/adodb.inc.php for MySQL, versus adodb5/adodb.inc.php
+when PostgreSQL is in play).  The two versions of ADODB sit side-by-side
+in our distribution.  Presumably, there is no good reason that the later
+release of ADODB cannot also be used with MySQL, and the older release
+can be dropped; we were just being cautious, as we did not have time
+for regression testing with MySQL.
+
+================================================================
+PORTING ADODB
+================================================================
+
+It didn't take much thinking to realize that the best approach to porting
+the Cacti PHP code was to continue to use the existing ADODB layer and
+its portable support for multiple types of databases.  We did upgrade to
+the then-current ADODB release (5.14).  A very few changes were needed
+in the ADODB layer itself, to bring its PostgreSQL support up to grade
+for this usage.  The key fixes are:
+
+  * proper support for returning application-level ID values upon
+    row inserts 
+
+  * support for deadlock, serialization failure, and statement timeout 
+    failures
+
+These changes have been returned to the upstream maintainer, and will
+hopefully find their way into the next official ADODB release (5.16
+or later).  In the meantime, we have provided the necessary patches
+for the ADODB 5.14 release.  See the adodb-patch-instructions and
+adodb5.14-patch-for-postgres9.tar.gz files in this directory.
+
+To use the ADODB 5.14 release, it must be installed within Cacti in the
+lib/adodb5/ directory, right next to the existing lib/adodb/ directory.
+
+================================================================
+PORTING CACTi
+================================================================
+
+Finding the places that needed changing in Cacti PHP code was quite an
+adventure.  It turns out that the existing Cacti code was highly adapted
+to odd MySQL extensions to the SQL standards, and these constructions
+had to be identified and changed to be standard-compliant in a portable
+manner.  Sometimes this was evidenced in SQL statements embedded in the
+Cacti code; sometimes it turned up in ways that MySQL clearly violates
+industry standards by making default assumptions (even in the face of
+contradictory evidence); and sometimes it was evidenced in the manner in
+which the ADODB layer was called, with MySQL masking inappropriate use of
+the ADODB layer.  Detailed notes may be found below.
+
+--------------------------------------------------------
+SPECIAL GROUNDWORK EXTENSIONS AND BUG FIXES TO CACTI
+--------------------------------------------------------
+
+GroundWork made a number of small modifications to Cacti before this
+porting effort began.  These changes allow Cacti to better live in the
+GroundWork Monitor context.  However, some of them may also be of more
+general use, so we would like to retain those fixes in the main-line
+Cacti development work going forward.
+
+The baseline files we started with in this PostgreSQL porting
+effort had the following differences from the files that result from
+deploying cacti-0.8.7g.tar.gz and then applying the patches from the
+cacti-plugin-0.8.7g-PA-v2.8.tar.gz distribution.  The fix marked with
+(*) should be adopted into the main-line Cacti development.
+
+auth.php.initial_diff
+    This file contains a patch to include/auth.php that GroundWork
+    makes to fit Cacti into our Single-Sign-On context, where Cacti
+    is integrated into a larger portal environment.  This patch (the
+    code for which is clearly demarcated in the PostgreSQL patch for
+    include/auth.php.orig) may or may not be appropriate for more
+    general use.
+
+    Note to GroundWork:  GroundWork made changes to include/auth.php
+    in two steps, creating backup copies include/auth.php.orig.orig and
+    include/auth.php.orig along the way.  We will want to look carefully
+    at the final result of the Cacti team's porting efforts to make sure
+    that all the desired changes in this file were brought forward.
+
+config.php.initial_diff
+    This file contains a one-line difference in the include/config.php
+    file that GroundWork uses, to change the value of the $url_path
+    variable to reflect our context.
+
+data_sources.php.initial_diff
+    This file contains a one-line difference in the data_sources.php
+    file, involving calls to htmlspecialchars().  This appears to be a
+    simplistic attempt to solve just a small part of the problem which
+    was more thoroughly solved by the official html_output.patch patch
+    file for the 0.8.7g release.  The data_sources.php.initial_diff
+    file should be completely ignored if the html_output.patch patch is
+    applied instead.
+
+global_arrays.php.initial_diff
+    This file contains a commented-out reference to logout.php in the
+    include/global_arrays.php file, because logging out directly from the
+    Cacti application makes no sense in our integrated GroundWork context
+    with Single-Sign-On enabled.  This change is GroundWork-specific,
+    unless Cacti adopts a site-setup model where adapting to such a
+    context becomes a configurable option.
+
+global_settings.php.initial_diff (*)
+    This file contains spelling fixes, of general applicability, in
+    the include/global_settings.php file.  These should probably have
+    just been folded into the general PostgreSQL-porting patch set,
+    but were not.
+
+top_graph_header.php.initial_diff
+    This file contains a removal of a reference to logout.php in the
+    include/top_graph_header.php file, because logging out directly
+    from the Cacti application makes no sense in our integrated
+    GroundWork context with Single-Sign-On enabled.  This change is
+    GroundWork-specific, unless Cacti adopts a site-setup model where
+    adapting to such a context becomes a configurable option.
+
+top_header.php.initial_diff
+    This file contains a removal of a reference to logout.php in the
+    include/top_header.php file, because logging out directly from the
+    Cacti application makes no sense in our integrated GroundWork context
+    with Single-Sign-On enabled.  This change is GroundWork-specific,
+    unless Cacti adopts a site-setup model where adapting to such a
+    context becomes a configurable option.
+
+--------------------------------------------------------
+SPECIAL GROUNDWORK BUG FIXES TO CACTI PLUGINS
+--------------------------------------------------------
+
+GroundWork applies several custom patches to the Cacti Plugins that we
+currently distribute.  These are included in this package partly just
+to ensure that we can easily replicate our current release, and partly
+because some of them address issues still outstanding in the latest
+releases of the plugins, so these fixes ought to be picked up by the
+plugin maintainers.  See the FILES section below for more details.
+
+discovery-0.8.5-findhosts.php.initial_diff
+    Fix is already in Discovery Plugin 1.5.
+
+thold-0.4.2-includes-settings.php.initial_diff
+    Fix is already in Thold Plugin 0.4.9.
+
+thold-0.4.2-listthold.php.initial_diff
+    Alternate (more-standard) way of doing something that is already being
+    done in the plugin.  This fix is not already present in Thold Plugin
+    0.4.9, but ought to be.  Using the standard way simplifies porting
+    to other databases, so either this change must be adopted or a much
+    more complex change will need to be made for the PostgreSQL port.
+
+thold-0.4.2-setup.php.initial_diff
+    Two fixes, one already present in Thold Plugin 0.4.9, and one that
+    is not but ought to be.
+
+thold-0.4.2-thold_functions.php.initial_diff
+    Fixes are already in Thold Plugin 0.4.9.
+
+thold-0.4.2-thold_graph.php.initial_diff
+    Fix is not present in Thold Plugin 0.4.9, but ought to be.
+
+--------------------------------------------------------
+CHANGES TO CACTI PHP CODE
+--------------------------------------------------------
+
+GroundWork modified about 75 files in the PHP code (for ADODB, Cacti,
+and Cacti plugins) to port to PostgreSQL.  That obviously sounds like a
+lot of changes, but a great many of them represented repeated instances
+of the same issues.  To simplify your looking through the modified files,
+here's a short guide to the types of problems we encountered.  Most of
+them had to do with overadaptation to MySQL violations of SQL standards.
+Along the way during this porting effort, we also fixed a few unrelated
+bugs in miscellaneous places, as we noticed them during the porting
+effort.
+
+  * fixed some infinite-loop bugs (see the separate recursive_calls file
+    for details of one such loop)
+
+  * "select ... from (table1, table2) ..." => "from table1, table2"
+    (drop parentheses around these table names, which are not accepted
+    by PostgreSQL in this form of joins)
+    
+  * breaking apart long-join syntax using explicit join syntax (typically,
+    adding "left join" or "cross join" keywords)
+    
+  * "select ... limit 0, 1" (MySQL extension) vs. "select ... limit 1
+    offset 0" (which syntax is portable to PostgreSQL as well)
+
+  * explicit NULL values re-interpreted by MySQL as other DEFAULT values
+    (e.g., AUTO_INCREMENT values); often reflected as inappropriate use
+    of the ADODB layer rather than as explicit SQL issues
+
+  * NULL or missing values re-interpreted by MySQL as fixed implicit
+    DEFAULT values which were never explicitly associated with a column
+    (e.g., 0 for integral fields, or empty string for text fields)
+  
+  * "replace into ..." is a MySQLism, which we had to substitute with
+    a delete/insert sequence; this needs a bit more work for better
+    encapsulation
+    
+  * dependence on a "group by" behavior extension in MySQL (in standard
+    SQL, you need to ensure that all columns in the result are exactly
+    specified).  See the following URL for details:
+    http://dev.mysql.com/doc/refman/5.0/en/group-by-hidden-columns.html
+
+  * literal time epoch value (0000-00-00 [which is otherwise an illegal
+    timestamp] allowed in MySQL, vs. 1970-01-01 used by PostgreSQL)
+
+  * some quoting issues (" and ' and ` in various contexts)
+    
+  * "show columns" replacement (select from information_schema)
+    
+  * "show tables" replacement (select from information_schema)
+    
+  * "show indexes" replacement (select from information_schema)
+
+  * database.table (MySQL) vs. database.schema.table (PostgreSQL)
+
+  * conversions of dynamic-table-creation commands and structures to
+    reflect PostgreSQL syntax and column attributes
+
+  * MySQL syntax extensions ("!" vs. "NOT" operator; "DELETE FROM
+    ... LIMIT #" clause)
+
+  * MySQL function extensions (e.g., inet_aton() -- not completely solved)
+
+  * with regard to database column data types, extending field widths
+    (or not) to account for MySQL unsigned fields, particularly for
+    IPv4 addresses
+
+  * closest equivalent to MySQL's table repair
+
+  * minor fixes, unrelated to the port to PostgreSQL, either in the base
+    Cacti code or in plugins:
+
+      * highlight certain "Add" links so it's much more obvious they are
+        to be clicked on (in plugins/discovery/discover.php)
+
+      * occasionally, improve error reporting (e.g., when no data sources
+        are available for a host/graph)
+
+      * added additional $config['url_path'] references where they were
+	needed, mostly to allow proper sorting of columns in displayed
+	tables
+
+  * changes to adapt to the GroundWork portal environment:
+
+      * support a GroundWork authorization extension (in include/auth.php)
+        to support single-signon in a context with sibling authenticated
+        applications
+
+--------------------------------------------------------
+SECURITY FIXES TO CACTI PHP CODE
+--------------------------------------------------------
+
+Over time, GroundWork has been made aware of certain security issues
+that apply to Cacti, and for which patches have been applied in the
+upstream Subversion repository for later Cacti releases.  GroundWork has
+backported these fixes to the Cacti 0.8.7g release that we are currently
+distributing.  These patches are to be applied at the end of all the
+other patching involved in building the GroundWork Cacti release.
+See the FILES section below for more details.
+
+host.php-r7420.patch
+    Security fixes to cacti/htdocs/host.php corresponding to upstream
+    check-in r7420.
+
+install-index.php-r7420.patch
+    Security fixes to cacti/htdocs/install/index.php corresponding to
+    upstream check-in r7420.
+
+lib-api_device.php-r7420.patch
+    Security fixes to cacti/htdocs/lib/api_device.php corresponding to
+    upstream check-in r7420.
+
+lib-api_poller.php-r7394.patch
+    Security fixes to cacti/htdocs/lib/api_poller.php corresponding to
+    upstream check-in r7394.
+
+lib-rrd.php-r7393.patch
+    Security fixes to cacti/htdocs/lib/rrd.php corresponding to upstream
+    check-in r7393.
+
+lib-snmp.php-r7392.patch
+    Security fixes to cacti/htdocs/lib/snmp.php corresponding to upstream
+    check-in r7392.
+
+lib-utility.php-r7394.patch
+    Security fixes to cacti/htdocs/lib/utility.php corresponding to
+    upstream check-in r7394.
+
+--------------------------------------------------------
+REMAINING ISSUES
+--------------------------------------------------------
+
+  * Improving REPLACE INTO substitutions
+
+    In most places, we were able to find and implement direct replacements
+    for MySQL extensions (for example, using "select table_name from
+    information_schema.tables" in place of "show tables").  In a very
+    few places, more-complex workarounds were needed.  The most common
+    of these was the MySQL REPLACE INTO statement, which has no direct
+    correlate in Standard SQL (though it does seem like a very reasonable
+    type of statement that ought to be supported more widely).
+
+    We took something of a sledgehammer approach to replacing REPLACE
+    INTO, by substituting a DELETE FROM / INSERT INTO pair of statements
+    wrapped into a transaction.  This pattern is repeated many times
+    throughout the code, partly because we did not appreciate at the
+    beginning of the port how many times this same complication would
+    arise.  Knowing what we know now, this code should be refactored in
+    some manner to abstract the basic pattern, both to simplify all the
+    places where this pattern exists and to centrally implement the type
+    of robust exception handling (failure sensing and retries, mainly)
+    that ought to come into play if this transaction fails.  Given that
+    REPLACE INTO is used for at least a dozen or so different tables,
+    the exact API for such an abstraction has not been worked out.
+
+  * We see occasional PostgreSQL serialization failures noted in the
+    PostgreSQL log file; we have not yet tracked down these failures
+    to their sources.  For example:
+
+    ERROR:  could not serialize access due to concurrent update
+    STATEMENT:  delete from settings where name = 'date'
+    ERROR:  current transaction is aborted, commands ignored until end of transaction block
+    STATEMENT:  delete from settings where name = 'date'
+
+    It is these kinds of messages that convince us that we need proper
+    retries for our REPLACE INTO substitutions.
+
+  * We need to do a better job of handling serialization failure
+    transaction retries, as noted.  Once the REPLACE INTO stuff is
+    fixed, we will need to watch the PostgreSQL log file for any
+    additional occurrences from elsewhere in Cacti.
+
+  * long-term issue:  move from implicit DEFAULT values to explicit
+    DEFAULT values in table definitions
+
+  * long-term issue:  there are NO foreign key references in any Cacti
+    tables, making it very difficult to understand the database structure
+
+  * portability issue:  Weathermap doesn't use the ADODB layer, making
+    it much harder to port; we have agreement in principle from the
+    Weathermap maintainer that moving to ADODB is okay with him
+
+  * Spine database-connection pool implemented (see below).
+
+  * GroundWork's mechanism for porting from MySQL to PostgreSQL
+    involves GroundWork-mediated transfer of data between databases.
+    No attempt is made currently to adapt to any Cacti version changes
+    in this data transfer; this is strictly a 0.8.7g-to-0.8.7g transfer.
+    Future releases of the PostgreSQL will need to deal with transforms
+    to later Cacti schemas (0.8.7g-to-0.8.7i, and so forth).
+
+================================================================
+CACTI PLUGINS
+================================================================
+
+  * Given that we ship the Thold plugin (version 0.4.2) already bundled
+    into Cacti, it was also ported in this effort.  The Thold plugin
+    was relatively easy to port, being subject to the same sorts of
+    issues that afflicted the main body of Cacti code.  We have not yet
+    investigated porting a later version of the Thold plugin (0.4.9-3
+    appears to be current).  That will obviously be a high priority,
+    to get the Thold maintainer on-board with this porting effort.
+
+  * The Settings plugin (version 0.5) did not need any porting.  We have
+    not yet investigated porting a later version of the Settings plugin
+    (version 0.71 appears to be current).  Later releases of Thold
+    require later releases of Settings, so this must be re-examined.
+
+  * The Discovery plugin (version 0.8.5) was also ported.  We have not
+    yet investigated porting a later version of the Discovery plugin
+    (version v1.5-1 appears to be current).
+
+  * The Weathermap plugin has not yet been ported.  It is something of
+    a different animal, in that it does not use the ADODB abstraction
+    library to access the database, but instead uses direct calls to the
+    standard PHP-provided MySQL API.  PHP does provide a PostgreSQL API
+    as well, but it is not a direct routine-for-routine replacement, so
+    the porting will not be quite as smooth (which is saying something,
+    given the complexity we encountered in the Cacti code).
+
+    We have contacted the Weathermap maintainer, and have agreement
+    in principle from him that he will accept our porting changes in
+    his plugin.  This work is currently ongoing.
+
+================================================================
+CACTI AND PLUGINS DATABASE SCHEMA
+================================================================
+
+The Cacti distribution contains a cacti.sql file that itself contains
+both table definitions and the population of initial seed data into
+these tables.  GroundWork has not ported this file directly; rather,
+we provide separate cacti-db.sql and cacti-seed.sql files for the object
+definitions and initial database content.
+
+In the MySQL world, a "schema" is pretty much the same thing as a
+database; there is really only a two-level (database.table) hierarchy.
+In contrast, PostgreSQL provides a "schema" abstraction that occupies
+a distinct level in this hierarchy, sandwiched in between (i.e.,
+database.schema.table).  In the GroundWork databases for Cacti, we use
+the standard "public" schema for all tables in the "cacti" database.
+This simplifies access to these tables, as the "public" schema is normally
+established in the default schema search path, so this schema need not
+be mentioned when accessing tables in this database.
+
+For ease of integration, GroundWork supplies a PostgreSQL schema for
+Cacti that bundles in the tables needed for the Thold, Discovery, and
+Weathermap plugins (or at least, for the versions of those plugins that
+we ported).  No attempt has been made to separate out tables and/or
+fields for such plugins that might otherwise be considered optional.
+This also means that we have not provided a port of these files to
+supply separate PostgreSQL table definitions:
+
+    plugins/thold/thold.sql
+    plugins/discovery/discover.sql
+
+If need be, equivalent code for PostgreSQL versions of those files
+(except for population of initial values in such tables) could be
+extracted from the cacti-db.sql file noted below, and those extracted
+lines could be purged from that file.  The trick would be to grab not
+just the table definitions, but also any companion constraint, index,
+foreign key setup, and associated sequence definitions and assignments
+(such as plugin_discover_template_id_seq for the plugin_discover_template
+table).  (PostgreSQL has no AUTO_INCREMENT attribute, and uses explicit
+sequences instead.)  Initial values for these tables would be found in
+the cacti-seed.sql file below.
+
+Some changes to the standard "cacti"-database tables are already folded
+into the PostgreSQL schema we provide.  Note that the Thold plugin,
+in particular, attempts to modify existing tables by adding columns
+using the MySQL-supported "AFTER col_name" clause.  This clause is
+not supported by PostgreSQL, so such statements would cause the table
+alteration to fail.  Even if it had succeeded, the new column would
+have likely ended up at the end of the table, not somewhere in the
+middle.  Our PostgreSQL schema for such tables already includes the
+affected columns, and mirrors the column ordering that was present in
+the equivalent MySQL tables, so in practice this code should never be
+executed in the PostgreSQL environment.  Support for the "AFTER" clause
+should probably be deprecated in the api_plugin_db_add_column() routine
+in the lib/plugins.php code and any plugins that attempt to use it,
+because it is non-portable.  In the meantime, we make execution of that
+part of api_plugin_db_add_column() be conditional on the $database_type,
+so there is no loss of functionality for existing MySQL installs.
+
+GroundWork has not yet addressed any issues of database-schema upgrades
+that may be needed over time in the PostgreSQL domain.  GroundWork
+provides to its customers a means to migrate from a MySQL-based release
+to a PostgreSQL-based release, but that is not considered to be part of
+this porting effort.  Going forward, PostgreSQL versions of Cacti upgrade
+scripts will need to be provided, first for a 0.8.7g-to-X.X.X release
+(whatever the first main-line Cacti release to support PostgreSQL will be
+named).  Then on an ongoing basis, whenever the schema changes, there will
+need to be parallel upgrade scripts for MySQL-based and PostgreSQL-based
+installations of Cacti.  The same will be true for any schema changes
+for tables controlled by plugins (Thold, Discovery, Weathermap).
+
+================================================================
+PORTING SPINE
+================================================================
+
+We started our port of Spine to PostgreSQL using the 0.8.7g release with
+the unified_issues.patch file applied.
+
+Because of significant differences in the models for accessing MySQL and
+PostgreSQL databases from C code, we realized that replacing the MySQL
+C API calls in Spine with the PostgreSQL C API would be tremendously
+disruptive to the code structure.  So our porting of Spine was done not
+by direct hacking in the Spine code (except where needed to overcome
+MySQL-specific constructions), but instead by creating a MySQL emulation
+library that actually implements calls to PostgreSQL.  Otherwise, the
+database calls pretty much stay as they were before.  This provides a
+much easier development path for maintaining portability going forward.
+We only emulate those parts of the MySQL API that are actually used by
+Spine; no attempt is made to make this a more general emulation.
+
+Building the ported Spine code is more complex than deploying the Cacti
+PHP code, because it depends as well on a complete build environment,
+including some external header files (e.g., snmp.h).  Greater detail
+on the Spine porting is provided in the separate spine/README file.
+We have not provided explicit patches at this time, but they can be easily
+derived from the *.orig files we left that represent the baseline before
+database-porting changes:
+
+    (
+    cd spine;
+    diff -u ./cacti-spine-0.8.7g/common.h.orig		./cacti-spine-0.8.7g/common.h;
+    diff -u ./cacti-spine-0.8.7g/poller.c.orig		./cacti-spine-0.8.7g/poller.c;
+    diff -u ./cacti-spine-0.8.7g/spine.c.orig		./cacti-spine-0.8.7g/spine.c;
+    diff -u ./cacti-spine-0.8.7g/spine.conf.dist.orig	./cacti-spine-0.8.7g/spine.conf.dist;
+    diff -u ./cacti-spine-0.8.7g/spine.h.orig		./cacti-spine-0.8.7g/spine.h;
+    diff -u ./cacti-spine-0.8.7g/sql.c.orig		./cacti-spine-0.8.7g/sql.c;
+    diff -u ./cacti-spine-0.8.7g/util.c.orig		./cacti-spine-0.8.7g/util.c;
+    ) > /tmp/cacti-spine-0.8.7g-patch-for-postgres9
+
+Also provided is a top-level controlling makefile for the build, that
+manages not just compiling the Spine code, but also the MySQL emulation
+library, which is provided in the postgresql_as_mysql/ subdirectory.
+The makefile and postgresql_as_mysql/makefile files will need some
+pathname adjustments to Make variables in order to compile the code in
+a non-GroundWork environment.  Every effort has been made to provide
+sufficient Make variables at the top of each makefile so that all local
+customization can be carried out in a clean, sensible manner.  The choice
+of building a MySQL-based or a PostgreSQL-based "spine" binary is made
+at the beginning of the top-level makefile, via the DBTYPE variable.
+
+A spine/TODO file records some notes we took related to future development
+of this code.
+
+The resulting binary is fully functional.  However, MySQL and PostgreSQL
+have radically different server-side implementations, and the present
+manner in which Spine manages the database at a top level could use
+some reworking to improve performance.  GroundWork believes this would
+help across databases, not just for PostgreSQL.  Specifically, the Spine
+poller is constantly creating and destroying connections to the database
+server, treating them as lightweight objects.  In MySQL, the cost for
+this is relatively low.  In PostgreSQL, the cost is relatively high,
+because each database connection is supported by a separate server-side
+process, a new copy of which must be forked and initialized when each
+new database connection is established.  It would be much better if
+Spine used a database-connection pool, which could grow up to the
+usual configured limit as new connections are needed.  Then instead
+of destroying connections, the program would return them to the pool
+for re-use during the same polling cycle.  Only at the end of the full
+polling cycle would connections be fully destroyed, unless some error
+occurs earlier on a given connection, in which case that connection
+should perhaps be closed and removed from the pool after its current use.
+
+================================================================
+FILES
+================================================================
+
+The following files are available to understand the changes and their
+status as of this writing.
+
+README
+    This file.
+
+add_graphs.php.graph_title_porting.patch
+    Fixes for necessary PostgreSQL-related changes that we overlooked
+    in the original porting effort.
+
+adodb-patch-instructions
+    Email sent to the ADODB maintainer, describing the changes made to
+    ADODB to make it work properly with PostgreSQL 9.  These changes
+    are needed for the Cacti port to work.  The ADODB maintainer has
+    indicated a willingness to accept a contribution of these changes,
+    so we expect that a future release of ADODB will include native
+    support for this extension.
+
+adodb5.14-patch-for-postgres9.tar.gz
+    The patches made to the ADODB 5.14 release to support PostgreSQL 9.
+    See the adodb-patch-instructions file for details.
+
+auth.php.initial_diff
+    The differences between the standard and GroundWork copies of
+    include/auth.php before we started the porting to PostgreSQL.  See the
+    SPECIAL GROUNDWORK EXTENSIONS AND BUG FIXES TO CACTI section above.
+
+cacti-0.8.7g-patch-for-postgres9.tar.gz
+    The patches made to Cacti 0.8.7g PHP code (exclusive of ADODB and
+    plugin changes) to port it to run with PostgreSQL 9.  A very few
+    GroundWork-specific extensions are included in these patches.
+
+cacti-db.sql
+    This file contains the PostgreSQL schema for the complete cacti
+    database, including Thold- and Weathermap-related tables.  It is
+    provided as a database dump that can be loaded into PostgreSQL
+    after the cacti database has been created outside of this script
+    with commands such as these:
+    
+	CREATE USER cactiuser WITH PASSWORD 'cactipass';
+	CREATE DATABASE cacti ENCODING='LATIN1' OWNER=cactiuser;
+	GRANT ALL PRIVILEGES ON DATABASE cacti to cactiuser;
+
+cacti-seed.sql
+    This file contains a PostgreSQL database dump of just the initial
+    seed data used by GroundWork.
+
+    The seed data is based on a running Cacti configuration adapted
+    to the GroundWork environment.  Except for pathnames (containing
+    "/usr/local/groundwork") and possibly the poller settings, we just
+    took whatever the Cacti team has defined.  You may wish to edit those
+    pathnames in the dump file before applying it to an empty database,
+    for use in other contexts.
+
+config.php.initial_diff
+    The differences between the standard and GroundWork copies of
+    include/config.php before we started the porting to PostgreSQL.
+
+data_sources.php.filter_and_display.patch
+    Fixes to correctly highlight data sources in the display, based
+    on partial backporting of changes in later Cacti releases, and on
+    reanalysis of the original intent.  We will report these changes
+    upstream so they can be incorporated into the base Cacti release.
+
+data_sources.php.filter_porting.patch
+    Fixes for necessary PostgreSQL-related changes that we overlooked
+    in the original porting effort.
+
+data_sources.php.initial_diff
+    The differences between the standard and GroundWork copies of
+    data_sources.php before we started the porting to PostgreSQL.
+    See the SPECIAL GROUNDWORK EXTENSIONS AND BUG FIXES TO CACTI section
+    above.  This file should be completely ignored if the official
+    html_output.patch patch for 0.8.7g is applied instead.
+
+database.php.debug_backtrace_display.patch
+    This patch provides a slightly better formatting for on-screen
+    backtraces produced when database errors occur.  Such backtraces
+    are of great help in immediately identifying the sources of
+    database-access problems so they can be fixed.
+
+discovery-0.8.5-findhosts.php.initial_diff
+    This patch fixes a critical bug in the Discovery Plugin.  This fix
+    is already incorporated into the Discovery Plugin 1.5 release.
+
+discovery-0.8.5-patch-for-postgres9.tar.gz
+    The patches made to the Cacti Discovery 0.8.5 plugin to port it to
+    run with PostgreSQL 9.
+
+export.php.error_handling.patch
+    Fixes for template-exporting error handling, essentially just
+    backported from later Cacti releases.
+
+generate_cacti_porting_diffs
+    A script to generate these patch files:
+	adodb5.14-patch-for-postgres9
+	cacti-0.8.7g-patch-for-postgres9
+	discovery-0.8.5-patch-for-postgres9
+	thold-0.4.2-patch-for-postgres9
+    from our standard GroundWork Monitor release files.
+
+global_arrays.php.error_messages.patch
+    Fixes to add more standard error messages, backported from later Cacti
+    releases to support better error handling during template exporting.
+
+global_arrays.php.initial_diff
+    The differences between the standard and GroundWork copies of
+    include/global_arrays.php before we started the porting to PostgreSQL.
+    See the SPECIAL GROUNDWORK EXTENSIONS AND BUG FIXES TO CACTI section
+    above.
+
+global_settings.php.initial_diff
+    The differences between the standard and GroundWork copies of
+    include/global_settings.php before we started the porting to
+    PostgreSQL.  See the SPECIAL GROUNDWORK EXTENSIONS AND BUG FIXES TO
+    CACTI section above.
+
+host.php-r7420.patch
+    Security fixes to cacti/htdocs/host.php corresponding to upstream
+    check-in r7420.
+
+import.php.graph_and_data_template_save.patch
+    Fixes for necessary PostgreSQL-related changes that we overlooked
+    in the original porting effort.
+
+install-index.php-r7420.patch
+    Security fixes to cacti/htdocs/install/index.php corresponding to
+    upstream check-in r7420.
+
+lib-html.php.patch
+lib-api_device.php-r7420.patch
+    Security fixes to cacti/htdocs/lib/api_device.php corresponding to
+    upstream check-in r7420.
+
+lib-api_poller.php-r7394.patch
+    Security fixes to cacti/htdocs/lib/api_poller.php corresponding to
+    upstream check-in r7394.
+
+lib-html.php.patch
+    This patch when applied fixes an issue with clicking sort arrow icon 
+    links on cacti tables.
+
+lib-rrd.php-r7393.patch
+    Security fixes to cacti/htdocs/lib/rrd.php corresponding to upstream
+    check-in r7393.
+
+lib-snmp.php-r7392.patch
+    Security fixes to cacti/htdocs/lib/snmp.php corresponding to upstream
+    check-in r7392.
+
+lib-utility.php-r7394.patch
+    Security fixes to cacti/htdocs/lib/utility.php corresponding to
+    upstream check-in r7394.
+
+lib_database.php.post_patch_fixes
+    This patch file contains the equivalent of certain fixes found
+    within the cacti-0.8.7g-patch-for-postgres9.tar.gz patch set, that
+    get rejected if you apply the poller_interval.patch.1-line-context
+    patch file as noted in the instructions below.  See those instructions
+    for how and when this patch file is to be used.
+
+poller_interval.patch.1-line-context
+    This is a copy of the poller_interval.patch file originally downloaded
+    from http://www.cacti.net/download_patches.php?version=0.8.7g and then
+    reworked to use only 1 line of context instead of the usual 3 lines of
+    context.  This is necessary to allow this patch to be applied without
+    any rejected hunks after the bulk cacti-plugin-0.8.7g-PA-v2.8.diff
+    patch (contained in the cacti-plugin-0.8.7g-PA-v2.8.tar.gz tarball)
+    is applied.
+
+recursive_calls
+    Notes on particular bugs (infinite loops) we encountered in the
+    early part of the port of Cacti to PostgreSQL, that had little to
+    do with the database itself but needed fixing anyway.
+
+thold-0.4.2-includes-polling.php-query.patch
+    This patch fixes something relating to polling.php.
+
+thold-0.4.2-includes-settings.php.initial_diff
+    This patch fixes a source-code bug in the Thold Plugin.  This fix
+    is already incorporated into the Thold 0.4.9 release.
+
+thold-0.4.2-listthold.php.initial_diff
+    This patch fixes a bug of sorts in the Thold Plugin.  It provides
+    what looks like a more-sensible manner of setting an in-bounds value
+    for the alert_num_rows parameter, using the set_config_option()
+    abstraction instead of a direct call to the database.  This fix is
+    NOT incorporated into the Thold 0.4.9 release.  However, it makes
+    sense to fold this change into the standard Thold distribution,
+    because the existing code uses a MySQL REPLACE INTO statement which
+    is not portable to other database types.  Applying this patch avoids
+    the necessity for a much more complicated patch in this area during
+    the PostgreSQL porting effort.
+
+thold-0.4.2-patch-for-postgres9.tar.gz
+    The patches made to the Cacti Thold 0.4.2 plugin to port it to run
+    with PostgreSQL 9.
+
+thold-0.4.2-setup.php.initial_diff
+    This patch provides two fixes in the Thold Plugin.
+      * One fix is a clear error in a call to api_plugin_register_hook(),
+        that has already been fixed in subsequent releases of the
+        Thold Plugin.
+      * The other fix initializes $_SERVER['REQUEST_URI'] properly if it
+	is undefined right before it is used.  While this change was made
+	before I started our PostgreSQL porting effort and therefore I
+	don't know how to demonstrate the particular problem that forced
+	us to adopt this solution, it looks like it ought to be adopted
+	in the standard Thold release.  This fix is not present in the
+	Thold 0.4.9 release.
+
+thold-0.4.2-thold_functions.php.initial_diff
+    This patches fixes two bugs in the Thold Plugin.  The first of
+    them has been previously discussed in the Cacti Forums (e.g.,
+    http://forums.cacti.net/viewtopic.php?f=17&t=39948).  The second
+    addresses a known issue previously reported by GroundWork
+    (http://bugs.cacti.net/view.php?id=1935).  Both of these problems
+    have already been addressed in the Thold 0.4.9 release.
+
+thold-0.4.2-thold_graph.php.initial_diff
+    This patch fixes a bug in the Thold Plugin.  It provides a proper
+    default value for the alert_num_rows parameter if it is not already
+    set right before it is used.  This issue is still broken in Thold
+    0.4.9, so it looks like this change ought to be adopted in the
+    standard Thold release.
+
+top_graph_header.php.initial_diff
+    The differences between the standard and GroundWork copies of
+    include/top_graph_header.php before we started the porting to
+    PostgreSQL.  See the SPECIAL GROUNDWORK EXTENSIONS AND BUG FIXES TO
+    CACTI section above.
+
+top_header.php.initial_diff
+    The differences between the standard and GroundWork copies of
+    include/top_header.php before we started the porting to PostgreSQL.
+    See the SPECIAL GROUNDWORK EXTENSIONS AND BUG FIXES TO CACTI section
+    above.
+
+utility.php.graph_template_save.patch
+    Fixes for necessary PostgreSQL-related changes that we overlooked
+    in the original porting effort.
+
+================================================================
+APPLYING PATCHES
+================================================================
+
+The following sources and commands are listed so you can see how the
+supplied patch files are intended to be applied.  Adjust as needed to
+use them against later releases.  For purposes of this exposition, we
+assume all the GroundWork patch files have been placed in the /tmp/cacti
+directory, along with certain files downloaded from other sites.
+
+--------------------------------------------------------
+EXTERNAL FILE SOURCES
+--------------------------------------------------------
+
+adodb514.zip
+    http://sourceforge.net/projects/adodb/files/adodb-php5-only/adodb-514-for-php5/adodb514.zip
+
+cacti-0.8.7g.tar.gz
+    http://www.cacti.net/downloads/cacti-0.8.7g.tar.gz
+
+cacti-plugin-0.8.7g-PA-v2.8.tar.gz
+    http://www.cacti.net/downloads/pia/cacti-plugin-0.8.7g-PA-v2.8.tar.gz
+
+data_source_deactivate.patch
+    http://www.cacti.net/downloads/patches/0.8.7g/data_source_deactivate.patch
+
+discovery-0.8.5.tar.gz
+    http://cactiusers.org/downloads/discovery.tar.gz
+    http://mirror.cactiusers.org/downloads/plugins/discovery-0.8.5.tar.gz
+
+graph_list_view.patch
+    http://www.cacti.net/downloads/patches/0.8.7g/graph_list_view.patch
+
+host.php-r7420.patch
+    http://svn.cacti.net/viewvc?view=rev&revision=7420
+    (Basic code changes; then backported by GroundWork to Cacti 0.8.7g.)
+
+html_output.patch
+    http://www.cacti.net/downloads/patches/0.8.7g/html_output.patch
+
+install-index.php-r7420.patch
+    http://svn.cacti.net/viewvc?view=rev&revision=7420
+    (Basic code changes; then backported by GroundWork to Cacti 0.8.7g.)
+
+ldap_group_authenication.patch
+    http://www.cacti.net/downloads/patches/0.8.7g/ldap_group_authenication.patch
+
+lib-api_device.php-r7420.patch
+    http://svn.cacti.net/viewvc?view=rev&revision=7420
+    (Basic code changes; then backported by GroundWork to Cacti 0.8.7g.)
+
+lib-api_poller.php-r7394.patch
+    http://svn.cacti.net/viewvc?view=rev&revision=7394
+    (Basic code changes; then backported by GroundWork to Cacti 0.8.7g.)
+
+lib-rrd.php-r7393.patch
+    http://svn.cacti.net/viewvc?view=rev&revision=7393
+    (Basic code changes; then backported by GroundWork to Cacti 0.8.7g.)
+
+lib-snmp.php-r7392.patch
+    http://svn.cacti.net/viewvc?view=rev&revision=7392
+    (Basic code changes; then backported by GroundWork to Cacti 0.8.7g.)
+
+lib-utility.php-r7394.patch
+    http://svn.cacti.net/viewvc?view=rev&revision=7394
+    (Basic code changes; then backported by GroundWork to Cacti 0.8.7g.)
+
+ping.patch
+    http://www.cacti.net/downloads/patches/0.8.7g/ping.patch
+
+poller_interval.patch
+    http://www.cacti.net/downloads/patches/0.8.7g/poller_interval.patch
+    This official patch should not be used.  Instead, use the reworked
+    poller_interval.patch.1-line-context patch that GroundWork supplies.
+    The effective changes are the same, but the GroundWork version works
+    in conjunction with our other patches.
+
+script_server_command_line_parse.patch
+    http://www.cacti.net/downloads/patches/0.8.7g/script_server_command_line_parse.patch
+
+settings-0.5.tar.gz
+    http://cactiusers.org/downloads/settings.tar.gz
+    http://mirror.cactiusers.org/downloads/plugins/settings-0.5.tar.gz
+
+thold-0.4.2.tar.gz
+    http://koji.rutgers.edu/packages/cacti_plugins_ru/1.0/3.ru/src/cacti_plugins_ru-1.0-3.ru.src.rpm
+    rpm2cpio cacti_plugins_ru-1.0-3.ru.src.rpm | cpio -icdmv
+    yields thold-0.4.2.tar.gz as one of the included files.
+    This was originally the only copy we could find of the Thold 0.4.2 release.
+    http://mirror.cactiusers.org/downloads/plugins/thold-0.4.2.tar.gz
+    This seems to be an official copy.
+
+thold-0.4.3.tar.gz
+    http://cactiusers.org/downloads/thold.tar.gz
+    This was originally the closest we can find to the Thold 0.4.2 release
+    that we started with, from something like an official source.
+
+Note that GroundWork apparently overlooked the following official patches
+to Cacti 0.8.7g when we created our baseline code for the PostgreSQL port
+that is included in the GroundWork Monitor 6.6.1 release.  They can all be
+downloaded from:  http://www.cacti.net/download_patches.php?version=0.8.7g
+
+    data_source_deactivate.patch
+    graph_list_view.patch
+    html_output.patch
+    ldap_group_authenication.patch
+    ping.patch
+    poller_interval.patch
+    script_server_command_line_parse.patch
+
+However, GroundWork has now tested the PostgreSQL-porting patches we made
+to our baseline code, and we have made appropriate adjustments so our
+PostgreSQL-porting patches can work with or without these official Cacti
+patches having been applied, per the instructions below.  So for the
+Cacti team, the instructions below allow those official Cacti patches
+to be put into place to generate a complete, up-to-date 0.8.7g release
+for further analysis and proper comparison to later Cacti releases.
+
+--------------------------------------------------------
+CREATING A PATCHED POSTGRESQL-COMPATIBLE RELEASE
+--------------------------------------------------------
+
+We assume that to start, the /tmp/cacti directory contains the following
+files, taken from the GroundWork repository and from download sites as
+described earlier in this document:
+
+    add_graphs.php.graph_title_porting.patch
+    adodb5.14-patch-for-postgres9.tar.gz
+    adodb514.zip
+    auth.php.initial_diff
+    cacti-0.8.7g-patch-for-postgres9.tar.gz
+    cacti-0.8.7g.tar.gz
+    cacti-db.sql
+    cacti-plugin-0.8.7g-PA-v2.8.tar.gz
+    cacti-seed.sql
+    config.php.initial_diff
+    data_source_deactivate.patch
+    data_sources.php.filter_and_display.patch
+    data_sources.php.filter_porting.patch
+    data_sources.php.initial_diff
+    database.php.debug_backtrace_display.patch
+    discovery-0.8.5-findhosts.php.initial_diff
+    discovery-0.8.5-patch-for-postgres9.tar.gz
+    discovery-0.8.5.tar.gz
+    export.php.error_handling.patch
+    global_arrays.php.error_messages.patch
+    global_arrays.php.initial_diff
+    global_settings.php.initial_diff
+    graph_list_view.patch
+    host.php-r7420.patch
+    html_output.patch
+    import.php.graph_and_data_template_save.patch
+    install-index.php-r7420.patch
+    ldap_group_authenication.patch
+    lib-api_device.php-r7420.patch
+    lib-api_poller.php-r7394.patch
+    lib-rrd.php-r7393.patch
+    lib-snmp.php-r7392.patch
+    lib-utility.php-r7394.patch
+    lib_database.php.post_patch_fixes
+    ping.patch
+    poller_interval.patch.1-line-context
+    script_server_command_line_parse.patch
+    settings-0.5.tar.gz
+    thold-0.4.2-includes-settings.php.initial_diff
+    thold-0.4.2-listthold.php.initial_diff
+    thold-0.4.2-patch-for-postgres9.tar.gz
+    thold-0.4.2-setup.php.initial_diff
+    thold-0.4.2-thold_functions.php.initial_diff
+    thold-0.4.2-thold_graph.php.initial_diff
+    thold-0.4.2.tar.gz
+    top_graph_header.php.initial_diff
+    top_header.php.initial_diff
+    utility.php.graph_template_save.patch
+
+The commands to create a patched Cacti under MYDIR are the following.
+Here, each time we patch, we back up the previous copies with a unique
+suffix, so if there is any question of the provenance of a particular
+change, it can be quickly identified.
+
+    # Unpack certain tarballs to reveal their content, for later use.
+    cd /tmp/cacti
+    tar xzf /tmp/cacti/cacti-plugin-0.8.7g-PA-v2.8.tar.gz
+    tar xzf /tmp/cacti/adodb5.14-patch-for-postgres9.tar.gz
+    tar xzf /tmp/cacti/cacti-0.8.7g-patch-for-postgres9.tar.gz
+    tar xzf /tmp/cacti/discovery-0.8.5-patch-for-postgres9.tar.gz
+    tar xzf /tmp/cacti/thold-0.4.2-patch-for-postgres9.tar.gz
+
+    # Unpack the full Cacti 0.8.7g release.
+    cd MYDIR
+    tar xvzf /tmp/cacti/cacti-0.8.7g.tar.gz
+
+    # Apply the Plugin Architecture overlay.
+    cd MYDIR/cacti-0.8.7g
+    patch -b -V simple -z .pre_pia -p1 -N < /tmp/cacti/cacti-plugin-arch/cacti-plugin-0.8.7g-PA-v2.8.diff
+
+    # Include a few plugins.  GroundWork has also provided patches
+    # (see below) to port these versions to use PostgreSQL.
+    cd MYDIR/cacti-0.8.7g/plugins
+    tar xzf /tmp/cacti/discovery-0.8.5.tar.gz
+    tar xzf /tmp/cacti/settings-0.5.tar.gz
+    tar xzf /tmp/cacti/thold-0.4.2.tar.gz
+    dos2unix -o thold/LICENSE thold/README thold/thold.sql
+
+    # Apply baseline patches for the discovery and thold plugins, that
+    # fix a number of bugs in these plugin versions that GroundWork
+    # addressed before we started the PostgreSQL porting effort.
+    cd MYDIR/cacti-0.8.7g
+    patch -b -V simple -z .pre_initial -p2 < /tmp/cacti/discovery-0.8.5-findhosts.php.initial_diff
+    patch -b -V simple -z .pre_initial -p2 < /tmp/cacti/thold-0.4.2-includes-settings.php.initial_diff
+    patch -b -V simple -z .pre_initial -p2 < /tmp/cacti/thold-0.4.2-listthold.php.initial_diff
+    patch -b -V simple -z .pre_initial -p2 < /tmp/cacti/thold-0.4.2-setup.php.initial_diff
+    patch -b -V simple -z .pre_initial -p2 < /tmp/cacti/thold-0.4.2-thold_functions.php.initial_diff
+    patch -b -V simple -z .pre_initial -p2 < /tmp/cacti/thold-0.4.2-thold_graph.php.initial_diff
+
+    # The following official patches are not part of the GroundWork
+    # Monitor 6.6.1 release, because we did not realize in time that
+    # they were available to be applied against the Cacti 0.8.7g
+    # release.  If we had understood earlier that these patches
+    # were available, we would have executed the following commands
+    # to install all of them, at this point in the patch sequence.
+    # Executing these commands is strongly recommended for the Cacti
+    # team, because we want to ensure that all the known patches are
+    # applied and we don't have any regressions due to simple oversight.
+    # There are some adjustments to be made to the standard means of
+    # installing these patches:
+    # * The "-F 3" option is needed on one of these patches to counter
+    #   the effect of having previously applied the standard Plugin
+    #   Architecture cacti-plugin-0.8.7g-PA-v2.8.diff patch, above.
+    # * The poller_interval.patch.1-line-context patch file is different
+    #   from the poller_interval.patch patch file which is downloadable
+    #   from the Cacti web site not in its ultimate effect, but in that
+    #   it is reworked to also get around the effect of having previously
+    #   applied the cacti-plugin-0.8.7g-PA-v2.8.diff patch, above.
+    cd MYDIR/cacti-0.8.7g
+    patch -b -V simple -z .pre_official -p1 -N      < /tmp/cacti/data_source_deactivate.patch
+    patch -b -V simple -z .pre_official -p1 -N      < /tmp/cacti/graph_list_view.patch
+    patch -b -V simple -z .pre_official -p1 -N -F 3 < /tmp/cacti/html_output.patch
+    patch -b -V simple -z .pre_official -p1 -N      < /tmp/cacti/ldap_group_authenication.patch
+    patch -b -V simple -z .pre_official -p1 -N      < /tmp/cacti/script_server_command_line_parse.patch
+    patch -b -V simple -z .pre_official -p1 -N      < /tmp/cacti/ping.patch
+    patch -b -V simple -z .pre_official -p1 -N      < /tmp/cacti/poller_interval.patch.1-line-context
+
+    # GroundWork wants to apply all of these for its own distribution of
+    # Cacti, but the Cacti team should apply only the uncommented patch.
+    # NOTE:  Even for GroundWork, the data_sources.php.initial_diff
+    # patch should be completely ignored if the html_output.patch patch
+    # was applied above, as the latter is more thorough and should take
+    # precedence.
+    cd MYDIR/cacti-0.8.7g
+    #  patch -b -V simple -z .pre_gw -p2 < /tmp/cacti/auth.php.initial_diff
+    #  patch -b -V simple -z .pre_gw -p2 < /tmp/cacti/config.php.initial_diff
+    ## patch -b -V simple -z .pre_gw -p2 < /tmp/cacti/data_sources.php.initial_diff
+    #  patch -b -V simple -z .pre_gw -p2 < /tmp/cacti/global_arrays.php.initial_diff
+       patch -b -V simple -z .pre_gw -p2 < /tmp/cacti/global_settings.php.initial_diff
+    #  patch -b -V simple -z .pre_gw -p2 < /tmp/cacti/top_graph_header.php.initial_diff
+    #  patch -b -V simple -z .pre_gw -p2 < /tmp/cacti/top_header.php.initial_diff
+
+    # Now we address the purpose of this whole effort.  Applying the
+    # cacti-0.8.7g-patch-for-postgres9 patches here provides the basic
+    # porting of PHP code to allow access to PostgreSQL.  Note that if
+    # you have applied the official 0.8.7g patches above, a few of the
+    # patches within this file will be rejected:
+    # * One hunk applied to data_sources.php will fail if you applied
+    #   the html_output.patch patch via the commands above.  You can
+    #   safely ignore this, as the html_output.patch patch above already
+    #   addressed this issue.
+    # * Four hunks applied to graph_view.php will fail if you applied
+    #   the graph_list_view.patch patch via the commands above.  You can
+    #   safely ignore this, as the graph_list_view.patch patch above
+    #   already addressed these issues in what is probably a better way.
+    # * Four hunks applied to lib/database.php will fail if you
+    #   applied the poller_interval.patch.1-line-context patch via the
+    #   commands above.  The fixes in these hunks are critical to the
+    #   PostgreSQL porting, so in this case you MUST apply the separate
+    #   lib_database.php.post_patch_fixes patch file, as noted below.
+    cd MYDIR/cacti-0.8.7g
+    patch -b -V simple -z .pre_pg -p0 < /tmp/cacti/cacti-0.8.7g-patch-for-postgres9
+    patch -b -V simple -z .pre_pg -p0 < /tmp/cacti/discovery-0.8.5-patch-for-postgres9
+    patch -b -V simple -z .pre_pg -p0 < /tmp/cacti/thold-0.4.2-patch-for-postgres9
+
+    # NOTE:  Apply this next patch if and only if you previously applied
+    # the poller_interval.patch.1-line-context patch for 0.8.7g as noted
+    # above.  It mirrors a few critical cacti-0.8.7g-patch-for-postgres9
+    # fixes for PostgreSQL support that were rejected if the
+    # poller_interval.patch.1-line-context patch was applied before the
+    # cacti-0.8.7g-patch-for-postgres9 patch was applied, because those
+    # particular patches no longer matched the resulting source code.
+    # This extra patch file is designed to compensate for that.
+    cd MYDIR/cacti-0.8.7g
+    patch -b -V simple -z .mid_pg -p0 < /tmp/cacti/lib_database.php.post_patch_fixes
+
+    # Apply patches to fix things we overlooked in the large
+    # cacti-0.8.7g-patch-for-postgres9 patch file.
+    cd MYDIR/cacti-0.8.7g
+    patch -b -V simple -z .pre_graph_title_porting_fix -p2 < /tmp/cacti/add_graphs.php.graph_title_porting.patch
+    patch -b -V simple -z .pre_filter_porting_fix      -p2 < /tmp/cacti/data_sources.php.filter_porting.patch
+    patch -b -V simple -z .pre_backtrace_display_fix   -p2 < /tmp/cacti/database.php.debug_backtrace_display.patch
+    patch -b -V simple -z .pre_template_save_fix       -p2 < /tmp/cacti/import.php.graph_and_data_template_save.patch
+    patch -b -V simple -z .pre_template_save_fix       -p2 < /tmp/cacti/utility.php.graph_template_save.patch
+
+    # Apply patches to apply fixes we backported from later Cacti releases
+    # or have reported to the Cacti team.
+    cd MYDIR/cacti-0.8.7g
+    patch -b -V simple -z .pre_filter_display_fix -p2 < /tmp/cacti/data_sources.php.filter_and_display.patch
+    patch -b -V simple -z .pre_error_handling_fix -p2 < /tmp/cacti/export.php.error_handling.patch
+    patch -b -V simple -z .pre_error_message_fix  -p2 < /tmp/cacti/global_arrays.php.error_messages.patch
+
+    # Unpack the base ADODB release.
+    cd MYDIR/cacti-0.8.7g/lib
+    unzip /tmp/cacti/adodb514.zip
+
+    # Overlay the GroundWork changes to ADODB to improve its PostgreSQL
+    # support sufficiently to support Cacti.
+    cd MYDIR/cacti-0.8.7g/lib/adodb5
+    patch -b -V simple -z .old -p1 < /tmp/cacti/adodb5.14-patch-for-postgres9
+
+    # Apply security patches backported from upstream changes.  These patches
+    # must be applied at the end, after GroundWork's PostgreSQL-porting fixes.
+    patch -b -V simple -z .pre_sec -p2 < /tmp/cacti/host.php-r7420.patch
+    patch -b -V simple -z .pre_sec -p2 < /tmp/cacti/install-index.php-r7420.patch
+    patch -b -V simple -z .pre_sec -p2 < /tmp/cacti/lib-api_device.php-r7420.patch
+    patch -b -V simple -z .pre_sec -p2 < /tmp/cacti/lib-api_poller.php-r7394.patch
+    patch -b -V simple -z .pre_sec -p2 < /tmp/cacti/lib-rrd.php-r7393.patch
+    patch -b -V simple -z .pre_sec -p2 < /tmp/cacti/lib-snmp.php-r7392.patch
+    patch -b -V simple -z .pre_sec -p2 < /tmp/cacti/lib-utility.php-r7394.patch
+
+    # Create the Cacti database in PostgreSQL.
+    psql -U postgres
+    CREATE USER cactiuser WITH PASSWORD 'cactipass';
+    CREATE DATABASE cacti ENCODING='LATIN1' OWNER=cactiuser;
+    GRANT ALL PRIVILEGES ON DATABASE cacti to cactiuser;
+    \q
+
+    # Create all the Cacti database tables and associated objects.  This
+    # will include all the tables and extra fields needed for the Thold
+    # and Weathermap plugins (at least, the version of Thold installed
+    # above, and the version of Weathermap we are still in the process
+    # of porting to PostgreSQL).  Then stuff initial seed data into the
+    # database.  We find it generally easier to do this than to depend
+    # on Cacti to populate the tables during self-initialize actions.
+    psql -U cactiuser -d cacti < /tmp/cacti/cacti-db.sql
+    psql -U cactiuser -d cacti < /tmp/cacti/cacti-seed.sql
+
+================================================================
+NOTES FOR GROUNDWORK
+================================================================
+
+These notes are for GroundWork, so we can remember the changes we made
+to fold Cacti into GroundWork Monitor, beyond the code changes described
+elsewhere, that we will need to repeat in the future with new Cacti and
+Plug-In Architecture (PIA) releases.
+
+Overall current stack:
+    Cacti 0.8.7g base distribution
+    PIA 2.8
+    Discovery plugin
+    Settings plugin
+    Thold plugin
+    Weathermap plugin
+    GroundWork plugin changes (corresponding *.initial_diff patches)
+    Cacti 0.8.7g official patches (not in our current GWMEE release)
+    GroundWork changes (SSO, logout, etc.; other *.initial_diff patches)
+    GroundWork patches to Cacti for PostgreSQL support
+    ADODB 5.14 distribution
+    GroundWork changes to ADODB (for improved PostgreSQL support)
+    GroundWork additional files, and moved files
+    GroundWork-supplied Cacti database schema and seed data
+
+"diff -r cacti-plugin-0.8.7g-PA-v2.8 cacti/htdocs" yields these
+additional and moved files:
+Only in cacti-plugin-0.8.7g-PA-v2.8: cacti.sql
+Only in cacti/htdocs/include: auth.php.orig
+Only in cacti/htdocs/lib: adodb5
+Only in cacti/htdocs/plugins: discovery
+Only in cacti/htdocs/plugins: settings
+Only in cacti/htdocs/plugins: thold
+Only in cacti/htdocs/plugins: weathermap
+Only in cacti/htdocs/rra: NOTEMPTY
+Only in cacti/htdocs/rra: localhost_load_1min_5.rrd
+Only in cacti/htdocs/rra: localhost_mem_buffers_3.rrd
+Only in cacti/htdocs/rra: localhost_mem_swap_4.rrd
+Only in cacti/htdocs/rra: localhost_proc_7.rrd
+Only in cacti/htdocs/rra: localhost_users_6.rrd
+Only in cacti/htdocs: .buildcomplete
+Only in cacti/htdocs: META-INF
+Only in cacti/htdocs: WEB-INF
+Only in cacti/htdocs: login-redirect.jsp
+Only in cacti/htdocs: splash
+
+Also add:
+cacti/extract_cacti.pl
+cacti/scripts/...
+
+Note that we reported our ADODB changes to the ADODB maintainer, and
+the ADODB 5.18 release appears to have our changes folded in.

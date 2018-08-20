@@ -1,0 +1,14 @@
+Here's how to get a dump of the WSDL for a ServiceNow Incident for a
+given customer system:
+
+    wget --user='{username}' --password='{password}' 'https://commonwealthdev.service-now.com/incident.do?WSDL' -O incident_wsdl.xml
+    xmllint --format incident_wsdl.xml > incident_wsdl
+
+where the username and password are as specified by the customer, and the
+URL is as specified by the customer for Incident creation, but with the
+"?WSDL" query extension appended.
+
+The reason you want such a dump is that it provides the exact ServiceNow
+incident field names under which particular values must be submitted to
+either create a new ServiceNow incident, or to probe particular incident
+details at a later time.  This is an invaluable tool during development.

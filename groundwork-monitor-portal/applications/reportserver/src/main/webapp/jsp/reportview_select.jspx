@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<jsp:root version="1.2" 
+  xmlns:jsp="http://java.sun.com/JSP/Page"
+   xmlns:f="http://java.sun.com/jsf/core"
+  xmlns:h="http://java.sun.com/jsf/html"
+  xmlns:ice="http://www.icesoft.com/icefaces/component"
+  xmlns:ui="http://java.sun.com/jsf/facelets">
+<jsp:directive.page contentType="text/html;charset=ISO-8859-1" pageEncoding="ISO-8859-1"/>
+<f:view>
+  <ice:outputDeclaration doctypeRoot="HTML" doctypePublic="-//W3C//DTD HTML 4.01 Transitional//EN" doctypeSystem="http://www.w3.org/TR/html4/loose.dtd"/>
+  <html>
+    <body>
+    <f:loadBundle basename="#{localeBean.baseName}" var="message" />
+    
+    <ui:composition template="/templates/template.xhtml">
+     <ui:define name="content">
+     <ice:form partialSubmit="true" id="reportViewPortlet_frmSelect">
+                 <ice:selectOneMenu id="reportViewPortlet_menuViewSelect" value="#{viewreportselect.currentView}" valueChangeListener="#{viewReportSelectBean.changeReportView}" > 
+                 <f:selectItem id="reportViewPortlet_menuitemViewSelect" itemLabel="Please select" itemValue="select" itemDisabled="true"/>
+                 <f:selectItem id="reportViewPortlet_menuitemViewReport" itemLabel="viewReport" itemValue="viewReport"/>
+                 <f:selectItem id="reportViewPortlet_menuitemPublishReport" itemLabel="publishReport" itemValue="publishReport"/>
+                 </ice:selectOneMenu>
+                 
+		</ice:form>
+		</ui:define>
+		</ui:composition>
+	
+    </body>
+  </html>
+</f:view>
+</jsp:root>

@@ -1,0 +1,42 @@
+<ice:form id="eventTileForm">
+	<ice:panelPopup id="popupEventTileDiv" rendered="true" draggable="true"
+		visible="#{popup.showEventTile}" modal="false"
+		style="z-index:999; top: 400px; left: 400px; width: 300px; position:absolute; background: #FFFFFF;">
+
+		<f:facet name="header">
+			<ice:panelGrid id="popupHeader2" width="100%" cellpadding="0"
+				cellspacing="0" columns="2" columnClasses="popupTitle,popupButton" style="cursor:move;">
+				<ice:outputText value="Event Tile" />
+				<ice:commandButton id="eventTilePopupClose" type="button"
+					image="/images/window-close.png"
+					actionListener="#{popup.closeEventTilePopup}"
+					style="cursor: pointer;background:none;border:none;margin:0px -8px 0 0px;" />
+			</ice:panelGrid>
+		</f:facet>
+
+		<f:facet name="body">
+			<ice:panelGroup>
+				<ice:panelSeries id="icePnlSrsConsole"
+					value="#{eventsPieHandler.hostGroupMap}" var="map"
+					style="float:left">
+					<!-- pie is repeated for each event bean -->
+					<ice:panelGroup id="eventPie" styleClass="heatMapBox">
+						<ice:panelGroup styleClass="gwPnlDatTblColHdr">
+							<ice:outputText id="pieHostGroupname"
+								value="#{map.truncatedGroupName}" />
+						</ice:panelGroup>
+						<ice:panelGroup
+							title="header=[#{map.groupName}] body=[#{map.statToolTip}]">
+							<ice:outputLink id="eventPie_lnkConsole"
+								value="#{map.consoleURL}">
+								<ice:graphicImage value="#{map.chart}"
+									rendered="#{map.chart!=null}"></ice:graphicImage>
+							</ice:outputLink>
+						</ice:panelGroup>
+					</ice:panelGroup>
+				</ice:panelSeries>
+			</ice:panelGroup>
+		</f:facet>
+	</ice:panelPopup>
+</ice:form>
+

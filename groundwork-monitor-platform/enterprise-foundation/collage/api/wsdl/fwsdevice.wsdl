@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions targetNamespace="urn:fws"
+	xmlns:fwsmodel="http://model.ws.foundation.groundwork.org"
+	xmlns:apachesoap="http://xml.apache.org/xml-soap" xmlns:impl="urn:fws"
+	xmlns:intf="urn:fws" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/"
+	xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:wsdlsoap="http://schemas.xmlsoap.org/wsdl/soap/"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<!--
+		Collage - The ultimate data integration framework. Copyright (C)
+		2004-2007 GroundWork Open Source Inc. info@groundworkopensource.com
+
+		This program is free software; you can redistribute it and/or modify
+		it under the terms of version 2 of the GNU General Public License as
+		published by the Free Software Foundation. This program is distributed
+		in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+		even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+		PARTICULAR PURPOSE. See the GNU General Public License for more
+		details. You should have received a copy of the GNU General Public
+		License along with this program; if not, write to the Free Software
+		Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+		USA
+	-->
+
+	<wsdl:import namespace="urn:fwsmodel"
+		xmlns:fwsmodel="http://model.ws.foundation.groundwork.org" location="../fwsmodel.wsdl" />
+
+	<wsdl:message name="getDeviceRequest">
+
+		<wsdl:part name="type" type="fwsmodel:DeviceQueryType">
+			<wsdl:documentation>DeviceQueryType is an enumeration
+				of possible parameters to be used to retrieve devices. Type can be
+				one of – ALL (retrieves all device entries), DEVICEID (gets device
+				by Id), DEVICEIDENTIFICATION (retrieves device by identification),
+				HOSTID (gets the device for the HostID specified), HOSTNAME ( device
+				for the HostName), PARENTS (gets the parents of the specified
+				device) and CHILDREN (gets the children of the specified device)
+			</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="value" type="xsd:string">
+			<wsdl:documentation>Applicable for types except “ALL”.
+				Specify value as per the DeviceQueryType specified above. For
+				example specify values as actual device Id if type is DEVICEID.
+			</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="startRange" type="xsd:int">
+			<wsdl:documentation>beginning record number [first result –
+				pagination parameter. Only implemented for “type”]
+			</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="endRange" type="xsd:int">
+			<wsdl:documentation>last record number [maximum results –
+				pagination parameter]</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="orderedBy" type="fwsmodel:SortCriteria">
+			<wsdl:documentation>Defines sorting order (ascending or
+				descending) and filed on which sorting to be performed.
+			</wsdl:documentation>
+		</wsdl:part>
+
+	</wsdl:message>
+
+	<wsdl:message name="getDeviceResponse">
+
+		<wsdl:part name="getDeviceReturn" type="fwsmodel:WSFoundationCollection">
+			<wsdl:documentation>Returns WSFoundationCollection: collection
+				of Devices as per the input parameters specified.
+			</wsdl:documentation>
+		</wsdl:part>
+
+	</wsdl:message>
+
+	<wsdl:message name="getDeviceByStringRequest">
+		<wsdl:documentation>All parameters are exactly same as getDevice()
+			API.
+			String “type” specified gets mapped to DeviceQueryType
+			internally.
+			Also SortOrder and SortFileld String parameters get
+			converted to
+			SortCriteria.
+</wsdl:documentation>
+
+		<wsdl:part name="type" type="xsd:string">
+			<wsdl:documentation>DeviceQueryType is an enumeration
+				of possible parameters to be used to retrieve devices. Type can be
+				one of – ALL (retrieves all device entries), DEVICEID (gets device
+				by Id), DEVICEIDENTIFICATION (retrieves device by identification),
+				HOSTID (gets the device for the HostID specified), HOSTNAME ( device
+				for the HostName), PARENTS (gets the parents of the specified
+				device) and CHILDREN (gets the children of the specified device)
+			</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="value" type="xsd:string">
+			<wsdl:documentation>Applicable for types except “ALL”.
+				Specify value as per the DeviceQueryType specified above. For
+				example specify values as actual device Id if type is DEVICEID.
+			</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="startRange" type="xsd:string">
+			<wsdl:documentation>beginning record number [first result –
+				pagination parameter. Only implemented for “type”]
+			</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="endRange" type="xsd:string">
+			<wsdl:documentation>last record number [maximum results –
+				pagination parameter]</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="sortOrder" type="xsd:string">
+			<wsdl:documentation>Defines sorting order (ascending or
+				descending)</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="sortField" type="xsd:string">
+			<wsdl:documentation>Defines field on which sorting to be
+				performed.</wsdl:documentation>
+		</wsdl:part>
+
+	</wsdl:message>
+
+	<wsdl:message name="getDeviceByStringResponse">
+
+		<wsdl:part name="getDeviceByStringReturn" type="fwsmodel:WSFoundationCollection">
+			<wsdl:documentation>Returns WSFoundationCollection: collection
+				of Devices as per the input parameters specified.
+			</wsdl:documentation>
+		</wsdl:part>
+
+	</wsdl:message>
+
+	<wsdl:message name="getDevicesByCriteriaRequest">
+		<wsdl:part name="filter" type="fwsmodel:Filter">
+			<wsdl:documentation>A filter is provided to build the criteria for
+				doing the required queries on the model (Foundation). Filters can be
+				composed with the help of disjunctions (AND) and conjunctions (OR).
+			</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="sort" type="fwsmodel:Sort">
+			<wsdl:documentation>Defines sorting order (ascending or
+				descending) and filed on which sorting to be performed .
+			</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="firstResult" type="xsd:int">
+			<wsdl:documentation>beginning record number [first result –
+				pagination parameter]</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="maxResults" type="xsd:int">
+			<wsdl:documentation>last record number [maximum results –
+				pagination parameter]</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+
+	<wsdl:message name="getDevicesByCriteriaResponse">
+		<wsdl:part name="getDevicesByCriteriaReturn" type="fwsmodel:WSFoundationCollection">
+			<wsdl:documentation>Returns WSFoundationCollection: collection
+				of Devices as per the input parameters specified.
+			</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+
+	<wsdl:message name="WSFoundationException">
+
+		<wsdl:part name="fault" element="fwsmodel:WSFoundationException" />
+
+	</wsdl:message>
+
+	<wsdl:portType name="WSDevice">
+
+		<wsdl:operation name="getDevice"
+			parameterOrder="type value startRange endRange orderedBy">
+			<wsdl:documentation>Retrieves device entries as per the
+				specified type and other parameters. For example, if “type” is
+				specified as “DEVICEID” and value as “actual device Id”, then API
+				will fetch and return the device specified by DeviceID.
+			</wsdl:documentation>
+
+			<wsdl:input message="impl:getDeviceRequest" name="getDeviceRequest" />
+
+			<wsdl:output message="impl:getDeviceResponse" name="getDeviceResponse" />
+
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+
+		</wsdl:operation>
+
+		<wsdl:operation name="getDeviceByString"
+			parameterOrder="type value startRange endRange sortOrder sortField">
+			<wsdl:documentation>This API is String parameter version of
+				getDevice() API.</wsdl:documentation>
+
+			<wsdl:input message="impl:getDeviceByStringRequest" name="getDeviceByStringRequest" />
+
+			<wsdl:output message="impl:getDeviceByStringResponse"
+				name="getDeviceByStringResponse" />
+
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+
+		</wsdl:operation>
+
+		<wsdl:operation name="getDevicesByCriteria"
+			parameterOrder="filter sort firstResult maxResults">
+			<wsdl:documentation>Returns Device(s) by Criteria – as per the
+				specified Filter.</wsdl:documentation>
+
+			<wsdl:input message="impl:getDevicesByCriteriaRequest"
+				name="getDevicesByCriteriaRequest" />
+
+			<wsdl:output message="impl:getDevicesByCriteriaResponse"
+				name="getDevicesByCriteriaResponse" />
+
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+
+		</wsdl:operation>
+	</wsdl:portType>
+
+	<wsdl:binding name="deviceSoapBinding" type="impl:WSDevice">
+
+		<wsdlsoap:binding style="rpc"
+			transport="http://schemas.xmlsoap.org/soap/http" />
+
+		<wsdl:operation name="getDevice">
+			<wsdl:documentation>Retrieves device entries as per the
+				specified type and other parameters. For example, if “type” is
+				specified as “DEVICEID” and value as “actual device Id”, then API
+				will fetch and return the device specified by DeviceID.
+			</wsdl:documentation>
+
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wsdevice" />
+
+			<wsdl:input name="getDeviceRequest">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:input>
+
+			<wsdl:output name="getDeviceResponse">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:output>
+
+			<wsdl:fault name="WSFoundationException">
+
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+
+			</wsdl:fault>
+
+		</wsdl:operation>
+
+		<wsdl:operation name="getDeviceByString">
+			<wsdl:documentation>This API is String parameter version of
+				getDevice() API.</wsdl:documentation>
+
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wsdevice" />
+
+			<wsdl:input name="getDeviceByStringRequest">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:input>
+
+			<wsdl:output name="getDeviceByStringResponse">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:output>
+
+			<wsdl:fault name="WSFoundationException">
+
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+
+			</wsdl:fault>
+
+		</wsdl:operation>
+
+		<wsdl:operation name="getDevicesByCriteria">
+			<wsdl:documentation>Returns Device(s) by Criteria – as per the
+				specified Filter.</wsdl:documentation>
+
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wsdevice" />
+
+			<wsdl:input name="getDevicesByCriteriaRequest">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:input>
+
+			<wsdl:output name="getDevicesByCriteriaResponse">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:output>
+
+			<wsdl:fault name="WSFoundationException">
+
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+
+			</wsdl:fault>
+
+		</wsdl:operation>
+	</wsdl:binding>
+
+	<wsdl:service name="WSDeviceService">
+		<wsdl:documentation>Device Web Service maintains device entries
+			in the foundation database. Devices are the addressable base entities
+			for monitoring.</wsdl:documentation>
+
+		<wsdl:port binding="impl:deviceSoapBinding" name="wsdevice">
+
+			<wsdlsoap:address
+				location="http://localhost:8080/foundation-webapp/services/wsdevice" />
+
+		</wsdl:port>
+
+	</wsdl:service>
+
+</wsdl:definitions>

@@ -1,0 +1,47 @@
+#!/bin/bash -e
+
+# Copyright 2011 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+print_usage() {
+    echo "usage:    make_filelist user group prefix file_or_directory ... > filelist"
+    echo "example:  make_filelist nagios nagios '%{alertsitepath}' perl/* > filelist"
+    echo "Notes:    This version does not properly set the user and group of"
+    echo "          any setuid or setgid programs.  Nor does it currently"
+    echo "          handle any filetypes other than plain file or directory,"
+    echo "          such as symlinks, pipes, sockets, or special devices."
+}
+
+if [ $# -lt 4 ]; then
+    print_usage
+    exit 1
+fi
+
+user="$1"
+group="$2"
+prefix="$3"
+files="${*:4}"
+
+# We used to use:
+#     prefix=${prefix//%/%%}
+# but then we found out that bash version 3.1.17, included in RHEL5.1,
+# doesn't do what you would hope it would, substituting all instances
+# of the pattern.  bash version 3.2.25, included in CentOS 5.3, does
+# do the desired pattern substitution (and the documentation changes
+# in a subtle way to indicate that).  But we need to be portable to
+# the older release, so we need an alternate construction here.
+#
+prefix=`echo $prefix | sed 's/%/%%/g'`
+if [ -n "$prefix" ]; then
+    prefix="$prefix/"
+fi
+
+# Sample output lines (for a prefix of "%{alertsitepath}"):
+# %dir %attr(0755,nagios,nagios) %{alertsitepath}/perl/lib/TAP/Formatter/Console
+# %attr(0644,nagios,nagios) %{alertsitepath}/perl/man/man3/Test::Pod.3pm
+
+# Establish a known canonical sort ordering [see sort(1)].
+export LC_ALL=C
+
+find $files -type d -printf "%%dir %%attr(%04m,$user,$group) $prefix%p\n" | sort --key=3
+find $files -type f -printf       "%%attr(%04m,$user,$group) $prefix%p\n" | sort --key=2

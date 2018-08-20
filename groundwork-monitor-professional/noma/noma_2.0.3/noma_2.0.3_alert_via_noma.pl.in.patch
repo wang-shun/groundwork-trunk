@@ -1,0 +1,61 @@
+--- noma_2.0.3/notifier/alert_via_noma.pl.in.orig	2011-11-21 03:25:24.000000000 -0800
++++ noma_2.0.3/notifier/alert_via_noma.pl.in	2017-08-07 12:58:14.062054016 -0700
+@@ -67,6 +67,8 @@
+              -i|--host-address=<host ip>
+              -o|--output=<host- or serviceoutput>
+              -n|--notification-type=<notification type>
++             -A|--authors=<authors>
++             -C|--comments=<comments>
+              [-p|--pipe]
+              [-u|--unique-id=<unique notification ID>]
+              [-h|--help] [-V|--version]
+@@ -124,6 +126,14 @@
+ 
+ Notification type.
+ 
++=item -A|--authors=<authors>
++
++Notification authors (used mainly for acknowledgement notifications).
++
++=item -C|--comments=<comments>
++
++Notification comments (used mainly for acknowledgement notifications).
++
+ =item -p|--pipe
+ 
+ Use a local FIFO instead of a network connection
+@@ -147,10 +157,10 @@
+ Can be integrated into nagios with the following
+ 
+ For services;
+-  command_line    /path_to_noma/alert_via_noma.pl -c s -s "$SERVICESTATE$" -H "$HOSTNAME$" -G "$HOSTGROUPNAMES$" -E "$SERVICEGROUPNAMES$" -S "$SERVICEDESC$" -o "$SERVICEOUTPUT$" -n "$NOTIFICATIONTYPE$" -a "$HOSTALIAS$" -i "$HOSTADDRESS$" -t "$SHORTDATETIME$" -u "$SERVICENOTIFICATIONID$" -A "$NOTIFICATIONAUTHORALIAS$" -C "$NOTIFICATIONCOMMENT$" -R "$NOTIFICATIONRECIPIENTS$"
++  command_line    @NOTIFIERDIR@/alert_via_noma.pl -c s -s "$SERVICESTATE$" -H "$HOSTNAME$" -G "$HOSTGROUPNAMES$" -E "$SERVICEGROUPNAMES$" -S "$SERVICEDESC$" -o "$SERVICEOUTPUT$" -n "$NOTIFICATIONTYPE$" -a "$HOSTALIAS$" -i "$HOSTADDRESS$" -t "$TIMET$" -u "$$(( $SERVICEPROBLEMID$ ? $SERVICEPROBLEMID$ : $LASTSERVICEPROBLEMID$ ))" -A "$NOTIFICATIONAUTHORALIAS$" -C "$NOTIFICATIONCOMMENT$" -R "$NOTIFICATIONRECIPIENTS$"
+ 
+ For hosts;
+-  command_line    /path_to_noma/alert_via_noma.pl -c h -s "$HOSTSTATE$" -H "$HOSTNAME$"  -G "$HOSTGROUPNAMES$" -n "$NOTIFICATIONTYPE$" -i "$HOSTADDRESS$" -o "$HOSTOUTPUT$" -t "$SHORTDATETIME$" -u "$HOSTNOTIFICATIONID$" -A "$NOTIFICATIONAUTHORALIAS$" -C "$NOTIFICATIONCOMMENT$" -R "$NOTIFICATIONRECIPIENTS$"
++  command_line    @NOTIFIERDIR@/alert_via_noma.pl -c h -s "$HOSTSTATE$" -H "$HOSTNAME$" -G "$HOSTGROUPNAMES$" -n "$NOTIFICATIONTYPE$" -i "$HOSTADDRESS$" -o "$HOSTOUTPUT$" -t "$TIMET$" -u "$$(( $HOSTPROBLEMID$ ? $HOSTPROBLEMID$ : $LASTHOSTPROBLEMID$ ))" -A "$NOTIFICATIONAUTHORALIAS$" -C "$NOTIFICATIONCOMMENT$" -R "$NOTIFICATIONRECIPIENTS$"
+ 
+ 
+ =cut
+@@ -294,6 +304,12 @@
+     $id = unique_id();
+ }
+ 
++# Remove quotation marks (') GWMON-12493
++$comments =~ s/\'//g;
++$output =~ s/\'//g;
++$host_alias =~ s/\'//g;
++$authors =~ s/\'//g;
++
+ $cmd = sprintf('NOTIFICATION;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s',
+     $id, $recipients, $host, $host_alias, $host_address, $hostgroups, $service, $servicegroups, $check_type, $status, $datetime, $notification_type, $authors, $comments, $output);
+ 
+@@ -376,7 +392,7 @@
+ {
+     # we don't use MySQL UUID() to generate IDs
+     # because this won't work in offline mode
+-    return (time().int( rand(99999) ));
++    return sprintf( "%d%05d", time(), int( rand(99999) ) );
+ }
+ 
+ sub debugArray

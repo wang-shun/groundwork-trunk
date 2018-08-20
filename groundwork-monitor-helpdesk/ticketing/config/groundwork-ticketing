@@ -1,0 +1,22 @@
+# logrotate configuration for GroundWork ticketing integration files
+
+# ticketing integration log output
+#
+# /usr/local/groundwork/ticketing/logs/oneway.log
+# /usr/local/groundwork/ticketing/logs/twoway.log
+# are configured in:
+# /usr/local/groundwork/ticketing/config/oneway_helpdesk.conf
+# /usr/local/groundwork/ticketing/config/twoway_helpdesk.conf
+# respectively.  Both the oneway_helpdesk.pl and twoway_helpdesk.pl scripts
+# open and close their logfile in append mode around every message written
+# to their respective logfile, so there is no issue with synchronizing log
+# rotation actions here with the operations of the scripts.
+#
+/usr/local/groundwork/ticketing/logs/*.log {
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 5
+}

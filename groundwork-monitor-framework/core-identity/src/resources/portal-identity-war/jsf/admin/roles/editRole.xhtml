@@ -1,0 +1,44 @@
+<div
+   xmlns="http://www.w3.org/1999/xhtml"
+   xmlns:ui="http://java.sun.com/jsf/facelets"
+   xmlns:h="http://java.sun.com/jsf/html"
+   xmlns:f="http://java.sun.com/jsf/core"
+   xmlns:c="http://java.sun.com/jstl/core"
+   class="identity-ui">
+
+<ui:composition template="/jsf/admin/roles/roleTemplate.xhtml">
+
+<ui:define name="title">
+	<li class="pathItem">
+		<h:commandLink id="role-mgm-link" action="roleAdmin" value="#{bundle.IDENTITY_MANAGEMENT_ROLE_MANAGEMENT}" />
+	</li>
+	<li class="pathSeparator"><h:graphicImage url="/img/pathSeparator.png" alt=">"/></li>
+	<li class="pathItem">
+		<h:outputText value="#{bundle.IDENTITY_MANAGEMENT_EDIT_ROLE}"/>
+	</li>
+	<li class="pathSeparator"><h:graphicImage url="/img/pathSeparator.png" alt=">"/></li>
+	<li class="selected">
+		<h:outputText id="rolename" value="#{editrolemgr.uiRole.name}" />
+	</li> 
+</ui:define>
+
+<ui:define name="content">
+<h3><h:outputText value="#{bundle.IDENTITY_MANAGEMENT_EDIT_ROLE}"/></h3>
+<h:form id="edit-role-link">
+	<h:panelGrid columns="2">
+	<h:outputText value="#{bundle.IDENTITY_MANAGEMENT_ROLE}"/>
+	<h:outputText id="rolename" value="#{editrolemgr.uiRole.name}" />
+	
+	<h:outputText value="#{bundle.IDENTITY_MANAGEMENT_ROLE_DISPLAY}"/>
+	<h:inputText id="display-name" value="#{editrolemgr.uiRole.displayName}"/>
+	</h:panelGrid>
+	<hr/>
+		<ui:include src="editExtendedRole.xhtml" />
+ <p style="text-align: right;">
+	<h:commandButton id="submit" value="#{bundle.IDENTITY_BUTTON_SUBMIT}" action="#{editrolemgr.updateRole}" styleClass="portlet-form-button" onclick="return validateRoleInfo('57','edit-role-link');"/>
+	<h:commandButton id="cancel" action="roleAdmin" value="#{bundle.IDENTITY_BUTTON_CANCEL}" immediate="true" styleClass="portlet-form-button"/>
+ </p>
+</h:form>
+</ui:define>
+</ui:composition>
+</div>

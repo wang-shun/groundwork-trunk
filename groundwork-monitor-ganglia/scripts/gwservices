@@ -1,0 +1,897 @@
+#!/bin/bash
+# init.d script to manage services related to GroundWork Monitor
+#
+# Copyright 2009-2017 GroundWork Open Source, Inc. ("GroundWork")
+# All rights reserved. This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public License version 2
+# as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+# Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Comments to support chkconfig on RedHat Linux
+# chkconfig: 2345 99 01
+# description: A very fast and reliable data integration framework.
+
+### BEGIN INIT INFO
+# Provides: gwservices
+# Required-Start: $local_fs $remote_fs
+# X-UnitedLinux-Should-Start: $named $syslog $time
+# Required-Stop:  $local_fs $remote_fs
+# X-UnitedLinux-Should-Stop: $named $syslog $time
+# Default-Start:  3 5
+# Default-Stop:   0 1 2 6
+# Short-Description: GroundWork Services
+# Description:    Starting GroundWork Services
+### END INIT INFO
+
+# This flag may be set to 1 to dump out more detail about supervise and dumblog processes,
+# for development/debugging purposes.
+SHOW_FULL_PROCESSES=0
+
+# This flag may be set to 1 to dump out more detail about processes that are being waited for.
+SHOW_SLOW_PROCESSES=1
+
+# The exit code from this script is important.  But since it manages many different subsidiary
+# services, we have to define an explicit convention for what particular values of the exit
+# code are supposed to mean in various contexts, and then both publish that convention and
+# ensure that it is adhered to by this script.
+#
+# When starting:
+# 0 => everything started okay
+# 1 => at least one service that should have started failed to start (in this condition,
+#      the system may be able to run in a degraded mode), or there are too many copies of
+#      some service running
+# 2 => at least one critical service failed to start (in this condition, the system as a
+#      whole cannot run), or there are too many copies of some critical service running
+#
+# When stopping:
+# 0 => everything stopped okay
+# 1 => at least one service that should have stopped failed to stop
+# 2 => at least one critical service failed to stop
+#
+# When restarting:
+# See GWMON-9081 for a discussion.
+# 0 -> all services were successfully stopped (if need be), and then all services successfully started
+# 1 -> at least one service did not successfully either stop (if need be) or start, or there are
+#      too many copies of some service running
+# 2 -> at least one critical service did not successfully either stop (if need be) or start, or
+#      there are too many copies of some critical service running
+#
+# When checking status:
+# 0 => everything that should be running is running okay, with the right number of instances
+# 1 => at least one service that should be running is not running, or has too many instances running
+# 2 => at least one critical service that must be running is not running, or has too many instances running
+#
+# Notice the different meanings of "success" (exit code 0) in these various cases.  For
+# starting and stopping, they reflect the overall effect of the intended operation, not
+# the overall up/down status of the affected services.  That is, the sense of a successful
+# exit code has exactly opposite polarity in these two cases with regard to whether the
+# services are up or down.  For status, the situation is just you would expect, a direct
+# reflection of the current overall system status.
+#
+# This convention is now established by design, but not yet by implementation.
+
+list_pids () {
+	SAVED_IFS="$IFS"
+	IFS=,
+	ps -f -p "$*"
+	IFS="$SAVED_IFS"
+}
+
+if [ -d /usr/local/groundwork/foundation/container/jpp2 ]; then
+	have_standalone_foundation=1
+else
+	have_standalone_foundation=0
+fi
+
+if [ -d /usr/local/groundwork/core/services/feeder-nedi ]; then
+	have_nedi_feeder=0
+else
+	have_nedi_feeder=0
+fi
+
+if [ -d /usr/local/groundwork/core/services/feeder-logbridge ]; then
+	have_logbridge_feeder=1
+else
+	have_logbridge_feeder=0
+fi
+
+if [ -d /usr/local/groundwork/core/services/feeder-scom ]; then
+	have_scom_feeder=1
+else
+	have_scom_feeder=0
+fi
+
+if test -n "$(find . -maxdepth 1 -type d -name 'scanner-*' -print -quit)"; then
+	have_scanners=1
+else
+	have_scanners=0
+fi
+
+if [ -d /usr/local/groundwork/core/services/feeder-gwevents_to_es ]; then
+	have_gwevents_to_es=1
+else
+	have_gwevents_to_es=0
+fi
+
+if [ -d /usr/local/groundwork/core/services/scanner-perfdata ]; then
+	have_perfdata_scanner=1
+else
+	have_perfdata_scanner=0
+fi
+
+if test -n "$(find . -maxdepth 1 -type d -name 'spooler-*' -print -quit)"; then
+	have_spoolers=1
+else
+	have_spoolers=0
+fi
+
+if [ -d /usr/local/groundwork/core/services/spooler-gdma ]; then
+	have_gdma_spooler=1
+else
+	have_gdma_spooler=0
+fi
+
+if [ -d /usr/local/groundwork/core/services/check-ganglia ]; then
+	have_ganglia_check=1
+else
+	have_ganglia_check=0
+fi
+
+# Set the ulimit for the Java processes.  This is not really needed for the other services
+# managed by this script, and will in fact add to their overhead.  One Java process (for
+# JOSSO) is started here directly via the catalina.sh script; others (the Jboss Portal
+# Platform, and possibly a separate Foundation process) are started indirectly, via
+# the standalone.sh scripts for their respective JPP instances, run as the mandatory
+# "service-jpp" and optional "service-foundation" services under "supervise".  Eventually,
+# we may move this bumping up of the file-descriptor limit to be more precisely applied to
+# just the processes that actually need it.
+ulimit -n 8192
+
+# Here is an egrep pattern that will be used later on.  WHenever we have a new type of
+# supervised-process category, as reflected in the various "SuperviseXxxxxPIDs" variables
+# assigned just below, this pattern must be extended to include the new category.
+supervise_category='check-|feeder-|notification-|scanner-|service-|spooler-'
+
+export GW_HOME=/usr/local/groundwork
+export PATH=$GW_HOME/bin:$GW_HOME/sbin:$GW_HOME/common/bin:$JAVA_HOME/bin:/sbin:$PATH
+status_gwservices ()
+{
+	JBossPortalPlatformPIDs=(   `ps -w -w -o pid,args --no-headers -C java | fgrep jpp/standalone | fgrep -v jpp2/standalone | awk '{print $1}'` )
+	if [ $have_standalone_foundation -ne 0 ]; then
+	    JBossFoundationPIDs=(   `ps -w -w -o pid,args --no-headers -C java | fgrep jpp2/standalone                 | awk '{print $1}'` )
+	fi
+	JOSSOPIDs=(                 `ps -w -w -o pid,args --no-headers -C java | fgrep josso- | fgrep catalina         | awk '{print $1}'` )
+	SvscanPIDs=(                `ps -w -w -o pid,args --no-headers -C svscan                                       | awk '{print $1}'` )
+	DumblogPIDs=(               `ps -w -w -o pid,args --no-headers -C dumblog                                      | awk '{print $1}'` )
+	SupervisePortalPIDs=(       `ps -w -w -o pid,args --no-headers -C supervise | fgrep service-jpp                | awk '{print $1}'` )
+	if [ $have_standalone_foundation -ne 0 ]; then
+	    SuperviseFoundationPIDs=(`ps -w -w -o pid,args --no-headers -C supervise | fgrep service-foundation         | awk '{print $1}'` )
+	fi
+	SuperviseFeederPIDs=(       `ps -w -w -o pid,args --no-headers -C supervise | fgrep feeder                     | awk '{print $1}'` )
+	SuperviseNotificationPIDs=( `ps -w -w -o pid,args --no-headers -C supervise | fgrep notification               | awk '{print $1}'` )
+	if [ $have_scanners -ne 0 ]; then
+	    SuperviseScannerPIDs=(  `ps -w -w -o pid,args --no-headers -C supervise | fgrep scanner                    | awk '{print $1}'` )
+	fi
+	if [ $have_spoolers -ne 0 ]; then
+	    SuperviseSpoolerPIDs=(  `ps -w -w -o pid,args --no-headers -C supervise | fgrep spooler                    | awk '{print $1}'` )
+	fi
+	StatusPIDs=(                `ps -w -w -o pid,args --no-headers -C .perl.bin | fgrep nagios2collage_socket.pl   | awk '{print $1}'` )
+	EventPIDs=(                 `ps -w -w -o pid,args --no-headers -C .perl.bin | fgrep nagios2collage_eventlog.pl | awk '{print $1}'` )
+	FpingPIDs=(                 `ps -w -w -o pid,args --no-headers -C .perl.bin | fgrep fping_process.pl           | awk '{print $1}'` )
+	CactiFeederPIDs=(           `ps -w -w -o pid,args --no-headers -C .perl.bin | fgrep cacti_feeder.pl            | awk '{print $1}'` )
+	if [ $have_nedi_feeder -ne 0 ]; then
+	    NeDiFeederPIDs=(        `ps -w -w -o pid,args --no-headers -C .perl.bin | fgrep nedi_feeder.pl             | awk '{print $1}'` )
+	fi
+	if [ $have_logbridge_feeder -ne 0 ]; then
+	    LogBridgeFeederPIDs=(    `ps -w -w -o pid,args --no-headers -C .perl.bin | fgrep logbridge_feeder.pl       | awk '{print $1}'` )
+	fi
+	if [ $have_scom_feeder -ne 0 ]; then
+	    SCOMFeederPIDs=(    `ps -w -w -o pid,args --no-headers -C .perl.bin | fgrep scom_feeder.pl                 | awk '{print $1}'` )
+	fi
+	if [ $have_gwevents_to_es -ne 0 ]; then
+	    gwevents_to_esPIDs=(    `ps -w -w -o pid,args --no-headers -C .perl.bin | fgrep gwevents_to_es.pl          | awk '{print $1}'` )
+	fi
+	if [ $have_perfdata_scanner -ne 0 ]; then
+	    PerfdataScannerPIDs=(   `ps -w -w -o pid,args --no-headers -C .perl.bin | fgrep "process_service_perfdata_file -s" | awk '{print $1}'` )
+	fi
+	if [ $have_gdma_spooler -ne 0 ]; then
+	    GDMAPIDs=(              `ps -w -w -o pid,args --no-headers -C .perl.bin | fgrep gdma_spool_processor.pl    | awk '{print $1}'` )
+	fi
+	if [ $have_ganglia_check -ne 0 ]; then
+	    GangliaCheckPIDs=(      `ps -w -w -o pid,args --no-headers -C .perl.bin | fgrep check_ganglia.pl           | awk '{print $1}'` )
+	fi
+
+	# In this part of the probing, we set Status to:
+	# (Status == 0) => some processes are not running
+	# (Status == 1) => all processes are running, as far as we know
+	# (Status == 2) => some processes have too many copies running
+	Status=1
+
+	echo ""
+
+	if [ ${#JBossPortalPlatformPIDs[@]} -eq 0 ]; then
+		echo "    JBoss Portal Platform is not running"
+		Status=0
+	else
+		/usr/local/groundwork/foundation/feeder/check-listener.pl -q localhost 4913
+		if [ $? -ne 0 ]; then
+			echo "    Some JBoss Portal applications are not running."
+			Status=0
+		fi
+	fi
+	if [ $have_standalone_foundation -ne 0 -a ${#JBossFoundationPIDs[@]} -eq 0 ]; then
+		echo "    Standalone Foundation is not running"
+		Status=0
+	fi
+	if [ ${#JOSSOPIDs[@]} -eq 0 ]; then
+		echo "    JOSSO server is not running"
+		Status=0
+	fi
+	if [ ${#SvscanPIDs[@]} -eq 0 ]; then
+		echo "    svscan is not running"
+		Status=0
+	fi
+	if [ ${#DumblogPIDs[@]} -eq 0 ]; then
+		echo "    dumblogs are not running"
+		Status=0
+	fi
+	if [ ${#SupervisePortalPIDs[@]} -eq 0 ]; then
+		echo "    supervise for JBoss Portal Platform is not running"
+		Status=0
+	fi
+	if [ $have_standalone_foundation -ne 0 -a ${#SuperviseFoundationPIDs[@]} -eq 0 ]; then
+		echo "    supervise for Standalone Foundation is not running"
+		Status=0
+	fi
+	if [ ${#SuperviseFeederPIDs[@]} -eq 0 ]; then
+		echo "    Feeders are not running"
+		Status=0
+	fi
+	if [ ${#SuperviseNotificationPIDs[@]} -eq 0 ]; then
+		echo "    Notifications are not running"
+		Status=0
+	fi
+	if [ $have_scanners -ne 0 -a ${#SuperviseScannerPIDs[@]} -eq 0 ]; then
+		echo "    Scanners are not running"
+		Status=0
+	fi
+	if [ $have_spoolers -ne 0 -a ${#SuperviseSpoolerPIDs[@]} -eq 0 ]; then
+		echo "    Spoolers are not running"
+		Status=0
+	fi
+	if [ ${#StatusPIDs[@]} -eq 0 ]; then
+		echo "    nagios2collage_socket is not running"
+		Status=0
+	fi
+	if [ ${#EventPIDs[@]} -eq 0 ]; then
+		echo "    nagios2collage_eventlog is not running"
+		Status=0
+	fi
+	if [ ${#FpingPIDs[@]} -eq 0 ]; then
+		echo "    fping_process is not running"
+		Status=0
+	fi
+	if [ ${#CactiFeederPIDs[@]} -eq 0 ]; then
+		echo "    cacti_feeder is not running"
+		Status=0
+	fi
+	if [ $have_nedi_feeder -ne 0 -a ${#NeDiFeederPIDs[@]} -eq 0 ]; then
+		echo "    nedi_feeder is not running"
+		Status=0
+	fi
+	if [ $have_logbridge_feeder -ne 0 -a ${#LogBridgeFeederPIDs[@]} -eq 0 ]; then
+		echo "    logbridge_feeder is not running"
+		Status=0
+	fi
+	if [ $have_scom_feeder -ne 0 -a ${#SCOMFeederPIDs[@]} -eq 0 ]; then
+		echo "    scom_feeder is not running"
+		Status=0
+	fi
+	if [ $have_gwevents_to_es -ne 0 -a ${#gwevents_to_esPIDs[@]} -eq 0 ]; then
+		echo "    gwevents_to_es is not running"
+		Status=0
+	fi
+	if [ $have_perfdata_scanner -ne 0 -a ${#PerfdataScannerPIDs[@]} -eq 0 ]; then
+		echo "    perfdata_scanner is not running"
+		Status=0
+	fi
+	if [ $have_gdma_spooler -ne 0 -a ${#GDMAPIDs[@]} -eq 0 ]; then
+		echo "    gdma_spool_processor is not running"
+		Status=0
+	fi
+	if [ $have_ganglia_check -ne 0 -a ${#GangliaCheckPIDs[@]} -eq 0 ]; then
+		echo "    check_ganglia is not running"
+		Status=0
+	fi
+	if [ ${#JBossPortalPlatformPIDs[@]} -gt 1 ]; then
+		echo "    JBoss Portal Platform has too many copies running:"
+		list_pids ${JBossPortalPlatformPIDs[@]}
+		Status=2
+	fi
+	if [ $have_standalone_foundation -ne 0 -a ${#JBossFoundationPIDs[@]} -gt 1 ]; then
+		echo "    Standalone Foundation has too many copies running:"
+		list_pids ${JBossFoundationPIDs[@]}
+		Status=2
+	fi
+	if [ ${#JOSSOPIDs[@]} -gt 1 ]; then
+		echo "    JOSSO server has too many copies running:"
+		list_pids ${JOSSOPIDs[@]}
+		Status=2
+	fi
+	if [ ${#StatusPIDs[@]} -gt 1 ]; then
+		echo "    nagios2collage_socket has too many copies running:"
+		list_pids ${StatusPIDs[@]}
+		Status=2
+	fi
+	if [ ${#EventPIDs[@]} -gt 1 ]; then
+		echo "    nagios2collage_eventlog has too many copies running:"
+		list_pids ${EventPIDs[@]}
+		Status=2
+	fi
+	if [ ${#FpingPIDs[@]} -gt 1 ]; then
+		echo "    fping_process has too many copies running:"
+		list_pids ${FpingPIDs[@]}
+		Status=2
+	fi
+	if [ ${#CactiFeederPIDs[@]} -gt 1 ]; then
+		echo "    cacti_feeder has too many copies running:"
+		list_pids ${CactiFeederPIDs[@]}
+		Status=2
+	fi
+	if [ $have_nedi_feeder -ne 0 -a ${#NeDiFeederPIDs[@]} -gt 1 ]; then
+		echo "    nedi_feeder has too many copies running:"
+		list_pids ${NeDiFeederPIDs[@]}
+		Status=2
+	fi
+	if [ $have_logbridge_feeder -ne 0 -a ${#LogBridgeFeederPIDs[@]} -gt 1 ]; then
+		echo "    logbridge_feeder has too many copies running:"
+		list_pids ${LogBridgeFeederPIDs[@]}
+		Status=2
+	fi
+	if [ $have_scom_feeder -ne 0 -a ${#SCOMFeederPIDs[@]} -gt 1 ]; then
+		echo "    scom_feeder has too many copies running:"
+		list_pids ${SCOMFeederPIDs[@]}
+		Status=2
+	fi
+	if [ $have_gwevents_to_es -ne 0 -a ${#gwevents_to_esPIDs[@]} -gt 1 ]; then
+		echo "    gwevents_to_es has too many copies running:"
+		list_pids ${gwevents_to_esPIDs[@]}
+		Status=2
+	fi
+	if [ $have_perfdata_scanner -ne 0 -a ${#PerfdataScannerPIDs[@]} -gt 1 ]; then
+		echo "    perfdata_scanner has too many copies running:"
+		list_pids ${PerfdataScannerPIDs[@]}
+		Status=2
+	fi
+	if [ $have_gdma_spooler -ne 0 -a ${#GDMAPIDs[@]} -gt 1 ]; then
+		echo "    gdma_spool_processor has too many copies running:"
+		list_pids ${GDMAPIDs[@]}
+		Status=2
+	fi
+	if [ $have_ganglia_check -ne 0 -a ${#GangliaCheckPIDs[@]} -gt 1 ]; then
+		echo "    check_ganglia has too many copies running:"
+		list_pids ${GangliaCheckPIDs[@]}
+		Status=2
+	fi
+
+	# Now, a further refinement.  In this part of the probing, we set Status to:
+	# (Status == 0) => no processes are running
+	# (Status == 1) => all processes are running as expected
+	# (Status == 2) => out of kilter -- either too many, or a mixture of some running and some not
+	if [ $Status -eq 0 ]; then
+		if [ ${#JBossPortalPlatformPIDs[@]} -ne 0 ]; then
+			# NOTE:  This message may be misleading.  All it says is that the process is up.
+			# It says nothing about whether all of the *.ear or *.war files that this process
+			# manages are properly deployed.  We might need to come back here to extend this
+			# script to run further tests at that level, and report with finer granularity.
+			echo "    JBoss Portal Platform is running"
+			Status=2
+		fi
+		if [ $have_standalone_foundation -ne 0 -a ${#JBossFoundationPIDs[@]} -ne 0 ]; then
+			# NOTE:  This message may be misleading.  All it says is that the process is up.
+			# It says nothing about whether all of the *.ear or *.war files that this process
+			# manages are properly deployed.  We might need to come back here to extend this
+			# script to run further tests at that level, and report with finer granularity.
+			echo "    Standalone Foundation is running"
+			Status=2
+		fi
+		if [ ${#JOSSOPIDs[@]} -ne 0 ]; then
+			echo "    JOSSO server is running"
+			Status=2
+		fi
+		if [ ${#SvscanPIDs[@]} -ne 0 ]; then
+			echo "    svscan is running"
+			Status=2
+		fi
+		if [ ${#DumblogPIDs[@]} -ne 0 ]; then
+			echo "    dumblogs are running"
+			Status=2
+		fi
+		if [ ${#SupervisePortalPIDs[@]} -ne 0 ]; then
+			echo "    supervise for JBoss Portal Platform is running"
+			Status=2
+		fi
+		if [ $have_standalone_foundation -ne 0 -a ${#SuperviseFoundationPIDs[@]} -ne 0 ]; then
+			echo "    supervise for Standalone Foundation is running"
+			Status=2
+		fi
+		# FIX MINOR:  get this count correct, as there may be several different feeders
+		if [ ${#SuperviseFeederPIDs[@]} -ne 0 ]; then
+			echo "    Feeders are running"
+			Status=2
+		fi
+		if [ ${#SuperviseNotificationPIDs[@]} -ne 0 ]; then
+			echo "    Notifications are running"
+			Status=2
+		fi
+		# FIX MINOR:  get this count correct, as there may be several different scanners
+		if [ $have_scanners -ne 0 -a ${#SuperviseScannerPIDs[@]} -ne 0 ]; then
+			echo "    Scanners are running"
+			Status=2
+		fi
+		if [ $have_spoolers -ne 0 -a ${#SuperviseSpoolerPIDs[@]} -ne 0 ]; then
+			echo "    Spoolers are running"
+			Status=2
+		fi
+		if [ ${#StatusPIDs[@]} -ne 0 ]; then
+			echo "    nagios2collage_socket is running"
+			Status=2
+		fi
+		if [ ${#EventPIDs[@]} -ne 0 ]; then
+			echo "    nagios2collage_eventlog is running"
+			Status=2
+		fi
+		if [ ${#FpingPIDs[@]} -ne 0 ]; then
+			echo "    fping_process is running"
+			Status=2
+		fi
+		if [ ${#CactiFeederPIDs[@]} -ne 0 ]; then
+			echo "    cacti_feeder is running"
+			Status=2
+		fi
+		if [ $have_nedi_feeder -ne 0 -a ${#NeDiFeederPIDs[@]} -ne 0 ]; then
+			echo "    nedi_feeder is running"
+			Status=2
+		fi
+		if [ $have_logbridge_feeder -ne 0 -a ${#LogBridgeFeederPIDs[@]} -ne 0 ]; then
+			echo "    logbridge_feeder is running"
+			Status=2
+		fi
+		if [ $have_scom_feeder -ne 0 -a ${#SCOMFeederPIDs[@]} -ne 0 ]; then
+			echo "    scom_feeder is running"
+			Status=2
+		fi
+		if [ $have_gwevents_to_es -ne 0 -a ${#gwevents_to_esPIDs[@]} -ne 0 ]; then
+			echo "    gwevents_to_es is running"
+			Status=2
+		fi
+		if [ $have_perfdata_scanner -ne 0 -a ${#PerfdataScannerPIDs[@]} -ne 0 ]; then
+			echo "    perfdata_scanner is running"
+			Status=2
+		fi
+		if [ $have_gdma_spooler -ne 0 -a ${#GDMAPIDs[@]} -ne 0 ]; then
+			echo "    gdma_spool_processor is running"
+			Status=2
+		fi
+		if [ $have_ganglia_check -ne 0 -a ${#GangliaCheckPIDs[@]} -ne 0 ]; then
+			echo "    check_ganglia is running"
+			Status=2
+		fi
+	fi
+
+	# Establish the return value:
+	# 0 => everything is up
+	# 1 => everything is down
+	# 2 => out of kilter
+	if [ $Status == 1 ]; then
+		return 0
+	elif [ $Status == 0 ]; then
+		return 1
+	fi
+	return 2
+}
+
+killproc_gwservices ()
+{
+	if [ $SHOW_FULL_PROCESSES -gt 0 ]; then
+		# This section is here only for development debugging, to show all the data before we go
+		# stopping processes, so later on we can know for sure the meanings of various process IDs
+		# if parent processes are gone and the command arguments themselves are insufficient to
+		# uniquely identify a given instance of a replicated process like "dumblog main/log".
+		SupervisePIDs=( `ps -w -w -o pid,args --no-headers -C supervise | egrep $supervise_category | awk '{print $1}'` )
+		if [ ${#SupervisePIDs[@]} -ne 0 ]; then
+			echo ""
+			echo "Full set of supervise process(es) before shutting down:"
+			list_pids ${SupervisePIDs[@]}
+		fi
+		DumblogPIDs=( `ps -w -w -o pid,args --no-headers -C dumblog | awk '{print $1}'` )
+		if [ ${#DumblogPIDs[@]} -ne 0 ]; then
+			echo ""
+			echo "Full set of dumblog process(es) before shutting down:"
+			list_pids ${DumblogPIDs[@]}
+		fi
+	fi
+
+	# First we kill the "svscan" process(es), to prevent "supervise" processes from being restarted when we shut them down.
+	SvscanPIDs=( `ps -w -w -o pid,args --no-headers -C svscan | awk '{print $1}'` )
+	if [ ${#SvscanPIDs[@]} -ne 0 ]; then
+		kill -TERM ${SvscanPIDs[@]} >/dev/null 2>&1
+	fi
+
+	# Next, allow a bit of time for svscan to shut down, and if that doesn't happen, then
+	# make sure that "svscan" is down, so it doesn't interfere with the following actions.
+	for i in `seq 10`
+	do
+		sleep 2
+		SvscanPIDs=( `ps -w -w -o pid,args --no-headers -C svscan | awk '{print $1}'` )
+		if [ ${#SvscanPIDs[@]} -eq 0 ]; then
+			break
+		fi
+	done
+	if [ ${#SvscanPIDs[@]} -ne 0 ]; then
+		# Let's stop kidding around; maybe the process is completely stuck ...
+		echo ""
+		echo -n "Sending SIGKILL to svscan process(es):"
+		list_pids ${SvscanPIDs[@]}
+		kill -KILL ${SvscanPIDs[@]} >/dev/null 2>&1
+		# Give up the processor for (probably) long enough for the kill to take effect.
+		sleep 2
+	fi
+
+	# Next, we politely ask each "supervise" process to shut down its managed service (-d), which will send
+	# SIGTERM followed by SIGCONT to the child process; and then we ask that "supervise" shut itself down (-x).
+	find "/usr/local/groundwork/core/services" -mindepth 1 -maxdepth 2 -type d -name '[^.]*' \
+		\( \! -path "/usr/local/groundwork/core/services/*/*" -o -name 'log' \) \
+		-print0 | xargs -0 /usr/local/groundwork/common/bin/svc -d -x > /dev/null 2>&1
+
+	# Next, allow a bit of time for the "supervise" processes to shut down on their own.
+	for i in `seq 10`
+	do
+		sleep 2
+		SupervisePIDs=( `ps -w -w -o pid,args --no-headers -C supervise | egrep $supervise_category | awk '{print $1}'` )
+		if [ ${#SupervisePIDs[@]} -eq 0 ]; then
+			break
+		elif [ $SHOW_SLOW_PROCESSES -gt 0 ]; then
+			echo ""
+			echo "Waiting for supervise process(es) to shut down:"
+			list_pids ${SupervisePIDs[@]}
+		fi
+	done
+
+	# If they didn't stop on their own, kill all remaining supervise processes.
+	# Note that this kind of signaling is inherently dangerous -- we may be killing some PID which
+	# has already been re-used by some other process between the time we probed to find the PID and
+	# the time we issue the kill, if supervise did in fact shut down cleanly as requested.
+	#
+	# If we have to kill some copy of "supervise", most likely it's because the managed child process
+	# (typically a "dumblog main/log" instance) didn't die either.  But we're not taking any steps
+	# here to shut it down, unless it is a dumblog process (see the subsequent paragraph of code).
+	# That's partly why we're listing the supervise PIDs, to give some clue as to which copies of
+	# supervise (and their child services) might be so affected.
+	if [ ${#SupervisePIDs[@]} -ne 0 ]; then
+		# Let's stop kidding around; maybe the process is completely stuck ...
+		echo ""
+		echo "Sending SIGTERM to supervise process(es):"
+		list_pids ${SupervisePIDs[@]}
+		kill -TERM ${SupervisePIDs[@]} >/dev/null 2>&1
+	fi
+
+	# Let's look for check_ganglia.pl stragglers, as well.
+	CheckGangliaPIDs=( `ps -w -w -o pid,ppid,user,args --no-headers -C .perl.bin | awk '/check_ganglia.pl/ && $2 == 1 && $3 eq nagios {print $1}'` )
+	if [ ${#CheckGangliaPIDs[@]} -ne 0 ]; then
+		# Let's stop kidding around; maybe the process is completely stuck ...
+		echo ""
+		echo "Sending SIGTERM to orphaned check_ganglia process(es):"
+		list_pids ${CheckGangliaPIDs[@]}
+		kill -TERM ${CheckGangliaPIDs[@]} >/dev/null 2>&1
+	fi
+
+	# Kill all dumblog processes, if there are any left.  There shouldn't be, as they
+	# should have been shut down along with their parent supervise processes.  But an
+	# infinite loop inside dumblog might be triggered by a race condition between its
+	# own shutdown processing (begun when it sees an error or EOF on stdin) and its
+	# handling of the SIGTERM signal (possibly even the SIGTERM we send here), so we
+	# need to take extra measures here to handle that condition.
+	DumblogPIDs=( `ps -w -w -o pid,args --no-headers -C dumblog | awk '{print $1}'` )
+	if [ ${#DumblogPIDs[@]} -ne 0 ]; then
+		echo ""
+		echo "Sending SIGTERM to dumblog process(es):"
+		list_pids ${DumblogPIDs[@]}
+		kill -TERM ${DumblogPIDs[@]} >/dev/null 2>&1
+
+		# Allow a bit of time for the "dumblog" processes to shut down on their own,
+		# although if we got this far, it's probably fruitless to perform this wait
+		# since the dumblog process is likely stuck in a slow infinite loop.
+		sleep 3
+
+		# In our current code (e.g., GWMEE 7.1.0), the dumblog processes are compiled using a version of
+		# the freedt package that apparently has a bug, wherein a dumblog process may get stuck on the way
+		# down (GWMON-11322).  The only way to deal with any recalcitrant processes is to be less polite.
+		DumblogPIDs=( `ps -w -w -o pid,args --no-headers -C dumblog | awk '{print $1}'` )
+		if [ ${#DumblogPIDs[@]} -ne 0 ]; then
+			# When a dumblog process is hung, we often saw in earlier testing that its parent supervise
+			# process was also still hanging around.  But it should have been sensed and killed earlier
+			# with a SIGTERM.  Let's log what is going on at this point with the dumblog's parent
+			# process, to see whether it still exists and compare that with our earlier probing.
+			# (Later testing shows this hasn't been a problem in the rare situations when we get this
+			# far, so we don't take further action to kill any remaining supervise processes here.)
+			SupervisePIDs=( `ps -w -w -o pid,args --no-headers -C supervise | egrep $supervise_category | awk '{print $1}'` )
+			if [ ${#SupervisePIDs[@]} -ne 0 ]; then
+				echo ""
+				echo "Still waiting for supervise process(es) to shut down:"
+				list_pids ${SupervisePIDs[@]}
+			fi
+
+			echo ""
+			echo "Sending SIGKILL to dumblog process(es):"
+			list_pids ${DumblogPIDs[@]}
+			kill -KILL ${DumblogPIDs[@]} >/dev/null 2>&1
+		fi
+	fi
+
+	# Stop the JOSSO server.
+	$GW_HOME/foundation/container/josso-1.8.4/bin/catalina.sh stop > /dev/null 2>&1
+	sleep 5
+    
+	# Make sure the JOSSO server is gone.
+	JOSSOPIDs=( `ps -w -w -o pid,args --no-headers -C java | fgrep josso- | fgrep catalina | awk '{print $1}'` )
+	if [ ${#JOSSOPIDs[@]} -ne 0 ]; then
+		kill -TERM ${JOSSOPIDs[@]} >/dev/null 2>&1
+		sleep 5
+		# Let's stop kidding around; maybe the process is completely stuck ...
+		JOSSOPIDs=( `ps -w -w -o pid,args --no-headers -C java | fgrep josso- | fgrep catalina | awk '{print $1}'` )
+		if [ ${#JOSSOPIDs[@]} -ne 0 ]; then
+			kill -KILL ${JOSSOPIDs[@]} >/dev/null 2>&1
+			# Give up the processor for (probably) long enough for the kill to take effect.
+			sleep 2
+		fi
+	fi
+
+	# In theory, dealing with shutdown of the Java processes themselves should have
+	# effectively been done above, when we asked all the "supervise" processes to shut down.
+	# That action should have sent a signal to the standalone.sh scripting, which should
+	# have passed that signal along to the Java processes.  (Whether that is a clean way to
+	# shut down or not is not under discussion here.)  But for whatever reason, that doesn't
+	# happen, so we need to explicitly call for shutdown in the recommended, safe manner.
+
+	# First, we make sure that JAVA_HOME is set correctly to run the jboss-cli.sh script.
+	source /usr/local/groundwork/scripts/setenv.sh
+
+	# Shut down the JBoss Portal Platform instance of JBoss AS.
+	cli_lines=`/usr/local/groundwork/foundation/container/jpp/bin/jboss-cli.sh --commands='connect,/host=:shutdown'`
+	# We should get back the following if the program connected and ran:
+	#     {"outcome" => "success"}
+	# but we don't bother to check, since all we really care about is how long it takes to shut down the actual java process.
+
+	for i in `seq 10`
+	do
+		JBossPortalPlatformPIDs=( `ps -w -w -o pid,args --no-headers -C java | fgrep jpp/standalone | awk '{print $1}'` )
+		if [ ${#JBossPortalPlatformPIDs[@]} -ne 0 ]; then
+			# echo "Sleeping while waiting for Java Portal Platform processes to stop: " ${JBossPortalPlatformPIDs[@]}
+			sleep 5
+		else
+			break
+		fi
+	done
+
+	# Make sure the thread is gone ...
+	# GWMON-5240
+	JBossPortalPlatformPIDs=( `ps -w -w -o pid,args --no-headers -C java | fgrep jpp/standalone | awk '{print $1}'` )
+	if [ ${#JBossPortalPlatformPIDs[@]} -ne 0 ]; then
+		# echo "Sending SIGTERM to Java Portal Platform processes: " ${JBossPortalPlatformPIDs[@]}
+		kill -TERM ${JBossPortalPlatformPIDs[@]} >/dev/null 2>&1
+		sleep 5
+		# Let's stop kidding around; maybe the process is completely stuck ...
+		JBossPortalPlatformPIDs=( `ps -w -w -o pid,args --no-headers -C java | fgrep jpp/standalone | awk '{print $1}'` )
+		if [ ${#JBossPortalPlatformPIDs[@]} -ne 0 ]; then
+			# echo "Sending SIGKILL to Java Portal Platform processes: " ${JBossPortalPlatformPIDs[@]}
+			kill -KILL ${JBossPortalPlatformPIDs[@]} >/dev/null 2>&1
+			# Give up the processor for (probably) long enough for the kill to take effect.
+			sleep 2
+		fi
+	fi
+
+	# Do something about a possible standalone Foundation as well.
+	if [ $have_standalone_foundation -ne 0 ]; then
+		# Shut down the Standalone Foundation instance of JBoss AS.
+		cli_lines=`/usr/local/groundwork/foundation/container/jpp2/bin/jboss-cli.sh --commands='connect,/host=:shutdown'`
+		# We should get back the following if the program connected and ran:
+		#     {"outcome" => "success"}
+		# but we don't bother to check, since all we really care about is how long it takes to shut down the actual java process.
+
+		for i in `seq 10`
+		do
+			JBossFoundationPIDs=( `ps -w -w -o pid,args --no-headers -C java | fgrep jpp2/standalone | awk '{print $1}'` )
+			if [ ${#JBossFoundationPIDs[@]} -ne 0 ]; then
+				# echo "Sleeping while waiting for Standalone Foundation processes to stop: " ${JBossFoundationPIDs[@]}
+				sleep 5
+			else
+				break
+			fi
+		done
+
+		# Make sure the thread is gone ...
+		# GWMON-5240
+		JBossFoundationPIDs=( `ps -w -w -o pid,args --no-headers -C java | fgrep jpp2/standalone | awk '{print $1}'` )
+		if [ ${#JBossFoundationPIDs[@]} -ne 0 ]; then
+			# echo "Sending SIGTERM to Standalone Foundation processes: " ${JBossFoundationPIDs[@]}
+			kill -TERM ${JBossFoundationPIDs[@]} >/dev/null 2>&1
+			sleep 5
+			# Let's stop kidding around; maybe the process is completely stuck ...
+			JBossFoundationPIDs=( `ps -w -w -o pid,args --no-headers -C java | fgrep jpp2/standalone | awk '{print $1}'` )
+			if [ ${#JBossFoundationPIDs[@]} -ne 0 ]; then
+				# echo "Sending SIGKILL to Standalone Foundation processes: " ${JBossFoundationPIDs[@]}
+				kill -KILL ${JBossFoundationPIDs[@]} >/dev/null 2>&1
+				# Give up the processor for (probably) long enough for the kill to take effect.
+				sleep 2
+			fi
+		fi
+	fi
+
+	# After shutting down the portal applications and the portal, clean up the critical marker
+	# files in the JBoss Portal Platform instance that we need to ensure will not be sitting
+	# around when the portal starts up again, so the portal does not immediately try to start
+	# those applications.  (We don't bother to do the same for a Standalone Foundation instance
+	# of JBoss AS, because apparently the order in which its configured war-files start does not
+	# matter.)  This action should effectively be redundant, since for robustness against other
+	# failures, we always do such cleanup inside the supervise run script right before starting
+	# the Java process.  However, it doesn't hurt to be doubly sure that we keep things clean.
+	#
+	# We have now commented out this action, as being redundant now that full management
+	# of the deployment marker files is moved to the standalone.sh script of the JPP
+	# instance that requires the marker files to be manually managed.
+	## /usr/local/groundwork/foundation/feeder/check-listener.pl -r localhost 4913
+}
+
+# These terminal escape sequences really ought to be derived from tput,
+# not hardcoded here.  These seem to be the standard xterm control sequences.
+# The bold settings select White first as a backup, then the desired color.
+bold_green='\e[1;37;32m'
+bold_red='\e[1;37;31m'
+def_attr='\e[0m'
+col61='\e[61G'
+col63='\e[63G'
+
+# Initial comments about what each case is supposed to do are drawn from:
+# http://refspecs.freestandards.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/iniscrptact.html
+case "$1" in
+    (start)
+	# start the service
+	echo -n "Checking for GroundWork Services:"
+	status_gwservices
+	status=$?
+	if [ $status -eq 0 ]; then
+		echo "GroundWork Services are already running, as these PIDs:"
+		echo svscan ${SvscanPIDs[@]}
+		echo dumblog ${DumblogPIDs[@]}
+		echo supervise ${SupervisePortalPIDs[@]} ${SuperviseFoundationPIDs[@]} ${SuperviseFeederPIDs[@]} ${SuperviseNotificationPIDs[@]} ${SuperviseScannerPIDs[@]} ${SuperviseSpoolerPIDs[@]}
+		echo nagios2collage_socket ${StatusPIDs[@]}
+		echo nagios2collage_eventlog ${EventPIDs[@]}
+		echo fping_process ${FpingPIDs[@]}
+		echo cacti_feeder ${CactiFeederPIDs[@]}
+		if [ $have_nedi_feeder -ne 0 ]; then
+			echo nedi_feeder ${NeDiFeederPIDs[@]}
+		fi
+		if [ $have_logbridge_feeder -ne 0 ]; then
+			echo logbridge_feeder ${LogBridgeFeederPIDs[@]}
+		fi
+		if [ $have_scom_feeder -ne 0 ]; then
+			echo scom_feeder ${SCOMFeederPIDs[@]}
+		fi
+		if [ $have_gwevents_to_es -ne 0 ]; then
+			echo gwevents_to_es ${gwevents_to_esPIDs[@]}
+		fi
+		if [ $have_perfdata_scanner -ne 0 ]; then
+			echo perfdata_scanner ${PerfdataScannerPIDs[@]}
+		fi
+		if [ $have_gdma_spooler -ne 0 ]; then
+			echo gdma_spool_processor ${GDMAPIDs[@]}
+		fi
+		if [ $have_ganglia_check -ne 0 ]; then
+			echo check_ganglia ${GangliaCheckPIDs[@]}
+		fi
+		echo jboss-portal-platform ${JBossPortalPlatformPIDs[@]}
+		if [ $have_standalone_foundation -ne 0 ]; then
+			echo standalone-foundation ${JBossFoundationPIDs[@]}
+		fi
+		echo JOSSO ${JOSSOPIDs[@]}
+	else
+		echo "Starting GroundWork Services:"
+		/bin/rm -rf /usr/local/groundwork/tmp/*
+
+		# Before we start svscan, which indirectly starts Foundation and the portal, we
+		# must clean up any portal application marker files left over from previous runs,
+		# so the portal does not immediately try to start those applications.  That's
+		# because sequencing their startup order is important for proper functioning.
+		#
+		# We have now commented out this action, as being redundant now that full management
+		# of the deployment marker files is moved to the standalone.sh script of the JPP
+		# instance that requires the marker files to be manually managed.
+		## /usr/local/groundwork/foundation/feeder/check-listener.pl -r localhost 4913
+
+		# Start svscan, which runs supervise, which runs the portal and a variety of other services.
+		exec /usr/local/groundwork/common/bin/svscan /usr/local/groundwork/core/services >/dev/null 2>&1 &
+
+		# Start the JOSSO server.
+		$GW_HOME/common/bin/setuidgid nagios $GW_HOME/foundation/container/josso-1.8.4/bin/catalina.sh start > /dev/null 2>&1
+
+		# Wait until all the applications in Foundation and the portal are up and running.
+		/usr/local/groundwork/foundation/feeder/check-listener.pl -w localhost 4913
+		if [ $? -eq 0 ]; then
+			echo -n "GroundWork Services start "
+			echo -e "${def_attr}${col61}[ ${col63}${bold_green}  OK  ${def_attr} ]"
+		else
+			echo -n "GroundWork Services start failed "
+			echo -e "${def_attr}${col61}[ ${col63}${bold_red}FAILED${def_attr} ]"
+		fi
+	fi
+	;;
+    (stop)
+	# stop the service
+	echo -n "Stopping GroundWork Services: "
+	killproc_gwservices
+	# Here, the reported status should be OK if everything is down,
+	# and FAILED if some processes remain up.
+	details=`status_gwservices`
+	if [ $? -eq 1 ]; then
+		echo -e "${def_attr}${col61}[ ${col63}${bold_green}  OK  ${def_attr} ]"
+	else
+		echo "$details"
+		echo -e "${def_attr}${col61}[ ${col63}${bold_red}FAILED${def_attr} ]"
+	fi
+	;;
+    (try-restart)
+	# restart the service if the service is already running
+	echo -n "Checking for GroundWork Services:"
+	status_gwservices
+	status=$?
+	if [ $status -eq 0 ]; then
+		$0 stop
+		$0 start
+	fi
+	;;
+    (restart)
+	# stop and restart the service if the service is already running, otherwise start the service
+	$0 stop
+	$0 start
+	;;
+    (force-reload)
+	# cause the configuration to be reloaded if the service supports this, otherwise restart the service if it is running
+	$0 try-restart
+	;;
+    (reload)
+	# cause the configuration of the service to be reloaded without actually stopping and restarting the service
+	#
+	# We haven't looked in detail to see how to reload the configuration of each of
+	# the individual services without a restart, so we take the easy way out here
+	# and just clumsily simulate the desired behavior.  (This is an optional action
+	# for an init script, anyway.)
+	$0 stop
+	$0 start
+	;;
+    (status)
+	# print the current status of the service
+	echo -n "Checking for GroundWork Services:"
+	status_gwservices
+	status=$?
+	echo -n "GroundWork Services: "
+	if [ $status -eq 0 ]; then
+		echo -e "${def_attr}${col61}[ ${col63}${bold_green}running${def_attr} ]"
+	elif [ $status -eq 1 ]; then
+		echo -e "${def_attr}${col61}[ ${col63}${bold_red}dead${def_attr} ]"
+	else
+		echo -e "${def_attr}${col61}[ ${col63}${bold_red}broken${def_attr} ]"
+	fi
+	;;
+    (*)
+	echo "Usage: gwservices {start|stop|restart|reload|status}"
+	exit 1
+	;;
+esac

@@ -1,0 +1,23 @@
+--- nedi/html/inc/libdb-pg.php.orig	2018-05-05 06:07:21.000000000 -0700
++++ nedi/html/inc/libdb-pg.php	2018-05-17 15:49:21.054848679 -0700
+@@ -62,6 +62,20 @@
+ 	}
+ }
+ 
++# We might get 'table.column' sent to this function, not just a bare column name.
++#
++# Do not further quote the result of this function.
++function DbEscapeIdentifier($l,$i){
++	# We actually want:
++	#     return pg_escape_identifier($l,$i);
++	# or perhaps some similar code that also invokes implode() and
++	# array_map(), but pg_escape_identifier() is not available in PHP
++	# 5.2.17.  So we have to settle for the following approximation.
++	$c = explode(".", $i);
++	$a = array_fill(0, count($c), $l);
++	return '"' . implode('"."', array_map(pg_escape_string, $a, $c)) . '"';
++}
++
+ function DbError($r){
+ 	return pg_last_error($r);
+ }

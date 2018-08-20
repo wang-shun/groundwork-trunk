@@ -1,0 +1,20 @@
+#!/bin/bash
+stat=$2
+number=0
+state="OK"
+case "$stat" in 
+ "0" ) state="OK"
+;;
+ "1" ) state="Warning"
+;;
+ "2" ) state="Critical"
+;;
+ * ) state="Unknown"
+;;
+esac
+
+start=$1
+now=`date +%s`
+let "delta=$now-$start"
+echo "$state $stat | time=$delta"
+exit $stat

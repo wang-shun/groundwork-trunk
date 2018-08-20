@@ -1,0 +1,14 @@
+--- utilities.php.orig	2009-11-05 11:26:19.000000000 -0800
++++ utilities.php	2009-11-05 11:27:31.000000000 -0800
+@@ -25,6 +25,11 @@
+ include("./include/auth.php");
+ include_once("./lib/utility.php");
+ 
++if ( strlen( $_SESSION['GWRK_USER']) == 0 ) {
++        print "<br><br><center><font color=red>You do not have permission to access this page. Please log in first</font></color>";
++        exit;
++}
++
+ load_current_session_value("page_referrer", "page_referrer", "");
+ 
+ /* set default action */

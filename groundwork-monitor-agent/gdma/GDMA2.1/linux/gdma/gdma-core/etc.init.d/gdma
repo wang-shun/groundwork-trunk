@@ -1,0 +1,191 @@
+#!/bin/sh
+#
+# Linux version of GDMA start/stop script.
+# Installed as:
+#	/usr/local/groundwork/ctlscript.sh
+# Called from this script:
+#	/etc/rc.d/init.d/gdma
+#
+# Starts and stops the GroundWork Monitor Distributed Agent (GDMA) daemons.
+#
+# chkconfig: 345 44 56
+# description: run GroundWork checks on an interval of seconds with results sent to GroundWork
+# processname: gdma
+#
+# Copyright (c) 2011 GroundWork Open Source, Inc.  ("GroundWork").
+# All rights reserved.
+
+debug=
+# Uncomment this next line to turn on simple debug logging.
+# debug=-d1
+# Uncomment this next line to turn on full debug logging.
+# debug=-d2
+
+user=gdma
+PERL_PATH=/usr/local/groundwork/perl/bin/perl
+POLLER_PATH=/usr/local/groundwork/gdma/bin/gdma_poll.pl
+SPOOLER_PATH=/usr/local/groundwork/gdma/bin/gdma_spool_processor.pl
+unset ENV
+unset BASH_ENV
+
+run_poller=" $PERL_PATH $POLLER_PATH  $debug"
+run_spooler="$PERL_PATH $SPOOLER_PATH $debug"
+
+#
+#	Utility Functions.
+#
+
+status_poller() {
+    pids=`ps -o pid,args --no-headers -C .perl.bin | fgrep $POLLER_PATH | awk '{print $1}'`
+    if [ -n "$pids" ]; then
+	return 0
+    else
+	return 1
+    fi
+}
+
+status_spooler() {
+    pids=`ps -o pid,args --no-headers -C .perl.bin | fgrep $SPOOLER_PATH | awk '{print $1}'`
+    if [ -n "$pids" ]; then
+	return 0
+    else
+	return 1
+    fi
+}
+
+kill_poller() {
+    pids=`ps -o pid,args --no-headers -C .perl.bin | fgrep $POLLER_PATH | awk '{print $1}'`
+    if [ -n "$pids" ]; then
+	kill $pids >/dev/null 2>&1
+    fi
+}
+
+kill_spooler() {
+    pids=`ps -o pid,args --no-headers -C .perl.bin | fgrep $SPOOLER_PATH | awk '{print $1}'`
+    if [ -n "$pids" ]; then
+	kill $pids >/dev/null 2>&1
+    fi
+}
+
+start_gdma() {
+    # Check if it is already running
+    status_poller
+    if [ $? -eq 0 ]; then
+	echo "Poller Already Running"
+    else
+	echo "Starting Poller"
+	su - $user -c "cd /; $run_poller &" < /dev/null > /dev/null 2>&1
+	sleep 4
+	status_poller
+	if [ $? -eq 0 ]; then
+	    echo "Poller Started"
+	else
+	    echo "Poller Not Started"
+	fi
+    fi
+
+    status_spooler
+    if [ $? -eq 0 ]; then
+	echo "Spooler Already Running"
+    else
+	echo "Starting Spooler"
+	su - $user -c "cd /; $run_spooler &" < /dev/null > /dev/null 2>&1
+	sleep 4
+	status_spooler
+	if [ $? -eq 0 ]; then
+	    echo "Spooler Started"
+	else
+	    echo "Spooler Not Started"
+	fi
+    fi
+}
+
+# Under Ubuntu, /bin/sh is really a symlink to dash, and "stop" acts
+# as though it were a shell built-in, taking precedence over a function
+# definition.  So we have to use a different name for this function.
+stop_gdma() {
+    status_poller
+    if [ $? -eq 0 ]; then
+	echo "Stopping poller daemon"
+	kill_poller
+    else
+	echo "Poller is Not Running"
+    fi
+
+    status_spooler
+    if [ $? -eq 0 ]; then
+	echo "Stopping spooler daemon"
+	kill_spooler
+    else
+	echo "Spooler is Not Running"
+    fi
+}
+
+restart_gdma() {
+    stop_gdma
+    # Give the daemon time to quit before starting up again, or we'll see the old copy before it
+    # shuts down and conclude we don't need to start it up again.  We cannot just sleep for some
+    # fixed interval, as that is not a reliable way to ensure the daemon went down.
+    i=1
+    max_checks=6
+    while [ $i -le $max_checks ]; do 
+	if status_poller || status_spooler; then
+	    if [ $i -lt $max_checks ]; then 
+		echo "The GDMA daemons have not shut down yet; will wait ..."
+		sleep 2
+	    else
+		echo "The GDMA daemons have not shut down yet."
+	    fi
+	else
+	    start_gdma
+	    return $?
+	fi
+	i=`expr $i + 1` 
+    done    
+    echo "Failed to shut down and start up the GDMA daemons."
+    return 1
+}
+
+#
+#	See how we were called, and execute the appropriate action.
+#
+
+case "$1" in
+    start)
+	start_gdma
+	;;
+    stop)
+	stop_gdma
+	;;
+    restart)
+	restart_gdma
+	;;
+    condrestart)
+	# FIX LATER: not yet implemented
+	status_gdma
+	if [ $? -eq 0 ]; then
+	    restart_gdma
+	fi
+	;;
+    status)
+	status_poller
+	if [ $? -eq 0 ]; then
+	    echo "Poller is Running"
+	else
+	    echo "Poller is Not Running"
+	fi
+
+	status_spooler
+	if [ $? -eq 0 ]; then
+	    echo "Spooler is Running"
+	else
+	    echo "Spooler is Not Running"
+	fi
+	;;
+    *)
+	echo "Usage: $0 {start|stop|status|restart|condrestart}"
+	exit 1
+	;;
+esac
+exit 0
+

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+   Copyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+   All rights reserved. Use is subject to GroundWork commercial license terms.
+-->
+
+<project xmlns:ant="jelly:ant"
+         xmlns:j="jelly:core">
+  <goal name="undeploy">
+    <!-- remove deployed war file and configuration -->
+    <delete
+       file="${portal.apps.deploy.root}/${pom.artifactId}.war"/>
+  </goal>
+  
+  <goal name="war">
+    <!--  HACK: the WAR plugin in Maven 1.0.2 does not support resources 
+	  declared outside of the webapp directory, so we have to copy them
+	  in manually -->
+    <ant:copy
+       todir="${maven.war.webapp.dir}"
+       verbose="true">
+      <fileset dir="src/main/resources" excludes="config/**"/>
+    </ant:copy>
+    <attainGoal name="war:war"/>
+  </goal>
+  
+  <goal name="deploy" prereqs="war">
+    <mkdir dir="${portal.apps.deploy.root}"/>
+    <ant:copy 
+       file="${maven.build.dir}/${pom.artifactId}.war"
+       todir="${portal.apps.deploy.root}"
+       verbose="true"/>
+  </goal>
+</project>

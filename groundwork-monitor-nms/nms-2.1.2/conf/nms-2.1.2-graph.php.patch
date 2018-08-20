@@ -1,0 +1,16 @@
+*** graph.php.orig	2009-11-03 17:01:27.000000000 -0800
+--- graph.php	2009-11-03 16:42:23.000000000 -0800
+***************
+*** 38,43 ****
+--- 38,48 ----
+  input_validate_input_regex(get_request_var_request("view_type"), "^([a-zA-Z0-9]+)$");
+  /* ==================================================== */
+  
++ if ( strlen( $_SESSION['GWRK_USER']) == 0 ) {
++         print "<br><br><center><font color=red>You do not have permission to access this page. Please log in first</font></color>";
++         exit;
++ }
++ 
+  if (!isset($_GET['rra_id'])) {
+  	$_GET['rra_id'] = 'all';
+  }

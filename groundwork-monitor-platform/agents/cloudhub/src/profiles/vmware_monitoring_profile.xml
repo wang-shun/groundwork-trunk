@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vema-monitoring>
+    <profileType>vmware</profileType>
+    <hypervisor>
+		<metric name="summary.quickStats.overallCpuUsage"        description="Overall Aggregated Hypervisor CPU Usage across all cores on the host in MHz" monitored="false"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+		<metric name="summary.quickStats.overallMemoryUsage"     description="Overall Hypervisor Physical Memory Usage in MB" monitored="false"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+		<metric name="summary.quickStats.uptime"                 description="Hypervisor Running up time in seconds" monitored="false" graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+		<metric name="syn.host.cpu.used" computeType="synthetic" description="Hypervisor CPU Usage Percentage" monitored="true"  graphed="true"  warningThreshold="75" criticalThreshold="95" expression="GW:percentageUsed(summary.quickStats.overallCpuUsage,summary.hardware.cpuMhz * summary.hardware.numCpuCores)" format="%d%%"/>
+		<metric name="syn.host.mem.used" computeType="synthetic" description="Hypervisor Memory Usage Percentage" monitored="true"  graphed="true"  warningThreshold="85" criticalThreshold="95" expression="GW:percentageUsed(summary.quickStats.overallMemoryUsage,GW:MB(summary.hardware.memorySize))" format="%d%%"/>
+
+        <metric name="summary.capacity"  sourceType="storage"    description="Total Capacity of Storage Device (bytes)" monitored="false"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.freeSpace" sourceType="storage"    description="Free Space on Storage Device (bytes)" monitored="true"  graphed="true" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.uncommitted" sourceType="storage"  description="Additional Uncommitted Bytes on Storage Device" monitored="true"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="syn.storage.percent.used" sourceType="storage" computeType="synthetic" description="Percent Usage of a Storage Device" monitored="true"  graphed="true" warningThreshold="-1" criticalThreshold="-1" expression="(summary.accessible) ? GW:percentageUnused(summary.freeSpace,summary.capacity) : 0" format="%d%%"/>
+        <metric name="summary.accessible" sourceType="network"   description="At least one host is configured to provide this network" monitored="true"  graphed="false" warningThreshold="0" criticalThreshold="-1" />
+
+    </hypervisor>
+	<vm>
+        <metric name="summary.quickStats.balloonedMemory"        description="VM Ballooned memory in MB" monitored="false"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.quickStats.compressedMemory"       description="VM Compressed memory in KB" monitored="false"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.quickStats.consumedOverheadMemory" description="VM Consumed Memory consumption in MB" monitored="false"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.quickStats.guestMemoryUsage"       description="VM Guest Memory consumption in MB" monitored="false"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.quickStats.hostMemoryUsage"        description="VM Host Memory Usage in MB" monitored="false"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.quickStats.overallCpuDemand"       description="VM Overall CPU Demand in MHz" monitored="false"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.quickStats.overallCpuUsage"        description="VM Overall CPU Usage in MHz" monitored="false"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.quickStats.privateMemory"          description="VM Private Memory Used in MB" monitored="false"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.quickStats.sharedMemory"           description="VM Shared Memory Used in MB" monitored="false"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.quickStats.ssdSwappedMemory"       description="VM SSD Swapped Memory in MB" monitored="false"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.quickStats.swappedMemory"          description="VM Swapped Memory in MB" monitored="false"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.quickStats.uptimeSeconds"          description="VM Up time in seconds" monitored="false" graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+
+        <metric name="summary.runtime.bootTime"                  description="VM Boot time stamp" monitored="false" graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.runtime.connectionState"           description="VM Connection State" monitored="false" graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.runtime.powerState"                description="VM Power State" monitored="false" graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.runtime.maxCpuUsage"               monitored="false" graphed="false" warningThreshold="-1.0" criticalThreshold="-1.0" description="VM Max CPU Usage"/>
+
+        <metric name="summary.storage.committed"                 description="VM Total storage space, in bytes, committed to this virtual machine across all datastores." monitored="false"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="summary.storage.uncommitted"               description="VM Additional storage space, in bytes, used by this virtual machine on all datastores." monitored="false"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+
+        <metric name="syn.vm.storage.committed"                 description="VM Total storage space, in MB, committed to this virtual machine across all datastores." monitored="true"  graphed="true" warningThreshold="-1" criticalThreshold="-1" expression="GW:MB2(summary.storage.committed)" format="%.0f" computeType="synthetic" />
+        <metric name="syn.vm.storage.uncommitted"               description="VM Additional storage space, in MB, used by this virtual machine on all datastores." monitored="true"  graphed="true" warningThreshold="-1" criticalThreshold="-1" expression="GW:MB2(summary.storage.uncommitted)" format="%.0f" computeType="synthetic"/>
+
+        <metric name="syn.vm.mem.balloonToConfigMemSize.used"    description="VM Ballooned Memory Used Percentage" monitored="true"  graphed="true" warningThreshold="50" criticalThreshold="75" expression="GW:percentageUsed(summary.quickStats.balloonedMemory,summary.config.memorySizeMB)" format="%d%%" computeType="synthetic"/>
+        <metric name="syn.vm.mem.compressedToConfigMemSize.used" description="VM Compressed Memory Used Percentage" monitored="true"  graphed="true" warningThreshold="50" criticalThreshold="75" expression="GW:percentageUsed(summary.quickStats.compressedMemory,summary.config.memorySizeMB)" format="%d%%" computeType="synthetic"/>
+        <metric name="syn.vm.mem.sharedToConfigMemSize.used"     description="VM Shared Memory Used Percentage" monitored="true"  graphed="true" warningThreshold="50" criticalThreshold="75" expression="GW:percentageUsed(summary.quickStats.sharedMemory,summary.config.memorySizeMB)" format="%d%%" computeType="synthetic"/>
+        <metric name="syn.vm.mem.swappedToConfigMemSize.used"    description="VM Swapped Memory Used Percentage" monitored="true"  graphed="true" warningThreshold="75" criticalThreshold="90" expression="GW:percentageUsed(summary.quickStats.swappedMemory,summary.config.memorySizeMB)" format="%d%%" computeType="synthetic"/>
+        <metric name="syn.vm.mem.guestToConfigMemSize.used"      description="VM Guest Memory Used Percentage" monitored="true"  graphed="true" warningThreshold="75" criticalThreshold="85" expression="GW:percentageUsed(summary.quickStats.guestMemoryUsage,summary.config.memorySizeMB)" format="%d%%" computeType="synthetic"/>
+        <metric name="syn.vm.cpu.cpuToMax.used"                  description="VM Cpu Usage Percentage" monitored="true"  graphed="true" warningThreshold="75" criticalThreshold="95" expression="GW:percentageUsed(summary.quickStats.overallCpuUsage,summary.runtime.maxCpuUsage)" format="%d%%" computeType="synthetic"/>
+
+        <metric name="snapshots.count"         description="Number of total snapshots per VM" monitored="true"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="snapshots.childCount"    description="Number of child snapshots per VM" monitored="true"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="snapshots.rootCount"     description="Number of root snapshots per VM" monitored="true"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="snapshots.oldestInDays"  description="Oldest snapshot per in days" monitored="true"  graphed="false" warningThreshold="-1" criticalThreshold="-1" />
+
+    </vm>
+    <excludes>
+        <exclude>perfcounter.101</exclude>
+        <exclude>perfcounter.1</exclude>
+        <exclude>perfcounter.15</exclude>
+        <exclude>perfcounter.77</exclude>
+        <exclude>summary.runtime.memoryOverhead</exclude>
+    </excludes>
+</vema-monitoring>

@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<jsp:root version="1.2" xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets"
+	xmlns:c="http://java.sun.com/jstl/core">
+	<jsp:directive.page contentType="text/html;charset=ISO-8859-1"
+		pageEncoding="ISO-8859-1" />
+	<f:view>
+		<ice:outputDeclaration doctypeRoot="HTML"
+			doctypePublic="-//W3C//DTD HTML 4.01 Transitional//EN"
+			doctypeSystem="http://www.w3.org/TR/html4/loose.dtd" />
+		<html>
+		<body>
+		<!-- Seurat view -->
+		<ice:outputDeclaration doctypeRoot="HTML"
+			doctypePublic="-//W3C//DTD HTML 4.01 Transitional//EN"
+			doctypeSystem="http://www.w3.org/TR/html4/loose.dtd" />
+		<ice:portlet>
+			<ui:composition template="/templates/template.xhtml">
+				<ui:define name="content">
+					<f:loadBundle basename="#{localeBean.baseName}" var="message" />
+					<ice:form id="#{seuratHandler.frmId}">
+						<ice:inputHidden id="SVipHiddn"
+							value="#{seuratHandler.hiddenField}"></ice:inputHidden>
+						<!--  error / info message -->
+						<ice:panelGroup rendered="#{seuratHandler.message}"
+							id="SVpanelsGroupError">
+							<ice:panelGroup id="SVcolumnError"
+								rendered="#{seuratHandler.error}">
+								<ui:include src="/jsp/error.jspx">
+									<ui:param name="errorMessage"
+										value="#{seuratHandler.errorMessage}" />
+								</ui:include>
+							</ice:panelGroup>
+							<ice:panelGroup id="SVcolumninfo"
+								rendered="#{seuratHandler.info}">
+								<ui:include src="/jsp/info.jspx">
+									<ui:param name="infoMessage"
+										value="#{seuratHandler.infoMessage}" />
+								</ui:include>
+							</ice:panelGroup>
+							<ice:commandButton id="SVcmdRetryNow"
+								value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+								actionListener="#{seuratHandler.reloadPage}"></ice:commandButton>
+						</ice:panelGroup>
+						<!--  end error message -->
+						<br />
+						<ice:panelGroup id="SVpanelGroupSeuratViewContainer"
+							rendered="#{!seuratHandler.message}">
+							<div id="main">
+							<div id="div-sort" style="padding-bottom: 10px;"><ice:outputText
+								value="#{message['com_groundwork_portal_dashboard_seurat_text_sortBy']}:"
+								id="SPtxtSortBy"></ice:outputText> <ice:selectOneMenu
+								style="min-width:100px;" id="SVselectSort"
+								value="#{seuratHandler.currentSortOption}">
+								<f:selectItems id="SPmenuitemsSortSelect"
+									value="#{seuratHandler.sortingOptions}" />
+							</ice:selectOneMenu> <ice:commandButton id="SPbtnApply"
+								actionListener="#{seuratHandler.sortList}"
+								value="#{message['com_groundwork_portal_dashboard_seurat_button_apply']}"
+								style="border-radius:6px;width:60px;background-color:#FF8000;color:#000000"></ice:commandButton></div>
+							<div id="legendTextBox" class="seuratlegendText"><a
+								href="#" onclick="toggleLegends();"> <ice:graphicImage
+								id="img" value="/images/arrow_down_8x8.gif" style="border:0px"></ice:graphicImage>
+							<span style="padding-left: 4px;" id="seuratTxtShowLegend"
+								class="iceOutTxt">#{message.com_groundwork_portal_dashboard_seurat_text_showlegend}</span>
+							<span style="padding-left: 4px; display: none"
+								id="seuratTxtHideLegend" class="iceOutTxt">#{message.com_groundwork_portal_dashboard_seurat_text_hidelegend}</span>
+							</a></div>
+							<!-- legends -->
+							<div id="div-legends" class="seuratLegendBox"
+								style="display: none;">
+							<div class="LegendBoxOuter"><ice:graphicImage
+								styleClass="LegendBoxLeft" id="SPimgLegendUp1"
+								value="/images/seurat_legend_white.gif"></ice:graphicImage> <ice:outputText
+								styleClass="LegendBoxRight" id="suratPortlet_txtAckHeader"
+								value="#{message.com_groundwork_portal_dashboard_seurat_hostUp}" />
+							</div>
+							<div class="LegendBoxOuter"><ice:graphicImage
+								styleClass="LegendBoxLeft" id="SPimgLegendTroubled125"
+								style="float:left;" value="/images/seurat_legend_yellow_1.gif"></ice:graphicImage>
+							<ice:outputText styleClass="LegendBoxRight"
+								id="suratPortlet_txtServicesTroubled125"
+								value="#{message['com_groundwork_portal_dashboard_seurat_servicesTroubled125']} #{message['com_groundwork_portal_dashboard_seurat_ServicesNotOK']}" />
+							</div>
+							<div class="LegendBoxOuter"><ice:graphicImage
+								styleClass="LegendBoxLeft" id="SPimgLegendServicesTroubled2650"
+								value="/images/seurat_legend_yellow_2.gif"></ice:graphicImage><ice:outputText
+								id="suratPortlet_txtServicesTroubled2650"
+								styleClass="LegendBoxRight"
+								value="#{message['com_groundwork_portal_dashboard_seurat_servicesTroubled2650']} #{message['com_groundwork_portal_dashboard_seurat_ServicesNotOK']}" />
+							</div>
+							<div class="LegendBoxOuter"><ice:graphicImage
+								id="SPimgLegendServicesTroubled5175" styleClass="LegendBoxLeft"
+								value="/images/seurat_legend_yellow_3.gif"></ice:graphicImage><ice:outputText
+								id="suratPortlet_txtServicesTroubled5175"
+								styleClass="LegendBoxRight"
+								value="#{message['com_groundwork_portal_dashboard_seurat_servicesTroubled5175']} #{message['com_groundwork_portal_dashboard_seurat_ServicesNotOK']}" />
+							</div>
+							<div class="LegendBoxOuter"><ice:graphicImage
+								styleClass="LegendBoxLeft" id="SPimgLegendServicesTroubled76100"
+								value="/images/seurat_legend_yellow_4.gif"></ice:graphicImage> <ice:outputText
+								id="suratPortlet_txtServicesTroubled76100"
+								styleClass="LegendBoxRight"
+								value="#{message['com_groundwork_portal_dashboard_seurat_servicesTroubled76100']} #{message['com_groundwork_portal_dashboard_seurat_ServicesNotOK']}" />
+							</div>
+							<div class="LegendBoxOuter"><ice:graphicImage
+								styleClass="LegendBoxLeft" id="SPimgLegendHostDownUnscheduled"
+								value="/images/seurat_legend_red.gif"></ice:graphicImage><ice:outputText
+								id="suratPortlet_txthostDownUnscheduled"
+								styleClass="LegendBoxRight"
+								value="#{message['com_groundwork_portal_dashboard_seurat_hostDownUnscheduled']}" />
+							</div>
+							<div class="LegendBoxOuter"><ice:graphicImage
+								styleClass="LegendBoxLeft"
+								value="/images/seurat_legend_orange.gif"></ice:graphicImage><ice:outputText
+								id="suratPortlet_txthostDownScheduled"
+								styleClass="LegendBoxRight"
+								value="#{message['com_groundwork_portal_dashboard_seurat_hostDownScheduled']}" />
+							</div>
+							<div class="LegendBoxOuter"><ice:graphicImage
+								id="SPimgLegendHostUnreachable" styleClass="LegendBoxLeft"
+								value="/images/seurat_legend_gray.gif"></ice:graphicImage><ice:outputText
+								id="suratPortlet_txtHostUnreachable" styleClass="LegendBoxRight"
+								value="#{message['com_groundwork_portal_dashboard_seurat_hostUnreachable']}" />
+							</div>
+							<div class="LegendBoxOuter"><ice:graphicImage
+								id="SPimgLegendHostPending" styleClass="LegendBoxLeft"
+								value="/images/seurat_legend_blue.gif"></ice:graphicImage><ice:outputText
+								id="suratPortlet_txtHostPending" styleClass="LegendBoxRight"
+								value="#{message['com_groundwork_portal_dashboard_seurat_hostPending']}" />
+							</div>
+							<div class="LegendBoxOuter"><ice:graphicImage
+								styleClass="LegendBoxLeft" id="SPimgLegendHostRecentlyRecovered"
+								value="/images/seurat_legend_green.gif"></ice:graphicImage> <ice:outputText
+								styleClass="LegendBoxRight"
+								id="suratPortlet_txtHostRecentlyRecovered"
+								value="#{message['com_groundwork_portal_dashboard_seurat_hostRecentlyRecovered']}" />
+							</div>
+							<br style="clear: both" />
+							</div>
+							<!-- end legends --> <!-- filler div -->
+							<div id="fillerDiv" style="height: 20px;"></div>
+							<div id="div-info" style="padding-bottom: 5px; margin-left: 4px;">
+							<!-- Total number of hosts --> 
+							<ice:outputText id="SPlabelTotal"
+								value="#{message['com_groundwork_portal_dashboard_seurat_total']} = #{seuratHandler.hostCount}" /> 
+							<br />
+							<!-- Date and time of last update --> 
+							<ice:outputText id="SPlabelLastUpdated"
+								value="#{message['com_groundwork_portal_dashboard_seurat_lastUpdated']}: #{seuratHandler.lastUpdatedDate}" />
+							</div>
+
+							<!-- the seurat grid --> 
+							<!-- GWSeuratViewPnlSrs class for Apple Safari Browser Compatability 
+							View GWFunctions.js initSeurat() function
+							 -->
+							<ice:panelGroup
+								id="seuratPortlet_panelgroupHostGrid">
+								<ice:panelSeries id="seuratPortlet_tblHostGrid"
+									value="#{seuratHandler.hostList}" var="entity" styleClass="GWSeuratViewPnlSrs"
+									style="float:left" >
+									<!-- display hosts-->
+									<!-- Please do not alter tooltip structure -->
+									<ice:panelGroup id="seuratPortlet_panelgroupSeuratHost"
+										title="#{message.com_groundwork_portal_dashboard_seurat_tooltip_HostName}: #{entity.name}"
+										styleClass="seurat_floating_grid sbox">
+										<ice:outputLink id="seuratPortlet_lnkHost"
+											value="#{entity.url}">
+											<ice:graphicImage id="seuratPortlet_imgSeuratHost"
+												rendered="#{entity.anyServiceUnacknowledged or (!entity.acknowledged and !entity.hostInUpOrPendingState)}"
+												title="#{message.com_groundwork_portal_dashboard_seurat_tooltip_HostName}: #{entity.name}"
+												value="#{entity.seuratStatus.blinkIconPath}" />
+											<ice:graphicImage id="seuratPortlet_imgSeuratHost"
+												rendered="#{!entity.anyServiceUnacknowledged and (entity.acknowledged or entity.hostInUpOrPendingState)}"
+												title="#{message.com_groundwork_portal_dashboard_seurat_tooltip_HostName}: #{entity.name}"
+												value="#{entity.seuratStatus.iconPath}" />
+										</ice:outputLink>
+									</ice:panelGroup>
+								</ice:panelSeries>
+							</ice:panelGroup> <br style="clear: both" />
+
+							</div>
+						</ice:panelGroup>
+						<ice:panelPopup id="SPpanelPopupForHost" autoPosition="manual"
+							styleClass="seuratPopup icePnlPopTbl" modal="true"
+							visible="#{seuratHandler.popupVisible}">
+							<f:facet name="header">
+								<div style="width: 400px;"><ice:outputText
+									id="searchTreePortlet_txtTitle"
+									style="float:left;font-weight:bold; padding-top: 5px; padding-left: 5px;"
+									value="#{message['com_groundwork_portal_dashboard_seurat_hostDetails']}"></ice:outputText>
+
+								<div><ice:commandButton id="SPlinkCloseAdd" type="button"
+									image="/css/css-images/popup_modeBtn_close.gif"
+									actionListener="#{seuratHandler.closePopup}"
+									style="float: right; margin-top:2px:"
+									title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+									alt="Close" /></div>
+								</div>
+							</f:facet>
+							<f:facet name="body">
+								<ice:panelGroup id="SPpanelgroupPopupHost">
+									<ice:panelGrid id="SPpanelgridGroupPopup" width="100%"
+										cellpadding="0" cellspacing="0">
+										<br />
+										<ice:panelGroup id="SPpanelgroupPopHeader"
+											style="padding-left: 5px">
+											<ice:graphicImage id="SPimgHostStatus" style="margin:5px;"
+												value="#{seuratHandler.selectedHost.seuratStatus.iconPath}"
+												rendered="#{seuratHandler.selectedHost.seuratStatus.iconPath != null}"></ice:graphicImage>
+											<ice:outputLink id="SPlnkHost"
+												value="#{seuratHandler.selectedHost.url}"
+												onclick="blockNavigation();"
+												rendered="#{!empty seuratHandler.selectedHost.url}">
+												<ice:outputText id="SPtxtHostName"
+													style="font-weight: bold;"
+													value="#{seuratHandler.selectedHost.name}"></ice:outputText>
+											</ice:outputLink>
+											<ice:outputText id="SPtxtHostName"
+												rendered="#{empty seuratHandler.selectedHost.url}"
+												style="font-weight: bold;"
+												value="#{seuratHandler.selectedHost.name}"></ice:outputText>
+
+											<div><ice:commandButton id="SPbtnAckHost"
+												rendered="#{!seuratHandler.selectedHost.acknowledged}"
+												actionListener="#{seuratHandler.showAcknowledgementPopup}"
+												value="#{message['com_groundwork_portal_dashboard_seurat_acknowledgeHost']}"></ice:commandButton>
+											<ice:commandButton id="SPbtnAckAllServices"
+												rendered="#{seuratHandler.ackAllServicesButtonEnabled}"
+												actionListener="#{seuratHandler.showAcknowledgementAllServicesPopup}"
+												value="#{message['com_groundwork_portal_dashboard_seurat_acknowledgeAllServices']}"></ice:commandButton>
+											</div>
+										</ice:panelGroup>
+										<br />
+										<ice:panelGroup id="SPpnlgrpServiceTable"
+											styleClass="iceDatTbl_typB">
+											<ice:dataTable id="SPtblServices" var="service"
+												value="#{seuratHandler.serviceList}" cellspacing="0"
+												sortColumn="#{seuratHandler.sortColumn}" style="width: 100%"
+												rows="6" headerClasses="iceDatTblColHdr1_typB"
+												columnClasses="iceDatTblCol1_typB"
+												rowClasses="iceDatTblRow1_typB iceDatTblRow2_typB">
+												<ice:column id="SPcolumnServiceName" style="width: 40%">
+													<f:facet name="header">
+														<ice:commandSortHeader id="SPsortColHeader"
+															actionListener="#{seuratHandler.sort}" columnName="name"
+															arrow="true">
+															<ice:outputText id="SPtxtServiceNameHeader"
+																styleClass="iceCmdLnk"
+																value="#{message['com_groundwork_portal_dashboard_seurat_services']}"></ice:outputText>
+														</ice:commandSortHeader>
+													</f:facet>
+													<!-- Link (Rendered as href in HTML)-->
+													<ice:outputLink id="SPlnkServices" value="#{service.url}"
+														onclick="blockNavigation();"
+														rendered="#{!empty service.url}">#{service.name}</ice:outputLink>
+													<ice:outputText id="SPtxtServiceName"
+														value="#{service.name}" rendered="#{empty service.url}" />
+												</ice:column>
+												<ice:column id="SPcolumnServiceStatus" style="width: 30%">
+													<f:facet name="header">
+														<ice:outputText id="SPtxtServiceStatusHeader"
+															value="#{message['com_groundwork_portal_dashboard_seurat_status']}"></ice:outputText>
+													</f:facet>
+													<ice:graphicImage id="SPimgIcon"
+														value="#{service.status.iconPath}"
+														rendered="#{service.status.iconPath != null}" />
+												</ice:column>
+												<ice:column id="SPcolumnAck" style="width: 30%">
+													<f:facet name="header">
+														<ice:outputText id="SPtxtAckHeader"
+															value="#{message['com_groundwork_portal_dashboard_seurat_acknowledged']}"></ice:outputText>
+													</f:facet>
+													<ice:outputText id="SPtxtAck" value="#{service.ackText}" />
+												</ice:column>
+											</ice:dataTable>
+										</ice:panelGroup>
+										<ice:dataPaginator id="SPserviceDataPaginator"
+											for="SPtblServices" paginator="true" fastStep="3"
+											paginatorMaxPages="4" renderFacetsIfSinglePage="false">
+											<f:facet name="first">
+												<ice:graphicImage id="SPimgFirst"
+													url="/images/arrow-first.gif" style="border:none;"
+													title="First Page" />
+											</f:facet>
+											<f:facet name="previous">
+												<ice:graphicImage id="SPimgPrevious"
+													url="/images/arrow-previous.gif" style="border:none;"
+													title="Previous Page" />
+											</f:facet>
+											<f:facet name="next">
+												<ice:graphicImage id="SPimgNext"
+													url="/images/arrow-next.gif" style="border:none;"
+													title="Next Page" />
+											</f:facet>
+											<f:facet name="last">
+												<ice:graphicImage id="SPimgLast"
+													url="/images/arrow-last.gif" style="border:none;"
+													title="Last Page" />
+											</f:facet>
+										</ice:dataPaginator>
+										<br />
+										<ice:commandButton
+											actionListener="#{seuratHandler.closePopup}"
+											title="#{message['com_groundwork_portal_dashboard_popup_close']}"
+											id="SPbtnGroupPopClose"
+											style="float:right; position:relative; right:3px; width:120px;"
+											value="#{message['com_groundwork_portal_dashboard_popup_close']}"></ice:commandButton>
+									</ice:panelGrid>
+								</ice:panelGroup>
+							</f:facet>
+						</ice:panelPopup>
+						<!-- end of popup -->
+
+						<!-- Panel Pop-up for Integration with Action Portlet links  -->
+						<ui:include src="/jsp/acknowledgePopup.jspx">
+						</ui:include>
+						<!-- Info Panel Pop-up to be displayed when nagios is down  -->
+						<ui:include src="/jsp/acknowledgeErrorPopup.jspx"></ui:include>
+					</ice:form>
+
+					<ice:form id="contextForm">
+						<ice:inputHidden id="hostName" name="hostName" value="hn" />
+						<ice:commandButton id="buttonHidden" style="visibility:hidden;"
+							actionListener="#{seuratHandler.showHostDetailsPopup}" />
+					</ice:form>
+					<!-- right click menu-->
+					<div class="contextMenu" id="seuratMenu" style="display: none;">
+					<ul>
+						<li id="showdetails">#{message.com_groundwork_portal_dashboard_seurat_showHostDetails}...</li>
+					</ul>
+					</div>
+				</ui:define>
+			</ui:composition>
+		</ice:portlet>
+		</body>
+		</html>
+	</f:view>
+</jsp:root>

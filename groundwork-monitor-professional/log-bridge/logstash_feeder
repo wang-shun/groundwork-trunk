@@ -1,0 +1,117 @@
+#!/bin/sh
+#
+# logstash-feeder - this script starts and stops the logstash feeder
+#
+# chkconfig: 2345 80 30 
+# description: logstash feeder
+# config: /usr/local/groundwork/config/logstash_feeder.conf
+
+
+APP_DIR="/usr/local/groundwork/foundation/feeder"
+APP_PROGRAM="logstash_feeder.pl"
+APP_PATH="$APP_DIR"
+APP_CONFIGFILE="/usr/local/groundwork/config/logstash_feeder.conf"
+APP_LOGFILE="/usr/local/groundwork/logs/logstash_feeder.log"
+APP_START="$APP_DIR/$APP_PROGRAM"
+APP_STATUS=""
+ERROR=0
+
+is_service_running() {
+    if pgrep -u root -f "$1" >/dev/null 2>&1 ; then
+	RUNNING=1
+    else
+	RUNNING=0
+    fi
+    return $RUNNING
+}
+
+is_app_running() {
+    is_service_running "$APP_PROGRAM"
+    RUNNING=$?
+    if [ $RUNNING -eq 0 ]; then
+	APP_STATUS="$APP_PROGRAM not running"
+    else
+	APP_STATUS="$APP_PROGRAM is running"
+    fi
+    return $RUNNING
+}
+
+start_app() {
+    is_app_running
+    RUNNING=$?
+    if [ $RUNNING -eq 1 ]; then
+	echo "$APP_PROGRAM is already running"
+	exit
+    fi
+    if [ ! -x $APP_PATH ]; then 
+	    echo "ERROR: $APP_PATH is not executable"
+	    exit 6
+    fi
+    if [ ! -f $APP_CONFIGFILE ]; then 
+	    echo "ERROR: $APP_CONFIGFILE does not exist"
+	    exit 5
+    fi 
+    echo -n "Starting $APP_PROGRAM: "
+    if [ `id | sed -e 's/uid=//g' -e 's/(.*//g'` -eq 0 ]; then
+	    #$APP_START >> $APP_LOGFILE 2>&1 &
+	    $APP_START 2>&1 &
+    else
+	    echo "$APP_PROGRAM can only be run as the root user"
+	    ERROR=1
+	exit $ERROR
+    fi
+    sleep 2
+    is_app_running
+    RUNNING=$?
+    if [ $RUNNING -eq 0 ]; then
+	    ERROR=2
+    fi
+    if [ $ERROR -eq 0 ]; then
+	    echo "    [ok]"
+        else
+	echo "could not be started"
+	    ERROR=3
+    fi
+}
+
+stop_app() {
+    NO_EXIT_ON_ERROR=$1
+    echo -n "Stopping $APP_PROGRAM: "
+    is_app_running
+    RUNNING=$?
+    if [ $RUNNING -eq 0 ]; then
+	    echo "$APP_STATUS"
+	    if [ "x$NO_EXIT_ON_ERROR" != "xno_exit" ]; then
+	        exit
+	    else
+	        return
+	    fi
+    fi
+    pkill -u 0 -f "$APP_PROGRAM"
+    sleep 2
+    is_app_running
+    RUNNING=$?
+    if [ $RUNNING -eq 0 ]; then
+	    echo "    [ok]"
+	else
+	    echo "could not be stopped"
+	    ERROR=4
+    fi
+}
+
+if [ "x$1" = "xstart" ]; then
+    start_app
+elif [ "x$1" = "xrestart" ]; then
+    stop_app
+    start_app
+elif [ "x$1" = "xstop" ]; then
+    stop_app
+elif [ "x$1" = "xstatus" ]; then
+    is_app_running
+    echo "$APP_STATUS"
+else
+    echo "usage:  $0 {[re]start|stop|status}"
+    ERROR=5
+fi
+
+exit $ERROR

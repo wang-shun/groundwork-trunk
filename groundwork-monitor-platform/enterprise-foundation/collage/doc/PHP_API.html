@@ -1,0 +1,627 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"><html lang="en">
+  <head><title>PHP API</title>
+    <link rel="stylesheet" type="text/css" href="bookshelf.css">
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2006  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+-->
+  </head>
+  <body>
+<!-- Start Main table -->
+<table border="0" cellpadding="1" cellspacing="0" class="main">
+  <tr>
+    <td valign="top">
+    <h1>PHP API</h1>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Contents table -->
+<table width="100%" class="data" cellpadding="5" cellspacing="1" border="0">
+  <tr class="tableHeader">
+    <td>Contents</td>
+  </tr>
+  <tr>
+    <td class="tableFill04"><ul class="level01">
+      <li><a href="#overview">PHP API Overview</a></li>
+      <li><a href="#req">Requirements</a></li>
+      <li><a href="#classes">Connection Classes</a></li>
+        <ul class="level02">
+        <li><a href="#collagedb">CollageDB</a></li>
+        <li><a href="#collage">Collage</a></li>
+        <li><a href="#collagehostgroupquery">Collage Host Group Query</a></li>
+        <li><a href="#collagehostquery">Collage Host Query</a></li>
+        <li><a href="#collageservicequery">Collage Service Query</a></li>
+        <li><a href="#collageeventquery">Collage Event Query</a></li>
+        </ul>
+    </ul>
+    </td>
+  </tr>
+</table>
+<!-- End Contents table -->
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Overview table -->
+<table width="100%" class="data" cellpadding="5" cellspacing="1">
+  <tr class="tableHeader">
+    <td><a name="overview">PHP API Overview</a></td>
+  </tr>
+  <tr>
+    <td class="tableFill04">The GroundWork Foundation PHP API provides an object library to access the Collage database sources and the information within these sources.  The library is split up into connection and query type classes.
+    </td>
+  </tr>
+</table>
+<!-- End Overview table -->
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Requirements table -->
+<table width="100%" class="data" cellpadding="5" cellspacing="1">
+  <tr class="tableHeader">
+    <td><a name="req">Requirements</a>
+</td>
+  </tr>
+  <tr>
+    <td class="tableFill04">The GroundWork Foundation PHP API requires PHP 5.x and also requires the adodb <a href="http://adodb.sourceforge.net/">http://adodb.sourceforge.net/</a>
+ database abstraction layer to be installed in your PHP include path (or the path configured in the collageapi.inc.php file.
+    </td>  </tr></table>
+<!-- End Requirements table -->
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Connection Classes Collage DB table -->
+<table width="100%" class="data" cellpadding="5" cellspacing="1">
+  <tr class="tableHeader">
+    <td><a name="classes">Connnection Classes</a></td>
+  </tr>
+  <tr>
+    <td class="tableFill04"><a name="collagedb"><h2>Collage DB</h2></a>
+    Instances of this class point to an active Collage Database source and is used by query class instances as a target Collage Database to query against.  Multiple instances of this class can be used to query multiple Collage databases in one script.
+    <h3>Constructor</h3>
+    <div class="function">function __construct($type, $server, $username, $password, $database)</div>
+    Using the parameters passed, the constructor of the CollageDB class creates the persistent connection to the Collage source.  If there is a problem connecting, the constructor will set it's error code to NOT_CONNECTED and return immediately. Otherwise, the database connection is active and the object can then be used as the source parameter for Collage query instances.
+        <h4>Parameters</h4><table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$type (String)</td>
+    <td width="75%" class="row2">Determines what type of database engine the Collage source is running.  Currently, only MySQL is supported.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">server (String)</td>
+    <td width="75%" class="row2">A Hostname or IP address of the Collage source that you wish to target.  A IP address is recommended in case of DNS failure.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">username (String)</td>
+    <td width="75%" class="row2">The username of the database engine that you wish to connect to the Collage target as.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">password (String)</td>
+    <td width="75%" class="row2">The password of the user of the database engine that you wish to connect as.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">database (String)</td>
+    <td width="75%" class="row2">The database name of the Collage source inside the database engine.</td>
+  </tr>
+</table>
+    <h3>Destructor</h3>
+    The destructor for the CollageDB class currently performs no actions, other than removing internal variables.
+    <div class="function">function __destruct()</div>
+    <h3>Methods</h3>
+    <div class="function">function isConnected()</div>
+    Returns true if the object has an active connection to a Collage source.  Returns false, otherwise.
+    <div class="function">function selectQuery($query)</div>
+    This function is meant to provide low-level access to the data inside the Collage source.  It is not recommended to use this method, except in cases where a Query object cannot perform the task you want.  In order to use this method, you must create a SQL statement to pass to the database.  This method does not test for SQL-compliance, nor for parameter checking.  It assumes the query is valid and attempts to perform it.  It will return either a multi-dimensional associative array with your returned records, or it will return a NULL value.  If it returns a NULL value, there is possibly no records to match your statement, or there was an error, which you should find from the method get_error_num, described below.
+        <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$query (String)</td>
+    <td width="75%" class="row2">A SQL select query to run against the collage database source.</td>
+  </tr>
+</table>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">function get_error_num()</td>
+    <td width="75%" class="row2">Returns a defined error code (Error codes are described below) in which the object was unable to perform the last attempted task.  The error code is reset at the beginning of each operation, so this method should be called after performing an operation.</td>  </tr>
+</table>
+    </td>
+  </tr>
+</table>
+<!-- End Connection Class DB table -->
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Connection Classes Collage table -->
+<table width="100%" class="data" cellpadding="5" cellspacing="1">
+  <tr>
+    <td class="tableFill04"><a name="collage"><h2>Collage</h2></a>
+    Instances of this class use a CollageDB connection object to communicate with Collage and return information.  It is mostly used as a base class for the inherited classes described below; however, instances can be used on their own to perform basic collage queries.
+    <h3>Constructor</h3>
+    <div class="function">function __construct($passedDB)</div>
+    Will create a Collage object to properly query against.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$passedDB (CollageDB)</td>
+    <td width="75%" class="row2">A Collage Connection object which points to an active Collage data source.</td>
+  </tr>
+</table>
+    <h3>Methods</h3>
+    <div class="function">function getMonitorStatus($status_id = NULL)</div>
+    This method will return either a single Monitor Status record (defined by $status_id), or an array containing all monitor status entries.  Will return NULL if error or no entries are found.
+    <h4>Parameters</h4><table width="100%" cellpadding="5" cellspacing="1">  <tr>    <td width="25%" valign="top" class="row1">$status_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the monitor status information that matches that status_id only.  If not provided, will return all Monitor status entries.</td>
+  </tr>
+</table>
+    <div class="function">function getPriority($priority_id = NULL)</div>
+    This method will return either a single Priority record (defined by $priority_id), or an array containing all Priority entries.  Will return NULL if error or no entries are found.
+    <h4>Parameters</h4><table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$priority_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Priority information that matches that priority_id only.  If not provided, will return all Priority information entries.</td>
+  </tr>
+</table>
+    <div class="function">function getTypeRule($type_id = NULL)</div>
+    This method will return either a single Type Rule record (defined by $type_id), or an array containing all Type Rule entries.  Will return NULL if error or no entries are found.
+    <h4>Parameters</h4><table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$type_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Type Rule information that matches that type_id only.  If not provided, will return all Type Rule information entries.</td>
+  </tr>
+</table>
+    <div class="function">function getComponent($component_id = NULL)</div>
+    This method will return either a single Component record (defined by $component_id), or an array containing all Component entries.  Will return NULL if error or no entries are found.
+    <h4>Parameters</h4><table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$component_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Component information that matches that component_id only.  If not provided, will return all Component information entries.</td>
+  </tr>
+</table>
+    <div class="function">function getSeverity($severity_id = NULL)</div>
+    This method will return either a single Severity record (defined by $severity_id), or an array containing all Severity entries.  Will return NULL if error or no entries are found.
+    <h4>Parameters</h4><table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$severity_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Severity information that matches that severity_id only.  If not provided, will return all Severity information entries.</td>
+  </tr>
+</table>
+    <div class="function">function getOperationStatus($operation_status_id = NULL)</div>
+    This method will return either a single Operation Status record (defined by $operation_status_id), or an array containing all Operation Status entries.  Will return NULL if error or no entries are found.
+    <h4>Parameters</h4><table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$operation_status_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Operation Status information that matches that operation_status_id only.  If not provided, will return all Operation Status information entries.</td>
+  </tr>
+</table>
+    <div class="function">function getMessageFilter($filter_id = NULL)</div>
+    This method will return either a single Message Filter record (defined by $filter_id), or an array containing all Message Filter entries.  Will return NULL if error or no entries are found.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$filter_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Message Filter information that matches that filter_id only.  If not provided, will return all Message Filter information entries.</td>
+  </tr>
+</table>
+    <div class="function">function getConsolidationCriteria($criteria_id = NULL)</div>
+    This method will return either a single Consolidation Criteria record (defined by $criteria_id), or an array containing all Consolidation Criteria entries.  Will return NULL if error or no entries are found.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$criteria_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Consolidation Criteria information that matches that criteria_id only.  If not provided, will return all Consolidation Criteria information entries.</td>
+  </tr>
+</table>
+    <div class="function">function getLogPerformanceData($data_id = NULL)</div>
+    This method will return either a single Log Performance Data record (defined by $data_id), or an array containing all Log Performance entries.  Will return NULL if error or no entries are found.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$data_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Log Performance Data information that matches that data_id only.  If not provided, will return all Log Performance Data information entries.  **It is NOT recommended to pull all records, as this may take a lot of time to process**</td>  </tr>
+</table>
+    <div class="function">function getCheckType($check_type_id = NULL)</div>
+    This method will return either a single Check Type record (defined by $check_type_id), or an array containing all Check Type entries.  Will return NULL if error or no entries are found.
+    <h4>Parameters</h4><table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$check_type_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Check Type information that matches that check_type_id only.  If not provided, will return all Check Type information entries.</td>
+  </tr>
+</table>
+    <div class="function">function getLogMessage($message_id = NULL)</div>
+    This method will return either a single Log Message (defined by $criteria_id), or an array containing all Log Messages.  Will return NULL if error or no messages are found.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$message_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Log Message that matches that message_id only.  If not provided, will return all Log Messages.  **It is NOT recommended to pull all records, as this may take a lot of time to process**</td>
+  </tr>
+</table>
+    <div class="function">function getStateType($type_id = NULL)</div>
+    This method will return either a single State Type record (defined by $type_id), or an array containing all State Type entries.  Will return NULL if error or no entries are found.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$type_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the State Type that matches that type_id only.  If not provided, will return all State Type entries.</td>
+  </tr>
+</table>
+    <div class="function">function getServiceAvailability($availability_id = NULL)</div>
+    This method will return either a single Service Availability record (defined by $availability_id), or an array containing all Service Availability entries.  Will return NULL if error or no entries are found.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$availability_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Service Availability record that matches that availability_id only.  If not provided, will return all Service Availability entries.</td>
+  </tr>
+</table>
+    <div class="function">function getHostAvailability($availability_id = NULL)</div>
+    This method will return either a single Host Availability record (defined by $availability_id), or an array containing all Host Availability entries.  Will return NULL if error or no entries are found.
+    <h4>Parameters</h4><table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$availability_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Host Availability record that matches that availability_id only.  If not provided, will return all Host Availability entries.</td>
+  </tr>
+</table>
+    <div class="function">function getMonitorServer($server_id = NULL)</div>
+    This method will return either a single Monitor Server record (defined by $server_id), or an array containing all Monitor Server entries.  Will return NULL if error or no entries are found.
+    <h4>Parameters</h4><table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$server_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Monitor Server record that matches that server_id only.  If not provided, will return all Monitor Server entries.</td>
+  </tr>
+</table>
+    <div class="function">function getMonitorList($server_id = NULL)</div>
+    Normally used to get a list of devices that are assigned to a Monitor Server (defined by $server_id).  If not provided, will return the entire list of assignments.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$server_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return all entries that matches that server_id only.  If not provided, will return all Monitor List entries.</td>
+  </tr>
+</table>
+    <div class="function">function getMonitorListByDevice($device_id = NULL)</div>
+    Used to determine which Monitor Server monitors a specific Device (defined by $device_id).  If not provided, will return the entire list of assignments.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$device_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Monitor List entry that matches that device_id.  If not provided, will return all Monitor List entries.</td>
+  </tr>
+</table>
+      <div class="function">function getDevice($device_id = NULL)</div>
+    Will return the Device information for the specific Device (defined by $device_id), or a list of all devices and their properties.    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$device_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Device entry that matches that device_id.  If not provided, will return all Device entries.</td>
+  </tr>
+</table>
+    <div class="function">function getDeviceParents($device_id = NULL)</div>
+    Will return a list of records which Device (defined by $device_id) is a child of.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$device_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Device Parent entries that matches that device_id.  If not provided, will return all Device Parent entries.</td>
+  </tr>
+</table>
+    <div class="function">function getDeviceChildren($device_id = NULL)</div>
+    Will return a list of records which Device (defined by $device_id) is a parent of another Device.    <h4>Parameters</h4><table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$device_id (numerical)</td>
+    <td width="75%" class="row2">If provided, will return the Device Parent entries that matches that device_id.  If not provided, will return all Device Parent entries.</td>
+  </tr>
+</table>
+    <div class="function">function getSchemaInfo()</div>
+    Returns the data listed in SchemaInfo. (Used to determine what version of Collage you are running, and when it was created in the server).    <h4>Parameters</h4><table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">None</td>
+    <td width="75%" class="row2">None</td>
+  </tr>
+</table>
+    <div class="function">function isError()</div>
+    Returns true if the previous operation failed.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">None</td>
+    <td width="75%" class="row2">None</td>
+  </tr>
+</table>
+    <div class="function">function get_error_num()</div>
+    Returns the error num which matches the definitions of error codes provided at the end of this document.
+    <h4>Parameters</h4><table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">None</td>
+    <td width="75%" class="row2">None</td>
+  </tr>
+</table>
+    </td>
+  </tr>
+</table>
+<!-- End Connection Classes Collage table -->
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Connection Classes Collage Host Group Query table -->
+<table width="100%" class="data" cellpadding="5" cellspacing="1">
+  <tr>
+    <td class="tableFill04"><a name="collagehostgroupquery">
+<h2>Collage Host Group Query</h2></a>
+    Instances of this class extend Collage (inherits all methods), but provides a more specific interface to receive Host Group related information.    <h3>Constructor</h3>
+    (Uses the same as Collage)
+    <h3>Methods</h3>
+    <div class="function">function getServicesForHostGroup($hostGroup)</div>
+    Will return all ServiceStatus information for all services for all hosts which are assigned to the host group (Defined by $hostGroup).    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$hostGroup (text)</td>
+    <td width="75%" class="row2">The short name of the hostgroup you wish to query for.</td>
+  </tr></table>
+    <div class="function">function getHostGroups()</div>
+    Will return a list of all Host Groups defined.
+    <h4>Parameters</h4><table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">None</td>
+    <td width="75%" class="row2">None</td>
+  </tr></table>
+    <div class="function">function getHostsForHostGroup($hostGroup)</div>
+    Will return all associated hosts that are assigned to the host group (defined by $hostGroup).
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$hostGroup (text)</td>
+    <td width="75%" class="row2">The short name of the hostgroup you wish to query for.</td>
+  </tr></table>
+    <div class="function">function getHostGroup($hgName)</div>
+    Will return Host Group (defined by $hgName) information.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$hgName (text)</td>
+    <td width="75%" class="row2">The short name of the hostgroup you wish to query for.</td>
+  </tr>
+</table>
+    </td>
+  </tr>
+</table>
+<!-- End Connection Classes Collage Host Group Query table -->
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Connection Classes Collage Host Query table -->
+<table width="100%" class="data" cellpadding="5" cellspacing="1">
+  <tr>
+    <td class="tableFill04">
+<a name="collagehostquery"><h2>Collage Host Query</h2></a>
+    Instances of this class extend Collage (inherits all methods), but provides a more specific interface to receive Host related information.    <h3>Constructor</h3>
+    (Uses the same as Collage)
+    <h3>Methods</h3>
+    <div class="function">function getHost($host)</div>
+    Will return Host (defined by $host) information.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$host (text)</td>
+    <td width="75%" class="row2">The short name of the host you wish to query for.</td>
+  </tr></table>
+    <div class="function">function getHostByID($id)</div>
+    When a record returned by another method provides you with a host id, you can use this method to retrieve the information regarding that host (defined by $id).
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$id (text)</td>
+    <td width="75%" class="row2">The ID of the host you wish to query for.</td>
+  </tr>
+</table>
+    <div class="function">function getServicesForHost($host)</div>
+    Will return all service status information associated with the services for the host (defined by $host).
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$host (text)</td>
+    <td width="75%" class="row2">The shortname of the host you wish to query for.</td>
+  </tr>
+</table>
+    <div class="function">function getHostStatusForHost($host)</div>
+    Will return the Host Status information for the Host (defined by $host).
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$host (text)</td>
+    <td width="75%" class="row2">The shortname of the host you wish to query for.</td>
+  </tr>
+</table>
+    <div class="function">function getDeviceForHost($host)</div>
+    Will return the Device information which is associated with the Host (defined by $host).
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$host (text)</td>
+    <td width="75%" class="row2">The shortname of the host you wish to query for.</td>
+  </tr>
+</table>
+    <div class="function">function getHostsByFilter($filter)</div>
+    If you want to get a list of hosts which match criteria in Host Status information, provide a filter to this method to get a list which matches your filter.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$filter (multi-dimensional array)</td>
+    <td width="75%" class="row2">A filter array which specifies the filtered information you wish to receive.  Each entry of the array must have 3 elements.  "key" => The column you wish to match against, "operator" => The SQL- compliant operator to match the column against the value, "value" => The value you wish to match against.</td>
+  </tr>
+</table>
+    </td>
+  </tr>
+</table>
+<!-- End Connection Classes Collage Host Query table -->
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Connection Classes Collage Service Query table -->
+<table width="100%" class="data" cellpadding="5" cellspacing="1">
+  <tr>
+    <td class="tableFill04"><a name="collageservicequery"><h2>Collage Service Query</h2></a>
+    Instances of this class extend Collage (inherits all methods), but provides a more specific interface to receive Service related information.    <h3>Constructor</h3>
+    (Uses the same as Collage)
+    <h3>Methods</h3>
+    <div class="function">function getService($serviceDescription, $hostName)</div>
+    Will return Service Status information which matches the Host (defined by $hostName) and the Service Description (defined by $serviceDescription).    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$serviceDescription (text)</td>
+    <td width="75%" class="row2">The service description of the service you wish to query for. $hostName (text): The short name of the host you wish to query for.</td>
+  </tr>
+</table>
+    <div class="function">function getServices()</div>
+    Will return all Service Status information for all services.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">None</td>
+    <td width="75%" class="row2">None</td>
+  </tr>
+</table>
+    <div class="function">function getServicesByFilter($filter)</div>
+    If you want to get a list of services which match criteria in Service Status information, provide a filter to this method to get a list which matches your filter.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$filter (multi-dimensional array)</td>
+    <td width="75%" class="row2">A filter array which specifies the filtered information you wish to receive.  Each entry of the array must have 3 elements.  "key" => The column you wish to match against, "operator" => The SQL- compliant operator to match the column against the value, "value" => The value you wish to match against.</td>
+  </tr>
+</table>
+    </td>
+  </tr>
+</table>
+<!-- End Connection Classes Collage Service Query table -->
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Connection Classes CollageEventQuery table -->
+<table width="100%" class="data" cellpadding="5" cellspacing="1">
+  <tr>
+    <td class="tableFill04"><a name="collageeventquery"><h2>Collage Event Query</h2></a>
+    Instances of this class extend Collage (inherits all methods), but provides a more specific interface to receive Event (Log Messages) related information.
+    <h3>Constructor</h3>
+    (Uses the same as Collage)
+    <h3>Methods</h3>
+    <div class="function">function getEventsForDevice($identification, $timeField = NULL, $fromDate = NULL,
+     $toDate = NULL, $rows = NULL, $offset = NULL)</div>
+    Will return Events which have occured based on the criteria passed via the parameters.
+    <h4>Parameters</h4><table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$identification (numerical)</td>
+    <td width="75%" class="row2">The ID of the Device you wish to query for.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">$timeField (FirstInsertDate || LastInsertDate)</td>
+    <td width="75%" class="row2">Either of the two strings, will match against the timeframe provided by $fromDate and $toDate.  If not provided, will not filter against a time frame.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">$fromDate (date: (yyyy-mm-dd)</td>
+    <td width="75%" class="row2">If $timeField is specified, $fromDate will specify the beginning of the time frame you wish to match against.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">$toDate (date: (yyy-mm-dd)</td>
+    <td width="75%" class="row2">If $timeField is specifried, $toDate will specify the end of the time frame you wish to match against.</td>  </tr>  <tr>
+    <td width="25%" valign="top" class="row1">$rows (numerical):</td>
+    <td width="75%" class="row2">If provided, will specify to only return a certain amount of records.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">$offset (numerical):</td>
+    <td width="75%" class="row2">If the number of records are greater than $rows, then $offset will specify at which record you want to start returning information.</td>
+  </tr>
+</table>
+    <div class="function">function getEventsForService($serviceDescription, $hostName, $timeField = NULL, $fromDate = NULL, $toDate = NULL, $rows = NULL, $offset = NULL)</div>
+    Will return Events which have occured based on the criteria passed via the parameters.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$serviceDescription (text)</td>
+    <td width="75%" class="row2">The service description of the service you wish to query for.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">$hostName (text)</td>
+    <td width="75%" class="row2">The short name of the host you wish to query for.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">$timeField (FirstInsertDate || LastInsertDate)</td>
+    <td width="75%" class="row2">Either of the two strings, will match against the timeframe provided by $fromDate and $toDate.  If not provided, will not filter against a time frame.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">$fromDate (date: (yyyy-mm-dd)</td>
+    <td width="75%" class="row2">If $timeField is specified, $fromDate will specify the beginning of the time frame you wish to match against.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">$toDate (date: (yyy-mm-dd)</td>
+    <td width="75%" class="row2">If $timeField is specifried, $toDate will specify the end of the time frame you wish to match against.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">$rows (numerical)</td>
+    <td width="75%" class="row2">If provided, will to only return a certain amount of records.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">$offset (numerical)</td>
+    <td width="75%" class="row2">If the number of records are greater than $rows, then $offset will specify at which record you want to start returning information.</td>
+  </tr>
+</table>
+    <div class="function">function getEventsForHost($hostName, $timeField = NULL, $fromDate = NULL,
+     $toDate = NULL, $rows = NULL, $offset = NULL)</div>
+    Will return Events which have occured based on the criteria passed via the parameters.
+    <h4>Parameters</h4>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td width="25%" valign="top" class="row1">$hostName (text)</td>
+    <td width="75%" class="row2">The short name of the host you wish to query for.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">$timeField (FirstInsertDate || LastInsertDate)</td>
+    <td width="75%" class="row2">Either of the two strings, will match against the timeframe provided by $fromDate and $toDate.  If not provided, will not filter against a time frame.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">$fromDate (date: (yyyy-mm-dd)</td>
+    <td width="75%" class="row2">If $timeField is specified, $fromDate will specify the beginning of the time frame you wish to match against.</td>  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">$toDate (date: (yyy-mm-dd)</td>
+    <td width="75%" class="row2">If $timeField is specifried, $toDate will specify the end of the time frame you wish to match against.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">$rows (numerical)</td>
+    <td width="75%" class="row2">If provided, will specify to only return a certain amount of records.</td>
+  </tr>
+  <tr>
+    <td width="25%" valign="top" class="row1">$offset (numerical)</td>
+    <td width="75%" class="row2">If the number of records are greater than $rows, then $offset will specify at which record you want to start returning information.</td>
+  </tr>
+</table>
+    </td>
+  </tr>
+</table>
+<!-- End Connection Classes CollageEventQuery table -->
+    </td>
+  </tr>
+</table>
+<!-- End Main table -->
+  </body>
+</html>

@@ -1,0 +1,140 @@
+<!-- 
+$Id$
+GroundWork Monitor - The ultimate data integration framework.
+Copyright (C) 2004-2006  GroundWork Open Source Solutions info@itgroundwork.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+  --> 
+<!--  Main entry point for monarch Build 
+   --> 
+<project default="allBuild"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+
+<goal name='allBuild' description="Build the master project and all subprojects">
+    <attainGoal name='monarch.build' />
+</goal>
+
+<goal name="allDeploy"
+        description="Deploy the master project and all subprojects">
+    <attainGoal name='monarch.deploy' />
+</goal>
+
+<goal name="allClean"
+        description="Clean the master project and all subprojects">
+    <attainGoal name='monarch.clean' />
+</goal>
+
+
+<goal name="monarch.build" description="Builds all components of monarch">
+ <mkdir dir="${basedir}/compile"/>
+ <exec executable="gcc" spawn="true">
+  <arg value="${basedir}/nagios_restart/nagios_restarter.c"/>
+  <arg value="-o"/>
+  <arg value="${basedir}/compile/nagios_reload"/>
+ </exec>
+ <exec executable="gcc" spawn="true">
+  <arg value="${basedir}/nmap_scan/nmap_scan.c"/>
+  <arg value="-o"/>
+  <arg value="${basedir}/compile/nmap_scan_one"/>
+ </exec>
+ <exec executable="gcc" spawn="true">
+  <arg value="${basedir}/monarch_nagios/monarch_as_nagios.c"/>
+  <arg value="-o"/>
+  <arg value="${basedir}/compile/monarch_as_nagios"/>
+ </exec>
+</goal>
+
+<goal name="monarch.deploy" description="Deploys all components of monarch">
+ <mkdir dir="${org.groundwork.deploy.prefix}/migration"/>
+ <mkdir dir="${org.groundwork.deploy.prefix}/monarch"/>
+ <mkdir dir="${org.groundwork.deploy.prefix}/monarch/lib"/>
+ <mkdir dir="${org.groundwork.deploy.prefix}/monarch/bin"/>
+ <mkdir dir="${org.groundwork.deploy.prefix}/monarch/workspace"/>
+ <mkdir dir="${org.groundwork.deploy.prefix}/monarch/backup"/>
+ <mkdir dir="${org.groundwork.apache2.htdocs}/monarch"/>
+ <mkdir dir="${org.groundwork.apache2.htdocs}/monarch/images"/>
+ <mkdir dir="${org.groundwork.apache2.cgibin}/monarch"/>
+<!-- Automation packages added 2007-10-23 -->
+ <mkdir dir="${org.groundwork.deploy.prefix}/monarch/automation"/>
+ <mkdir dir="${org.groundwork.deploy.prefix}/monarch/automation/data"/>
+ <mkdir dir="${org.groundwork.deploy.prefix}/monarch/automation/scripts"/>
+ <mkdir dir="${org.groundwork.deploy.prefix}/monarch/automation/conf"/>
+ <mkdir dir="${org.groundwork.deploy.prefix}/monarch/automation/templates"/>
+<!-- end automation edit -->
+
+ <copy todir="${org.groundwork.deploy.prefix}/monarch/lib">
+  <fileset dir="${basedir}" includes="*.pm" excludes="nagios2collage*.pm"/>
+ </copy>
+
+ <copy todir="${org.groundwork.deploy.prefix}/monarch/bin">
+  <fileset dir="${basedir}/compile" includes="*"/>
+ </copy>
+
+ <copy file="${basedir}/migration/migrate-monarch.pl" tofile="${org.groundwork.deploy.prefix}/migration/migrate-monarch.pl">
+ </copy>
+
+ <copy file="${basedir}/database/monarch.sql" tofile="${org.groundwork.deploy.prefix}/databases/monarch.sql">
+ </copy>
+
+ <copy todir="${org.groundwork.deploy.prefix}/monarch/bin">
+  <fileset dir="${basedir}" includes="nmap_scan_one.pl"/>
+ </copy>
+
+ <copy todir="${org.groundwork.deploy.prefix}/monarch/bin">
+  <fileset dir="${basedir}" includes="monarch_as_nagios.pl"/>
+ </copy>
+
+<!-- Automation packages added 2007-10-23 -->
+ <copy todir="${org.groundwork.deploy.prefix}/monarch/automation/scripts">
+  <fileset dir="${basedir}/automation/scripts" includes="*.pl"/>
+ </copy>
+
+ <copy todir="${org.groundwork.deploy.prefix}/monarch/automation/data">
+  <fileset dir="${basedir}/automation/data" includes="*"/>
+ </copy>
+
+ <copy todir="${org.groundwork.deploy.prefix}/monarch/automation/templates">
+  <fileset dir="${basedir}/automation/templates" includes="*.xml"/>
+ </copy>
+
+<!-- automation guava package moved to monitor-os/guava/packages -->
+<!-- end automation edit -->
+
+<copy todir="${org.groundwork.apache2.cgibin}/monarch">
+  <fileset dir="${basedir}" includes="*.cgi"/>
+ </copy>
+
+ <copy todir="${org.groundwork.apache2.htdocs}/monarch/images">
+  <fileset dir="${basedir}/images" includes="*"/>
+ </copy>
+
+ <copy todir="${org.groundwork.apache2.htdocs}/monarch">
+  <fileset dir="${basedir}" includes="*.js *.css *.html"/>
+ </copy>
+
+</goal>
+
+<goal name="monarch.clean" description="Cleans the build and the deployment section of monarch">
+ <delete dir="${org.groundwork.deploy.prefix}/monarch"/>
+ <delete dir="${org.groundwork.apache2.htdocs}/monarch"/>
+ <delete dir="${org.groundwork.apache2.cgibin}/monarch"/>
+ <delete dir="${basedir}/compile"/>
+ <delete file="${org.groundwork.deploy.prefix}/migration/migrate-monarch.pl"/>
+ <delete file="${org.groundwork.deploy.prefix}/databases/monarch.sql"/>
+</goal>
+</project>

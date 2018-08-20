@@ -1,0 +1,67 @@
+--- noma_2.0.3/doc/DOCUMENTATION.txt.orig	2012-05-30 16:35:03.000000000 -0700
++++ noma_2.0.3/doc/DOCUMENTATION.txt	2017-10-10 16:54:31.955483615 -0700
+@@ -555,16 +555,29 @@
+ 
+ define command{
+         command_name    host-notify-by-noma
+-        command_line    /path_to_noma/alert_via_noma.pl -c h -s "$HOSTSTATE$" -H "$HOSTNAME$"  -G "$HOSTGROUPNAMES$" -n "$NOTIFICATIONTYPE$" -i "$HOSTADDRESS$" -o "$HOSTOUTPUT$" -t "$TIMET$" -u "$HOSTNOTIFICATIONID$" -A "$NOTIFICATIONAUTHORALIAS$" -C "$NOTIFICATIONCOMMENT$" -R "$NOTIFICATIONRECIPIENTS$"
++        command_line    /path_to_noma/alert_via_noma.pl -c h -s "$HOSTSTATE$" -H "$HOSTNAME$" -G "$HOSTGROUPNAMES$" -n "$NOTIFICATIONTYPE$" -i "$HOSTADDRESS$" -o "$HOSTOUTPUT$" -t "$TIMET$" -u "$$(( $HOSTPROBLEMID$ ? $HOSTPROBLEMID$ : $LASTHOSTPROBLEMID$ ))" -A "$$([ -n "$NOTIFICATIONAUTHORALIAS$" ] && echo "$NOTIFICATIONAUTHORALIAS$" || echo "$NOTIFICATIONAUTHOR$")" -C "$NOTIFICATIONCOMMENT$" -R "$NOTIFICATIONRECIPIENTS$"
+         }
+ 
+ define command{
+         command_name    service-notify-by-noma
+-        command_line    /path_to_noma/alert_via_noma.pl -c s -s "$SERVICESTATE$" -H "$HOSTNAME$" -G "$HOSTGROUPNAMES$" -E "$SERVICEGROUPNAMES$" -S "$SERVICEDESC$" -o "$SERVICEOUTPUT$" -n "$NOTIFICATIONTYPE$" -a "$HOSTALIAS$" -i "$HOSTADDRESS$" -t "$TIMET$" -u "$SERVICENOTIFICATIONID$" -A "$NOTIFICATIONAUTHORALIAS$" -C "$NOTIFICATIONCOMMENT$" -R "$NOTIFICATIONRECIPIENTS$"
++        command_line    /path_to_noma/alert_via_noma.pl -c s -s "$SERVICESTATE$" -H "$HOSTNAME$" -G "$HOSTGROUPNAMES$" -E "$SERVICEGROUPNAMES$" -S "$SERVICEDESC$" -o "$SERVICEOUTPUT$" -n "$NOTIFICATIONTYPE$" -a "$HOSTALIAS$" -i "$HOSTADDRESS$" -t "$TIMET$" -u "$$(( $SERVICEPROBLEMID$ ? $SERVICEPROBLEMID$ : $LASTSERVICEPROBLEMID$ ))" -A "$$([ -n "$NOTIFICATIONAUTHORALIAS$" ] && echo "$NOTIFICATIONAUTHORALIAS$" || echo "$NOTIFICATIONAUTHOR$")" -C "$NOTIFICATIONCOMMENT$" -R "$NOTIFICATIONRECIPIENTS$"
+         }
+ 
+-With the option -p you can force the plugin to use the pipe instead of the unix socket.  You can
+-also pass a unique ID with option -u (if not given, the plugin will generate one for you).
++With the option -p you can force the plugin to use the pipe instead of the unix socket.
++
++You can also pass a unique ID with option -u.  However you generate this value, it must be
++stable across consecutive non-UP/OK states for a given host or service in order for the
++NoMa internal notification-counting logic to clock correctly.  For that purpose, for Nagios
++notifications, this is done by using the $HOSTPROBLEMID$ and $SERVICEPROBLEMID$ macros.  If
++you do not specify a -u option, either the alert_via_noma.pl script or NoMa itself will
++generate one for you, but the standard value so created will be semi-random, not stable
++across consecutive non-UP/OK states.  So it will not clock the NoMa notification-counting
++logic correctly.  If you want NoMa to gnenerate unique IDs that will work across all alerting
++agents and that will clock the NoMa notification-counting logic correctly, you must set the
++"generate_IDs" option in the "notifier" section of NoMa.yaml to a true value such as 1.  In
++that case, all the incoming -u option values will be ignored, and NoMa will use its own
++internal resources to construct unique IDs for stretches of non-UP/OK states of hosts and
++services.
+ 
+ 
+ Now change your contact definitions (maybe in contact.cfg) to use NoMa:
+@@ -778,6 +791,30 @@
+       (populated through the webfrontend), notifications are sent to 
+       users and/or groups of users. 
+ 
++      =======================================================================
++      NOTE:  The rest of this subsection attempts to describe the original
++      upstream logic, and does not apply to the GroundWork release of NoMa.
++      The logic described is far too complex and confusing, and certainly
++      does not mirror expectations.  It does not properly handle cases where
++      a host or service does not belong to any hostgroup or any servicegroup,
++      and the presentation of the AND/OR operators does not comport with the
++      usual precedence of these logical conjunctions.
++
++      In the GroundWork release of NoMa, the logic for applying hostgroup
++      and servicegroup constraints in notification rules has been cleaned
++      up to be directly intuitive.  An applied "include" constraint will only
++      allow the notification rule to pass if the host or service belongs to
++      at least one of the listed hostgroups or servicegroups.  Conversely,
++      an applied "exclude" constraint will only allow the notification rule
++      to pass if the host or service does not belong to any of the listed
++      hostgroups or servicegroups.
++
++      In specifying comma-separated lists of hosts, hostgroups, services,
++      servicegroups, or recipients for inclusion or exclusion filtering,
++      '*' can be used as a multi-character wildcard and '?' can be used as a
++      single-character wildcard, within any particular item in such a list.
++      =======================================================================
++
+       Starting with version 2.0.2, the logic has been altered to more closely
+       mirror expectations.  It should be noted that any "include" fields that are
+       empty are assigned an implicit '*', i.e. they automatically match all

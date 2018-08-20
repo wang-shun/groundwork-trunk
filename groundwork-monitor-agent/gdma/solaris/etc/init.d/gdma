@@ -1,0 +1,155 @@
+#!/bin/sh
+#
+#	/etc/init.d/gdma
+#
+# Starts the gdma daemon
+#
+# description: run status/metric checks on a periodic basis with results sent to Groundwork
+# processname: gdma
+
+user=gdma
+
+[ -x /opt/groundwork/gdma/bin/gdma_check.pl ] || exit 0
+
+RETVAL=0
+
+# We'd like to use the standard pgrep and pkill commands, but we need to be
+# portable back to at least Solaris 2.6, where they were not available.
+
+# This implementation of my_pgrep() acts as if the "pgrep -f" option is implicit,
+# and doesn't do full ERE pattern matching like a real pgrep.
+my_pgrep() {
+	/usr/bin/ps -eo pid,args | fgrep "$1" | fgrep -v fgrep | nawk '{print $1}'
+}
+
+# This implementation of my_pkill() handles only very limited signalling,
+# of process IDs and progress group IDs.
+my_pkill() {
+	retval=0
+	if [ "$1" = "-g" ]; then
+	    shift
+	    # protect against both 0 and 1, just in case ...
+	    for id in $*
+	    do
+		if [ "$id" -ne 0 -a "$id" -ne 1 ]; then
+		    /usr/bin/kill -TERM -$id
+		    status=$?
+		    if [ $status -ne 0 ]; then
+			retval=$status
+		    fi
+		fi
+	    done
+	else
+	    # protect against both 0 and 1, just in case ...
+	    for id in $*
+	    do
+		if [ "$id" -ne 0 -a "$id" -ne 1 ]; then
+		    /usr/bin/kill -TERM $id
+		    status=$?
+		    if [ $status -ne 0 ]; then
+			retval=$status
+		    fi
+		fi
+	    done
+	fi
+	return $retval
+}
+
+start() {
+	retval=0
+	# Check if it is already running
+	pids=`my_pgrep '/usr/bin/perl -w /opt/groundwork/gdma/bin/gdma_check.pl'`
+	if [ -z "$pids" ]; then
+	    echo "Starting the gdma daemon ..."
+	    /bin/su - $user -c '/opt/groundwork/gdma/bin/gdma_check.pl &' >/dev/null 2>&1
+	    retval=$?
+	else
+	    echo "The gdma daemon is already running."
+	fi
+	return $retval
+}
+
+stop() {
+	retval=0
+	# We want to kill all the child processes in the same process group, not just the daemon itself.
+	# The only thing I don't like about this is the possible race conditions that arise between
+	# finding the pid and then the pgid and then using the pgid to do the final pkill, should the
+	# daemon process die for some other reason while we're trying to kill it and all of its descendants.
+	pids=`my_pgrep '/usr/bin/perl -w /opt/groundwork/gdma/bin/gdma_check.pl'`
+	if [ -n "$pids" ]; then
+	    echo "Stopping the gdma daemon ..."
+	    my_pkill $pids
+	else
+	    echo "The gdma daemon is already down."
+	fi
+        return $retval
+}
+
+
+restart() {
+	stop
+	# Give the daemon time to quit before starting up again, or we'll see the old copy before it
+	# shuts down and conclude we don't need to start it up again.  We cannot just sleep for some
+	# fixed interval, as that is not a reliable way to ensure the daemon went down.
+	i=1
+	while [ $i -le 3 ]; do
+	    pids=`my_pgrep '/usr/bin/perl -w /opt/groundwork/gdma/bin/gdma_check.pl'`
+	    if [ -z "$pids" ]; then
+		start
+		return $?
+	    fi
+	    echo "The gdma daemon has not shut down yet; will wait ..."
+	    sleep 2
+	    i=`expr $i + 1`
+	done
+	echo "Failed to shut down and start up the gdma daemon."
+	return 1
+}	
+
+reload() {
+	retval=0
+	# Note:  Until the script is equipped to handle the HUP signal, this will just stop it.
+	trap "" HUP
+	pids=`my_pgrep '/usr/bin/perl -w /opt/groundwork/gdma/bin/gdma_check.pl'`
+	if [ -n "$pids" ]; then
+	    # protect against both 0 and 1, just in case ...
+	    for id in $pids
+	    do
+		if [ "$id" -ne 0 -a "$id" -ne 1 ]; then
+		    /usr/bin/kill -HUP $id
+		    status=$?
+		    if [ $status -ne 0 ]; then
+			retval=$status
+		    fi
+		fi
+	    done
+	fi
+        return $retval
+}	
+
+#
+# See how we were called.
+#
+
+case "$1" in
+start)
+	start
+	RETVAL=$?
+	;;
+stop)
+	stop
+	RETVAL=$?
+	;;
+restart)
+	restart
+	RETVAL=$?
+	;;
+reload)
+	reload
+	RETVAL=$?
+	;;
+*)
+	echo "Usage: $0 {start|stop|restart|reload}"
+	exit 1
+esac
+exit $RETVAL

@@ -1,0 +1,30 @@
+Foundation Profiling tool
+Last Update: Sept 11, 2006
+
+Purpose:
+Create a testing harness for the Foundation framework that creates a performance baseline monitoring data throughput and system latency.
+
+Implementation
+Running a Java program that reads the initial settings for the test from a property file (foundation-profiling.properties). It enters a loop that launches two threads passing in MonitorStatus (toggle between UP/DOWN for Host and OK/CRITICAL for ServiceStatus), Count, Starting time (ReportDate) and then sleeps until the interval time expires to relaunch the check. The two threads can be described as following:
+
+    * DataFeeder thread: Creates a bulk (Count) ServiceStatus, HostStatus and Event messages. The service and host name are well defined:  HostName will be testHost{COUNT} and testService{COUNT}
+    * DataThroughput thread: queries the GWCollageDB Database to determine when the Host and Service updates are done. Same for Event inserts. Logging result into other database for graphing (Birt)
+
+Detail implementation
+
+DataFeederThread
+
+    * Opens three socket connections (4913) and sends Status/HostStaus and events messages as XML fragments. Closes the connections after  bulk is sent out.
+
+DataThroughput thread
+
+    * Direct queries into GWCollageDB using jdbc
+    * New Foundation profiling database for storing measurements and baseline (timestamped series)
+
+General:
+
+    * Program can be launched from any machine and therefore usable by QA.  The database parameters and the socket information will be defined in the properties files
+    * DataThroughput thread should be extensible so that it could do some HTML scraping for testing the latency between database write and UI appearance.
+    * Use of log4j for any information about the running tests
+
+

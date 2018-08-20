@@ -1,0 +1,528 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.5.1.final using JasperReports Library version 6.5.1  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="hostgroup_service_availability" pageWidth="842" pageHeight="595" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="2ec6c357-06bf-463b-be43-53d442aabe14">
+	<property name="template.engine" value="tabular_template"/>
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="47"/>
+	<property name="ireport.y" value="451"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="reports/AvailabilityReports/terra-dashboard-da.xml"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="155"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="839"/>
+	<property name="com.jaspersoft.studio.property.dataset.dialog.DatasetDialog.sash.w1" value="732"/>
+	<property name="com.jaspersoft.studio.property.dataset.dialog.DatasetDialog.sash.w2" value="257"/>
+	<property name="ireport.jasperserver.url" value="http://terra:8080/jasperserver/"/>
+	<property name="ireport.jasperserver.user" value="jasperadmin"/>
+	<property name="ireport.jasperserver.reportUnit" value="/Reports/AvailabilityReports/hostgroup_service_availability"/>
+	<property name="com.jaspersoft.studio.report.description" value="Host Group Service Availability"/>
+	<style name="Title" forecolor="#FFFFFF" fontName="Times New Roman" fontSize="50" isBold="false"/>
+	<style name="SubTitle" forecolor="#666666" fontName="Times New Roman" fontSize="18" isBold="false"/>
+	<style name="Column header" forecolor="#666666" fontName="Times New Roman" fontSize="14" isBold="true"/>
+	<style name="Row" mode="Transparent" fontName="Times New Roman" pdfFontName="Times-Roman">
+		<conditionalStyle>
+			<conditionExpression><![CDATA[$V{REPORT_COUNT}%2 == 0]]></conditionExpression>
+			<style mode="Opaque" backcolor="#F0EFEF"/>
+		</conditionalStyle>
+	</style>
+	<style name="Table">
+		<box>
+			<pen lineWidth="1.0" lineColor="#000000"/>
+			<topPen lineWidth="1.0" lineColor="#000000"/>
+			<leftPen lineWidth="1.0" lineColor="#000000"/>
+			<bottomPen lineWidth="1.0" lineColor="#000000"/>
+			<rightPen lineWidth="1.0" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="Table_TH" mode="Opaque" backcolor="#F0F8FF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+			<topPen lineWidth="0.5" lineColor="#000000"/>
+			<leftPen lineWidth="0.5" lineColor="#000000"/>
+			<bottomPen lineWidth="0.5" lineColor="#000000"/>
+			<rightPen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="Table_CH" mode="Opaque" backcolor="#BFE1FF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+			<topPen lineWidth="0.5" lineColor="#000000"/>
+			<leftPen lineWidth="0.5" lineColor="#000000"/>
+			<bottomPen lineWidth="0.5" lineColor="#000000"/>
+			<rightPen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="Table_TD" mode="Opaque" backcolor="#FFFFFF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+			<topPen lineWidth="0.5" lineColor="#000000"/>
+			<leftPen lineWidth="0.5" lineColor="#000000"/>
+			<bottomPen lineWidth="0.5" lineColor="#000000"/>
+			<rightPen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<subDataset name="HosGroupServices" uuid="4dc48f0e-f5e3-4326-a24c-ecde01ed6c9f">
+		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="reports/AvailabilityReports/terra-dashboard-da.xml"/>
+		<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="161"/>
+		<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="833"/>
+		<parameter name="HOSTGROUP" class="java.lang.String"/>
+		<parameter name="DATE_START" class="java.util.Date"/>
+		<parameter name="DATE_END" class="java.util.Date"/>
+		<queryString language="SQL">
+			<![CDATA[select hgs.DATESTAMP, 
+hgs.HOSTGROUP_NAME, 
+case when (hgs.PERCENT_TOTAL_TIME_OK <=0) then 0 else (trunc(cast(hgs.PERCENT_TOTAL_TIME_OK as numeric),2)) end as PERCENT_TOTAL_TIME_OK, 
+case when (hgs.PERCENT_KNOWN_TIME_CRITICAL_SCHEDULED <=0) then 0 else (trunc(cast(hgs.PERCENT_KNOWN_TIME_CRITICAL_SCHEDULED as numeric),2)) end AS PERCENT_KNOWN_TIME_CRITICAL_SCHEDULED, 
+case when (hgs.PERCENT_KNOWN_TIME_CRITICAL_UNSCHEDULED <=0) then 0 else (trunc(cast(hgs.PERCENT_KNOWN_TIME_CRITICAL_UNSCHEDULED as numeric),2)) end AS PERCENT_KNOWN_TIME_CRITICAL_UNSCHEDULED, 
+case when (hgs.PERCENT_KNOWN_TIME_WARNING_SCHEDULED <=0)then 0 else (trunc(cast(hgs.PERCENT_KNOWN_TIME_WARNING_SCHEDULED as numeric),2)) end AS PERCENT_KNOWN_TIME_WARNING_SCHEDULED, 
+case when (hgs.PERCENT_KNOWN_TIME_WARNING_UNSCHEDULED  <=0)then 0 else  trunc(cast(hgs.PERCENT_KNOWN_TIME_WARNING_UNSCHEDULED as numeric),2) end AS PERCENT_KNOWN_TIME_WARNING_UNSCHEDULED,
+case when ((100.0 - (PERCENT_TOTAL_TIME_OK + PERCENT_KNOWN_TIME_CRITICAL_SCHEDULED 
+		  + PERCENT_KNOWN_TIME_CRITICAL_UNSCHEDULED + PERCENT_KNOWN_TIME_WARNING_SCHEDULED
+		  + PERCENT_KNOWN_TIME_WARNING_UNSCHEDULED)) <=0 )then 0 else trunc(cast(100.0 - (PERCENT_TOTAL_TIME_OK + PERCENT_KNOWN_TIME_CRITICAL_SCHEDULED 
+		  + PERCENT_KNOWN_TIME_CRITICAL_UNSCHEDULED + PERCENT_KNOWN_TIME_WARNING_SCHEDULED
+		  + PERCENT_KNOWN_TIME_WARNING_UNSCHEDULED) as numeric),2) end AS PERCENT_OTHER
+from hostgroup_service_availability hgs
+WHERE hgs.HOSTGROUP_NAME=replace($P{HOSTGROUP},' ', '+') AND hgs.DATESTAMP >= $P{DATE_START} AND hgs.DATESTAMP <= $P{DATE_END} ORDER BY hgs.DATESTAMP]]>
+		</queryString>
+		<field name="datestamp" class="java.sql.Date">
+			<property name="com.jaspersoft.studio.field.label" value="datestamp"/>
+		</field>
+		<field name="hostgroup_name" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.label" value="hostgroup_name"/>
+		</field>
+		<field name="percent_total_time_ok" class="java.math.BigDecimal">
+			<property name="com.jaspersoft.studio.field.label" value="percent_total_time_ok"/>
+		</field>
+		<field name="percent_known_time_critical_scheduled" class="java.math.BigDecimal">
+			<property name="com.jaspersoft.studio.field.label" value="percent_known_time_critical_scheduled"/>
+		</field>
+		<field name="percent_known_time_critical_unscheduled" class="java.math.BigDecimal">
+			<property name="com.jaspersoft.studio.field.label" value="percent_known_time_critical_unscheduled"/>
+		</field>
+		<field name="percent_known_time_warning_scheduled" class="java.math.BigDecimal">
+			<property name="com.jaspersoft.studio.field.label" value="percent_known_time_warning_scheduled"/>
+		</field>
+		<field name="percent_known_time_warning_unscheduled" class="java.math.BigDecimal">
+			<property name="com.jaspersoft.studio.field.label" value="percent_known_time_warning_unscheduled"/>
+		</field>
+		<field name="percent_other" class="java.math.BigDecimal">
+			<property name="com.jaspersoft.studio.field.label" value="percent_other"/>
+		</field>
+	</subDataset>
+	<parameter name="HOSTGROUP" class="java.lang.String"/>
+	<parameter name="DATE_START" class="java.util.Date"/>
+	<parameter name="DATE_END" class="java.util.Date"/>
+	<queryString>
+		<![CDATA[SELECT * 
+FROM   (SELECT h.hostgroup_name, 
+               h.datestamp, 
+               '% TOTAL TIME OK'           AS STATE_NAME, 
+               h1.percent_total_time_ok AS Time 
+        FROM   hostgroup_service_availability h 
+               INNER JOIN (SELECT hostgroup_name, 
+                                  percent_total_time_ok, 
+                                  datestamp 
+                           FROM   hostgroup_service_availability 
+                           WHERE  hostgroup_name = Replace($P{HOSTGROUP}, ' ', '+') 
+                                  AND datestamp >= $P{DATE_START} 
+                                  AND datestamp <= $P{DATE_END}) h1 
+                       ON h1.hostgroup_name = h.hostgroup_name 
+                          AND h1.datestamp = h.datestamp 
+        UNION 
+        SELECT h.hostgroup_name, 
+               h.datestamp, 
+               '% KNOWN TIME CRITICAL - SCHEDULED'      AS STATE_NAME, 
+               h1.percent_known_time_critical_scheduled      AS time 
+        FROM   hostgroup_service_availability h 
+               INNER JOIN (SELECT hostgroup_name, 
+                                  percent_known_time_critical_scheduled, 
+                                  datestamp 
+                           FROM   hostgroup_service_availability 
+                           WHERE  hostgroup_name = Replace($P{HOSTGROUP}, ' ', '+') 
+                                  AND datestamp >= $P{DATE_START} 
+                                  AND datestamp <= $P{DATE_END}) h1 
+                       ON h1.hostgroup_name = h.hostgroup_name 
+                          AND h1.datestamp = h.datestamp 
+        UNION 
+        SELECT h.hostgroup_name, 
+               h.datestamp, 
+               '% KNOWN TIME CRITICAL - UNSCHEDULED'      AS STATE_NAME, 
+               h1.percent_known_time_critical_unscheduled       AS Time 
+        FROM   hostgroup_service_availability h 
+               INNER JOIN (SELECT hostgroup_name, 
+                                  percent_known_time_critical_unscheduled, 
+                                  datestamp 
+                           FROM   hostgroup_service_availability 
+                           WHERE  hostgroup_name = Replace($P{HOSTGROUP}, ' ', '+') 
+                                  AND datestamp >= $P{DATE_START} 
+                                  AND datestamp <= $P{DATE_END}) h1 
+                       ON h1.hostgroup_name = h.hostgroup_name 
+                          AND h1.datestamp = h.datestamp 
+        UNION 
+        SELECT h.hostgroup_name, 
+               h.datestamp, 
+               '% KNOWN TIME WARNING - SCHEDULED'      AS STATE_NAME, 
+               h1.percent_known_time_warning_scheduled     AS Time 
+        FROM   hostgroup_service_availability h 
+               INNER JOIN (SELECT hostgroup_name, 
+                                  percent_known_time_warning_scheduled, 
+                                  datestamp 
+                           FROM   hostgroup_service_availability 
+                           WHERE  hostgroup_name = Replace($P{HOSTGROUP}, ' ', '+') 
+                                  AND datestamp >= $P{DATE_START} 
+                                  AND datestamp <= $P{DATE_END}) h1 
+                       ON h1.hostgroup_name = h.hostgroup_name 
+                          AND h1.datestamp = h.datestamp 
+        UNION 
+        SELECT h.hostgroup_name, 
+               h.datestamp, 
+               '% KNOWN TIME WARNING - UNSCHEDULED'      AS STATE_NAME, 
+               h1.percent_known_time_warning_unscheduled      AS Time 
+        FROM   hostgroup_service_availability h 
+               INNER JOIN (SELECT hostgroup_name, 
+                                  percent_known_time_warning_unscheduled, 
+                                  datestamp 
+                           FROM   hostgroup_service_availability 
+                           WHERE  hostgroup_name = Replace($P{HOSTGROUP}, ' ', '+') 
+                                  AND datestamp >= $P{DATE_START} 
+                                  AND datestamp <= $P{DATE_END}) h1 
+                       ON h1.hostgroup_name = h.hostgroup_name 
+                          AND h1.datestamp = h.datestamp 
+        UNION 
+        SELECT h.hostgroup_name, 
+               h.datestamp, 
+               '% TIME OTHER'                                              AS STATE_NAME, 
+               ( 100.0 - ( h1.percent_total_time_ok 
+                           + h1.percent_known_time_critical_scheduled 
+                           + h1.percent_known_time_critical_unscheduled 
+                           + h1.percent_known_time_warning_scheduled 
+                           + h1.percent_known_time_warning_unscheduled ) ) AS Time 
+        FROM   hostgroup_service_availability h 
+               INNER JOIN (SELECT hostgroup_name, 
+                                  percent_total_time_ok, 
+                                  percent_known_time_critical_scheduled, 
+                                  percent_known_time_critical_unscheduled, 
+                                  percent_known_time_warning_scheduled, 
+                                  percent_known_time_warning_unscheduled, 
+                                  datestamp 
+                           FROM   hostgroup_service_availability 
+                           WHERE  hostgroup_name = Replace($P{HOSTGROUP}, ' ', '+') 
+                                  AND datestamp >= $P{DATE_START} 
+                                  AND datestamp <= $P{DATE_END}) h1 
+                       ON h1.hostgroup_name = h.hostgroup_name 
+                          AND h1.datestamp = h.datestamp) AS ha 
+ORDER  BY ha.datestamp]]>
+	</queryString>
+	<field name="hostgroup_name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="hostgroup_name"/>
+	</field>
+	<field name="datestamp" class="java.sql.Date">
+		<property name="com.jaspersoft.studio.field.label" value="datestamp"/>
+	</field>
+	<field name="state_name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="state_name"/>
+	</field>
+	<field name="time" class="java.lang.Double">
+		<property name="com.jaspersoft.studio.field.label" value="time"/>
+	</field>
+	<title>
+		<band height="86" splitType="Stretch">
+			<frame>
+				<reportElement mode="Opaque" x="0" y="0" width="802" height="10" forecolor="#F78617" backcolor="#F78617" uuid="d1d0af64-4977-408f-9500-0e6b3b7a7ff0"/>
+			</frame>
+			<frame>
+				<reportElement mode="Opaque" x="0" y="68" width="802" height="10" forecolor="#626968" backcolor="#626968" uuid="5387f334-41a8-479a-aebd-aed52db458db"/>
+			</frame>
+			<image>
+				<reportElement x="8" y="14" width="794" height="50" uuid="39c11037-0790-481a-976e-04196ad677d0"/>
+				<imageExpression><![CDATA["assets/images/gwos_logo_orangegray.png"]]></imageExpression>
+			</image>
+		</band>
+	</title>
+	<pageHeader>
+		<band height="125">
+			<frame>
+				<reportElement mode="Opaque" x="0" y="44" width="802" height="40" forecolor="#F78617" backcolor="#F78617" uuid="2783f84c-b79d-4241-9588-71b84937964a"/>
+				<staticText>
+					<reportElement style="Title" x="0" y="0" width="802" height="40" uuid="9bf5cf8b-7287-4974-9066-e03046e746c4"/>
+					<box leftPadding="5"/>
+					<textElement textAlignment="Left" verticalAlignment="Middle">
+						<font fontName="Arial" size="20" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Service Availability]]></text>
+				</staticText>
+			</frame>
+			<staticText>
+				<reportElement style="Title" x="0" y="0" width="802" height="40" forecolor="#F77C17" uuid="2b0eb011-2187-4431-bb54-16912f381e99"/>
+				<box leftPadding="5"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="26" isBold="true"/>
+				</textElement>
+				<text><![CDATA[HostGroup Availability Report]]></text>
+			</staticText>
+			<textField>
+				<reportElement style="Title" x="0" y="88" width="385" height="16" forecolor="#000000" uuid="989b0763-e512-4ef4-afd1-c811a604d8de"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["HostGroup: " + $F{hostgroup_name}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement style="Title" x="417" y="88" width="385" height="16" forecolor="#000000" uuid="3e1a9c9c-8cc0-46f7-85e7-b4055faea85f"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Date Range: " + new SimpleDateFormat("yyyy-MM-dd").format($P{DATE_START}) + " - " + new SimpleDateFormat("yyyy-MM-dd").format($P{DATE_END})]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageHeader>
+	<detail>
+		<band height="250">
+			<printWhenExpression><![CDATA[$V{REPORT_COUNT} == 1]]></printWhenExpression>
+			<stackedBarChart>
+				<chart evaluationTime="Report">
+					<reportElement x="0" y="0" width="802" height="250" uuid="c45e29f0-7571-4491-b178-f267f13d123b"/>
+					<chartTitle/>
+					<chartSubtitle/>
+					<chartLegend/>
+				</chart>
+				<categoryDataset>
+					<categorySeries>
+						<seriesExpression><![CDATA[$F{state_name}]]></seriesExpression>
+						<categoryExpression><![CDATA[$F{datestamp}]]></categoryExpression>
+						<valueExpression><![CDATA[$F{time}]]></valueExpression>
+						<labelExpression><![CDATA[$F{state_name}]]></labelExpression>
+					</categorySeries>
+				</categoryDataset>
+				<barPlot>
+					<plot labelRotation="45.0"/>
+					<itemLabel/>
+					<categoryAxisFormat labelRotation="45.0">
+						<axisFormat labelColor="#000000" tickLabelColor="#000000" axisLineColor="#000000"/>
+					</categoryAxisFormat>
+					<valueAxisFormat>
+						<axisFormat labelColor="#000000" tickLabelColor="#000000" axisLineColor="#000000"/>
+					</valueAxisFormat>
+				</barPlot>
+			</stackedBarChart>
+		</band>
+		<band height="250">
+			<printWhenExpression><![CDATA[$V{REPORT_COUNT} == 1]]></printWhenExpression>
+			<frame>
+				<reportElement x="0" y="0" width="802" height="250" uuid="48e68fc6-66d6-4439-885c-818e599f4a0c"/>
+				<componentElement>
+					<reportElement x="0" y="0" width="802" height="250" uuid="a5791090-aa24-4248-911d-a2b120441f9c">
+						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.VerticalRowLayout"/>
+						<property name="com.jaspersoft.studio.table.style.table_header" value="Table_TH"/>
+						<property name="com.jaspersoft.studio.table.style.column_header" value="Table_CH"/>
+						<property name="com.jaspersoft.studio.table.style.detail" value="Table_TD"/>
+						<property name="com.jaspersoft.studio.components.autoresize.proportional" value="true"/>
+					</reportElement>
+					<jr:table xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd">
+						<datasetRun subDataset="HosGroupServices" uuid="7cdcc09b-6ef6-459c-9864-691658466921">
+							<datasetParameter name="HOSTGROUP">
+								<datasetParameterExpression><![CDATA[$P{HOSTGROUP}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="DATE_START">
+								<datasetParameterExpression><![CDATA[$P{DATE_START}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="DATE_END">
+								<datasetParameterExpression><![CDATA[$P{DATE_END}]]></datasetParameterExpression>
+							</datasetParameter>
+							<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+						</datasetRun>
+						<jr:column width="101" uuid="1aaeeb67-f422-460f-a21a-4878178c5cc9">
+							<jr:tableHeader style="Table_TH" height="30"/>
+							<jr:tableFooter style="Table_TH" height="30"/>
+							<jr:columnHeader style="Table_CH" height="30">
+								<staticText>
+									<reportElement x="0" y="0" width="101" height="30" uuid="e33faa40-faed-4fce-b984-96ac299e9aaf"/>
+									<text><![CDATA[datestamp]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:columnFooter style="Table_CH" height="30"/>
+							<jr:detailCell style="Table_TD" height="30">
+								<textField>
+									<reportElement x="0" y="0" width="101" height="30" uuid="a266baca-5af6-4093-ae04-f2171d8ac0fa"/>
+									<textFieldExpression><![CDATA[$F{datestamp}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="101" uuid="c3983d5c-30f7-4ccc-b59c-e6f622ddee24">
+							<jr:tableHeader style="Table_TH" height="30"/>
+							<jr:tableFooter style="Table_TH" height="30"/>
+							<jr:columnHeader style="Table_CH" height="30">
+								<staticText>
+									<reportElement x="0" y="0" width="101" height="30" uuid="a3e6ec09-8c4c-4e39-b57f-ab34b09fab72"/>
+									<text><![CDATA[hostgroup_name]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:columnFooter style="Table_CH" height="30"/>
+							<jr:detailCell style="Table_TD" height="30">
+								<textField>
+									<reportElement x="0" y="0" width="101" height="30" uuid="71b82e93-5122-472d-92fe-cde80d7d7133"/>
+									<textFieldExpression><![CDATA[$F{hostgroup_name}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="100" uuid="838a71ba-db41-4cbf-b2d5-bdbd0deee9e4">
+							<jr:tableHeader style="Table_TH" height="30"/>
+							<jr:tableFooter style="Table_TH" height="30"/>
+							<jr:columnHeader style="Table_CH" height="30">
+								<staticText>
+									<reportElement x="0" y="0" width="100" height="30" uuid="d937f3ef-bc82-44f4-8595-3a225f296992"/>
+									<text><![CDATA[percent_total_time_ok]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:columnFooter style="Table_CH" height="30"/>
+							<jr:detailCell style="Table_TD" height="30">
+								<textField>
+									<reportElement x="0" y="0" width="100" height="30" uuid="43793ecb-67b1-4910-949f-048b65f7d6af"/>
+									<textFieldExpression><![CDATA[$F{percent_total_time_ok}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="100" uuid="c1f372d5-49a9-497d-80ef-8fc8069731e7">
+							<jr:tableHeader style="Table_TH" height="30"/>
+							<jr:tableFooter style="Table_TH" height="30"/>
+							<jr:columnHeader style="Table_CH" height="30">
+								<staticText>
+									<reportElement x="0" y="0" width="100" height="30" uuid="98802f7a-bf33-4cec-82b8-206a61c0cc03"/>
+									<text><![CDATA[percent_known_time_critical_scheduled]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:columnFooter style="Table_CH" height="30"/>
+							<jr:detailCell style="Table_TD" height="30">
+								<textField>
+									<reportElement x="0" y="0" width="100" height="30" uuid="884da049-61bf-4e41-9a84-fdffa4c6bfd0"/>
+									<textFieldExpression><![CDATA[$F{percent_known_time_critical_scheduled}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="100" uuid="4175afca-40a3-4962-8e67-1f51d02ac9bb">
+							<jr:tableHeader style="Table_TH" height="30"/>
+							<jr:tableFooter style="Table_TH" height="30"/>
+							<jr:columnHeader style="Table_CH" height="30">
+								<staticText>
+									<reportElement x="0" y="0" width="100" height="30" uuid="3cfa0621-3b89-4107-bdbf-9c8b7092b058"/>
+									<text><![CDATA[percent_known_time_critical_unscheduled]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:columnFooter style="Table_CH" height="30"/>
+							<jr:detailCell style="Table_TD" height="30">
+								<textField>
+									<reportElement x="0" y="0" width="100" height="30" uuid="e8aa967d-ff4e-4558-afca-b7dacf8d72e8"/>
+									<textFieldExpression><![CDATA[$F{percent_known_time_critical_unscheduled}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="100" uuid="c87dd4bb-0409-463e-8b35-20855620880f">
+							<jr:tableHeader style="Table_TH" height="30"/>
+							<jr:tableFooter style="Table_TH" height="30"/>
+							<jr:columnHeader style="Table_CH" height="30">
+								<staticText>
+									<reportElement x="0" y="0" width="100" height="30" uuid="f3d4b440-df83-491a-a2fc-d266a1f6ced3"/>
+									<text><![CDATA[percent_known_time_warning_scheduled]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:columnFooter style="Table_CH" height="30"/>
+							<jr:detailCell style="Table_TD" height="30">
+								<textField>
+									<reportElement x="0" y="0" width="100" height="30" uuid="3ea2b31a-5622-4b29-a0dd-c2586f1b9da4"/>
+									<textFieldExpression><![CDATA[$F{percent_known_time_warning_scheduled}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="100" uuid="226880c2-fc2e-47a2-967d-237471ed1f11">
+							<jr:tableHeader style="Table_TH" height="30"/>
+							<jr:tableFooter style="Table_TH" height="30"/>
+							<jr:columnHeader style="Table_CH" height="30">
+								<staticText>
+									<reportElement x="0" y="0" width="100" height="30" uuid="47de7feb-1654-41e6-a86e-96353c2721d6"/>
+									<text><![CDATA[percent_known_time_warning_unscheduled]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:columnFooter style="Table_CH" height="30"/>
+							<jr:detailCell style="Table_TD" height="30">
+								<textField>
+									<reportElement x="0" y="0" width="100" height="30" uuid="a67c085d-ac81-44b0-a625-dfe580c68c40"/>
+									<textFieldExpression><![CDATA[$F{percent_known_time_warning_unscheduled}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="100" uuid="2be8a3c0-b1bf-4bd0-915f-aac2be7d2d61">
+							<jr:tableHeader style="Table_TH" height="30"/>
+							<jr:tableFooter style="Table_TH" height="30"/>
+							<jr:columnHeader style="Table_CH" height="30">
+								<staticText>
+									<reportElement x="0" y="0" width="100" height="30" uuid="f7510b96-e57e-47d6-be6c-cb3851658249"/>
+									<text><![CDATA[percent_other]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:columnFooter style="Table_CH" height="30"/>
+							<jr:detailCell style="Table_TD" height="30">
+								<textField>
+									<reportElement x="0" y="0" width="100" height="30" uuid="381b552a-b7e0-4628-ae7c-eddf1f01e873"/>
+									<textFieldExpression><![CDATA[$F{percent_other}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+					</jr:table>
+				</componentElement>
+			</frame>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="64" splitType="Stretch">
+			<frame>
+				<reportElement mode="Opaque" x="0" y="48" width="802" height="16" forecolor="#FFFFFF" backcolor="#FFFFFF" uuid="dbbd7f7c-a4ef-4144-9e40-4eb80b0d4dc3"/>
+				<textField pattern="MMM d, yyyy h:mm:ss a z">
+					<reportElement style="Column header" x="24" y="0" width="232" height="16" forecolor="#000000" uuid="81eae817-c3ed-46a0-b950-81c5af3f605a"/>
+					<textElement verticalAlignment="Middle">
+						<font fontName="Arial" size="12" isBold="false"/>
+					</textElement>
+					<textFieldExpression><![CDATA["Generated On "+ new java.util.Date()]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement style="Column header" x="572" y="0" width="230" height="16" forecolor="#000000" uuid="779b4eb5-131b-4d1f-9fba-913340bd6670"/>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="12" isBold="false"/>
+					</textElement>
+					<textFieldExpression><![CDATA["Confidential"]]></textFieldExpression>
+				</textField>
+				<image>
+					<reportElement x="0" y="0" width="16" height="16" uuid="a7f268ad-e02e-4e51-aa6f-4b904bf9f783"/>
+					<imageExpression><![CDATA["assets/images/gw_icon.png"]]></imageExpression>
+				</image>
+				<textField evaluationTime="Report">
+					<reportElement x="401" y="0" width="100" height="16" uuid="bbe7eacc-86f1-4b16-9939-55564ef73ad3"/>
+					<textElement textAlignment="Left">
+						<font fontName="SansSerif" size="12"/>
+					</textElement>
+					<textFieldExpression><![CDATA[" of " + $V{PAGE_NUMBER}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="301" y="0" width="100" height="16" uuid="24c01c8b-fd5d-41e0-9637-bb5215e7fc17"/>
+					<textElement textAlignment="Right">
+						<font fontName="SansSerif" size="12"/>
+					</textElement>
+					<textFieldExpression><![CDATA["Page " + $V{PAGE_NUMBER}]]></textFieldExpression>
+				</textField>
+			</frame>
+			<textField>
+				<reportElement style="Column header" x="0" y="8" width="802" height="16" forecolor="#000000" uuid="aa031ad9-09ca-4a40-a02c-937d348bff59"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Copyright 2018 GroundWork Open Source, Inc. (GroundWork)"]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement style="Column header" x="0" y="24" width="802" height="16" forecolor="#000000" uuid="4b3f1cdd-01db-4e8a-9539-3e88d731e904"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["All rights reserved."]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageFooter>
+</jasperReport>

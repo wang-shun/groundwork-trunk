@@ -1,0 +1,140 @@
+<f:view xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ice-cc="http://www.icesoft.com/icefaces-composite-comps"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ice:outputDeclaration doctypeRoot="HTML"
+		doctypePublic="-//W3C//DTD HTML 4.01 Transitional//EN"
+		doctypeSystem="http://www.w3.org/TR/html4/loose.dtd" />
+	<ice:portlet>
+		<ice:panelGroup>
+			<ice:messages layout="table"
+				style="text-align:left; border:solid 1px #FF0000; background:#F3F781;color:#000000;padding:20px;text-align:left; margin: 20px; padding: 2px;" />
+			<ice:form id="cgListFrm" partialSubmit="true">
+
+				<div class="customgroupframe">
+					<div style="margin-bottom: 2px;">
+						<ice:outputText value="Custom Groups"
+							style="font-size:larger;font-weight:bold;color:#FFF;" />
+						&amp;nbsp;
+					</div>
+
+					<div style="padding: 8px 8px 4px 8px; background-color: #FFF;">
+						<ice:panelGroup>
+							<ice:column id="cgcolumninfo"
+								rendered="#{empty customGroupBean.customGroups}">
+								<ui:include src="/jsp/info.jspx">
+									<ui:param name="infoMessage" value="#{customGroupBean.message}" />
+								</ui:include>
+							</ice:column>
+						</ice:panelGroup>
+						<ice:panelGroup>
+							<ice:dataTable id="customGroups" var="customGroup" styleClass="iceDatTbl_typB iceDatTblHdr_typB iceDatTblFtr_typB"
+								value="#{customGroupBean.customGroups}" rows="0"
+								rendered="#{not empty customGroupBean.customGroups}">
+								<ice:column>
+									<f:facet name="header">
+										<ice:outputText id="column0" value="" />
+									</f:facet>
+									<ice:selectBooleanCheckbox value="#{customGroup.selected}" />
+								</ice:column>
+
+								<ice:column>
+									<f:facet name="header">
+										<ice:outputText id="column1" value="GroupName" />
+									</f:facet>
+									<ice:outputText id="groupName" value="#{customGroup.groupName}" />
+								</ice:column>
+
+								<ice:column>
+									<f:facet name="header">
+										<ice:outputText id="column2" value="GroupType" />
+									</f:facet>
+									<ice:outputText id="groupType"
+										value="#{customGroup.entityType.entityType}" />
+								</ice:column>
+
+								<ice:column>
+									<f:facet name="header">
+										<h:outputText value="Parents" />
+									</f:facet>
+									<h:dataTable id="parentId" value="#{customGroup.parents}"
+										var="parent">
+										<h:column>
+											<h:outputText value="#{parent.groupName}" />
+										</h:column>
+									</h:dataTable>
+								</ice:column>
+
+								<ice:column>
+									<f:facet name="header">
+										<h:outputText value="Children" />
+									</f:facet>
+									<h:dataTable id="childrenId" value="#{customGroup.elements}"
+										var="element">
+										<h:column>
+											<!-- TODO: Lookup the element by name  -->
+											<h:outputText value="#{element.elementName}" />
+										</h:column>
+									</h:dataTable>
+								</ice:column>
+
+								<ice:column>
+									<f:facet name="header">
+										<ice:outputText id="column5" value="Created By" />
+									</f:facet>
+									<ice:outputText id="createdBy" value="#{customGroup.createdBy}" />
+								</ice:column>
+
+								<ice:column>
+									<f:facet name="header">
+										<ice:outputText id="column6" value="Created Timestamp" />
+									</f:facet>
+									<ice:outputText id="createdTimestamp"
+										value="#{customGroup.createdTimeStamp}" />
+								</ice:column>
+
+								<ice:column>
+									<f:facet name="header">
+										<ice:outputText id="column7" value="Last Modified Timestamp" />
+									</f:facet>
+									<ice:outputText id="lastModifiedTimestamp"
+										value="#{customGroup.lastModifiedTimeStamp}" />
+								</ice:column>
+
+								<ice:column>
+									<f:facet name="header">
+										<ice:outputText id="column8" value="Group State" />
+									</f:facet>
+									<ice:outputText id="groupState"
+										value="#{customGroup.groupState =='S' ? 'Saved' : 'Published' }" />
+								</ice:column>
+							</ice:dataTable>
+							<ice:panelGrid columns="3" styleClass="iceDatTbl_typG">
+								<ice:commandButton id="btn_add" action="add"
+									value="Create New CustomGroup" styleClass="cust_portlet_filter_button"/>
+								<ice:commandButton id="btn_edit"
+									action="#{customGroupBean.editCustomGroup}"
+									value="Edit CustomGroup" styleClass="cust_portlet_filter_button"
+									rendered="#{not empty customGroupBean.customGroups}" />
+								<ice:commandButton id="btn_delete"
+									action="#{customGroupBean.deleteCustomGroup}"
+									panelConfirmation="deleteConfirmPanel"
+									value="Delete CustomGroup" styleClass="cust_portlet_filter_button"
+									rendered="#{not empty customGroupBean.customGroups}">
+								</ice:commandButton>
+							</ice:panelGrid>
+						</ice:panelGroup>
+						<ice:panelConfirmation id="deleteConfirmPanel"
+							message="The selected custom groups and all its associations will be deleted. Please confirm your delete action! "
+							acceptLabel="Delete" rendered="true" />
+					</div>
+
+				</div>
+
+			</ice:form>
+		</ice:panelGroup>
+		<jsp:directive.include file="jsp/createCustomGroup.jspx" />
+	</ice:portlet>
+</f:view>

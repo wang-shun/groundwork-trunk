@@ -1,0 +1,41 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+# Program to filter a list of Perl directories and files to avoid collisions
+# with paths we know to be already in the base product.  We cannot simply
+# take each file and compare to the local system, because that system might
+# already have our RPM package installed.  Instead we must use our knowledge
+# of the Perl installation and of our additional modules, and tailor the
+# filtering accordingly.
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+use strict;
+
+if (scalar @ARGV > 1) {
+    print "usage:  cat raw_rpm_filelist | filter_perl_modules > filtered_rpm_filelist\n";
+    print "or:     filter_perl_modules raw_rpm_filelist > filtered_rpm_filelist\n";
+    exit 1;
+}
+
+# FIX THIS:  We haven't yet got the GroundWork-Perl-based builds to work;
+# some dependencies fail during the build.  When we do, we will need to
+# come back here and figure out what paths to add here.
+
+# These paths are already in the product, except for the perllocal.pod file.
+# We filter that out because it serves no good purpose for us, and we don't
+# want to contaminate later builds when our modules are eventually folded
+# directly into the GroundWork Monitor product.
+my @existing_paths = qw(
+    /perl/lib/site_perl/5.8.8/x86_64-linux-thread-multi/perllocal.pod
+);
+
+my %existing_paths = map { $_ => 1} @existing_paths;
+
+my $path;
+while (<>) {
+    ($path = $_) =~ s<.*}><>;
+    chomp $path;
+    next if exists $existing_paths{$path};
+    print;
+}

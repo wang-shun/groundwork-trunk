@@ -1,0 +1,30 @@
+--- nagios-plugins-1.4.13/contrib/check_snmp_disk_monitor.pl	2002-08-22 07:42:43.000000000 -0700
++++ nagios-plugins-1.4.13_mod/contrib/check_snmp_disk_monitor.pl	2009-06-03 06:27:33.000000000 -0700
+@@ -27,7 +27,6 @@
+ %mounts        = ();
+ 
+ sub process_options {
+-    my( $opt_crit, $opt_warn ) = ();
+     Getopt::Long::Configure( 'bundling' );
+     GetOptions(
+         'V'     => \$opt_version,       'version'     => \$opt_version,
+@@ -37,8 +36,8 @@
+         'H:s'   => \$opt_host,          'hostname:s'  => \$opt_host,
+         'p:i'   => \$opt_port,          'port:i'      => \$opt_port,
+         'C:s'   => \$opt_community,     'community:s' => \$opt_community,
+-        'c:i'   => \$opt_crit,          'critical:i'  => \$opt_crit,
+-        'w:i'   => \$opt_warn,          'warning:i'   => \$opt_warn,
++        'c:i'   => \$opt_critical,      'critical:i'  => \$opt_critical,
++        'w:i'   => \$opt_warning,       'warning:i'   => \$opt_warning,
+         't:i'   => \$TIMEOUT,           'timeout:i'   => \$TIMEOUT,    
+         'm:s'   => \$opt_mountpoint,    'mountpoint:s'=> \$opt_mountpoint
+     );
+@@ -56,7 +55,7 @@
+ }
+ 
+ sub print_usage {
+-    print "Usage: $PROGNAME -H <host> -C <snmp_community> [-s] [-w <low>,<high>] [-c <low>,<high>] [-t <timeout>] -m <mountpoint>\n";
++    print "Usage: $PROGNAME -H <host> -C <snmp_community> [-s] [-w <limit>] [-c <limit>] [-t <timeout>] -m <mountpoint>\n";
+ }
+ 
+ sub print_help {

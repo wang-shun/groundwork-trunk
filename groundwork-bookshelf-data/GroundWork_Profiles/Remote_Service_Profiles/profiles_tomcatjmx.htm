@@ -1,0 +1,626 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0014)about:internet -->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Adobe RoboHelp 8" />
+<title>Tomcat (JMX)</title>
+<link rel="StyleSheet" href="../../Bookshelf.css" type="text/css" />
+<script type="text/javascript" language="JavaScript">
+//<![CDATA[
+function reDo() {
+  if (innerWidth != origWidth || innerHeight != origHeight)
+     location.reload();
+}
+if ((parseInt(navigator.appVersion) == 4) && (navigator.appName == "Netscape")) {
+        origWidth = innerWidth;
+        origHeight = innerHeight;
+        onresize = reDo;
+}
+onerror = null; 
+//]]>
+</script>
+<style type="text/css">
+/*<![CDATA[*/
+<!--
+div.WebHelpPopupMenu { position:absolute;
+left:0px;
+top:0px;
+z-index:4;
+visibility:hidden; }
+-->
+/*]]>*/
+</style>
+
+<script type="text/javascript" language="javascript1.2" src="../../whmsg.js">
+</script>
+<script type="text/javascript" language="javascript" src="../../whver.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../whproxy.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../whutils.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../whlang.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../whtopic.js">
+</script>
+</head>
+<body>
+<script type="text/javascript" language="javascript1.2">
+//<![CDATA[
+<!--
+if (window.gbWhTopic)
+{
+        var strUrl = document.location.href;
+        var bc = 0;
+        var n = strUrl.toLowerCase().indexOf("bc-");
+        if(n != -1)
+        {
+                document.location.href = strUrl.substring(0, n);
+                bc = strUrl.substring(n+3);
+        }
+
+        if (window.addTocInfo)
+        {
+        addTocInfo("GROUNDWORK PROFILES\nRemote Service Profiles\nTomcat (JMX)");
+addButton("show",BTN_TEXT,"Show Table of Contents","","","","",0,0,"","","");
+
+        }
+        if (window.writeBtnStyle)
+                writeBtnStyle();
+
+        if (window.writeIntopicBar)
+                writeIntopicBar(1);
+
+        
+        
+
+        if (window.setRelStartPage)
+        {
+        setRelStartPage("../../Bookshelf.htm");
+
+                autoSync(0);
+                sendSyncInfo();
+                sendAveInfoOut();
+        }
+}
+else
+        if (window.gbIE4)
+                document.location.reload();
+
+//-->
+//]]>
+</script><script type="text/javascript" language="JavaScript1.2" src="../../ehlpdhtm.js">
+</script><script type="text/javascript" language="javascript">
+//<![CDATA[
+document.write("<p  style=\"text-align:right;color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;\">");
+AddMasterBreadcrumbs("../../Bookshelf.htm", "color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;", "&gt;", "Home", "../../Welcome_to_GroundWork_Monitor/index.htm");
+document.write("<a style=\"color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;\" href=\"../profiles_aboutprofiles.htm\">GROUNDWORK PROFILES<\/a> &gt; <a style=\"color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;\" href=\"profiles_oracledatabasejdbc.htm\">Remote Service Profiles<\/a> &gt; Tomcat (JMX)<\/p>");
+//]]>
+</script>
+<p>&#160;</p>
+<h1><a name="MiniTOCBookMark1" id="MiniTOCBookMark1"></a><img src="../../Shared_Images/square.gif" alt="square.gif" style="border: none;" width="15" height="15" border="0" /> GroundWork Profiles</h1>
+<h3 align="right"><a href="../profiles_aboutprofiles.htm"><img src="../../Shared_Images/homeicon.gif" alt="homeicon.gif" style="border: none;" width="33" height="27" border="0" /></a> <img src="../../Shared_Images/printicon.gif" onclick="window.print()" alt="Print Page" title="Print Page" style="border: none;" width="31" height="27" border="0" /> <a href="mailto:support@groundworkopensource.com?subject=Tomcat Profile (JMX)" title="Send Comments"><img src="../../Shared_Images/commentsicon.gif" alt="commentsicon.gif" style="border: none;" width="33" height="27" border="0" /></a></h3>
+<h2><a name="MiniTOCBookMark2" id="MiniTOCBookMark2"></a>Tomcat PROFILE (JMX)</h2>
+<p align="left">Table&#160;of&#160;Contents:&#160;<a class="dropspot" href="javascript:TextPopup(this)" id="MTHotSpot26080" name="MTHotSpot26080"><span class="MTText">Show</span><span class="MTText" style="display: none;">Hide</span></a></p>
+<script type="text/javascript" language="JavaScript1.2">
+//<![CDATA[
+TextPopupInit('MTHotSpot26080', 'MTPOPUP26080');
+//]]>
+</script>
+<div align="left" class="droptext" id="MTPOPUP26080" style="display: none;">
+<ul style="text-align:left; list-style-type: circle;">
+<li><a href="#MiniTOCBookMark3">Services Configuration</a></li>
+<li><a href="#MiniTOCBookMark4">Profile Package</a></li>
+<li><a href="#MiniTOCBookMark5">Installation</a></li>
+<li><a href="#MiniTOCBookMark6">Implementation</a></li>
+</ul>
+</div>
+<p>This profile monitors the health of a Tomcat server via JMX (Java Management Extensions). The approach of using JMX allows for the customer to extend monitoring to any MBean (managed bean). An MBean is a Java object representing a manageable resource.</p>
+<p><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>Note:</b></font></span> You may want to refer to <a href="http://tomcat.apache.org/tomcat-5.5-doc/monitoring.html" target="_blank">http://tomcat.apache.org/tomcat-5.5-doc/monitoring.html</a> for information on how to set up the <span style="font-style: italic;"><i>Tomcat JMX</i></span> profile and <span style="font-style: italic;"><i>catalina.sh</i></span>.</p>
+<h3><a name="MiniTOCBookMark3" id="MiniTOCBookMark3"></a>Services Configuration</h3>
+<ul style="list-style: url('../../Shared_Images/bullet01.gif');">
+<li class="p-Bullet1">
+<p class="Bullet1"><span style="font-weight: bold;"><b>SERVICE</b></span> - Definitions in Monarch are stored under this name.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1"><span style="font-weight: bold;"><b>COMMAND LINE</b></span> - Service command name with arguments to be passed to the plugin.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1"><span style="font-weight: bold;"><b>PLUGIN COMMAND LINE</b></span> - Plugin script called by Nagios for this Service.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1"><span style="font-weight: bold;"><b>EXTENDED INFO</b></span> - The Extended Service Info definition, typically used for generating graphs.</p>
+</li>
+</ul>
+<p><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>Note:</b></font></span> Command lines displayed below are intended to be single line commands.</p>
+<table cellspacing="0" width="700">
+<col style="width: 17.647%;" />
+<col style="width: 41.176%;" />
+<col style="width: 41.176%;" />
+<tr style="vertical-align: top;">
+<td style="border: Solid 2px #ffffff; width: 17.647%; padding-right: 10px; padding-left: 10px;" bgcolor="#1B3A83">
+<p class="NormalTableBoldCenter">Service</p>
+</td>
+<td style="border-top: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#1B3A83">
+<p class="NormalTableBoldCenter">Command Line</p>
+</td>
+<td style="border-top: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#1B3A83">
+<p class="NormalTableBoldCenter">Plugin Command Line</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 17.647%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">jmx_tomcat_CollectionCount</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_jvm!java.lang:name=Copy,</p>
+<p class="CourierTable">type=GarbageCollector!CollectionCount</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_jvm.pl -H $HOSTADDRESS$ -m "$ARG1$" -p $USER28$ -u $USER29$ -P $USER30$ -a "$ARG2$"</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 17.647%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">jmx_tomcat_CollectionTime</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_jvm!java.lang:name=Copy,</p>
+<p class="CourierTable">type=GarbageCollector!CollectionTime</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_jvm.pl -H $HOSTADDRESS$ -m "$ARG1$" -p $USER28$ -u $USER29$ -P $USER30$ -a "$ARG2$"</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 17.647%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">jmx_tomcat_bytesSent</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_jvm!Catalina:type=GlobalRequestProcessor,</p>
+<p class="CourierTable">name=http-8080!bytesSent</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_jvm.pl -H $HOSTADDRESS$ -m "$ARG1$" -p $USER28$ -u $USER29$ -P $USER30$ -a "$ARG2$"</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 17.647%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">jmx_tomcat_currentThreadCount</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_jvm_th!Catalina:name=http-8080,type=ThreadPool!currentThreadCount!50!100</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_jvm.pl -H $HOSTADDRESS$ -m "$ARG1$" -p $USER28$ -u $USER29$ -P $USER30$ -a "$ARG2$" -w $ARG3$ -c $ARG4$</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 17.647%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">jmx_tomcat_currentThreadsBusy</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_jvm_th!Catalina:name=http-8080,type=ThreadPool!currentThreadsBusy!50!100</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_jvm.pl -H $HOSTADDRESS$ -m "$ARG1$" -p $USER28$ -u $USER29$ -P $USER30$ -a "$ARG2$" -w $ARG3$ -c $ARG4$</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 17.647%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">jmx_tomcat_errorCount</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_jvm_th!Catalina:type=GlobalRequestProcessor,</p>
+<p class="CourierTable">name=http-8080!errorCount!10!100</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_jvm.pl -H $HOSTADDRESS$ -m "$ARG1$" -p $USER28$ -u $USER29$ -P $USER30$ -a "$ARG2$" -w $ARG3$ -c $ARG4$</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 17.647%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">jmx_tomcat_maxThreads</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_jvm_th!Catalina:name=http-8080,type=ThreadPool!maxThreads!75!150</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_jvm.pl -H $HOSTADDRESS$ -m "$ARG1$" -p $USER28$ -u $USER29$ -P $USER30$ -a "$ARG2$" -w $ARG3$ -c $ARG4$</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 17.647%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">jmx_tomcat_maxTime</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_jvm_th!Catalina:type=GlobalRequestProcessor,</p>
+<p class="CourierTable">name=http-8080!maxTime!1000!10000</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_jvm.pl -H $HOSTADDRESS$ -m "$ARG1$" -p $USER28$ -u $USER29$ -P $USER30$ -a "$ARG2$" -w $ARG3$ -c $ARG4$</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 17.647%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">jmx_tomcat_processingTime</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_jvm!Catalina:type=GlobalRequestProcessor,</p>
+<p class="CourierTable">name=http-8080!processingTime</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_jvm.pl -H $HOSTADDRESS$ -m "$ARG1$" -p $USER28$ -u $USER29$ -P $USER30$ -a "$ARG2$"</p>
+</td>
+</tr>
+<tr style="vertical-align: top;">
+<td style="border-left: Solid 2px #ffffff; border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 17.647%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">jmx_tomcat_requestCount</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">check_jvm!Catalina:type=GlobalRequestProcessor,</p>
+<p class="CourierTable">name=http-8080!requestCount</p>
+</td>
+<td style="border-right: Solid 2px #ffffff; border-bottom: Solid 2px #ffffff; width: 41.176%; padding-right: 10px; padding-left: 10px;" bgcolor="#C0C0C0">
+<p class="CourierTable">$USER1$/check_jvm.pl -H $HOSTADDRESS$ -m "$ARG1$" -p $USER28$ -u $USER29$ -P $USER30$ -a "$ARG2$"</p>
+</td>
+</tr>
+</table>
+<h3><a name="MiniTOCBookMark4" id="MiniTOCBookMark4"></a>Profile Package</h3>
+<p>This package includes the following files:</p>
+<p>Profile Definitions</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">service-profile-jmx-tomcat.xml</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">perfconfig-jmx-tomcat.xml</p>
+</li>
+</ul>
+<p>Plugins Scripts</p>
+<ul>
+<li class="P-Bullet1">check_jvm.pl</li>
+<li class="P-Bullet1">nagtomcat.jar</li>
+<li class="P-Bullet1">com/*</li>
+<li class="P-Bullet1">data/*</li>
+<li class="P-Bullet1">libs/*</li>
+</ul>
+<h3><a name="MiniTOCBookMark5" id="MiniTOCBookMark5"></a>Installation</h3>
+<p>GroundWork Monitor includes many monitoring profiles for a variety of devices, systems and applications. Profiles already imported on a new GroundWork installation include Service Ping, SNMP Network, and SSH UNIX. The GroundWork Monitor Configuration tool is used to import updated Profiles and Profiles that require additional setup; the Profile XML file and its companion Performance Configuration definition file. Services can also be imported in addition to Service Profiles in the Profile Importer. The import process is documented under <span style="font-weight: bold;"><b>GROUNDWORK PROFILES &gt; <a href="../profiles_importingprofiles.htm" style="font-weight: bold;">Importing Profiles</a></b></span>.</p>
+<h3><a name="MiniTOCBookMark6" id="MiniTOCBookMark6"></a><b style="font-weight: bold;">Implementation</b></h3>
+<p><b style="font-weight: bold;">T</b>his section contains detail settings used by this Profile. These parameters can be altered with the Configuration tool.</p>
+<h4><a name="MiniTOCBookMark7" id="MiniTOCBookMark7"></a>Command Parameters</h4>
+<p>Command parameters are in the Configuration Services section with the following names and default values. Any <span style="font-weight: bold; color: #ff0000;"><font color="red"><b>bolded</b></font></span> arguments MUST be set before this Service Profile will work properly.</p>
+<p>jmx_tomcat_CollectionCount</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Garbage collection is the process that the Java virtual machine uses to find and reclaim unreachable objects to free up memory space. This check returns the number of collections that have occurred since the last call.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Default value is ‘java.lang:name=Copy,type=GarbageCollector’. &#160;This is the name of the mbean.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG2$ - Default value is ‘CollectionCount’. &#160;This is the name of the mbean attribute.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="font-weight: bold; color: #ff0000;"><font color="red"><b>$USER28$</b></font></span> - JMX listener port. There is no default in the profile but this does need to be set. Default JMX listener port in Tomcat is 8004.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="font-weight: bold; color: #ff0000;"><font color="red"><b>$USER29$</b></font></span> - JMX user name. There is no default in the profile but this does need to be set.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER30$</b></font></span> - JMX user password. There is no default in the profile but this does need to be set.</p>
+</li>
+</ul>
+<p>jmx_tomcat_CollectionTime</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">This check returns the approximate accumulated collection elapsed time in milliseconds since last call.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Default value is ‘java.lang:name=Copy,type=GarbageCollector’. &#160;This is the name of the mbean.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG2$ - Default value is ‘CollectionTime’. &#160;This is the name of the mbean attribute.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER28$</b></font></span> - JMX listener port. &#160;here is no default in the profile but this does need to be set. Default JMX listener port in Tomcat is 8004.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER29$</b></font></span> - JMX user name. There is no default in the profile but this does need to be set.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER30$</b></font></span> - JMX user password. There is no default in the profile but this does need to be set.</p>
+</li>
+</ul>
+<p>jmx_tomcat_bytesSent</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">This check returns the number of bytes sent by the Global Request Processor since last call.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Default value is ‘Catalina:type=GlobalRequestProcessor,name=http-8080’. This is the name of the mbean.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG2$ - Default value is ‘bytesSent’. This is the name of the mbean attribute.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER28$</b></font></span> - JMX listener port. There is no default in the profile but this does need to be set. Default JMX listener port in Tomcat is 8004.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER29$</b></font></span> - JMX user name. There is no default in the profile but this does need to be set.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="font-weight: bold; color: #ff0000;"><font color="red"><b>$USER30$</b></font></span> - JMX user password. There is no default in the profile but this does need to be set.</p>
+</li>
+</ul>
+<p class="Bullet1">jmx_tomcat_currentThreadCount</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">This check returns the current number of threads in the thread pool.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Default value is ‘Catalina:name=http-8080,type=ThreadPool’. This is the name of the mbean.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG2$ - Default value is ‘currentThreadCount’. This is the name of the mbean attribute.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER28$</b></font></span> - JMX listener port. &#160;here is no default in the profile but this does need to be set. &#160;Default JMX listener port in Tomcat is 8004.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER29$</b></font></span> - JMX user name. There is no default in the profile but this does need to be set.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER30$</b></font></span> - JMX user password. There is no default in the profile but this does need to be set.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$ARG3$</b></font></span> - Default value is 50. This is the warning threshold for comparison with the currentThreadCount attribute.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$ARG4$</b></font></span> - Default value is 100. This is the critical threshold for comparison with the currentThreadCount attribute.</p>
+</li>
+</ul>
+<p>jmx_tomcat_currentThreadsBusy</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">This check returns the number of busy threads in the thread pool.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Default value is ‘Catalina:name=http-8080,type=ThreadPool’. &#160;This is the name of the mbean.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG2$ - Default value is ‘currentThreadsBusy’. This is the name of the mbean attribute.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER28$</b></font></span> - JMX listener port. There is no default in the profile but this does need to be set. Default JMX listener port in Tomcat is 8004.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER29$</b></font></span> - JMX user name. There is no default in the profile but this does need to be set.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER30$</b></font></span> - JMX user password. There is no default in the profile but this does need to be set.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$ARG3$</b></font></span> - Default value is 50. This is the warning threshold for comparison with the currentThreadsBusy attribute.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$ARG4$</b></font></span> - Default value is 100. This is the critical threshold for comparison with the currentThreadsBusy attribute.</p>
+</li>
+</ul>
+<p>jmx_tomcat_errorCount</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">This check returns the number of errors with requests to the Global Request Processor since last call.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Default value is ‘Catalina:type=GlobalRequestProcessor,name=http-8080’. &#160;This is the name of the mbean.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG2$ - Default value is ‘errorCount’. &#160;This is the name of the mbean attribute.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER28$</b></font></span> - JMX listener port. There is no default in the profile but this does need to be set. Default JMX listener port in Tomcat is 8004.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER29$</b></font></span> - JMX user name.&#160;There is no default in the profile but this does need to be set.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER30$</b></font></span> - JMX user password.&#160;There is no default in the profile but this does need to be set.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$ARG3$</b></font></span> - Default value is 10. This is the warning threshold for comparison with the errorCount attribute.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$ARG4$</b></font></span> - Default value is 100.&#160;This is the critical threshold for comparison with the errorCount attribute.</p>
+</li>
+</ul>
+<p>jmx_tomcat_maxThreads</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">This check returns the maximum number of threads in the thread pool.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Default value is ‘Catalina:name=http-8080,type=ThreadPool’.&#160;This is the name of the mbean.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG2$ - Default value is ‘maxThreads’.&#160;This is the name of the mbean attribute.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER28$</b></font></span> - JMX listener port.&#160;There is no default in the profile but this does need to be set.&#160;Default JMX listener port in Tomcat is 8004.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="font-weight: bold; color: #ff0000;"><font color="red"><b>$USER29$</b></font></span> - JMX user name. There is no default in the profile but this does need to be set.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER30$</b></font></span> - JMX user password.&#160;There is no default in the profile but this does need to be set.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$ARG3$</b></font></span> - Default value is 75.&#160;This is the warning threshold for comparison with the maxThreads attribute.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$ARG4$</b></font></span> - Default value is 150. This is the critical threshold for comparison with the maxThreads attribute.</p>
+</li>
+</ul>
+<p class="Bullet1">jmx_tomcat_maxTime</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">This check returns the maximum time any processing of a request took since last call.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Default value is ‘Catalina:type=GlobalRequestProcessor,name=http-8080’. &#160;This is the name of the mbean.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG2$ - Default value is ‘maxTime’. &#160;This is the name of the mbean attribute.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER28$</b></font></span> - JMX listener port. There is no default in the profile but this does need to be set.&#160;Default JMX listener port in Tomcat is 8004.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="font-weight: bold; color: #ff0000;"><font color="red"><b>$USER29$</b></font></span> - JMX user name. &#160;There is no default in the profile but this does need to be set.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER30$</b></font></span> - JMX user password. &#160;There is no default in the profile but this does need to be set.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$ARG3$</b></font></span> - Default value is 1000. &#160;This is the warning threshold for comparison with the maxTime attribute.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$ARG4$</b></font></span> - Default value is 10000. &#160;This is the critical threshold for comparison with the maxTime attribute.</p>
+</li>
+</ul>
+<p class="Bullet1">jmx_tomcat_processingTime</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">This check returns the request processor processing time since last call.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Default value is ‘Catalina:type=GlobalRequestProcessor,name=http-8080’. &#160;This is the name of the mbean.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG2$ - Default value is ‘processingTime’. &#160;This is the name of the mbean attribute.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="font-weight: bold; color: #ff0000;"><font color="red"><b>$USER28$</b></font></span> - JMX listener port. There is no default in the profile but this does need to be set. Default JMX listener port in Tomcat is 8004.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER29$</b></font></span> - JMX user name. &#160;There is no default in the profile but this does need to be set.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER30$</b></font></span> - JMX user password. &#160;There is no default in the profile but this does need to be set.</p>
+</li>
+</ul>
+<p>jmx_tomcat_requestCount</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">This check returns the number of requests processed by this processor since last call.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG1$ - Default value is ‘Catalina:type=GlobalRequestProcessor,name=http-8080’. &#160;This is the name of the mbean.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">$ARG2$ - Default value is ‘requestCount’. &#160;This is the name of the mbean attribute.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER28$</b></font></span> - JMX listener port.&#160;There is no default in the profile but this does need to be set. Default JMX listener port in Tomcat is 8004.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER29$</b></font></span> - JMX user name. &#160;There is no default in the profile but this does need to be set.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1"><span style="color: #ff0000; font-weight: bold;"><font color="red"><b>$USER30$</b></font></span> - JMX user password. &#160;There is no default in the profile but this does need to be set.</p>
+</li>
+</ul>
+<h4><a name="MiniTOCBookMark8" id="MiniTOCBookMark8"></a>Performance Graphing Parameters</h4>
+<p>The following parameters are used to generate performance charts. These parameters are set using the Configuration&gt;Performance tool in GroundWork Monitor.</p>
+<p>jmx_tomcat_CollectionCount</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the number of collections that have occurred since the last call.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">The Nagios service description must match the string "jmx_tomcat_CollectionCount".</p>
+</li>
+</ul>
+<p>jmx_tomcat_CollectionTime</p>
+<ul>
+<li class="P-Bullet1">Graphs the approximate accumulated collection elapsed time in milliseconds since last call.</li>
+<li class="P-Bullet1">The Nagios service description must match the string "jmx_tomcat_CollectionTime".</li>
+</ul>
+<p>jmx_tomcat_bytesSent</p>
+<ul>
+<li class="P-Bullet1">Graphs the number of bytes sent by the Global Request Processor since last call.</li>
+<li class="P-Bullet1">The Nagios service description must match the string "jmx_tomcat_bytesSent".</li>
+</ul>
+<p>jmx_tomcat_currentThreadCount</p>
+<ul>
+<li class="P-Bullet1">Graphs the current number of threads in the thread pool.</li>
+<li class="P-Bullet1">The Nagios service description must match the string "jmx_tomcat_currentThreadCount".</li>
+</ul>
+<p>jmx_tomcat_currentThreadsBusy</p>
+<ul>
+<li class="P-Bullet1">Graphs the number of busy threads in the thread pool.</li>
+<li class="P-Bullet1">The Nagios service description must match the string "jmx_tomcat_currentThreadsBusy".</li>
+</ul>
+<p>jmx_tomcat_errorCount</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the number of errors with requests to the Global Request Processor since last call.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">The Nagios service description must match the string "jmx_tomcat_errorCount".</p>
+</li>
+</ul>
+<p>jmx_tomcat_maxThreads</p>
+<ul>
+<li class="P-Bullet1">Graphs the maximum number of threads in the thread pool.</li>
+<li class="P-Bullet1">The Nagios service description must match the string "jmx_tomcat_maxThreads".</li>
+</ul>
+<p>jmx_tomcat_maxTime</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the maximum time any processing of a request took since last call.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">The Nagios service description must match the string "jmx_tomcat_maxTime".</p>
+</li>
+</ul>
+<p>jmx_tomcat_processingTime</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the request processor processing time since last call.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">The Nagios service description must match the string "jmx_tomcat_processingTime”.</p>
+</li>
+</ul>
+<p>jmx_tomcat_requestCount</p>
+<ul>
+<li class="P-Bullet1">
+<p class="Bullet1">Graphs the number of requests processed by this processor since last call.</p>
+</li>
+<li class="P-Bullet1">
+<p class="Bullet1">The Nagios service description must match the string "jmx_tomcat_requestCount".</p>
+</li>
+</ul>
+<h4><a name="MiniTOCBookMark9" id="MiniTOCBookMark9"></a>Implementation Notes</h4>
+<p>None.</p>
+<div style="width: 100%; position: relative;" id="footer">
+<p class="Footer" style="font-size: 7pt; line-height: Normal; margin-top: 6pt; margin-bottom: 4pt;">GroundWork, Inc. ©2011</p>
+</div>
+<script type="text/javascript" language="javascript1.2">
+//<![CDATA[
+<!--
+if (window.writeIntopicBar)
+        writeIntopicBar(0);
+
+
+highlightSearch();
+//-->
+//]]>
+</script>
+</body>
+</html>

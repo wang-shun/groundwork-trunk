@@ -1,0 +1,567 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions targetNamespace="urn:fws"
+	xmlns:fwsmodel="http://model.ws.foundation.groundwork.org"
+	xmlns:apachesoap="http://xml.apache.org/xml-soap" xmlns:impl="urn:fws"
+	xmlns:intf="urn:fws" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/"
+	xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:wsdlsoap="http://schemas.xmlsoap.org/wsdl/soap/"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<!--
+		Collage - The ultimate data integration framework. Copyright (C)
+		2004-2007 GroundWork Open Source Inc. info@groundworkopensource.com
+
+		This program is free software; you can redistribute it and/or modify
+		it under the terms of version 2 of the GNU General Public License as
+		published by the Free Software Foundation. This program is distributed
+		in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+		even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+		PARTICULAR PURPOSE. See the GNU General Public License for more
+		details. You should have received a copy of the GNU General Public
+		License along with this program; if not, write to the Free Software
+		Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+		USA
+	-->
+	<wsdl:documentation>Host Web Service is a collection of APIs that
+		manages Host entities in Foundation.</wsdl:documentation>
+
+	<wsdl:import namespace="urn:fwsmodel"
+		xmlns:fwsmodel="http://model.ws.foundation.groundwork.org" location="../fwsmodel.wsdl" />
+
+	<wsdl:message name="hostLookupResponse">
+
+		<wsdl:part name="hostLookupReturn" type="fwsmodel:WSFoundationCollection" />
+
+	</wsdl:message>
+
+	<wsdl:message name="hostLookupRequest">
+
+		<wsdl:part name="hostName" type="xsd:string" />
+
+	</wsdl:message>
+
+	<wsdl:message name="getHostsRequest">
+
+		<wsdl:part name="type" type="fwsmodel:HostQueryType">
+			<wsdl:documentation>HostQueryType is an enumeration of
+				possible parameters to be used to retrieve host groups. Type can be
+				one of - ALL, HOSTGROUPID, HOSTGROUPNAME, SERVICEDESCRIPTION,
+				MONITORSERVERNAME, HOSTID, HOSTNAME, DEVICEID and
+				DEVICEIDENTIFICATION</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="value" type="xsd:string">
+			<wsdl:documentation>Applicable for types except “ALL”.
+				Specify value as per the HostQueryType specified above. For example
+				specify values as actual host name (like “localhost”) if type is
+				HOSTNAME. </wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="applicationType" type="xsd:string">
+			<wsdl:documentation>a type of application that has been configured
+				to be monitored through the collage system. E.g NAGIOS
+			</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="startRange" type="xsd:int">
+			<wsdl:documentation>beginning record number [first result –
+				pagination parameter]</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="endRange" type="xsd:int">
+			<wsdl:documentation>last record number [maximum results –
+				pagination parameter]</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="orderedBy" type="fwsmodel:SortCriteria">
+			<wsdl:documentation>Defines sorting order (ascending or
+				descending) and filed on which sorting to be performed.
+			</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+
+
+	<wsdl:message name="WSFoundationException">
+
+		<wsdl:part name="fault" element="fwsmodel:WSFoundationException" />
+
+	</wsdl:message>
+
+	<wsdl:message name="getHostsResponse">
+
+		<wsdl:part name="getHostsReturn" type="fwsmodel:WSFoundationCollection">
+			<wsdl:documentation>Returns WSFoundationCollection: collection
+				of Hosts as per the input parameters specified.</wsdl:documentation>
+		</wsdl:part>
+
+	</wsdl:message>
+
+	<wsdl:message name="getHostsByStringRequest">
+		<wsdl:documentation>All parameters are exactly same as getHosts()
+			API. String “type” specified gets mapped to HostQueryType internally.
+			Also SortOrder and SortFileld String parameters get converted to
+			SortCriteria.
+		</wsdl:documentation>
+
+		<wsdl:part name="type" type="xsd:string">
+			<wsdl:documentation>HostQueryType is an enumeration of
+				possible parameters to be used to retrieve host groups. Type can be
+				one of - ALL, HOSTGROUPID, HOSTGROUPNAME, SERVICEDESCRIPTION,
+				MONITORSERVERNAME, HOSTID, HOSTNAME, DEVICEID and
+				DEVICEIDENTIFICATION</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="value" type="xsd:string">
+			<wsdl:documentation>Applicable for types except “ALL”.
+				Specify value as per the HostQueryType specified above. For example
+				specify values as actual host name (like “localhost”) if type is
+				HOSTNAME.</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="applicationType" type="xsd:string">
+			<wsdl:documentation>a type of application that has been configured
+				to be monitored through the collage system. E.g NAGIOS
+			</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="startRange" type="xsd:string">
+			<wsdl:documentation>beginning record number [first result –
+				pagination parameter]</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="endRange" type="xsd:string">
+			<wsdl:documentation>last record number [maximum results –
+				pagination parameter]</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="sortOrder" type="xsd:string">
+			<wsdl:documentation>Defines sorting order (ascending or
+				descending)</wsdl:documentation>
+		</wsdl:part>
+
+		<wsdl:part name="sortField" type="xsd:string">
+			<wsdl:documentation>Defines field on which sorting to be
+				performed.</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+
+	<wsdl:message name="getHostsByStringResponse">
+
+		<wsdl:part name="getHostsByStringReturn" type="fwsmodel:WSFoundationCollection">
+			<wsdl:documentation>Returns WSFoundationCollection: collection
+				of Hosts as per the input parameters specified. </wsdl:documentation>
+		</wsdl:part>
+
+	</wsdl:message>
+
+	<wsdl:message name="getHostsByCriteriaRequest">
+
+		<wsdl:part name="filter" type="fwsmodel:Filter">
+			<wsdl:documentation>A filter is provided to build the criteria for
+				doing the required queries on the model (Foundation). Filters can be
+				composed with the help of disjunctions (AND) and conjunctions (OR).
+
+				For example, to fetch all Hosts which are &quot;Scheduled Down&quot;, use following Filter criteria:
+				new Filter (&quot;hostStatus. hostMonitorStatus.name&quot;, FilterOperator.EQ, &quot;Scheduled Down&quot;); 
+			</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="sort" type="fwsmodel:Sort" >
+			<wsdl:documentation>Defines sorting order  (ascending or descending) and filed on which sorting to be performed .</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="firstResult" type="xsd:int" >
+			<wsdl:documentation>beginning record number [first result  – pagination parameter]</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="maxResults" type="xsd:int" >
+			<wsdl:documentation>last record number [maximum results  – pagination parameter]</wsdl:documentation>
+		</wsdl:part>
+
+	</wsdl:message>
+
+	<wsdl:message name="getHostsByCriteriaResponse">
+
+		<wsdl:part name="getHostsByCriteriaReturn" type="fwsmodel:WSFoundationCollection" >
+			<wsdl:documentation>Returns WSFoundationCollection: collection of Hosts as per the input parameters specified.</wsdl:documentation></wsdl:part>
+
+	</wsdl:message>
+
+	<wsdl:message name="getHostListRequest">
+		<wsdl:documentation>No parameters for this API. </wsdl:documentation>
+	</wsdl:message>
+
+	<wsdl:message name="getHostListResponse">
+		<wsdl:part name="getHostListReturn" type="fwsmodel:WSFoundationCollection" >
+			<wsdl:documentation>Returns WSFoundationCollection: collection of Host names list.</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+
+	<wsdl:message name="getSimpleHostsRequest">
+		<wsdl:documentation>No parameters for this API. As name suggests it returns all hosts.</wsdl:documentation>
+	</wsdl:message>
+
+	<wsdl:message name="getSimpleHostsResponse">
+		<wsdl:part name="getSimpleHostsReturn" type="fwsmodel:WSFoundationCollection" >
+			<wsdl:documentation>Returns WSFoundationCollection:  Returns collection of all SimpleHosts. For each SimpleHost, it returns name, id, monitor status, problem acknowledgment status, last state change time properties.</wsdl:documentation></wsdl:part>
+
+	</wsdl:message>
+
+	<wsdl:message name="getSimpleHostsByHostGroupNameRequest">
+		<wsdl:part name="hostGroupName" type="xsd:string" >
+			<wsdl:documentation>Name of the host group whose children (Simple Hosts) to be retrieved.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="deep" type="xsd:boolean" >
+			<wsdl:documentation>If deep is set to true, then API will fetch Simple Services (SimpleServiceStatus objects) under each host in the specified Host Group name along with information for each service like- name, id, monitor status, problem acknowledgment status, last state change time, etc.</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+
+	<wsdl:message name="getSimpleHostsByHostGroupNameResponse">
+		<wsdl:part name="getSimpleHostsByHostGroupNameReturn" type="fwsmodel:WSFoundationCollection" >
+			<wsdl:documentation>Returns WSFoundationCollection: collection of Simple Hosts as per the input parameters (Host Group Name and deep flag) specified.</wsdl:documentation></wsdl:part>
+
+	</wsdl:message>
+
+	<wsdl:message name="getSimpleHostRequest">
+		<wsdl:part name="hostName" type="xsd:string" >
+			<wsdl:documentation>Name of the host to be retrieved.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="deep" type="xsd:boolean" >
+			<wsdl:documentation>If deep is set to true, then API will fetch Services (SimpleServiceStatus) under this host along with information for each service like- name, id, monitor status, problem acknowledgment status, last state change time, etc.</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+
+	<wsdl:message name="getSimpleHostResponse">
+		<wsdl:part name="getSimpleHostReturn" type="fwsmodel:WSFoundationCollection" >
+			<wsdl:documentation>Returns WSFoundationCollection:  Returns collection containing a single SimpleHost as per the specified parameters. For each SimpleHost, it returns name, id, monitor status, problem acknowledgment status, last state change time properties.</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+
+	<wsdl:message name="getSimpleHostByCriteriaRequest">
+		<wsdl:part name="filter" type="fwsmodel:Filter" >
+			<wsdl:documentation>A filter is provided to build the criteria for doing the required queries on the model (Foundation). Filters can be composed with the help of disjunctions (AND) and conjunctions (OR). For example, to fetch all Simple Hosts under “Linux Servers” host group, use following Filter criteria:
+new Filter (&quot;hostGroups.name&quot;, FilterOperator.EQ, &quot;Linux Servers&quot;);
+</wsdl:documentation></wsdl:part>
+		<wsdl:part name="sort" type="fwsmodel:Sort" >
+			<wsdl:documentation>Defines sorting order  (ascending or descending) and filed on which sorting to be performed .</wsdl:documentation></wsdl:part>
+		<wsdl:part name="firstResult" type="xsd:int" >
+			<wsdl:documentation>beginning record number [first result  – pagination parameter]</wsdl:documentation></wsdl:part>
+		<wsdl:part name="maxResults" type="xsd:int" >
+			<wsdl:documentation>last record number [maximum results  – pagination parameter]</wsdl:documentation></wsdl:part>
+		<wsdl:part name="deep" type="xsd:boolean" >
+			<wsdl:documentation>If deep is set to true, then API will fetch Services (SimpleServiceStatus) under each SimpleHost along with information for each service like- name, id, monitor status, problem acknowledgment status, last state change time, etc.</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+
+	<wsdl:message name="getSimpleHostByCriteriaResponse">
+		<wsdl:part name="getSimpleHostByCriteriaReturn" type="fwsmodel:WSFoundationCollection" >
+			<wsdl:documentation>Returns WSFoundationCollection: collection of Simple Hosts as per the input parameters specified.</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+
+	<wsdl:portType name="WSHost">
+		<wsdl:operation name="getHosts"
+			parameterOrder="type value applicationType startRange endRange orderedBy">
+			<wsdl:documentation>Retrieves list of Hosts as per the specified type and other parameters. For example, it will return all hosts under a host-group in the system if “Type” is specified as “ HOSTGROUPNAME ” and “value” as the actual host group name.</wsdl:documentation>
+			<wsdl:input message="impl:getHostsRequest" name="getHostsRequest" />
+			<wsdl:output message="impl:getHostsResponse" name="getHostsResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+
+		<wsdl:operation name="hostLookup" parameterOrder="hostName">
+			<wsdl:documentation>Looks up/finds hosts by host name</wsdl:documentation>
+			<wsdl:input message="impl:hostLookupRequest" name="hostLookupRequest" />
+			<wsdl:output message="impl:hostLookupResponse" name="hostLookupResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+
+		<wsdl:operation name="getHostsByString"
+			parameterOrder="type value applicationType startRange endRange sortOrder sortField">
+			<wsdl:documentation>This API is String parameter version of getHosts() API.</wsdl:documentation>
+			<wsdl:input message="impl:getHostsByStringRequest" name="getHostsByStringRequest" />
+			<wsdl:output message="impl:getHostsByStringResponse"
+				name="getHostsByStringResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+
+		<wsdl:operation name="getHostsByCriteria"
+			parameterOrder="filter sort firstResult maxResults">
+			<wsdl:documentation>Returns Host(s) by Criteria – as per the specified Filter.</wsdl:documentation>
+			<wsdl:input message="impl:getHostsByCriteriaRequest" name="getHostsByCriteriaRequest" />
+			<wsdl:output message="impl:getHostsByCriteriaResponse"
+				name="getHostsByCriteriaResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+
+
+		<wsdl:operation name="getHostList">
+			<wsdl:documentation>This API returns the list of all host names and total count of hosts under system. It does not fetch the complete hierarchy of inner objects of host.</wsdl:documentation>
+			<wsdl:input message="impl:getHostListRequest" name="getHostListRequest" />
+			<wsdl:output message="impl:getHostListResponse" name="getHostListResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+
+		<wsdl:operation name="getSimpleHosts">
+			<wsdl:documentation>Gets all Lightweight Hosts under a system and associated service information for each simple host. It does not return dynamic properties of the hosts.</wsdl:documentation>
+			<wsdl:input message="impl:getSimpleHostsRequest" name="getSimpleHostsRequest" />
+			<wsdl:output message="impl:getSimpleHostsResponse" name="getSimpleHostsResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+
+		<wsdl:operation name="getSimpleHost" parameterOrder="hostName deep">
+			<wsdl:documentation>Gets Lightweight Host and service information. It does not return dynamic properties of the host.</wsdl:documentation>
+			<wsdl:input message="impl:getSimpleHostRequest" name="getSimpleHostRequest" />
+			<wsdl:output message="impl:getSimpleHostResponse" name="getSimpleHostResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+
+		<wsdl:operation name="getSimpleHostsByHostGroupName"
+			parameterOrder="hostGroupName deep">
+			<wsdl:documentation>Gets Lightweight Host and associated Service information for the given Host-Group name.  It does not return dynamic properties. </wsdl:documentation>
+			<wsdl:input message="impl:getSimpleHostsByHostGroupNameRequest"
+				name="getSimpleHostsByHostGroupNameRequest" />
+			<wsdl:output message="impl:getSimpleHostsByHostGroupNameResponse"
+				name="getSimpleHostsByHostGroupNameResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+
+		<wsdl:operation name="getSimpleHostByCriteria"
+			parameterOrder="filter sort firstResult maxResults deep">
+			<wsdl:documentation>Returns Simple Host(s) by Criteria – as per the specified Filter.</wsdl:documentation>
+			<wsdl:input message="impl:getSimpleHostByCriteriaRequest"
+				name="getSimpleHostByCriteriaRequest" />
+			<wsdl:output message="impl:getSimpleHostByCriteriaResponse"
+				name="getSimpleHostByCriteriaResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+	</wsdl:portType>
+
+	<wsdl:binding name="hostSoapBinding" type="impl:WSHost">
+		<wsdlsoap:binding style="rpc"
+			transport="http://schemas.xmlsoap.org/soap/http" />
+		<wsdl:operation name="getHosts">
+			<wsdl:documentation>Retrieves list of Hosts as per the
+				specified type and other parameters. For example, it will return all
+				hosts under a host-group in the system if “Type” is specified as “
+				HOSTGROUPNAME ” and “value” as the actual host group name.
+			</wsdl:documentation>
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wshost" />
+			<wsdl:input name="getHostsRequest">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+
+			<wsdl:output name="getHostsResponse">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+
+		<wsdl:operation name="hostLookup">
+			<wsdl:documentation>Looks up/finds hosts by host name
+			</wsdl:documentation>
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wshost" />
+			<wsdl:input name="hostLookupRequest">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+
+			<wsdl:output name="hostLookupResponse">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+			</wsdl:fault>
+
+		</wsdl:operation>
+
+		<wsdl:operation name="getHostsByString">
+			<wsdl:documentation>This API is String parameter version of
+				getHosts() API.</wsdl:documentation>
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wshost" />
+			<wsdl:input name="getHostsByStringRequest">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+
+			<wsdl:output name="getHostsByStringResponse">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+			</wsdl:fault>
+
+		</wsdl:operation>
+
+
+		<wsdl:operation name="getHostsByCriteria">
+			<wsdl:documentation>Returns Host(s) by Criteria – Viz. as per
+				the specified Filter.</wsdl:documentation>
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wshost" />
+			<wsdl:input name="getHostsByCriteriaRequest">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+
+			<wsdl:output name="getHostsByCriteriaResponse">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+
+		<wsdl:operation name="getHostList">
+			<wsdl:documentation>This API returns the list of all host names
+				and total count of hosts under system. It does not fetch the
+				complete hierarchy of inner objects of host. </wsdl:documentation>
+
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wshost" />
+
+			<wsdl:input name="getHostListRequest">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:input>
+
+			<wsdl:output name="getHostListResponse">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:output>
+
+			<wsdl:fault name="WSFoundationException">
+
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+
+			</wsdl:fault>
+
+		</wsdl:operation>
+
+
+		<wsdl:operation name="getSimpleHosts">
+			<wsdl:documentation>Gets all Lightweight Hosts under a system and
+				associated service information for each simple host. It does not
+				return dynamic properties of the hosts</wsdl:documentation>
+
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wshost" />
+
+			<wsdl:input name="getSimpleHostsRequest">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:input>
+
+			<wsdl:output name="getSimpleHostsResponse">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:output>
+
+			<wsdl:fault name="WSFoundationException">
+
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+
+			</wsdl:fault>
+
+		</wsdl:operation>
+
+		<wsdl:operation name="getSimpleHost">
+			<wsdl:documentation>Gets Lightweight Host and service
+				information. It does not return dynamic properties of the host
+			</wsdl:documentation>
+
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wshost" />
+
+			<wsdl:input name="getSimpleHostRequest">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:input>
+
+			<wsdl:output name="getSimpleHostResponse">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:output>
+
+			<wsdl:fault name="WSFoundationException">
+
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+
+			</wsdl:fault>
+
+		</wsdl:operation>
+
+		<wsdl:operation name="getSimpleHostsByHostGroupName">
+			<wsdl:documentation>Gets Lightweight Host and associated Service
+				information for the given Host-Group name. It does not return
+				dynamic properties</wsdl:documentation>
+
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wshost" />
+
+			<wsdl:input name="getSimpleHostsByHostGroupNameRequest">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:input>
+
+			<wsdl:output name="getSimpleHostsByHostGroupNameResponse">
+
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+
+			</wsdl:output>
+
+			<wsdl:fault name="WSFoundationException">
+
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+
+			</wsdl:fault>
+
+		</wsdl:operation>
+
+		<wsdl:operation name="getSimpleHostByCriteria">
+			<wsdl:documentation>Returns Simple Host(s) by Criteria – as
+				per the specified Filter</wsdl:documentation>
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wshost" />
+			<wsdl:input name="getSimpleHostByCriteriaRequest">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+
+			<wsdl:output name="getSimpleHostByCriteriaResponse">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+
+
+	</wsdl:binding>
+
+	<wsdl:service name="WSHostService">
+		<wsdl:documentation>Host Web Service is a collection of APIs that manages Host entities in Foundation. </wsdl:documentation>
+		<wsdl:port binding="impl:hostSoapBinding" name="wshost">
+			<wsdlsoap:address
+				location="http://localhost:8080/foundation-webapp/services/wshost" />
+		</wsdl:port>
+	</wsdl:service>
+
+</wsdl:definitions>

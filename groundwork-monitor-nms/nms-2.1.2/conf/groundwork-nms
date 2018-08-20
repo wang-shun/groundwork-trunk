@@ -1,0 +1,55 @@
+# logrotate configuration for GroundWork-NMS files
+
+# Apache logrotate
+#
+# FIX THIS:  This should be replaced by log rotation of piped logs (see GWMON-5014).
+#
+/usr/local/groundwork/nms/tools/httpd/logs/access_log
+/usr/local/groundwork/nms/tools/httpd/logs/error_log
+/usr/local/groundwork/nms/tools/httpd/logs/ssl_request_log
+/usr/local/groundwork/nms/tools/httpd/logs/startup_messages
+{
+    daily
+    missingok
+    notifempty
+    rotate 8
+    sharedscripts
+    postrotate
+	/bin/kill -HUP `cat /usr/local/groundwork/nms/tools/httpd/logs/httpd.pid 2>/dev/null` 2> /dev/null || true
+    endscript
+}
+
+# Cacti log file
+#
+# /usr/local/groundwork/nms/applications/cacti/log/cacti.log
+# is set as the standard (defaulted) Cacti log file, if the path_cactilog
+# config option in Cacti is not set to something else.  It is written to
+# by PHP scripts that appear to just open and close the file around every
+# message written to the file, so there is no reason to signal any scripts
+# when the logfile is rotated.
+/usr/local/groundwork/nms/applications/cacti/log/cacti.log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 4
+}
+
+# find_cacti_graphs debug log
+#
+# /usr/local/groundwork/foundation/container/logs/find_cacti_graphs.log
+# is configured in /usr/local/groundwork/foundation/feeder/find_cacti_graphs
+# which currently runs periodically as a cron job.  Thus there is no reason
+# to signal the script when the logfile is rotated.
+#
+/usr/local/groundwork/foundation/container/logs/find_cacti_graphs.log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 4
+}

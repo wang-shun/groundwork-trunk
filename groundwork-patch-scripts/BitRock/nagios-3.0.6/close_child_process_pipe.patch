@@ -1,0 +1,50 @@
+--- nagios-3.0.6/base/utils.c.orig	2008-11-30 09:22:58.000000000 -0800
++++ nagios-3.0.6/base/utils.c	2009-04-22 14:14:57.000000000 -0700
+@@ -42,6 +42,7 @@
+ 
+ char            *my_strtok_buffer=NULL;
+ char            *original_my_strtok_buffer=NULL;
++int             child_pipe_write_fd=-1;
+ 
+ extern char	*config_file;
+ extern char	*log_file;
+@@ -282,6 +283,11 @@
+ /******************************************************************/
+ 
+ 
++void child_pipe_atfork_handler(void) {
++    close (child_pipe_write_fd);
++}
++
++
+ /* executes a system command - used for notifications, event handlers, etc. */
+ int my_system(char *cmd,int timeout,int *early_timeout,double *exectime,char **output,int max_output_length){
+         pid_t pid=0;
+@@ -422,6 +428,7 @@
+ 
+ 	/* execute the command in the child process */
+         if (pid==0){
++		int atfork_errno;
+ 
+ 		/* become process group leader */
+ 		setpgid(0,0);
+@@ -493,6 +500,19 @@
+ 		/******** END EMBEDDED PERL CODE EXECUTION ********/
+ 
+ 
++		/* publish the write end of the pipe where our child_pipe_atfork_handler can find it */
++		child_pipe_write_fd = fd[1];
++
++		/*
++		// close the child_pipe_write_fd in the spawned grandchild "cmd" process, during the popen() call,
++		// so if "cmd" spawns a persistent subprocess, our parent doesn't wait forever for it to finish
++		// writing to the original pipe between the parent and child processes, which it never will
++		*/
++		atfork_errno = pthread_atfork(NULL, NULL, child_pipe_atfork_handler);
++		if (atfork_errno) {
++		    logit(NSLOG_RUNTIME_WARNING,TRUE,"Warning: pthread_atfork() returned errno=%d.", atfork_errno);
++		}
++
+ 		/* run the command */
+ 		fp=(FILE *)popen(cmd,"r");
+ 		

@@ -1,0 +1,33 @@
+ Nagios Plugins Compilation and Fixing
+ -------------------------------------
+ 
+ Last updated: June 2, 2009 
+ 
+ Notes:
+ GroundWork Monitor 6.0 will use Nagios-plugins 1.4.13
+ GroundWOrk Monitor 5.3 uses nagios-lugins 1.4.10
+ 
+ The instructions below apply for both releases. If you are using GroundWork Monitor 5.3 substitute the package name (1.4.10 instead of 1.4.13)
+ 
+    * Since Bitrock is using the 1.4.13 version of nagios plugins for builds, get these C plugin files from - ftp://archive.groundworkopensource.com/pub/groundwork-core/nagios/nagios-plugins-1.4.13.tar.gz. Unzip and untar the files on a machine with bitrock environment. 
+
+    * In the 1.4.10 base directory - 
+
+   ./configure  --prefix=/usr/local/groundwork/nagios --with-trusted-path=/usr/local/groundwork/bin:/usr/local/groundwork/sbin:/bin:/sbin:/usr/bin:/usr/sbin
+   --with-cgiurl=/usr/local/groundwork/apache2/cgi-bin/nagios --with-perl=/usr/local/groundwork/perl/bin/perl --with-openssl=/usr/local/groundwork/ 
+   --with-mysql=/usr  --with-fping-command=/usr/local/groundwork/sbin/fping --with-snmpget-command=/usr/local/groundwork/common/bin/snmpget
+   --with-snmpgetnext-command=/usr/local/groundwork/common/bin/snmpgetnext
+
+  
+
+    * Once the Makefile files are generated, edit the one located in 'plugins-root' and change the "LDFLAGS" macro to include "-rpath /usr/local/groundwork/common/lib" as well. 
+
+  make
+  make install (This will copy the plugins into /usr/local/groundwork/nagios/libexec)
+  
+  The following plgugins in the gwcustoms directory contain bugfixes:
+  check_ntp.c
+  check_snmp.c
+  check_http.c
+  
+  The GroundWork team

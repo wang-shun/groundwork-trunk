@@ -1,0 +1,1 @@
+select 'LOCKS', a.Total, b.DML_ALLOWED, c.Blocking from (select count(*) total from v$lock) a, (select value DML_ALLOWED from v$parameter where name='dml_locks') b, (select count(1) blocking from v$lock where block = 1) c

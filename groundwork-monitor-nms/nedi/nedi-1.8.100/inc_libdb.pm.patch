@@ -1,0 +1,28 @@
+--- nedi/inc/libdb.pm.orig	2018-06-12 05:52:20.000000000 -0700
++++ nedi/inc/libdb.pm	2018-06-18 16:52:11.095975767 -0700
+@@ -145,7 +145,7 @@
+ 		$sth->execute();
+ 		my @dbver = $sth->fetchrow;
+ 		$sth->finish if $sth;
+-		if( $dbver[0] eq '1.7.090p1' ){
++		if( $dbver[0] eq '1.7.090p1' || $dbver[0] eq '1.7.090' ){
+ 			print "\nAdding tables\n";
+ 			print "routes\n";
+ 			$index = ($misc::backend eq 'Pg')?'':', INDEX(device), INDEX(dstip), INDEX(nhip)';
+@@ -163,6 +163,7 @@
+ 				$dbh->do("ALTER TABLE devices  ALTER cpualert  SET DEFAULT 0;");# Fix 1.7 descrepancy
+ 				$dbh->do("ALTER TABLE devices  ALTER memalert  SET DEFAULT 0;");
+ 				$dbh->do("ALTER TABLE devices  ALTER tempalert SET DEFAULT 0;");
++				$dbh->do("ALTER TABLE devices  ALTER arppoison SET DEFAULT $misc::arppoison;");
+ 				$dbh->do("ALTER TABLE devices  ALTER vendor    SET DATA TYPE $vchar(32);");
+ 				$dbh->do("ALTER TABLE policies ALTER type      SET DATA TYPE $vchar(128);");
+ 				$dbh->do("ALTER TABLE vlans    ALTER vlanname  SET DATA TYPE $vchar(64);");
+@@ -182,7 +183,7 @@
+ 
+ 			$dbh->do("UPDATE system SET VALUE = '$main::VERSION' where name = 'version'");
+ 			$dbh->commit;
+-			print "\nDB update from 1.7.090p1 completed\n";
++			print "\nDB update from $dbver[0] completed\n";
+ 			return 0;
+ 		}elsif( $dbver[0] eq '1.7.090' ){
+ 			print "\nPlease do an updatedb with 1.7.090p1 first\n";

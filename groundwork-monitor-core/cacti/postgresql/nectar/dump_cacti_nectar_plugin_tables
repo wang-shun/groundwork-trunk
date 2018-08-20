@@ -1,0 +1,52 @@
+#!/bin/bash -e
+
+# dump_cacti_nectar_plugin_tables
+#
+# Script to dump out the new table objects used by the Cacti "nectar" plugin,
+# to create the nectar_tables_for_migration_to_postgresql.sql.tar.gz file.  See
+# the README in this directory for more information about this tarball and how it
+# is to be used to migrate from a MySQL-based Cacti release to a PostgreSQL-based
+# Cacti release.
+#
+# Copyright (c) 2016 GroundWork, Inc.  All rights reserved.
+
+# Here are the objects of interest:
+#
+# cacti=# \dts plugin_nectar*
+#                      List of relations
+#  Schema |            Name            |   Type   |   Owner   
+# --------+----------------------------+----------+-----------
+#  public | plugin_nectar              | table    | cactiuser
+#  public | plugin_nectar_id_seq       | sequence | cactiuser
+#  public | plugin_nectar_items        | table    | cactiuser
+#  public | plugin_nectar_items_id_seq | sequence | cactiuser
+# (4 rows)
+
+dbhost=localhost
+dbname=cacti
+dbuser=postgres
+sqlfile=nectar_tables_for_migration_to_postgresql.sql
+
+echo ""
+echo "You wiil be asked for the \"$dbuser\" user's PostgreSQL password,"
+echo "to dump the schema for the desired objects from the database."
+echo ""
+
+# Logically, we would like to use the "--if-exists" option here as well.  But the SQL we
+# generate might get used on a PostgreSQL 9.1.X system, wherein PostgreSQL does not yet
+# support the "ALTER TABLE IF EXISTS" syntax that would generate.  So we must forgo that
+# part of the dump, and simply tolerate the errors that will result.
+#
+/usr/local/groundwork/postgresql/bin/pg_dump "--host=$dbhost" "--username=$dbuser" \
+    "--file=$sqlfile" --format=plain --clean --schema-only --encoding=LATIN1 \
+    -t 'public.plugin_nectar*' \
+    $dbname
+
+if tar cfz $sqlfile.tar.gz $sqlfile; then
+    rm -f $sqlfile
+    echo ""
+    echo "The desired tarball is now available:"
+    echo ""
+    echo "    $sqlfile.tar.gz"
+    echo ""
+fi

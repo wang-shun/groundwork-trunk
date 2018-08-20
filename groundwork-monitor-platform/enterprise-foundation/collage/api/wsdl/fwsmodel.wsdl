@@ -1,0 +1,1611 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions targetNamespace="urn:fwsmodel"
+	xmlns:apachesoap="http://xml.apache.org/xml-soap" xmlns:impl="urn:fwsmodel"
+	xmlns:intf="urn:fwsmodel" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/"
+	xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:wsdlsoap="http://schemas.xmlsoap.org/wsdl/soap/"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<!--
+		Collage - The ultimate data integration framework. Copyright (C)
+		2004-2007 GroundWork Open Source Inc. info@groundworkopensource.com
+		This program is free software; you can redistribute it and/or modify
+		it under the terms of version 2 of the GNU General Public License as
+		published by the Free Software Foundation. This program is distributed
+		in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+		even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+		PARTICULAR PURPOSE. See the GNU General Public License for more
+		details. You should have received a copy of the GNU General Public
+		License along with this program; if not, write to the Free Software
+		Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+		USA
+	-->
+	<wsdl:types>
+		<schema xmlns="http://www.w3.org/2001/XMLSchema"
+			xmlns:fwsmodel="http://model.ws.foundation.groundwork.org"
+			targetNamespace="http://model.ws.foundation.groundwork.org">
+
+			<!-- Basic Property Types -->
+			<xsd:complexType name="IntegerProperty">
+				<xsd:annotation>
+					<xsd:documentation>IntegerProperty is a basic property type which defines “Name” (String) as the actual property name and “Value” (int) as actual integer value associated with this property. 
+				For example, this property can be used while defining Filter. Say – new IntegerProperty (“operationStatus. OperationStatusID”, 10)
+</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="name" type="xsd:string" />
+					<xsd:element name="value" type="xsd:int" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="TimeProperty">
+				<xsd:annotation>
+					<xsd:documentation>TimeProperty is a basic property type which defines “Name” (String) as the actual property name and “Value” (Time) as actual Time value associated with this property. 
+
+For example, this property can be used while defining Time Filter. 
+</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="name" type="xsd:string" />
+					<xsd:element name="value" type="xsd:time" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="StatisticProperty">
+				<xsd:annotation>
+					<xsd:documentation>StatisticProperty is a basic property type which defines “Name” (String) as the actual property name and “count” (Long) as actual value associated with this property. </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="name" type="xsd:string" />
+					<xsd:element name="count" type="xsd:long" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="HostGroupStatisticProperty">
+				<xsd:annotation>
+					<xsd:documentation>HostGroupStatisticProperty is a basic property type which defines “HostGroupName” (String) as the actual property name and “count” (Long) as actual long value associated with this property. </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="HostGroupName" type="xsd:string" />
+					<xsd:element name="name" type="xsd:string" />
+					<xsd:element name="count" type="xsd:long" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="DateProperty">
+				<xsd:annotation>
+					<xsd:documentation>DateProperty is a basic property type which defines “Name” (String) as the actual property name and “Value” (Date) as actual Date value associated with this property. 
+
+For example, this property can be used while defining Date Filter. 
+</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="name" type="xsd:string" />
+					<xsd:element name="value" type="xsd:dateTime" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="BooleanProperty">
+				<xsd:annotation>
+					<xsd:documentation>BooleanProperty is a basic property type which defines “Name” (String) as the actual property name and “Value” (Boolean) as actual Boolean value associated with this property. 
+For example, this property can be used while defining Boolean Filter.
+</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="name" type="xsd:string" />
+					<xsd:element name="value" type="xsd:boolean" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="DoubleProperty">
+				<xsd:annotation>
+					<xsd:documentation>DoubleProperty is a basic property type which defines “Name” (String) as the actual property name and “Value” (double) as actual double value associated with this property. </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="name" type="xsd:string" />
+					<xsd:element name="value" type="xsd:double" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="StringProperty">
+				<xsd:annotation>
+					<xsd:documentation>StringProperty is a basic property type which defines “Name” (String) as the actual property name and “Value” (String) as actual String value associated with this property. </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="name" type="xsd:string" />
+					<xsd:element name="value" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="LongProperty">
+				<xsd:annotation>
+					<xsd:documentation>LongProperty is a basic property type which defines “Name” (String) as the actual property name and “Value” (long) as actual long value associated with this property. </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="name" type="xsd:string" />
+					<xsd:element name="value" type="xsd:long" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="SortCriteria">
+				<xsd:annotation>
+					<xsd:documentation>Basic type  SortCriteria which contain elements sortOrder  as String and field as String</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="sortOrder" type="xsd:string" />
+					<xsd:element name="field" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="StateStatistics">
+				<xsd:annotation>
+					<xsd:documentation>Basic type StateStatistics which contain elements name as String ,BubbleUpStatus as String, TotalServices  as long, TotalHosts  as long and Availability as double
+
+For example: StateStatistics basic property type is returned by “getStatistics” API of wsstatistics web service.
+</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="BubbleUpStatus" type="xsd:string" />
+					<xsd:element name="TotalServices" type="xsd:long" />
+					<xsd:element name="TotalHosts" type="xsd:long" />
+					<xsd:element name="Availability" type="xsd:double" />
+					<xsd:sequence>
+						<xsd:element name="Statistic" type="fwsmodel:StatisticProperty"
+							minOccurs="0" maxOccurs="unbounded" />
+					</xsd:sequence>
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="LogMessage">
+				<xsd:annotation>
+					<xsd:documentation>LogMessage is a basic property type which contain elements LogMessageID  as int,  ApplicationName as String, TextMessage  as  String, MessageCount  as I nt, FirstInsertDate  as  DateTime, LastInsertDate  as  DateTime, ReportDate  as  DateTime, Device  as  Device, MonitorStatus as  MonitorStatus , OperationStatus as OperationStatus, Severity as Severity, TypeRule as TypeRule, Component as Component, Priority as Priority and Host as Host.
+
+For example: LogMessage basic property type is returned by “getEventsByCriteria” API of wsevent web service.
+</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="LogMessageID" type="xsd:int" />
+					<xsd:element name="ApplicationTypeID" type="xsd:int" />
+					<xsd:element name="ApplicationName" type="xsd:string" />
+					<xsd:element name="TextMessage" type="xsd:string" />
+					<xsd:element name="MessageCount" type="xsd:int" />
+					<xsd:element name="FirstInsertDate" type="xsd:dateTime" />
+					<xsd:element name="LastInsertDate" type="xsd:dateTime" />
+					<xsd:element name="ReportDate" type="xsd:dateTime" />
+					<xsd:element name="Device" type="fwsmodel:Device" />
+					<xsd:element name="MonitorStatus" type="fwsmodel:MonitorStatus" />
+					<xsd:element name="OperationStatus" type="fwsmodel:OperationStatus" />
+					<xsd:element name="Severity" type="fwsmodel:Severity" />
+					<xsd:element name="TypeRule" type="fwsmodel:TypeRule" />
+					<xsd:element name="Component" type="fwsmodel:Component" />
+					<xsd:element name="Priority" type="fwsmodel:Priority" />
+					<xsd:element name="Host" type="fwsmodel:Host" />
+					<xsd:sequence>
+						<xsd:element name="PropertyTypeBinding" type="fwsmodel:PropertyTypeBinding"
+							minOccurs="0" maxOccurs="1" />
+					</xsd:sequence>
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="HostStatus">
+				<xsd:annotation>
+					<xsd:documentation>HostStatus is a basic property type which contain elements HostStatusID as int, NextCheckTime as DateTime, StateType as StateType and PropertyTypeBinding as PropertyTypeBinding.</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="HostStatusID" type="xsd:int" />
+					<xsd:element name="ApplicationTypeID" type="xsd:int" />
+					<xsd:element name="NextCheckTime" type="xsd:dateTime" />
+					<xsd:sequence>
+						<xsd:element name="StateType" type="fwsmodel:StateType" />
+					</xsd:sequence>
+					<xsd:sequence>
+						<xsd:element name="PropertyTypeBinding" type="fwsmodel:PropertyTypeBinding"
+							minOccurs="0" maxOccurs="1" />
+					</xsd:sequence>
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="ServiceStatus">
+				<xsd:annotation>
+					<xsd:documentation>ServiceStatus type hold the information related to Service status which contain elements ServiceStatusID as int, Description as int, Host as Host, MonitorStatus as MonitorStatus, LastCheckTime as DateTime, NextCheckTime as DateTime, LastStateChange as DateTime, MetricType as String, Domain as String, StateType as StateType, CheckType as CheckType , LastHardState as MonitorStatus and PropertyTypeBinding as PropertyTypeBinding  </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="ServiceStatusID" type="xsd:int" />
+					<xsd:element name="ApplicationTypeID" type="xsd:int" />
+					<xsd:element name="Description" type="xsd:string" />
+					<xsd:element name="Host" type="fwsmodel:Host" />
+					<xsd:element name="MonitorStatus" type="fwsmodel:MonitorStatus" />
+					<xsd:element name="LastCheckTime" type="xsd:dateTime" />
+					<xsd:element name="NextCheckTime" type="xsd:dateTime" />
+					<xsd:element name="LastStateChange" type="xsd:dateTime" />
+					<xsd:element name="MetricType" type="xsd:string" />
+					<xsd:element name="Domain" type="xsd:string" />
+					<xsd:element name="StateType" type="fwsmodel:StateType" />
+					<xsd:element name="CheckType" type="fwsmodel:CheckType" />
+					<xsd:element name="LastHardState" type="fwsmodel:MonitorStatus" />
+					<xsd:sequence>
+						<xsd:element name="PropertyTypeBinding" type="fwsmodel:PropertyTypeBinding"
+							minOccurs="0" maxOccurs="1" />
+					</xsd:sequence>
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="SimpleServiceStatus">
+				<xsd:annotation>
+					<xsd:documentation>SimpleServiceStatus type contain elements related to service status which are ServiceStatusID  as  int, Description as String, MonitorStatus  as  String, LastCheckTime  as DateTime, Acknowledged as boolean, LastStateChange  as Date Time ,HostName as String, HostId  as int and LastPluginOutput as String
+
+For Example:-:- SimpleServiceStatus basic property type is returned by wsservice web service while calling “getSimpleServiceListByHostName” API.
+</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="ServiceStatusID" type="xsd:int" />
+					<xsd:element name="Description" type="xsd:string" />
+					<xsd:element name="MonitorStatus" type="xsd:string" />
+					<xsd:element name="LastCheckTime" type="xsd:dateTime" />
+					<xsd:element name="Acknowledged" type="xsd:boolean" />
+					<xsd:element name="LastStateChange" type="xsd:dateTime" />
+					<xsd:element name="HostName" type="xsd:string" />
+					<xsd:element name="HostId" type="xsd:int" />
+					<xsd:element name="LastPlugInOutput" type="xsd:string" />
+					<xsd:element name="NextCheckTime" type="xsd:dateTime" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:element name="WSFoundationException">
+				<xsd:complexType>
+					<xsd:all>
+						<xsd:element name="Message" type="xsd:string" />
+						<xsd:element name="ExceptionType" type="fwsmodel:ExceptionType" />
+					</xsd:all>
+				</xsd:complexType>
+			</xsd:element>
+			<xsd:complexType name="Host">
+				<xsd:annotation>
+					<xsd:documentation>Host type contain the information related to host entity .Elements of host type are HostID  as int, ApplicationTypeID  as  int , Device as Device, Name  as  String, MonitorStatus as MonitorStatus, LastCheckTime  as  DateTime, NextCheckTime  as  DateTime, StateType  as  StateType, CheckType  as  CheckType, PropertyTypeBinding as PropertyTypeBinding, HostGroups  as HostGroup and ServiceAvailability as double
+
+For Example:- Host type is returned by wshost web service while calling “getHost” API.
+</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="HostID" type="xsd:int" />
+					<xsd:element name="ApplicationTypeID" type="xsd:int" />
+					<xsd:element name="Device" type="fwsmodel:Device" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="MonitorStatus" type="fwsmodel:MonitorStatus" />
+					<xsd:element name="LastCheckTime" type="xsd:dateTime" />
+					<xsd:element name="NextCheckTime" type="xsd:dateTime" />
+					<xsd:element name="StateType" type="fwsmodel:StateType" />
+					<xsd:element name="CheckType" type="fwsmodel:CheckType" />
+					<xsd:sequence>
+						<xsd:element name="PropertyTypeBinding" type="fwsmodel:PropertyTypeBinding"
+							minOccurs="0" maxOccurs="1" />
+					</xsd:sequence>
+					<xsd:element name="HostGroups" type="fwsmodel:HostGroup"
+						minOccurs="0" maxOccurs="unbounded" />
+					<xsd:element name="ServiceAvailability" type="xsd:double" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="SimpleHost">
+				<xsd:annotation>
+					<xsd:documentation>SimpleHost  type contain the information related to host entity .Elements of host type are HostID as int,Name as String,MonitorStatus as MonitorStatus, LastCheckTime  as DateTime, NextCheckTime  as  DateTime, Alias  as  String, BubbleUpStatus as String, SimpleServiceStatus as SimpleServiceStatus,  ServiceAvailability as double, Acknowledged as  boolean  and LastPluginOutput  as String
+
+For Example:-:-   SimpleHost property type is returned by wshost web service while calling “getSimpleHosts” API.
+  </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="HostID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="MonitorStatus" type="xsd:string" />
+					<xsd:element name="LastCheckTime" type="xsd:dateTime" />
+					<xsd:element name="LastStateChange" type="xsd:dateTime" />
+					<xsd:element name="Alias" type="xsd:string" />
+					<xsd:element name="BubbleUpStatus" type="xsd:string" />
+					<xsd:element name="SimpleServiceStatus" type="fwsmodel:SimpleServiceStatus"
+						minOccurs="0" maxOccurs="unbounded" />
+					<xsd:element name="ServiceAvailability" type="xsd:double" />
+					<xsd:element name="Acknowledged" type="xsd:boolean" />
+					<xsd:element name="LastPlugInOutput" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="LogPerformanceData">
+				<xsd:annotation>
+					<xsd:documentation>LogPerformanceData Type which contain elements LastCheck as Time,PerformanceData as String,MonitorStatus as MonitorStatus, and ServiceStatus as ServiceStatus</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="LastCheck" type="xsd:time" />
+					<xsd:element name="PerformanceData" type="xsd:string" />
+					<xsd:element name="MonitorStatus" type="fwsmodel:MonitorStatus" />
+					<xsd:element name="ServiceStatus" type="fwsmodel:ServiceStatus" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="PropertyTypeBinding">
+				<xsd:annotation>
+					<xsd:documentation>PropertyTypeBinding contain elements StringProperty,IntegerProperty,LongProperty,DoubleProperty,BooleanProperty,DateProperty,DateProperty and TimeProperty </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="StringProperty" type="fwsmodel:StringProperty"
+						minOccurs="0" maxOccurs="unbounded" />
+					<xsd:element name="IntegerProperty" type="fwsmodel:IntegerProperty"
+						minOccurs="0" maxOccurs="unbounded" />
+					<xsd:element name="LongProperty" type="fwsmodel:LongProperty"
+						minOccurs="0" maxOccurs="unbounded" />
+					<xsd:element name="DoubleProperty" type="fwsmodel:DoubleProperty"
+						minOccurs="0" maxOccurs="unbounded" />
+					<xsd:element name="BooleanProperty" type="fwsmodel:BooleanProperty"
+						minOccurs="0" maxOccurs="unbounded" />
+					<xsd:element name="DateProperty" type="fwsmodel:DateProperty"
+						minOccurs="0" maxOccurs="unbounded" />
+					<xsd:element name="TimeProperty" type="fwsmodel:TimeProperty"
+						minOccurs="0" maxOccurs="unbounded" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="EntityType">
+				<xsd:annotation>
+					<xsd:documentation>EntityType contain the information related to entities. Elements  of EntityType are EntityTypeID as int,Name as String and Description as String </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="EntityTypeID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Description" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:simpleType name='PropertyDataType'>
+				<annotation>
+					<documentation>
+						Property Type Data Types Enumeration
+					</documentation>
+				</annotation>
+				<restriction base='xsd:string'>
+					<enumeration value='DATE'>
+						<annotation>
+							<documentation>
+								Date data type
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='BOOLEAN'>
+						<annotation>
+							<documentation>
+								Boolean data type
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='STRING'>
+						<annotation>
+							<documentation>
+								String data type
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='INTEGER'>
+						<annotation>
+							<documentation>
+								Integer data type
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='LONG'>
+						<annotation>
+							<documentation>
+								Long data type
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='DOUBLE'>
+						<annotation>
+							<documentation>
+								Double data type
+							</documentation>
+						</annotation>
+					</enumeration>
+				</restriction>
+			</xsd:simpleType>
+			<xsd:complexType name="EntityTypeProperty">
+				<xsd:annotation>
+					<xsd:documentation>EntityTypeProperty contain elements ApplicationType as ApplicationType,EntityType as EntityType,PropertyTypeID as int,Name as String ,Description as String,DataType as PropertyDataType and PropertyEntityType as String</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="ApplicationType" type="fwsmodel:ApplicationType" />
+					<xsd:element name="EntityType" type="fwsmodel:EntityType" />
+					<xsd:element name="PropertyTypeID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Description" type="xsd:string" />
+					<xsd:element name="DataType" type="fwsmodel:PropertyDataType" />
+					<xsd:element name="PropertyEntityType" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="WSFoundationCollection">
+				<xsd:annotation>
+					<xsd:documentation>WSFoundationCollection is a collection of all complex  type .Elements of WSFoundationCollection are TotalCount as int, LogMessage as LogMessage, HostStatus as HostStatus, ServiceStatus as ServiceStatus, MonitorStatus as MonitorStatus, Device as Device, Host as Host, HostGroup as HostGroup, HostGroupInfo as HostGroupInfo, StateStatistics as StateStatistics, NagiosStatisticCollection as NagiosStatisticProperty, StatisticCollection as StatisticProperty, HostGroupStatisticProperties as HostGroupStatisticProperty, SessionID as IntegerProperty, AttributeData  as  AttributeData, EntityType as EntityType, EntityTypeProperty as EntityTypeProperty,  PropertyTypeBinding as PropertyTypeBinding, Action as Action, StateTransition as StateTransition, 
+Category as Category, CategoryEntity as CategoryEntity, RRDGraph as RRDGraph, SimpleHost as SimpleHost and SimpleServiceStatus as SimpleServiceStatus.
+</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="TotalCount" type="xsd:int" />
+					<xsd:choice>
+						<xsd:element name="LogMessage" type="fwsmodel:LogMessage"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="HostStatus" type="fwsmodel:HostStatus"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="ServiceStatus" type="fwsmodel:ServiceStatus"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="MonitorStatus" type="fwsmodel:MonitorStatus"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="Device" type="fwsmodel:Device"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="Host" type="fwsmodel:Host"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="HostGroup" type="fwsmodel:HostGroup"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="HostGroupInfo" type="fwsmodel:HostGroupInfo"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="StateStatistics" type="fwsmodel:StateStatistics"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="NagiosStatisticCollection" type="fwsmodel:NagiosStatisticProperty"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="StatisticCollection" type="fwsmodel:StatisticProperty"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="HostGroupStatisticProperties"
+							type="fwsmodel:HostGroupStatisticProperty" minOccurs="0"
+							maxOccurs="unbounded" />
+						<xsd:element name="SessionID" type="fwsmodel:IntegerProperty"
+							minOccurs="0" maxOccurs="1" />
+						<xsd:element name="AttributeData" type="fwsmodel:AttributeData"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="EntityType" type="fwsmodel:EntityType"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="EntityTypeProperty" type="fwsmodel:EntityTypeProperty"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="PropertyTypeBinding" type="fwsmodel:PropertyTypeBinding"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="Action" type="fwsmodel:Action"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="ActionReturn" type="fwsmodel:ActionReturn"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="StateTransition" type="fwsmodel:StateTransition"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="Category" type="fwsmodel:Category"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="CategoryEntity" type="fwsmodel:CategoryEntity"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="RRDGraph" type="fwsmodel:RRDGraph"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="SimpleHost" type="fwsmodel:SimpleHost"
+							minOccurs="0" maxOccurs="unbounded" />
+						<xsd:element name="SimpleServiceStatus" type="fwsmodel:SimpleServiceStatus"
+							minOccurs="0" maxOccurs="unbounded" />
+					</xsd:choice>
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:simpleType name='ExceptionType'>
+				<annotation>
+					<documentation>
+						ExceptionType enumeration
+					</documentation>
+				</annotation>
+				<restriction base='xsd:string'>
+					<enumeration value='WEBSERVICE'>
+						<annotation>
+							<documentation>
+								Exception At Webservice level
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='TRANSPORT'>
+						<annotation>
+							<documentation>
+								Exception At Transport level
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='SYSTEM'>
+						<annotation>
+							<documentation>
+								Exception At System level
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='PERSISTENCE'>
+						<annotation>
+							<documentation>
+								Exception At Persistence level
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='DATABASE'>
+						<annotation>
+							<documentation>
+								Exception At Database level
+							</documentation>
+						</annotation>
+					</enumeration>
+				</restriction>
+			</xsd:simpleType>
+			<xsd:simpleType name='EventQueryType'>
+				<annotation>
+					<documentation>
+						Valid Types for use when querying for events
+					</documentation>
+				</annotation>
+				<restriction base='xsd:string'>
+					<enumeration value='ALL'>
+						<annotation>
+							<documentation>
+								Get All Events
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='DEVICEID'>
+						<annotation>
+							<documentation>
+								Get Events by DeviceID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='DEVICEIDENTIFICATION'>
+						<annotation>
+							<documentation>
+								Get Events by Device Name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTGROUPID'>
+						<annotation>
+							<documentation>
+								Get Events by HostGroupID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTGROUPNAME'>
+						<annotation>
+							<documentation>
+								Get Events by HostGroup name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTID'>
+						<annotation>
+							<documentation>
+								Get Events by HostID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTNAME'>
+						<annotation>
+							<documentation>
+								Get Events by Host name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='SERVICEDESCRIPTION'>
+						<annotation>
+							<documentation>
+								Get Events by Service Description
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='EVENTID'>
+						<annotation>
+							<documentation>
+								Get a specific event identified by
+								EventID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='FOUNDATION_QUERY_PREPARE'>
+						<annotation>
+							<documentation>
+								QUERY the Events with a Foundation Query
+							</documentation>
+						</annotation>
+					</enumeration>
+				</restriction>
+			</xsd:simpleType>
+			<xsd:simpleType name='HostGroupQueryType'>
+				<annotation>
+					<documentation>
+						Valid Types for use when querying for hostgroups
+					</documentation>
+				</annotation>
+				<restriction base='xsd:string'>
+					<enumeration value='ALL'>
+						<annotation>
+							<documentation>Get All Hosts</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='MONITORSERVERNAME'>
+						<annotation>
+							<documentation>
+								Get HostGroup by MonitorServer name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTGROUPID'>
+						<annotation>
+							<documentation>
+								Get HostGroup by HostGroupID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTGROUPNAME'>
+						<annotation>
+							<documentation>
+								Get HostGroup by HostGroup name
+							</documentation>
+						</annotation>
+					</enumeration>
+				</restriction>
+			</xsd:simpleType>
+			<xsd:simpleType name='HostGroupInfoQueryType'>
+				<annotation>
+					<documentation>
+						Valid Types for use when querying for hostgroups
+						id information
+					</documentation>
+				</annotation>
+				<restriction base='xsd:string'>
+					<enumeration value='ALL'>
+						<annotation>
+							<documentation>
+								Get All Host Groups
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='APPLICATIONTYPEID'>
+						<annotation>
+							<documentation>
+								Get HostGroup id information by
+								Application Type ID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTGROUPID'>
+						<annotation>
+							<documentation>
+								Get HostGroup id information by
+								HostGroupID
+							</documentation>
+						</annotation>
+					</enumeration>
+				</restriction>
+			</xsd:simpleType>
+			<xsd:simpleType name='HostQueryType'>
+				<annotation>
+					<documentation>
+						Valid Types for use when querying for hosts
+					</documentation>
+				</annotation>
+				<restriction base='xsd:string'>
+					<enumeration value='ALL'>
+						<annotation>
+							<documentation>
+								Get All HostGroups
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTGROUPID'>
+						<annotation>
+							<documentation>
+								Get Hosts by HostGroupID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTGROUPNAME'>
+						<annotation>
+							<documentation>
+								Get Hosts by HostGroup name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='SERVICEDESCRIPTION'>
+						<annotation>
+							<documentation>
+								Get Hosts by Service description
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='MONITORSERVERNAME'>
+						<annotation>
+							<documentation>
+								Get Hosts by MonitorServer name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTNAME'>
+						<annotation>
+							<documentation>
+								Get Host by Host name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTID'>
+						<annotation>
+							<documentation>
+								Get Host by Host ID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='DEVICEIDENTIFICATION'>
+						<annotation>
+							<documentation>
+								Get Host by Device name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='DEVICEID'>
+						<annotation>
+							<documentation>
+								Get Host by Device ID
+							</documentation>
+						</annotation>
+					</enumeration>
+				</restriction>
+			</xsd:simpleType>
+			<xsd:simpleType name='ServiceQueryType'>
+				<annotation>
+					<documentation>
+						Valid Types for use when querying for services
+					</documentation>
+				</annotation>
+				<restriction base='xsd:string'>
+					<enumeration value='ALL'>
+						<annotation>
+							<documentation>
+								Get All Services
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='SERVICEDESCRIPTION'>
+						<annotation>
+							<documentation>
+								Get Service by ServiceStatus Description
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='SERVICESTATUSID'>
+						<annotation>
+							<documentation>
+								Get Service by ServiceStatus ID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTID'>
+						<annotation>
+							<documentation>
+								Get Service by HostID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTNAME'>
+						<annotation>
+							<documentation>
+								Get Service by Host name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTGROUPID'>
+						<annotation>
+							<documentation>
+								Get Service by HostGroupID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTGROUPNAME'>
+						<annotation>
+							<documentation>
+								Get Service by HostGroup name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='QUERY'>
+						<annotation>
+							<documentation>
+								Get Service by a user defined query
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='SERVICEGROUPID'>
+						<annotation>
+							<documentation>
+								Get Service by ServiceGroupID
+							</documentation>
+						</annotation>
+					</enumeration>
+				</restriction>
+			</xsd:simpleType>
+			<xsd:simpleType name='DeviceQueryType'>
+				<annotation>
+					<documentation>
+						Valid Types for use when querying for devices
+					</documentation>
+				</annotation>
+				<restriction base='xsd:string'>
+					<enumeration value='ALL'>
+						<annotation>
+							<documentation>
+								Get All Devices
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTID'>
+						<annotation>
+							<documentation>
+								Get Device by HostID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='DEVICEID'>
+						<annotation>
+							<documentation>
+								Get Device by DeviceID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='DEVICEIDENTIFICATION'>
+						<annotation>
+							<documentation>
+								Get Device by Device Identification
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTNAME'>
+						<annotation>
+							<documentation>
+								Get Device by Host name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='PARENTS'>
+						<annotation>
+							<documentation>
+								Get Parents of specified device
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='CHILDREN'>
+						<annotation>
+							<documentation>
+								Get Children of specified device
+							</documentation>
+						</annotation>
+					</enumeration>
+				</restriction>
+			</xsd:simpleType>
+			<xsd:simpleType name='StatisticQueryType'>
+				<annotation>
+					<documentation>
+						Valid Types for use when querying for statistics
+					</documentation>
+				</annotation>
+				<restriction base='xsd:string'>
+					<enumeration value='ALL_HOSTS'>
+						<annotation>
+							<documentation>
+								Get Statistics for all Hosts
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOST_LIST'>
+						<annotation>
+							<documentation>
+								Get Statistics for all Hosts
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='SERVICE_ID_LIST'>
+						<annotation>
+							<documentation>
+								Get Statistics for all services by service ids
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='ALL_SERVICES'>
+						<annotation>
+							<documentation>
+								Get Statistics for all Services
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTS_FOR_HOSTGROUPID'>
+						<annotation>
+							<documentation>
+								Get Statistics for Hosts in a HostGroup
+								by HostGroupID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTS_FOR_HOSTGROUPNAME'>
+						<annotation>
+							<documentation>
+								Get Statistics for Hosts in a HostGroup
+								by HostGroup name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='SERVICES_FOR_HOSTGROUPID'>
+						<annotation>
+							<documentation>
+								Get Statistics for Hosts in a HostGroup
+								by HostGroupID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='SERVICES_FOR_HOSTGROUPNAME'>
+						<annotation>
+							<documentation>
+								Get Statistics for Hosts in a HostGroup
+								by HostGroup name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='TOTALS_FOR_SERVICES_BY_HOSTNAME'>
+						<annotation>
+							<documentation>
+								Get Statistics for Services related to a
+								specified Host by Host name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='TOTALS_FOR_HOSTS'>
+						<annotation>
+							<documentation>
+								Get Statistics totals for all Hosts
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='TOTALS_FOR_SERVICES'>
+						<annotation>
+							<documentation>
+								Get Statistics for totals for all
+								Services
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTGROUP_STATE_COUNTS_HOST'>
+						<annotation>
+							<documentation>
+								call returns StatisticProperties with
+								the Name of the property and the counts
+								of HostGroups that have any of these
+								counts greater than 0
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTGROUP_STATE_COUNTS_SERVICE'>
+						<annotation>
+							<documentation>
+								call returns StatisticProperties with
+								the Name of the property and the counts
+								of HostGroups that have any of these
+								counts greater than 0
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='SERVICEGROUP_STATS_BY_SERVICEGROUPNAME'>
+						<annotation>
+							<documentation>
+								call returns Service group StatisticProperties with
+								for the given service group name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='SERVICEGROUP_STATS_FOR_ALL_NETWORK'>
+						<annotation>
+							<documentation>
+								call returns Service group StatisticProperties for all network
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTGROUP_STATISTICS_BY_FILTER'>
+						<annotation>
+							<documentation>
+								call returns host group statistics by filter
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='SERVICEGROUP_STATISTICS_BY_FILTER'>
+						<annotation>
+							<documentation>
+								call returns service group statistics by filter
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='SERVICE_STATISTICS_BY_FILTER'>
+						<annotation>
+							<documentation>
+								call returns service group statistics by filter
+							</documentation>
+						</annotation>
+					</enumeration>
+				</restriction>
+			</xsd:simpleType>
+			<xsd:simpleType name='NagiosStatisticQueryType'>
+				<annotation>
+					<documentation>
+						Valid Types for use when querying for nagios
+						related statistics
+					</documentation>
+				</annotation>
+				<restriction base='xsd:string'>
+					<enumeration value='HOSTGROUPID'>
+						<annotation>
+							<documentation>
+								Get Nagios Statistics for a HostGroup by
+								HostGroupID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTGROUPNAME'>
+						<annotation>
+							<documentation>
+								Get Nagios Statistics for a HostGroup by
+								HostGroup name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTID'>
+						<annotation>
+							<documentation>
+								Get Nagios Statistics for a Host by Host
+								ID
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTNAME'>
+						<annotation>
+							<documentation>
+								Get Nagios Statistics for a Host by Host
+								Name
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='SYSTEM'>
+						<annotation>
+							<documentation>
+								Get Nagios Statistics for all Hosts and
+								services in the system
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='HOSTLIST'>
+						<annotation>
+							<documentation>
+								Get Nagios Statistics for list comma separated of host names
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='SERVICEGROUPNAME'>
+						<annotation>
+							<documentation>
+								Get Nagios Statistics for a ServiceGroup by
+								HostGroup name
+							</documentation>
+						</annotation>
+					</enumeration>
+				</restriction>
+			</xsd:simpleType>
+			<xsd:simpleType name='AttributeQueryType'>
+				<annotation>
+					<documentation>
+						Valid Types for use when querying for available
+						attribute values for a particular type.
+					</documentation>
+				</annotation>
+				<restriction base='xsd:string'>
+					<enumeration value='APPLICATION_TYPES'>
+						<annotation>
+							<documentation>
+								Get available application types
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='CATEGORIES'>
+						<annotation>
+							<documentation>
+								Get available categories
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='CHECK_TYPES'>
+						<annotation>
+							<documentation>
+								Get available check types
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='COMPONENTS'>
+						<annotation>
+							<documentation>
+								Get available components
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='MONITOR_STATUSES'>
+						<annotation>
+							<documentation>
+								Get available monitor statuses
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='OPERATION_STATUSES'>
+						<annotation>
+							<documentation>
+								Get available operation statuses
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='PRIORITIES'>
+						<annotation>
+							<documentation>
+								Get available priority attribute values
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='SEVERITIES'>
+						<annotation>
+							<documentation>
+								Get available severity attribute values
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='STATE_TYPES'>
+						<annotation>
+							<documentation>
+								Get available state types
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='TYPE_RULES'>
+						<annotation>
+							<documentation>
+								Get available type rules
+							</documentation>
+						</annotation>
+					</enumeration>
+				</restriction>
+			</xsd:simpleType>
+			<xsd:simpleType name='CollectionType'>
+				<annotation>
+					<documentation>
+						Valid Types for use as return collection of
+						objects in a response
+					</documentation>
+				</annotation>
+				<restriction base='xsd:string'>
+					<enumeration value='LOGMESSAGE'></enumeration>
+					<enumeration value='HOSTSTATUS'></enumeration>
+					<enumeration value='SERVICESTATUS'></enumeration>
+					<enumeration value='MONITORSTATUS'></enumeration>
+					<enumeration value='DEVICE'></enumeration>
+					<enumeration value='HOST'></enumeration>
+					<enumeration value='HOSTGROUP'></enumeration>
+					<enumeration value='HOSTGROUP_STATISTICS'>
+					</enumeration>
+					<enumeration value='NAGIOS_STATISTICS'>
+					</enumeration>
+					<enumeration value='CATEGORY'>
+					</enumeration>
+					<enumeration value='CATEGORYENTITY'>
+					</enumeration>
+				</restriction>
+			</xsd:simpleType>
+			<xsd:complexType name="OperationStatus">
+				<xsd:annotation>
+					<xsd:documentation>OperationStatus type contains elements OperationStatusID as String, name as String and Description as String. </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="OperationStatusID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Description" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="Severity">
+				<xsd:annotation>
+					<xsd:documentation>Severity type contain elements SeverityID as int ,name as String and Description as String </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="SeverityID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Description" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="Component">
+				<xsd:annotation>
+					<xsd:documentation>Component type contain elements ComponentID as int ,name as String and Description as String </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="ComponentID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Description" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="TypeRule">
+				<xsd:annotation>
+					<xsd:documentation>TypeRule type contain elements TypeID as int ,name as String and Description as String </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="TypeID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Description" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="Priority">
+				<xsd:annotation>
+					<xsd:documentation>Priority type contain elements PriorityID as int ,name as String and Description as String </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="PriorityID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Description" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="MonitorStatus">
+				<xsd:annotation>
+					<xsd:documentation>MonitorStatus type contain elements MonitorStatusID as int ,name as String and Description as String </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="MonitorStatusID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Description" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="StateType">
+				<xsd:annotation>
+					<xsd:documentation>StateType type contain elements StateTypeID  as int ,name as String and Description as String</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="StateTypeID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Description" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="CheckType">
+				<xsd:annotation>
+					<xsd:documentation>CheckType type contain elements  CheckTypeID  as int ,name as String and Description as String </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="CheckTypeID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Description" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="HostGroup">
+				<xsd:annotation>
+					<xsd:documentation>HostGroup type contain the information related to hostGroup and host entity .Elements of hostgroup type are HostGroupID as int, ApplicationTypeID as int ,Name as String, Hosts as Host, Description as String and Alias as String
+
+For Example: - HostGroup property type is returned by wshostgroup web service while calling “getHostGroups” API.
+</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="HostGroupID" type="xsd:int" />
+					<xsd:element name="ApplicationTypeID" type="xsd:int" />
+					<xsd:element name="ApplicationName" type="xsd:string" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Description" type="xsd:string" />
+					<xsd:element name="Alias" type="xsd:string" />
+					<xsd:element name="Hosts" type="fwsmodel:Host"
+						minOccurs="0" maxOccurs="unbounded" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="HostGroupInfo">
+				<xsd:annotation>
+					<xsd:documentation>HostGroupInfo type contain the information related to hostGroup entity .Elements of host type are ApplicationTypeID as int , ApplicationName  as String, HostGroupID  as  int, HostGroupName  as  String, HostID as int and hostName as String.</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="ApplicationTypeID" type="xsd:int" />
+					<xsd:element name="ApplicationName" type="xsd:string" />
+					<xsd:element name="HostGroupID" type="xsd:int" />
+					<xsd:element name="HostGroupName" type="xsd:string" />
+					<xsd:element name="HostID" type="xsd:int" />
+					<xsd:element name="HostName" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="Device">
+				<xsd:annotation>
+					<xsd:documentation>Device contain elements DeviceID as int,name as String and Identification as String
+
+			</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="DeviceID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Identification" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="ConsolidationCriteria">
+				<xsd:annotation>
+					<xsd:documentation>ConsolidationCriteria type contains elements ConsolidationCriteriaID as int type, Name as String type and Criteria as String type. </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="ConsolidationCriteriaID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Criteria" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="MessageFilter">
+				<xsd:annotation>
+					<xsd:documentation>MessageFilter type contain MessageFilterID as int ,Name as String, RegExpression as String and isChangeSeverityToStatistics as Boolean</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="MessageFilterID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="RegExpression" type="xsd:string" />
+					<xsd:element name="isChangeSeverityToStatistics" type="xsd:boolean" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="SchemaInfo">
+				<xsd:annotation>
+					<xsd:documentation>SchemaInfo type contain Name as String and Value as String </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Value" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="MonitorServer">
+				<xsd:annotation>
+					<xsd:documentation>MonitorServer type contain Name as String and IP as String </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="IP" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="ApplicationType">
+				<xsd:annotation>
+					<xsd:documentation>ApplicationType type contain ApplicationTypeID as int ,Name as String and Description as String.</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="ApplicationTypeID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Description" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="NagiosStatisticProperty">
+				<xsd:annotation>
+					<xsd:documentation>NagiosStatisticProperty contain the information related to nagios statistics .Elements of NagiosStatisticProperty are PropertyName as String, HostStatisticEnabled as long, HostStatisticDisabled as long, ServiceStatisticEnabled as long and ServiceStatisticDisabled as long.   </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="PropertyName" type="xsd:string" />
+					<xsd:element name="HostStatisticEnabled" type="xsd:long" />
+					<xsd:element name="HostStatisticDisabled" type="xsd:long" />
+					<xsd:element name="ServiceStatisticEnabled" type="xsd:long" />
+					<xsd:element name="ServiceStatisticDisabled" type="xsd:long" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="AttributeData">
+				<xsd:annotation>
+					<xsd:documentation>AttributeData contain elements AttributeID and int, Name as String and Description as String.   </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="AttributeID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Description" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="Action">
+				<xsd:annotation>
+					<xsd:documentation>AAction contain the information related to nagios action .Elements of action type are ActionID as int,Name as String, Description as String and ApplicationTypes as ApplicationTypes.</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="ActionID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Description" type="xsd:string" />
+					<xsd:element name="ApplicationTypes" type="fwsmodel:ApplicationType"
+						minOccurs="0" maxOccurs="unbounded" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="ActionPerform">
+				<xsd:annotation>
+					<xsd:documentation>ActionPerform contain the information related to perform action .Elements are ActionID as int and Parameters as StringProperty. </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="ActionID" type="xsd:int" />
+					<xsd:element name="Parameters" type="fwsmodel:StringProperty"
+						minOccurs="0" maxOccurs="unbounded" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="ActionReturn">
+				<xsd:annotation>
+					<xsd:documentation>ActionReturn contain the information related to ActionID as int, ReturnCode as String and ReturnValue String.  </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="ActionID" type="xsd:int" />
+					<xsd:element name="ReturnCode" type="xsd:string" />
+					<xsd:element name="ReturnValue" type="xsd:string" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="StateTransition">
+				<xsd:annotation>
+					<xsd:documentation>StateTransition is contain the information related to host or service state Transition .Elements are HostName as String,ServiceDescription  as  String, FromStatus  as MonitorStatus, FromTransitionDate  as  DateTime, ToStatus as MonitorStatus, ToTransitionDate as DateTime , EndTransitionDate  as  DateTime and DurationInState as long.
+
+For example:- StateTransition property type is  returned by   wsevent  web service while calling “getHostStateTransitions” API .
+</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="HostName" type="xsd:string" />
+					<xsd:element name="ServiceDescription" type="xsd:string" />
+					<xsd:element name="FromStatus" type="fwsmodel:MonitorStatus"
+						minOccurs="0" maxOccurs="1" />
+					<xsd:element name="FromTransitionDate" type="xsd:dateTime" />
+					<xsd:element name="ToStatus" type="fwsmodel:MonitorStatus"
+						minOccurs="0" maxOccurs="1" />
+					<xsd:element name="ToTransitionDate" type="xsd:dateTime" />
+					<xsd:element name="EndTransitionDate" type="xsd:dateTime" />
+					<xsd:element name="DurationInState" type="xsd:long" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="Category">
+				<xsd:annotation>
+					<xsd:documentation>Category contain the information related to group of any entities (Service, Host, Log Message, devices).Elements of Category are CategoryID  as  String ,Name as String, Description as String, EntityType as EntityType, Parents as Category and CategoryEntity as CategoryEntity.
+
+For example: - Category property type is returned by   wscategory web service while calling “getCategories” API.
+</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="CategoryID" type="xsd:int" />
+					<xsd:element name="Name" type="xsd:string" />
+					<xsd:element name="Description" type="xsd:string" />
+					<xsd:sequence>
+						<xsd:element name="EntityType" type="fwsmodel:EntityType"
+							minOccurs="0" maxOccurs="1" />
+					</xsd:sequence>
+					<xsd:sequence>
+						<xsd:element name="Parents" type="fwsmodel:Category"
+							minOccurs="0" maxOccurs="unbounded" />
+					</xsd:sequence>
+					<xsd:sequence>
+						<xsd:element name="CategoryEntity" type="fwsmodel:CategoryEntity"
+							minOccurs="0" maxOccurs="unbounded" />
+					</xsd:sequence>
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="CategoryEntity">
+				<xsd:annotation>
+					<xsd:documentation>CategoryEntity contain elements CategoryEntityID as int, ObjectID as int, EntityType as EntityType and Category as Category.
+For example: - CategoryEntity property type is returned by   wscategory web service while calling “getCategoryEntities” API.
+  </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="CategoryEntityID" type="xsd:int" />
+					<xsd:element name="ObjectID" type="xsd:int" />
+					<xsd:sequence>
+						<xsd:element name="EntityType" type="fwsmodel:EntityType"
+							minOccurs="0" maxOccurs="1" />
+					</xsd:sequence>
+					<xsd:sequence>
+						<xsd:element name="Category" type="fwsmodel:Category"
+							minOccurs="0" maxOccurs="1" />
+					</xsd:sequence>
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:simpleType name='FilterOperator'>
+				<annotation>
+					<documentation>
+						Valid Filter Operators
+					</documentation>
+				</annotation>
+				<restriction base='xsd:string'>
+					<enumeration value='AND'>
+						<annotation>
+							<documentation>
+								AND two filters
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='OR'>
+						<annotation>
+							<documentation>
+								OR two filters
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='LT'>
+						<annotation>
+							<documentation>Less Than</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='LE'>
+						<annotation>
+							<documentation>
+								Less Than or Equal To
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='GT'>
+						<annotation>
+							<documentation>Greater Than</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='GE'>
+						<annotation>
+							<documentation>
+								Greater Than or Equal To
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='EQ'>
+						<annotation>
+							<documentation>Equal To</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='NE'>
+						<annotation>
+							<documentation>Not Equal To</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='LIKE'>
+						<annotation>
+							<documentation>Like</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value='IN'>
+						<annotation>
+							<documentation>In</documentation>
+						</annotation>
+					</enumeration>
+				</restriction>
+			</xsd:simpleType>
+			<xsd:complexType name="Filter">
+				<xsd:annotation>
+					<xsd:documentation>A filter is provided to build the criteria for doing the required queries on the model (Foundation). Filters can be composed with the help of disjunctions (AND) and conjunctions (OR). 
+
+Elements of Filter type are StringProperty  as StringProperty, IntegerProperty  as  IntegerProperty, LongProperty as LongProperty, DoubleProperty  as  DoubleProperty, BooleanProperty  as  BooleanProperty
+DateProperty as DateProperty, TimeProperty as TimeProperty, LeftFilter as Filter, RightFilter as Filter and Operator as FilterOperator.
+ </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:choice>
+						<xsd:choice>
+							<xsd:element name="StringProperty" type="fwsmodel:StringProperty"
+								minOccurs="0" maxOccurs="1" />
+							<xsd:element name="IntegerProperty" type="fwsmodel:IntegerProperty"
+								minOccurs="0" maxOccurs="1" />
+							<xsd:element name="LongProperty" type="fwsmodel:LongProperty"
+								minOccurs="0" maxOccurs="1" />
+							<xsd:element name="DoubleProperty" type="fwsmodel:DoubleProperty"
+								minOccurs="0" maxOccurs="1" />
+							<xsd:element name="BooleanProperty" type="fwsmodel:BooleanProperty"
+								minOccurs="0" maxOccurs="1" />
+							<xsd:element name="DateProperty" type="fwsmodel:DateProperty"
+								minOccurs="0" maxOccurs="1" />
+							<xsd:element name="TimeProperty" type="fwsmodel:TimeProperty"
+								minOccurs="0" maxOccurs="1" />
+						</xsd:choice>
+						<xsd:sequence>
+							<xsd:element name="LeftFilter" type="fwsmodel:Filter"
+								minOccurs="0" maxOccurs="1" />
+							<xsd:element name="RightFilter" type="fwsmodel:Filter"
+								minOccurs="0" maxOccurs="1" />
+						</xsd:sequence>
+					</xsd:choice>
+					<xsd:element name="Operator" type="fwsmodel:FilterOperator"
+						minOccurs="1" maxOccurs="1" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="SortItem">
+				<xsd:annotation>
+					<xsd:documentation>SortItem type contains the information related to sort column. Elements are SortAscending as boolean and PropertyName as String
+
+For example:- SortItem can be used while calling “getEventsByCriteria” API (wsevent).
+ </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="SortAscending" type="xsd:boolean"
+						minOccurs="1" maxOccurs="1" />
+					<xsd:element name="PropertyName" type="xsd:string"
+						minOccurs="1" maxOccurs="1" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="Sort">
+				<xsd:annotation>
+					<xsd:documentation>Sort type contains element SortItem as type SortItem. </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="SortItem" type="fwsmodel:SortItem"
+						minOccurs="0" maxOccurs="unbounded" />
+				</xsd:sequence>
+			</xsd:complexType>
+			<xsd:complexType name="RRDGraph">
+				<xsd:annotation>
+					<xsd:documentation>RRDGraph type contains RRD graph label and actual graph image byte array. Elements of RRDGraph type are RRDLabel as String and Graph as base64Binary. 
+
+For Example: - RRDGraph type is returned by wsrrd web service while calling “getGraph” API.
+    </xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="RRDLabel" type="xsd:string"
+						minOccurs="1" maxOccurs="1" />
+					<xsd:sequence>
+						<xsd:element name="Graph" type="xsd:base64Binary"
+							minOccurs="0" maxOccurs="unbounded" />
+					</xsd:sequence>
+				</xsd:sequence>
+			</xsd:complexType>
+		</schema>
+	</wsdl:types>
+</wsdl:definitions>

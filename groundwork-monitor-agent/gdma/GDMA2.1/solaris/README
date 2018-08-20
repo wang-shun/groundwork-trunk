@@ -1,0 +1,28 @@
+################################################################################
+#
+# This file gives the steps necessary to build the GDMA 2.1 package on supported
+# solaris platform and install it on GDMA host
+#
+################################################################################
+
+The supported operating systems are -
+solaris 9, solaris 10.
+
+1. Checkout the GDMA 2.1 source code to any build directory -
+   http://geneva/groundwork-professional/trunk/monitor-agent/gdma/GDMA2.1/solaris/
+
+2. The top most directory contains a makefile which does everything that's
+   necessary to build a package.
+   Type in "make" command to get help. To build GDMA 2.1 package for the platform
+   you are building on, type "make gdma_package".
+   
+3. The usual "make clean" and "make distclean" targets are also available.
+
+4. Don't build as "root". It could be dangerous for your system.
+
+5. Copy over the package to GDMA host and install the package.
+   pkgadd -d <package_file_name>
+   This will install GDMA under /opt/groundwork/gdma.
+   The GDMA poller and spool processor processes will be launched as system services.
+   The owner and group of the processes will be "gdma".
+

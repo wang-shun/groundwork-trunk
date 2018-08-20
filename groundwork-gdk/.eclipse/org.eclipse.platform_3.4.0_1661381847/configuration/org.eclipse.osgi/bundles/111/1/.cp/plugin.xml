@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.0"?>
+<plugin>
+
+   <extension
+         point="org.eclipse.ui.intro.configExtension">
+      <configExtension
+            configId="org.eclipse.ui.intro.universalConfig" 
+            content="$nl$/intro/overviewExtensionContent.xml"/>  
+      <configExtension
+            configId="org.eclipse.ui.intro.universalConfig"
+            content="$nl$/intro/tutorialsExtensionContent.xml"/>
+      <configExtension
+            configId="org.eclipse.ui.intro.universalConfig"
+            content="$nl$/intro/samplesExtensionContent.xml"/>
+      <configExtension
+            configId="org.eclipse.ui.intro.universalConfig"
+            content="$nl$/intro/samplesExtensionContent2.xml"/>
+      <configExtension
+            configId="org.eclipse.ui.intro.universalConfig"
+            content="$nl$/intro/whatsnewExtensionContent.xml"/> 
+   </extension>
+
+   <extension 
+   		 point="org.eclipse.ui.cheatsheets.cheatSheetContent">
+      <category
+            id="org.eclipse.pde"
+            name="%cheatsheet.category.pde"/>
+      <cheatsheet
+            category="org.eclipse.pde"
+            composite="true"
+            contentFile="$nl$/cheatsheets/helloworld-composite.xml"
+            id="org.eclipse.pde.helloworld"
+            name="%cheatsheet.helloworld.name">
+         <description>%cheatsheet.helloworld.desc</description>
+      </cheatsheet>
+      <cheatsheet
+            category="org.eclipse.pde"
+            composite="true"
+            contentFile="$nl$/cheatsheets/rcpapp-composite.xml"
+            id="org.eclipse.pde.rcpapp"
+            name="%cheatsheet.rcpapp.name">
+         <description>
+            %cheatsheet.rcpapp.desc
+         </description>
+      </cheatsheet>
+   </extension>
+   
+<!-- ================================================================================= -->
+<!-- Content Types                                                                     -->
+<!-- ================================================================================= -->
+   <extension 
+   		 point="org.eclipse.core.runtime.contentTypes">
+      <content-type 
+      		id="pluginManifest" 
+      		name="%pluginManifestName" 
+    		base-type="org.eclipse.core.runtime.xml"
+   			priority="high"				
+    		file-names="plugin.xml">
+    	<describer class="org.eclipse.core.runtime.content.XMLRootElementContentDescriber">
+    		<parameter name="element" value="plugin"/>
+		</describer>
+	  </content-type>
+   	  <content-type 
+   	  		id="fragmentManifest" 
+   	  		name="%fragmentManifestName" 
+       		base-type="org.eclipse.core.runtime.xml"
+    		priority="high"				
+    		file-names="fragment.xml">
+    	<describer class="org.eclipse.core.runtime.content.XMLRootElementContentDescriber">
+    		<parameter name="element" value="fragment"/>
+		</describer>
+	  </content-type>
+   	  <content-type 
+   	  		id="featureManifest" 
+   	  		name="%featureManifestName" 
+       		base-type="org.eclipse.core.runtime.xml"
+    		priority="high"				
+    		file-names="feature.xml">
+    	<describer class="org.eclipse.core.runtime.content.XMLRootElementContentDescriber">
+    		<parameter name="element" value="feature"/>
+		</describer>
+	  </content-type>
+   	  <content-type 
+   	  		id="siteManifest" 
+   	  		name="%siteManifestName" 
+       		base-type="org.eclipse.core.runtime.xml"
+    		priority="high"				
+    		file-names="site.xml">
+    	<describer class="org.eclipse.core.runtime.content.XMLRootElementContentDescriber">
+    		<parameter name="element" value="site"/>
+		</describer>
+	  </content-type>
+   	  <content-type 
+   	  		id="productFile" 
+   	  		name="%productConfiguration" 
+       		base-type="org.eclipse.core.runtime.xml"
+    		priority="high"				
+    		file-extensions="product">
+    	<describer class="org.eclipse.core.runtime.content.XMLRootElementContentDescriber">
+    		<parameter name="element" value="product"/>
+		</describer>
+	  </content-type>
+   	  <content-type 
+   	  		id="targetFile" 
+   	  		name="%target.profile.content" 
+       		base-type="org.eclipse.core.runtime.xml"
+    		priority="high"				
+    		file-extensions="target">
+    	<describer class="org.eclipse.core.runtime.content.XMLRootElementContentDescriber">
+    		<parameter name="element" value="target"/>
+		</describer>
+	  </content-type>
+   	  <content-type 
+   	  		id="schema" 
+   	  		name="%schemaFile" 
+       		base-type="org.eclipse.core.runtime.xml"
+    		priority="high"				
+    		file-extensions="exsd">
+    	<describer class="org.eclipse.core.runtime.content.XMLRootElementContentDescriber">
+    		<parameter name="element" value="schema"/>
+		</describer>
+	  </content-type>
+	  <content-type 
+	  		id="pluginProperties" 
+	  		name="%pluginPropertiesName" 
+    		base-type="org.eclipse.jdt.core.javaProperties"
+    		priority="high"				
+    		file-names="plugin.properties"/>
+      <content-type 
+		    id="buildProperties" 
+		    name="%buildPropertiesName" 
+		    base-type="org.eclipse.jdt.core.javaProperties"
+		    priority="high"
+		    file-names="build.properties"/>
+      <content-type 
+		    id="bundleManifest" 
+		    name="%bundleManifest" 
+		    base-type="org.eclipse.jdt.core.JARManifest"
+		    priority="high"
+            describer="org.eclipse.pde.internal.core.content.BundleManifestDescriber"/>
+      <content-type
+            base-type="org.eclipse.core.runtime.xml"
+            file-extensions="xml"
+            id="simpleCheatSheet"
+            name="%content-type.name.simpleCS"
+            priority="high">
+         <describer
+               class="org.eclipse.core.runtime.content.XMLRootElementContentDescriber">
+            <parameter
+                  name="element"
+                  value="cheatsheet">
+            </parameter>
+         </describer>
+      </content-type>
+      <content-type
+            base-type="org.eclipse.core.runtime.xml"
+            file-extensions="xml"
+            id="compositeCheatSheet"
+            name="%content-type.name.compCS"
+            priority="high">
+         <describer
+               class="org.eclipse.core.runtime.content.XMLRootElementContentDescriber">
+            <parameter
+                  name="element"
+                  value="compositeCheatsheet">
+            </parameter>
+         </describer>
+      </content-type>
+      <content-type
+            base-type="org.eclipse.core.runtime.xml"
+            file-extensions="xml"
+            id="tocFile"
+            name="%tableOfContents"
+            priority="high">
+         <describer
+               class="org.eclipse.core.runtime.content.XMLRootElementContentDescriber">
+            <parameter
+                  name="element"
+                  value="toc">
+            </parameter>
+         </describer>
+      </content-type>
+      <content-type
+            base-type="org.eclipse.core.runtime.xml"
+            file-extensions="xml"
+            id="ctxHelpFile"
+            name="%contextHelp"
+            priority="high">
+         <describer
+               class="org.eclipse.core.runtime.content.XMLRootElementContentDescriber">
+            <parameter
+                  name="element"
+                  value="contexts">
+            </parameter>
+         </describer>
+      </content-type>
+    </extension>
+   
+   
+</plugin>

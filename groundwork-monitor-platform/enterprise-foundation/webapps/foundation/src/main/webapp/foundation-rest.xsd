@@ -1,0 +1,1369 @@
+<?xml version="1.0" standalone="yes"?>
+<xs:schema version="1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:element name="ack" type="dtoAcknowledge"/>
+
+  <xs:element name="acks" type="dtoAcknowledgeList"/>
+
+  <xs:element name="applicationType" type="dtoApplicationType"/>
+
+  <xs:element name="applicationTypes" type="dtoApplicationTypeList"/>
+
+  <xs:element name="asyncSettings" type="dtoAsyncSettings"/>
+
+  <xs:element name="auditLog" type="dtoAuditLog"/>
+
+  <xs:element name="auditLogs" type="dtoAuditLogList"/>
+
+  <xs:element name="bizAuthorization" type="dtoBizAuthorization"/>
+
+  <xs:element name="bizAuthorizedServices" type="dtoBizAuthorizedServices"/>
+
+  <xs:element name="bizHostServiceInDowntime" type="dtoBizHostServiceInDowntime"/>
+
+  <xs:element name="bizHostServiceInDowntimes" type="dtoBizHostServiceInDowntimeList"/>
+
+  <xs:element name="bizHostsAndServices" type="dtoBizHostsAndServices"/>
+
+  <xs:element name="categories" type="dtoCategoryList"/>
+
+  <xs:element name="category" nillable="true" type="xs:anyType"/>
+
+  <xs:element name="categoryEntity" type="dtoCategoryEntity"/>
+
+  <xs:element name="categoryUpdate" type="dtoCategoryUpdate"/>
+
+  <xs:element name="categoryUpdates" type="dtoCategoryUpdateList"/>
+
+  <xs:element name="checkType" type="dtoCheckType"/>
+
+  <xs:element name="consolidation" type="dtoConsolidation"/>
+
+  <xs:element name="consolidations" type="dtoConsolidationList"/>
+
+  <xs:element name="container-monitoring" type="containerProfile"/>
+
+  <xs:element name="customGroup" nillable="true" type="xs:anyType"/>
+
+  <xs:element name="customGroups" nillable="true" type="xs:anyType"/>
+
+  <xs:element name="device" type="dtoDevice"/>
+
+  <xs:element name="deviceTemplateProfile" type="dtoDeviceTemplateProfile"/>
+
+  <xs:element name="deviceTemplateProfiles" type="dtoDeviceTemplateProfileList"/>
+
+  <xs:element name="devices" type="dtoDeviceList"/>
+
+  <xs:element name="entityType" type="dtoEntityType"/>
+
+  <xs:element name="entityTypes" type="dtoEntityTypeList"/>
+
+  <xs:element name="event" nillable="true" type="xs:anyType"/>
+
+  <xs:element name="events" nillable="true" type="xs:anyType"/>
+
+  <xs:element name="files" type="dtoFileList"/>
+
+  <xs:element name="graph" type="dtoGraph"/>
+
+  <xs:element name="graphs" type="dtoGraphList"/>
+
+  <xs:element name="host" nillable="true" type="xs:anyType"/>
+
+  <xs:element name="hostBlacklist" type="dtoHostBlacklist"/>
+
+  <xs:element name="hostBlacklists" type="dtoHostBlacklistList"/>
+
+  <xs:element name="hostGroup" type="dtoHostGroup"/>
+
+  <xs:element name="hostGroups" type="dtoHostGroupList"/>
+
+  <xs:element name="hostIdentities" type="dtoHostIdentityList"/>
+
+  <xs:element name="hostIdentity" type="dtoHostIdentity"/>
+
+  <xs:element name="hostStatus" type="dtoHostStatus"/>
+
+  <xs:element name="hosts" nillable="true" type="xs:anyType"/>
+
+  <xs:element name="hypervisor" type="hypervisor"/>
+
+  <xs:element name="licenseCheck" type="dtoLicenseCheck"/>
+
+  <xs:element name="metric" type="metric"/>
+
+  <xs:element name="monitorServer" type="dtoMonitorServer"/>
+
+  <xs:element name="monitorStatus" type="dtoMonitorStatus"/>
+
+  <xs:element name="name" type="dtoName"/>
+
+  <xs:element name="names" type="dtoNamesList"/>
+
+  <xs:element name="network-monitoring" type="netHubProfile"/>
+
+  <xs:element name="notification" nillable="true" type="xs:anyType"/>
+
+  <xs:element name="notifications" nillable="true" type="xs:anyType"/>
+
+  <xs:element name="perfData" type="dtoPerfData"/>
+
+  <xs:element name="perfDataList" type="dtoPerfDataList"/>
+
+  <xs:element name="perfDataTimeSeries" type="dtoPerfDataTimeSeries"/>
+
+  <xs:element name="perfDataTimeSeriesValue" type="dtoPerfDataTimeSeriesValue"/>
+
+  <xs:element name="property" type="dtoProperty"/>
+
+  <xs:element name="propertyType" type="dtoPropertyType"/>
+
+  <xs:element name="propertyTypes" type="dtoPropertyTypeList"/>
+
+  <xs:element name="results" type="dtoOperationResults"/>
+
+  <xs:element name="service" nillable="true" type="xs:anyType"/>
+
+  <xs:element name="serviceGroup" nillable="true" type="xs:anyType"/>
+
+  <xs:element name="serviceGroups" nillable="true" type="xs:anyType"/>
+
+  <xs:element name="services" nillable="true" type="xs:anyType"/>
+
+  <xs:element name="stateType" type="dtoStateType"/>
+
+  <xs:element name="statistic" nillable="true" type="xs:anyType"/>
+
+  <xs:element name="statistics" type="dtoStateStatisticList"/>
+
+  <xs:element name="suggestion" type="dtoSuggestion"/>
+
+  <xs:element name="suggestions" type="dtoSuggestions"/>
+
+  <xs:element name="unack" type="dtoUnAcknowledge"/>
+
+  <xs:element name="unacks" type="dtoUnAcknowledgeList"/>
+
+  <xs:element name="vema-monitoring" type="cloudHubProfile"/>
+
+  <xs:element name="version" type="dtoVersion"/>
+
+  <xs:element name="vm" type="vm"/>
+
+  <xs:complexType name="dtoEntityType">
+    <xs:sequence/>
+    <xs:attribute name="id" type="xs:int"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="description" type="xs:string"/>
+    <xs:attribute name="isLogicalEntity" type="xs:boolean"/>
+    <xs:attribute name="applicationTypeSupported" type="xs:boolean"/>
+  </xs:complexType>
+
+  <xs:complexType name="netHubProfile">
+    <xs:complexContent>
+      <xs:extension base="hubProfile">
+        <xs:sequence>
+          <xs:element name="controller" type="hypervisor" minOccurs="0"/>
+          <xs:element name="switch" type="vm" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="hubProfile">
+    <xs:sequence>
+      <xs:element name="agent" type="xs:string" minOccurs="0"/>
+      <xs:element name="profileType" type="profileType" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="hypervisor">
+    <xs:sequence>
+      <xs:element ref="metric" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="metric">
+    <xs:sequence/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="description" type="xs:string"/>
+    <xs:attribute name="monitored" type="xs:boolean" use="required"/>
+    <xs:attribute name="graphed" type="xs:boolean" use="required"/>
+    <xs:attribute name="warningThreshold" type="xs:double" use="required"/>
+    <xs:attribute name="criticalThreshold" type="xs:double" use="required"/>
+    <xs:attribute name="sourceType" type="xs:string"/>
+    <xs:attribute name="computeType" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="vm">
+    <xs:sequence>
+      <xs:element ref="metric" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoNamesList">
+    <xs:sequence>
+      <xs:element name="names" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element ref="name" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoName">
+    <xs:sequence/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="canonicalName" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoServiceGroupMemberUpdate">
+    <xs:sequence>
+      <xs:element name="services" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element ref="service" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoServiceKey">
+    <xs:sequence/>
+    <xs:attribute name="service" type="xs:string"/>
+    <xs:attribute name="host" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoHostNotificationList">
+    <xs:sequence>
+      <xs:element ref="notification" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoHostNotification">
+    <xs:sequence/>
+    <xs:attribute name="hostState" type="xs:string"/>
+    <xs:attribute name="hostName" type="xs:string"/>
+    <xs:attribute name="hostGroupNames" type="xs:string"/>
+    <xs:attribute name="notificationType" type="xs:string"/>
+    <xs:attribute name="hostAddress" type="xs:string"/>
+    <xs:attribute name="hostOutput" type="xs:string"/>
+    <xs:attribute name="checkDateTime" type="xs:string"/>
+    <xs:attribute name="hostNotificationId" type="xs:string"/>
+    <xs:attribute name="notificationAuthOrAlias" type="xs:string"/>
+    <xs:attribute name="notificationComment" type="xs:string"/>
+    <xs:attribute name="notificationRecipients" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoSuggestions">
+    <xs:sequence>
+      <xs:element name="suggestions" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element ref="suggestion" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="count" type="xs:int" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoSuggestion">
+    <xs:sequence/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="entityType" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoEntityTypeList">
+    <xs:sequence>
+      <xs:element ref="entityType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoHostIdentity">
+    <xs:sequence>
+      <xs:element name="hostNames" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="hostName" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="hostIdentityId" type="xs:string"/>
+    <xs:attribute name="hostName" type="xs:string"/>
+    <xs:attribute name="host" type="xs:boolean"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoAuditLogList">
+    <xs:sequence>
+      <xs:element ref="auditLog" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoAuditLog">
+    <xs:sequence/>
+    <xs:attribute name="auditLogId" type="xs:int"/>
+    <xs:attribute name="subsystem" type="xs:string"/>
+    <xs:attribute name="action" type="xs:string"/>
+    <xs:attribute name="description" type="xs:string"/>
+    <xs:attribute name="username" type="xs:string"/>
+    <xs:attribute name="timestamp" type="xs:string"/>
+    <xs:attribute name="hostName" type="xs:string"/>
+    <xs:attribute name="serviceDescription" type="xs:string"/>
+    <xs:attribute name="hostGroupName" type="xs:string"/>
+    <xs:attribute name="serviceGroupName" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoHost">
+    <xs:complexContent>
+      <xs:extension base="dtoPropertiesBase">
+        <xs:sequence>
+          <xs:element ref="device" minOccurs="0"/>
+          <xs:element ref="hostStatus" minOccurs="0"/>
+          <xs:element name="services" minOccurs="0">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element ref="service" minOccurs="0" maxOccurs="unbounded"/>
+              </xs:sequence>
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="hostGroups" minOccurs="0">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element ref="hostGroup" minOccurs="0" maxOccurs="unbounded"/>
+              </xs:sequence>
+            </xs:complexType>
+          </xs:element>
+          <xs:element ref="applicationType" minOccurs="0"/>
+          <xs:element name="statistics" minOccurs="0">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="statistic" type="dtoStatistic" minOccurs="0" maxOccurs="unbounded"/>
+              </xs:sequence>
+            </xs:complexType>
+          </xs:element>
+        </xs:sequence>
+        <xs:attribute name="id" type="xs:int"/>
+        <xs:attribute name="hostName" type="xs:string"/>
+        <xs:attribute name="description" type="xs:string"/>
+        <xs:attribute name="monitorStatus" type="xs:string"/>
+        <xs:attribute name="appType" type="xs:string"/>
+        <xs:attribute name="appTypeDisplayName" type="xs:string"/>
+        <xs:attribute name="deviceIdentification" type="xs:string"/>
+        <xs:attribute name="deviceDisplayName" type="xs:string"/>
+        <xs:attribute name="lastCheckTime" type="xs:string"/>
+        <xs:attribute name="nextCheckTime" type="xs:string"/>
+        <xs:attribute name="bubbleUpStatus" type="xs:string"/>
+        <xs:attribute name="serviceAvailability" type="xs:string"/>
+        <xs:attribute name="acknowledged" type="xs:boolean"/>
+        <xs:attribute name="agentId" type="xs:string"/>
+        <xs:attribute name="serviceCount" type="xs:int"/>
+        <xs:attribute name="monitorServer" type="xs:string"/>
+        <xs:attribute name="stateType" type="xs:string"/>
+        <xs:attribute name="checkType" type="xs:string"/>
+        <xs:attribute name="alias" type="xs:string"/>
+        <xs:attribute name="lastStateChange" type="xs:string"/>
+        <xs:attribute name="lastPlugInOutput" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="dtoPropertiesBase">
+    <xs:sequence>
+      <xs:element name="properties" type="dtoProperties" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoDevice">
+    <xs:sequence>
+      <xs:element name="hosts" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element ref="host" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="monitorServers" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element ref="monitorServer" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:int"/>
+    <xs:attribute name="displayName" type="xs:string"/>
+    <xs:attribute name="identification" type="xs:string"/>
+    <xs:attribute name="description" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoMonitorServer">
+    <xs:sequence>
+      <xs:element name="devices" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element ref="device" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="monitorServerId" type="xs:int"/>
+    <xs:attribute name="monitorServerName" type="xs:string"/>
+    <xs:attribute name="ip" type="xs:string"/>
+    <xs:attribute name="description" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoHostStatus">
+    <xs:sequence>
+      <xs:element ref="monitorStatus" minOccurs="0"/>
+      <xs:element ref="checkType" minOccurs="0"/>
+      <xs:element ref="stateType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="hostStatusId" type="xs:int"/>
+    <xs:attribute name="lastCheckTime" type="xs:string"/>
+    <xs:attribute name="nextCheckTime" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoMonitorStatus">
+    <xs:sequence/>
+    <xs:attribute name="monitorStatusId" type="xs:int"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="description" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoCheckType">
+    <xs:sequence/>
+    <xs:attribute name="checkTypeId" type="xs:int"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="description" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoStateType">
+    <xs:sequence>
+      <xs:element name="stateTypeId" type="xs:int" minOccurs="0"/>
+      <xs:element name="name" type="xs:string" minOccurs="0"/>
+      <xs:element name="description" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoService">
+    <xs:complexContent>
+      <xs:extension base="dtoPropertiesBase">
+        <xs:sequence/>
+        <xs:attribute name="id" type="xs:int"/>
+        <xs:attribute name="appType" type="xs:string"/>
+        <xs:attribute name="appTypeDisplayName" type="xs:string"/>
+        <xs:attribute name="description" type="xs:string"/>
+        <xs:attribute name="monitorStatus" type="xs:string"/>
+        <xs:attribute name="lastCheckTime" type="xs:string"/>
+        <xs:attribute name="nextCheckTime" type="xs:string"/>
+        <xs:attribute name="lastStateChange" type="xs:string"/>
+        <xs:attribute name="hostName" type="xs:string"/>
+        <xs:attribute name="metricType" type="xs:string"/>
+        <xs:attribute name="domain" type="xs:string"/>
+        <xs:attribute name="stateType" type="xs:string"/>
+        <xs:attribute name="checkType" type="xs:string"/>
+        <xs:attribute name="lastHardState" type="xs:string"/>
+        <xs:attribute name="agentId" type="xs:string"/>
+        <xs:attribute name="monitorServer" type="xs:string"/>
+        <xs:attribute name="deviceIdentification" type="xs:string"/>
+        <xs:attribute name="lastPlugInOutput" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="dtoProperties">
+    <xs:sequence>
+      <xs:element ref="property" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoProperty">
+    <xs:sequence/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="value" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoHostGroup">
+    <xs:sequence>
+      <xs:element name="hosts" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element ref="host" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element ref="applicationType" minOccurs="0"/>
+      <xs:element name="statistics" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="statistic" type="dtoStatistic" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:int"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="description" type="xs:string"/>
+    <xs:attribute name="alias" type="xs:string"/>
+    <xs:attribute name="appType" type="xs:string"/>
+    <xs:attribute name="appTypeDisplayName" type="xs:string"/>
+    <xs:attribute name="agentId" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoApplicationType">
+    <xs:complexContent>
+      <xs:extension base="dtoPropertiesBase">
+        <xs:sequence>
+          <xs:element name="entityProperties" minOccurs="0">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="entityProperty" type="dtoEntityProperty" minOccurs="0" maxOccurs="unbounded"/>
+              </xs:sequence>
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="entityTypes" minOccurs="0">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element ref="entityType" minOccurs="0" maxOccurs="unbounded"/>
+              </xs:sequence>
+            </xs:complexType>
+          </xs:element>
+        </xs:sequence>
+        <xs:attribute name="id" type="xs:int"/>
+        <xs:attribute name="name" type="xs:string"/>
+        <xs:attribute name="displayName" type="xs:string"/>
+        <xs:attribute name="description" type="xs:string"/>
+        <xs:attribute name="stateTransitionCriteria" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="dtoEntityProperty">
+    <xs:sequence>
+      <xs:element name="entityType" type="xs:string" minOccurs="0"/>
+      <xs:element name="propertyType" type="xs:string" minOccurs="0"/>
+      <xs:element name="sortOrder" type="xs:int"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoStatistic">
+    <xs:sequence/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="count" type="xs:long"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoPerfDataTimeSeries">
+    <xs:sequence>
+      <xs:element ref="perfDataTimeSeriesValue" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="appType" type="xs:string"/>
+    <xs:attribute name="serverName" type="xs:string"/>
+    <xs:attribute name="serviceName" type="xs:string"/>
+    <xs:attribute name="startTime" type="xs:long"/>
+    <xs:attribute name="endTime" type="xs:long"/>
+    <xs:attribute name="interval" type="xs:long"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoPerfDataTimeSeriesValue">
+    <xs:sequence/>
+    <xs:attribute name="valueType" type="xs:string"/>
+    <xs:attribute name="timestamp" type="xs:long"/>
+    <xs:attribute name="value" type="xs:double"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoCategoryUpdateList">
+    <xs:sequence>
+      <xs:element ref="categoryUpdate" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoCategoryUpdate">
+    <xs:sequence>
+      <xs:element ref="entityType" minOccurs="0"/>
+      <xs:element ref="category" minOccurs="0"/>
+      <xs:element ref="applicationType" minOccurs="0"/>
+      <xs:element name="parent" type="dtoCategory" minOccurs="0"/>
+      <xs:element name="otherCategoryNames" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="categoryName" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="otherCategories" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element ref="category" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="entityTypeName" type="xs:string"/>
+    <xs:attribute name="categoryName" type="xs:string"/>
+    <xs:attribute name="delete" type="xs:string"/>
+    <xs:attribute name="childrenOnly" type="xs:boolean"/>
+    <xs:attribute name="create" type="xs:string"/>
+    <xs:attribute name="description" type="xs:string"/>
+    <xs:attribute name="agentId" type="xs:string"/>
+    <xs:attribute name="appType" type="xs:string"/>
+    <xs:attribute name="parentName" type="xs:string"/>
+    <xs:attribute name="clone" type="xs:string"/>
+    <xs:attribute name="cloneName" type="xs:string"/>
+    <xs:attribute name="modify" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoCategory">
+    <xs:sequence>
+      <xs:element name="parentNames" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="parentName" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="childNames" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="childName" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element ref="applicationType" minOccurs="0"/>
+      <xs:element ref="entityType" minOccurs="0"/>
+      <xs:element name="parents" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element ref="category" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="children" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element ref="category" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="entities" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="entity" type="dtoCategoryEntity" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:int"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="description" type="xs:string"/>
+    <xs:attribute name="entityTypeName" type="xs:string"/>
+    <xs:attribute name="agentId" type="xs:string"/>
+    <xs:attribute name="appType" type="xs:string"/>
+    <xs:attribute name="root" type="xs:boolean"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoCategoryEntity">
+    <xs:sequence>
+      <xs:element ref="entityType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:int"/>
+    <xs:attribute name="objectID" type="xs:int"/>
+    <xs:attribute name="entityTypeId" type="xs:int"/>
+    <xs:attribute name="entityTypeName" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoServiceGroupList">
+    <xs:sequence>
+      <xs:element ref="serviceGroup" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoServiceGroup">
+    <xs:sequence>
+      <xs:element name="services" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element ref="service" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:int"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="description" type="xs:string"/>
+    <xs:attribute name="appType" type="xs:string"/>
+    <xs:attribute name="appTypeDisplayName" type="xs:string"/>
+    <xs:attribute name="agentId" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoBizHostList">
+    <xs:sequence>
+      <xs:element ref="host" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoBizHost">
+    <xs:complexContent>
+      <xs:extension base="dtoPropertiesBase">
+        <xs:sequence>
+          <xs:element name="services" minOccurs="0">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element ref="service" minOccurs="0" maxOccurs="unbounded"/>
+              </xs:sequence>
+            </xs:complexType>
+          </xs:element>
+        </xs:sequence>
+        <xs:attribute name="host" type="xs:string"/>
+        <xs:attribute name="status" type="xs:string"/>
+        <xs:attribute name="message" type="xs:string"/>
+        <xs:attribute name="hostGroup" type="xs:string"/>
+        <xs:attribute name="hostCategory" type="xs:string"/>
+        <xs:attribute name="device" type="xs:string"/>
+        <xs:attribute name="appType" type="xs:string"/>
+        <xs:attribute name="agentId" type="xs:string"/>
+        <xs:attribute name="checkIntervalMinutes" type="xs:int" use="required"/>
+        <xs:attribute name="allowInserts" type="xs:boolean" use="required"/>
+        <xs:attribute name="mergeHosts" type="xs:boolean" use="required"/>
+        <xs:attribute name="setStatusOnCreate" type="xs:boolean"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="dtoBizService">
+    <xs:complexContent>
+      <xs:extension base="dtoPropertiesBase">
+        <xs:sequence/>
+        <xs:attribute name="host" type="xs:string"/>
+        <xs:attribute name="service" type="xs:string"/>
+        <xs:attribute name="status" type="xs:string"/>
+        <xs:attribute name="message" type="xs:string"/>
+        <xs:attribute name="serviceGroup" type="xs:string"/>
+        <xs:attribute name="serviceCategory" type="xs:string"/>
+        <xs:attribute name="hostGroup" type="xs:string"/>
+        <xs:attribute name="hostCategory" type="xs:string"/>
+        <xs:attribute name="device" type="xs:string"/>
+        <xs:attribute name="appType" type="xs:string"/>
+        <xs:attribute name="agentId" type="xs:string"/>
+        <xs:attribute name="serviceValue" type="xs:string"/>
+        <xs:attribute name="metricType" type="xs:string"/>
+        <xs:attribute name="warningLevel" type="xs:long" use="required"/>
+        <xs:attribute name="criticalLevel" type="xs:long" use="required"/>
+        <xs:attribute name="checkIntervalMinutes" type="xs:int" use="required"/>
+        <xs:attribute name="allowInserts" type="xs:boolean" use="required"/>
+        <xs:attribute name="mergeHosts" type="xs:boolean" use="required"/>
+        <xs:attribute name="setStatusOnCreate" type="xs:boolean"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="dtoHostBlacklist">
+    <xs:sequence/>
+    <xs:attribute name="hostBlacklistId" type="xs:int"/>
+    <xs:attribute name="hostName" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoHostList">
+    <xs:sequence>
+      <xs:element ref="host" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoCustomGroupMemberUpdate">
+    <xs:sequence>
+      <xs:element name="hostGroupNames" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="hostGroupName" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="serviceGroupNames" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="serviceGroupName" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoGraphList">
+    <xs:sequence>
+      <xs:element ref="graph" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoGraph">
+    <xs:sequence>
+      <xs:element name="graph" type="xs:base64Binary" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="label" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoConsolidationList">
+    <xs:sequence>
+      <xs:element ref="consolidation" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoConsolidation">
+    <xs:sequence/>
+    <xs:attribute name="id" type="xs:int"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="criteria" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoFileList">
+    <xs:sequence>
+      <xs:element name="file" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoBizAuthorization">
+    <xs:sequence>
+      <xs:element name="hostGroupNames" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="hostGroupName" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="serviceGroupNames" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="serviceGroupName" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoLicenseCheck">
+    <xs:sequence/>
+    <xs:attribute name="success" type="xs:boolean" use="required"/>
+    <xs:attribute name="message" type="xs:string"/>
+    <xs:attribute name="devicesRequested" type="xs:int" use="required"/>
+    <xs:attribute name="devices" type="xs:int" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoBizHostsAndServices">
+    <xs:sequence>
+      <xs:element name="hostNames" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="hostName" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="serviceDescriptions" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="serviceDescription" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="hostGroupNames" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="hostGroupName" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="serviceGroupCategoryNames" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="serviceGroupCategoryName" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="setHosts" type="xs:boolean" use="required"/>
+    <xs:attribute name="setServices" type="xs:boolean" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoCustomGroup">
+    <xs:sequence>
+      <xs:element name="hostGroups" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element ref="hostGroup" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="serviceGroups" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element ref="serviceGroup" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="children" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="category" type="dtoCustomGroup" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:int"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="description" type="xs:string"/>
+    <xs:attribute name="appType" type="xs:string"/>
+    <xs:attribute name="appTypeDisplayName" type="xs:string"/>
+    <xs:attribute name="agentId" type="xs:string"/>
+    <xs:attribute name="root" type="xs:boolean"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoDeviceTemplateProfileList">
+    <xs:sequence>
+      <xs:element ref="deviceTemplateProfile" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoDeviceTemplateProfile">
+    <xs:sequence/>
+    <xs:attribute name="deviceTemplateProfileId" type="xs:int"/>
+    <xs:attribute name="deviceIdentification" type="xs:string"/>
+    <xs:attribute name="deviceDescription" type="xs:string"/>
+    <xs:attribute name="cactiHostTemplate" type="xs:string"/>
+    <xs:attribute name="monarchHostProfile" type="xs:string"/>
+    <xs:attribute name="timestamp" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoServiceNotificationList">
+    <xs:sequence>
+      <xs:element ref="notification" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoServiceNotification">
+    <xs:sequence/>
+    <xs:attribute name="serviceState" type="xs:string"/>
+    <xs:attribute name="hostName" type="xs:string"/>
+    <xs:attribute name="hostGroupNames" type="xs:string"/>
+    <xs:attribute name="serviceGroupNames" type="xs:string"/>
+    <xs:attribute name="serviceDescription" type="xs:string"/>
+    <xs:attribute name="serviceOutput" type="xs:string"/>
+    <xs:attribute name="notificationType" type="xs:string"/>
+    <xs:attribute name="hostAlias" type="xs:string"/>
+    <xs:attribute name="hostAddress" type="xs:string"/>
+    <xs:attribute name="checkDateTime" type="xs:string"/>
+    <xs:attribute name="serviceNotificationId" type="xs:string"/>
+    <xs:attribute name="notificationAuthOrAlias" type="xs:string"/>
+    <xs:attribute name="notificationComment" type="xs:string"/>
+    <xs:attribute name="notificationRecipients" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoPropertyTypeList">
+    <xs:sequence>
+      <xs:element ref="propertyType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoPropertyType">
+    <xs:sequence/>
+    <xs:attribute name="id" type="xs:int"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="description" type="xs:string"/>
+    <xs:attribute name="dataType" type="dtoPropertyDataType"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoCustomGroupList">
+    <xs:sequence>
+      <xs:element ref="customGroup" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoCategoryMemberUpdate">
+    <xs:sequence>
+      <xs:element name="entities" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="entity" type="dtoCategoryEntity" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="entityTypeName" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoAsyncSettings">
+    <xs:sequence/>
+    <xs:attribute name="threadPoolSize" type="xs:int"/>
+    <xs:attribute name="queueSize" type="xs:int"/>
+    <xs:attribute name="throttleThreshold" type="xs:int"/>
+    <xs:attribute name="throttleWaitMs" type="xs:int"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoOperationResults">
+    <xs:sequence>
+      <xs:element name="result" type="dtoOperationResult" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="successful" type="xs:int" use="required"/>
+    <xs:attribute name="failed" type="xs:int"/>
+    <xs:attribute name="entityType" type="xs:string"/>
+    <xs:attribute name="operation" type="xs:string"/>
+    <xs:attribute name="warning" type="xs:int"/>
+    <xs:attribute name="count" type="xs:int"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoOperationResult">
+    <xs:sequence>
+      <xs:element name="entity" type="xs:string" minOccurs="0"/>
+      <xs:element name="location" type="xs:string" minOccurs="0"/>
+      <xs:element name="message" type="xs:string" minOccurs="0"/>
+      <xs:element name="status" type="xs:string" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoBizAuthorizedServices">
+    <xs:sequence>
+      <xs:element name="hostNames" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="hostName" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="serviceHostNames" type="dtoBizAuthorizedServiceHostMap" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoBizAuthorizedServiceHostMap">
+    <xs:sequence>
+      <xs:element name="serviceHostMap" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="serviceHostMapEntry" type="dtoBizAuthorizedServiceHostMapEntry" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoBizAuthorizedServiceHostMapEntry">
+    <xs:sequence>
+      <xs:element name="hostNames" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="hostName" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="serviceName" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:simpleType name="dtoVersion">
+    <xs:restriction base="xs:string"/>
+  </xs:simpleType>
+
+  <xs:complexType name="dtoEventList">
+    <xs:sequence>
+      <xs:element ref="event" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoEvent">
+    <xs:complexContent>
+      <xs:extension base="dtoPropertiesBase">
+        <xs:sequence/>
+        <xs:attribute name="id" type="xs:int"/>
+        <xs:attribute name="device" type="xs:string"/>
+        <xs:attribute name="host" type="xs:string"/>
+        <xs:attribute name="service" type="xs:string"/>
+        <xs:attribute name="operationStatus" type="xs:string"/>
+        <xs:attribute name="monitorStatus" type="xs:string"/>
+        <xs:attribute name="severity" type="xs:string"/>
+        <xs:attribute name="applicationSeverity" type="xs:string"/>
+        <xs:attribute name="component" type="xs:string"/>
+        <xs:attribute name="priority" type="xs:string"/>
+        <xs:attribute name="typeRule" type="xs:string"/>
+        <xs:attribute name="textMessage" type="xs:string"/>
+        <xs:attribute name="firstInsertDate" type="xs:string"/>
+        <xs:attribute name="lastInsertDate" type="xs:string"/>
+        <xs:attribute name="reportDate" type="xs:string"/>
+        <xs:attribute name="msgCount" type="xs:int"/>
+        <xs:attribute name="appType" type="xs:string"/>
+        <xs:attribute name="stateChanged" type="xs:boolean"/>
+        <xs:attribute name="monitorServer" type="xs:string"/>
+        <xs:attribute name="consolidationName" type="xs:string"/>
+        <xs:attribute name="logType" type="xs:string"/>
+        <xs:attribute name="errorType" type="xs:string"/>
+        <xs:attribute name="loggerName" type="xs:string"/>
+        <xs:attribute name="applicationName" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="dtoBizHostServiceInDowntimeList">
+    <xs:sequence>
+      <xs:element ref="bizHostServiceInDowntime" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoBizHostServiceInDowntime">
+    <xs:sequence/>
+    <xs:attribute name="hostName" type="xs:string"/>
+    <xs:attribute name="serviceDescription" type="xs:string"/>
+    <xs:attribute name="scheduledDowntimeDepth" type="xs:int"/>
+    <xs:attribute name="entityType" type="xs:string"/>
+    <xs:attribute name="entityName" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoServiceGroupUpdateList">
+    <xs:sequence>
+      <xs:element ref="serviceGroup" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoServiceGroupUpdate">
+    <xs:sequence>
+      <xs:element name="services" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element ref="service" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="description" type="xs:string"/>
+    <xs:attribute name="appType" type="xs:string"/>
+    <xs:attribute name="agentId" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoCategoryList">
+    <xs:sequence>
+      <xs:element ref="category" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoAvailability">
+    <xs:sequence/>
+    <xs:attribute name="availability" type="xs:double"/>
+    <xs:attribute name="queryBy" type="xs:string"/>
+    <xs:attribute name="queryParam" type="xs:string"/>
+    <xs:attribute name="queryValue" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoHostBlacklistList">
+    <xs:sequence>
+      <xs:element ref="hostBlacklist" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoCustomGroupUpdateList">
+    <xs:sequence>
+      <xs:element ref="customGroup" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoCustomGroupUpdate">
+    <xs:sequence>
+      <xs:element name="hostGroupNames" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="hostGroupName" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="serviceGroupNames" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="serviceGroupName" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="description" type="xs:string"/>
+    <xs:attribute name="appType" type="xs:string"/>
+    <xs:attribute name="agentId" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoHostIdentityList">
+    <xs:sequence>
+      <xs:element ref="hostIdentity" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoUnAcknowledgeList">
+    <xs:sequence>
+      <xs:element ref="unack" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoUnAcknowledge">
+    <xs:sequence/>
+    <xs:attribute name="appType" type="xs:string"/>
+    <xs:attribute name="host" type="xs:string"/>
+    <xs:attribute name="service" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoDeviceList">
+    <xs:sequence>
+      <xs:element ref="device" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="containerProfile">
+    <xs:complexContent>
+      <xs:extension base="hubProfile">
+        <xs:sequence>
+          <xs:element name="engine" type="hypervisor" minOccurs="0"/>
+          <xs:element name="container" type="vm" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="dtoServiceList">
+    <xs:sequence>
+      <xs:element ref="service" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoPerfDataList">
+    <xs:sequence>
+      <xs:element ref="perfData" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoPerfData">
+    <xs:sequence/>
+    <xs:attribute name="appType" type="xs:string"/>
+    <xs:attribute name="serverName" type="xs:string"/>
+    <xs:attribute name="serverTime" type="xs:long"/>
+    <xs:attribute name="serviceName" type="xs:string"/>
+    <xs:attribute name="label" type="xs:string"/>
+    <xs:attribute name="value" type="xs:string"/>
+    <xs:attribute name="warning" type="xs:string"/>
+    <xs:attribute name="critical" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoHostGroupList">
+    <xs:sequence>
+      <xs:element ref="hostGroup" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoBizServiceList">
+    <xs:sequence>
+      <xs:element ref="service" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoEventPropertiesList">
+    <xs:sequence>
+      <xs:element ref="event" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoEventProperties">
+    <xs:complexContent>
+      <xs:extension base="dtoPropertiesBase">
+        <xs:sequence/>
+        <xs:attribute name="id" type="xs:int"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="dtoStateStatistic">
+    <xs:sequence>
+      <xs:element name="properties" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="property" type="dtoStatistic" minOccurs="0" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="totalHosts" type="xs:long"/>
+    <xs:attribute name="totalServices" type="xs:long"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="availability" type="xs:double"/>
+    <xs:attribute name="bubbleUpStatus" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="dtoApplicationTypeList">
+    <xs:sequence>
+      <xs:element ref="applicationType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="cloudHubProfile">
+    <xs:complexContent>
+      <xs:extension base="hubProfile">
+        <xs:sequence>
+          <xs:element ref="hypervisor" minOccurs="0"/>
+          <xs:element ref="vm" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="dtoStateStatisticList">
+    <xs:sequence>
+      <xs:element ref="statistic" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoAcknowledgeList">
+    <xs:sequence>
+      <xs:element ref="ack" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="dtoAcknowledge">
+    <xs:sequence/>
+    <xs:attribute name="appType" type="xs:string"/>
+    <xs:attribute name="host" type="xs:string"/>
+    <xs:attribute name="service" type="xs:string"/>
+    <xs:attribute name="acknowledgedBy" type="xs:string"/>
+    <xs:attribute name="acknowledgeComment" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:simpleType name="profileType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="vmware"/>
+      <xs:enumeration value="rhev"/>
+      <xs:enumeration value="openstack"/>
+      <xs:enumeration value="opendaylight"/>
+      <xs:enumeration value="docker"/>
+      <xs:enumeration value="netapp"/>
+      <xs:enumeration value="ucs"/>
+      <xs:enumeration value="loadtest"/>
+      <xs:enumeration value="citrix"/>
+      <xs:enumeration value="oracle"/>
+      <xs:enumeration value="microsoft"/>
+      <xs:enumeration value="amazon"/>
+      <xs:enumeration value="google"/>
+      <xs:enumeration value="selenium"/>
+      <xs:enumeration value="openshift"/>
+      <xs:enumeration value="cisco"/>
+      <xs:enumeration value="nsx"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="dtoPropertyDataType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="DATE"/>
+      <xs:enumeration value="BOOLEAN"/>
+      <xs:enumeration value="STRING"/>
+      <xs:enumeration value="INTEGER"/>
+      <xs:enumeration value="LONG"/>
+      <xs:enumeration value="DOUBLE"/>
+    </xs:restriction>
+  </xs:simpleType>
+</xs:schema>
+

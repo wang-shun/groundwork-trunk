@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2014  GroundWork Open Source Inc. info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-->
+<!DOCTYPE hibernate-mapping PUBLIC
+    "-//Hibernate/Hibernate Mapping DTD 2.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+    
+<hibernate-mapping default-lazy="false">
+  <class name="com.groundwork.collage.model.impl.Comment"
+         table="comment"
+         mutable="false">
+    <id name="commentId"
+        type="java.lang.Integer"
+        column="commentId">
+      <generator class="native">
+        <param name="sequence">comment_commentid_seq</param>
+      </generator>
+    </id>
+    <property name="notes"
+              type="text"
+              column="notes"
+              not-null="true"/>
+    <property name="author"
+              type="java.lang.String"
+              column="author"
+              length="254"
+              not-null="true"/>
+    <property name="createdOn"
+              type="java.util.Date"
+              column="createdOn"
+              length="19"
+              not-null="true"/>
+    <property name="hostId"
+              type="java.lang.Integer"
+              column="hostId"/>
+    <property name="serviceStatusId"
+              type="java.lang.Integer"
+              column="serviceStatusId"/>
+  </class>
+</hibernate-mapping>

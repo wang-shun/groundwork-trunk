@@ -1,0 +1,93 @@
+#!/bin/tcsh -ef
+
+# This is a list of our current build machine for each architecture.
+set all_machines =			\
+    (					\
+    rhel4.i386       172.28.113.212	\
+    rhel4_64.x86_64  172.28.113.218	\
+    rhel5.i386       172.28.113.211	\
+    rhel5_64.x86_64  172.28.113.161	\
+    sles9.i586       172.28.113.187	\
+    sles10.i586      172.28.113.153	\
+    sles10_64.x86_64 172.28.113.222	\
+    )
+
+# First, make sure we're executing this script only from within the bin directory, so the
+# relative pathname used below for $tmp_dir is not used to delete stuff we really want to keep!
+if ( ! -f ./make_tarballs ) then
+    echo "ERROR:  You must execute make_tarballs directly from within the"
+    echo "        bin directory that contains it.  Without that condition"
+    echo "        being true, it will refuse to run."
+    exit 1
+endif
+
+# Clean up any debris left over from previous attempts to build the tarballs.
+set tmp_dir = ../tmp
+rm -rf $tmp_dir
+
+# This is where all the constructed tarballs will be placed.
+set dep_dir = $tmp_dir/tarballs
+mkdir -p $dep_dir
+
+# This is the username we'll use to log in to all our build machines with.
+set remote_user = root
+
+# First, make all the directories we'll need for the scripted files.
+./make_directories $tmp_dir/noarch
+
+# Next, copy over certain GDMA-specific scripts that are not created in our base-product builds.
+cp -p ../etc/init.d/gdma                                 $tmp_dir/noarch/etc/init.d
+cp -p ../usr/local/groundwork/gdma/bin/gdma_check.pl     $tmp_dir/noarch/usr/local/groundwork/gdma/bin
+cp -p ../usr/local/groundwork/gdma/bin/gdma_getconfig.pl $tmp_dir/noarch/usr/local/groundwork/gdma/bin
+cp -p ../usr/local/groundwork/gdma/bin/send_nsca.pl      $tmp_dir/noarch/usr/local/groundwork/gdma/bin
+
+# Next, collect all the scripted files from just one of the build machines.
+set machine = $all_machines[1]
+set ipaddr  = $all_machines[2]
+echo
+echo "=== COPYING FROM PLATFORM:  $machine ($ipaddr)"
+echo "Type in the password for '$remote_user@$ipaddr' when requested."
+echo --- copying capture script to $machine
+scp -p capture_scripted_plugins $remote_user@${ipaddr}:/tmp
+echo --- executing capture script on $machine
+ssh $remote_user@$ipaddr /tmp/capture_scripted_plugins
+echo --- copying tarball from $machine
+scp -p $remote_user@${ipaddr}:/tmp/scripted_plugins.tar $tmp_dir/noarch
+( cd $tmp_dir/noarch; tar xf scripted_plugins.tar; rm scripted_plugins.tar )
+
+# Next, edit certain pathnames in the scripted files, to reflect the different
+# pathnames under which these scripts will be installed on GDMA client machines.
+set bin_dir = $cwd
+( cd $tmp_dir/noarch/usr/local/groundwork/gdma/libexec ; \
+$bin_dir/convert_pathname nagios/libexec gdma/libexec usr/local/groundwork/bin/perl usr/bin/perl -- * )
+
+# Next, create a single common tarball for all of the directories and scripted files.
+( cd $tmp_dir/noarch; tar cf - * ) > $dep_dir/dep.noarch.tar
+
+# Next, process compiled files for each of the supported architectures.
+set machines = ( $all_machines )
+while ($#machines)
+    set machine = $machines[1]
+    set ipaddr  = $machines[2]
+    shift machines
+    shift machines
+
+    # Make all the directories we'll need for the compiled files (possibly
+    # along with some extra directories needed only for scripted files).
+    ./make_directories $tmp_dir/$machine
+
+    # Next, collect all of the compiled files for this architecture.
+    echo
+    echo "=== COPYING FROM PLATFORM:  $machine ($ipaddr)"
+    echo "Type in the password for '$remote_user@$ipaddr' when requested."
+    echo --- copying capture script to $machine
+    scp -p capture_compiled_plugins $remote_user@${ipaddr}:/tmp
+    echo --- executing capture script on $machine
+    ssh $remote_user@$ipaddr /tmp/capture_compiled_plugins
+    echo --- copying tarball from $machine
+    scp -p $remote_user@${ipaddr}:/tmp/compiled_plugins.tar $tmp_dir/$machine
+    ( cd $tmp_dir/$machine; tar xf compiled_plugins.tar; rm compiled_plugins.tar )
+
+    # Next, create a custom tarball for the compiled files for this architecture.
+    ( cd $tmp_dir/$machine; tar cf - * ) > $dep_dir/dep.$machine.tar
+end

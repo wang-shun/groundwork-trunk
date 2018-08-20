@@ -1,0 +1,1937 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<report xmlns="http://www.eclipse.org/birt/2005/design" version="3.2.21" id="1">
+    <property name="comments">Collage - The ultimate data integration framework.&#13;
+Copyright (C) 2004-2007  GroundWork Open Source Solutions info@groundworkopensource.com&#13;
+&#13;
+     This program is free software; you can redistribute it and/or modify&#13;
+     it under the terms of version 2 of the GNU General Public License&#13;
+     as published by the Free Software Foundation.&#13;
+&#13;
+     This program is distributed in the hope that it will be useful,&#13;
+     but WITHOUT ANY WARRANTY; without even the implied warranty of&#13;
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the&#13;
+     GNU General Public License for more details.&#13;
+&#13;
+     You should have received a copy of the GNU General Public License&#13;
+     along with this program; if not, write to the Free Software&#13;
+     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</property>
+    <property name="createdBy">Eclipse BIRT Designer Version 3.7.0.v20110602 Build &lt;3.7.0.v20110607-1526></property>
+    <property name="units">in</property>
+    <method name="initialize"><![CDATA[
+if (reportContext.getPersistentGlobalVariable("globalCountOfRows") == null)
+{
+	reportContext.setPersistentGlobalVariable("globalCountOfRows",  new Packages.java.util.ArrayList());
+}
+var countOfRows = 0;]]></method>
+    <property name="theme">GW_styles.defaultTheme</property>
+    <property name="layoutPreference">auto layout</property>
+    <list-property name="libraries">
+        <structure>
+            <property name="fileName">../GW_styles.rptlibrary</property>
+            <property name="namespace">GW_styles</property>
+        </structure>
+    </list-property>
+    <parameters>
+        <scalar-parameter name="HostName" id="40">
+            <text-property name="helpText">Please choose a host from the list of available hosts.</text-property>
+            <text-property name="promptText">Choose Host</text-property>
+            <property name="valueType">dynamic</property>
+            <property name="isRequired">true</property>
+            <property name="dataSetName">HostChooser</property>
+            <expression name="valueExpr" type="javascript">dataSetRow["hostname"]</expression>
+            <expression name="labelExpr" type="javascript">dataSetRow["hostname"]</expression>
+            <property name="dataType">string</property>
+            <property name="distinct">true</property>
+            <simple-property-list name="defaultValue">
+                <value type="constant">localhost</value>
+            </simple-property-list>
+            <list-property name="selectionList"/>
+            <property name="paramType">simple</property>
+            <property name="controlType">list-box</property>
+            <property name="mustMatch">true</property>
+            <property name="fixedOrder">true</property>
+            <structure name="format">
+                <property name="category">Unformatted</property>
+            </structure>
+        </scalar-parameter>
+    </parameters>
+    <data-sources>
+        <oda-data-source extensionID="org.eclipse.datatools.enablement.oda.ws" name="WSHost" id="1575">
+            <property name="wsdlURI">http://localhost:8080/foundation-webapp/services/wshost?wsdl</property>
+        </oda-data-source>
+        <oda-data-source extensionID="org.eclipse.datatools.enablement.oda.ws" name="WSService" id="1576">
+            <property name="wsdlURI">http://localhost:8080/foundation-webapp/services/wsservice?wsdl</property>
+        </oda-data-source>
+        <oda-data-source extensionID="org.eclipse.datatools.enablement.oda.ws" name="WSStaistics" id="1577">
+            <property name="wsdlURI">http://localhost:8080/foundation-webapp/services/wsstatistics?wsdl</property>
+        </oda-data-source>
+        <oda-data-source extensionID="org.eclipse.birt.report.data.oda.jdbc" name="Data Source" id="7">
+            <list-property name="privateDriverProperties">
+                <ex-property>
+                    <name>contentBidiFormatStr</name>
+                    <value>ILYNN</value>
+                </ex-property>
+                <ex-property>
+                    <name>metadataBidiFormatStr</name>
+                    <value>ILYNN</value>
+                </ex-property>
+            </list-property>
+            <property name="odaDriverClass">org.postgresql.Driver</property>
+            <property name="odaURL">jdbc:postgresql://localhost:5432/gwcollagedb?prepareThreshold=1</property>
+            <property name="odaUser">collage</property>
+            <encrypted-property name="odaPassword" encryptionID="base64">Z3dyaw==</encrypted-property>
+        </oda-data-source>
+    </data-sources>
+    <data-sets>
+        <oda-data-set extensionID="org.eclipse.datatools.enablement.oda.ws.dataSet" name="getSimpleHost" id="1581">
+            <property name="nullsOrdering">nulls lowest</property>
+            <list-property name="parameters">
+                <structure>
+                    <property name="name">hostName</property>
+                    <property name="paramName">HostName</property>
+                    <property name="dataType">string</property>
+                    <property name="position">1</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+                <structure>
+                    <property name="name">deep</property>
+                    <property name="dataType">boolean</property>
+                    <property name="position">2</property>
+                    <expression name="defaultValue" type="javascript">false</expression>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+            </list-property>
+            <structure name="cachedMetaData"/>
+            <property name="dataSource">WSHost</property>
+            <xml-property name="queryText"><![CDATA[<?xml version="1.0"?>
+<SOAP-ENV:Envelope
+xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+	<SOAP-ENV:Body>
+		<m:getSimpleHost xmlns:m="urn:fws">
+			<hostName xsi:type="xsd:string">&amp;?hostName?&amp;</hostName>
+			<deep xsi:type="xsd:boolean">&amp;?deep?&amp;</deep>
+		</m:getSimpleHost>
+	</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>]]></xml-property>
+            <xml-property name="designerValues"><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<model:DesignValues xmlns:design="http://www.eclipse.org/datatools/connectivity/oda/design" xmlns:model="http://www.eclipse.org/birt/report/model/adapter/odaModel">
+  <Version>2.0</Version>
+  <design:ResultSets derivedMetaData="true">
+    <design:resultSetDefinitions>
+      <design:resultSetColumns>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:identifier>
+              <design:name>Name</design:name>
+              <design:position>1</design:position>
+            </design:identifier>
+            <design:nativeDataTypeCode>12</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>Name</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+      </design:resultSetColumns>
+      <design:criteria/>
+    </design:resultSetDefinitions>
+  </design:ResultSets>
+</model:DesignValues>]]></xml-property>
+            <list-property name="privateDriverProperties">
+                <ex-property>
+                    <name>xmlQueryText</name>
+                    <value>table0#-TNAME-#table0#:#[/soapenv:Envelope/soapenv:Body/getSimpleHostResponse/getSimpleHostReturn]#:#{Host Name;STRING;/SimpleHost/Name},{Host Monitor Status;STRING;/SimpleHost/MonitorStatus},{Last Check Time;STRING;/SimpleHost/LastCheckTime},{Total;STRING;/TotalCount}#:#&lt;"xsi","http:%%www.w3.org%2001%XMLSchema-instance";"xsd","http:%%www.w3.org%2001%XMLSchema";"","";"soapenv","http:%%schemas.xmlsoap.org%soap%envelope%"></value>
+                </ex-property>
+                <ex-property>
+                    <name>operationTrace</name>
+                    <value>WSHostService$-$wshost$-$getSimpleHost</value>
+                </ex-property>
+                <ex-property>
+                    <name>xmlFileURI</name>
+                    <value>/home/arul/Documents/simplehost_response.xml</value>
+                </ex-property>
+                <ex-property>
+                    <name>xsdFileURI</name>
+                </ex-property>
+            </list-property>
+        </oda-data-set>
+        <oda-data-set extensionID="org.eclipse.datatools.enablement.oda.ws.dataSet" name="getServicesForHost" id="1582">
+            <list-property name="computedColumns">
+                <structure>
+                    <property name="name">Total</property>
+                    <expression name="expression">if (!Total) {&#13;
+var Total = 0;&#13;
+}&#13;
+if(row["Service Description"]) {&#13;
+	Total = Total + 1;&#13;
+}</expression>
+                    <property name="dataType">integer</property>
+                </structure>
+            </list-property>
+            <list-property name="parameters">
+                <structure>
+                    <property name="name">hostName</property>
+                    <property name="paramName">HostName</property>
+                    <property name="dataType">string</property>
+                    <property name="position">1</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+            </list-property>
+            <structure name="cachedMetaData"/>
+            <method name="onFetch"><![CDATA[
+]]></method>
+            <property name="dataSource">WSService</property>
+            <xml-property name="queryText"><![CDATA[<?xml version="1.0"?>
+<SOAP-ENV:Envelope
+xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+	<SOAP-ENV:Body>
+		<m:getSimpleServiceListByHostName xmlns:m="urn:fws">
+			<hostName xsi:type="xsd:string">&amp;?hostName?&amp;</hostName>
+		</m:getSimpleServiceListByHostName>
+	</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>]]></xml-property>
+            <xml-property name="designerValues"><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<model:DesignValues xmlns:design="http://www.eclipse.org/datatools/connectivity/oda/design" xmlns:model="http://www.eclipse.org/birt/report/model/adapter/odaModel">
+  <Version>2.0</Version>
+  <design:ResultSets derivedMetaData="true">
+    <design:resultSetDefinitions>
+      <design:resultSetColumns>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:identifier>
+              <design:name>rwrwr</design:name>
+              <design:position>1</design:position>
+            </design:identifier>
+            <design:nativeDataTypeCode>12</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>rwrwr</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+      </design:resultSetColumns>
+      <design:criteria/>
+    </design:resultSetDefinitions>
+  </design:ResultSets>
+</model:DesignValues>]]></xml-property>
+            <list-property name="privateDriverProperties">
+                <ex-property>
+                    <name>xmlQueryText</name>
+                    <value>table0#-TNAME-#table0#:#[/soapenv:Envelope/soapenv:Body/getSimpleServiceListByHostNameResponse/getSimpleServiceListByHostNameReturn/SimpleServiceStatus]#:#{Service Description;STRING;/Description},{MonitorStatus;STRING;/MonitorStatus},{LastCheckTime;STRING;/LastCheckTime},{LastStateChange;STRING;/LastStateChange},{NextCheckTime;STRING;/NextCheckTime}#:#&lt;"xsi","http:%%www.w3.org%2001%XMLSchema-instance";"xsd","http:%%www.w3.org%2001%XMLSchema";"","";"soapenv","http:%%schemas.xmlsoap.org%soap%envelope%"></value>
+                </ex-property>
+                <ex-property>
+                    <name>operationTrace</name>
+                    <value>WSServiceService$-$wsservice$-$getSimpleServiceListByHostName</value>
+                </ex-property>
+                <ex-property>
+                    <name>xmlFileURI</name>
+                    <value>/home/arul/Documents/sumpleservices.xml</value>
+                </ex-property>
+                <ex-property>
+                    <name>xsdFileURI</name>
+                </ex-property>
+            </list-property>
+        </oda-data-set>
+        <oda-data-set extensionID="org.eclipse.datatools.enablement.oda.ws.dataSet" name="getStatistics" id="1591">
+            <list-property name="computedColumns">
+                <structure>
+                    <property name="name">Total</property>
+                    <expression name="expression">if (!Total) {&#13;
+	var Total = 0;&#13;
+}&#13;
+if(row["Name"]) {&#13;
+	Total = Total + 1;&#13;
+}</expression>
+                    <property name="dataType">integer</property>
+                </structure>
+            </list-property>
+            <list-property name="parameters">
+                <structure>
+                    <property name="name">statisticQueryType</property>
+                    <property name="nativeName">statisticQueryType</property>
+                    <property name="dataType">string</property>
+                    <property name="nativeDataType">1</property>
+                    <property name="position">1</property>
+                    <expression name="defaultValue">'TOTALS_FOR_SERVICES_BY_HOSTNAME'</expression>
+                    <property name="isOptional">false</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+                <structure>
+                    <property name="name">value</property>
+                    <property name="paramName">HostName</property>
+                    <property name="nativeName">value</property>
+                    <property name="dataType">string</property>
+                    <property name="nativeDataType">1</property>
+                    <property name="position">2</property>
+                    <expression name="defaultValue">''</expression>
+                    <property name="isOptional">false</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+                <structure>
+                    <property name="name">applicationType</property>
+                    <property name="nativeName">applicationType</property>
+                    <property name="dataType">string</property>
+                    <property name="nativeDataType">1</property>
+                    <property name="position">3</property>
+                    <expression name="defaultValue" type="javascript">''</expression>
+                    <property name="isOptional">false</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+            </list-property>
+            <structure name="cachedMetaData">
+                <list-property name="resultSet">
+                    <structure>
+                        <property name="position">1</property>
+                        <property name="name">Name</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">2</property>
+                        <property name="name">Count</property>
+                        <property name="dataType">integer</property>
+                    </structure>
+                    <structure>
+                        <property name="position">3</property>
+                        <property name="name">Total</property>
+                        <property name="dataType">integer</property>
+                    </structure>
+                </list-property>
+            </structure>
+            <property name="dataSource">WSStaistics</property>
+            <list-property name="resultSet">
+                <structure>
+                    <property name="position">1</property>
+                    <property name="name">Name</property>
+                    <property name="nativeName">Name</property>
+                    <property name="dataType">string</property>
+                    <property name="nativeDataType">12</property>
+                </structure>
+                <structure>
+                    <property name="position">2</property>
+                    <property name="name">Count</property>
+                    <property name="nativeName">Count</property>
+                    <property name="dataType">integer</property>
+                    <property name="nativeDataType">4</property>
+                </structure>
+            </list-property>
+            <xml-property name="queryText"><![CDATA[<?xml version="1.0"?>
+<SOAP-ENV:Envelope
+xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+	<SOAP-ENV:Body>
+		<m:getStatistics xmlns:m="urn:fws">
+			<statisticQueryType>&amp;?statisticQueryType?&amp;</statisticQueryType>
+			<value xsi:type="xsd:string">&amp;?value?&amp;</value>
+			<applicationType xsi:type="xsd:string">&amp;?applicationType?&amp;</applicationType>
+		</m:getStatistics>
+	</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>]]></xml-property>
+            <xml-property name="designerValues"><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<model:DesignValues xmlns:design="http://www.eclipse.org/datatools/connectivity/oda/design" xmlns:model="http://www.eclipse.org/birt/report/model/adapter/odaModel">
+  <Version>1.0</Version>
+  <design:DataSetParameters>
+    <design:parameterDefinitions>
+      <design:inOutMode>In</design:inOutMode>
+      <design:attributes>
+        <design:name>statisticQueryType</design:name>
+        <design:position>1</design:position>
+        <design:nativeDataTypeCode>1</design:nativeDataTypeCode>
+        <design:precision>-1</design:precision>
+        <design:scale>-1</design:scale>
+        <design:nullability>Unknown</design:nullability>
+      </design:attributes>
+      <design:inputAttributes>
+        <design:elementAttributes>
+          <design:defaultValues>
+            <design:values>TOTALS_FOR_SERVICES_BY_HOSTNAME</design:values>
+          </design:defaultValues>
+        </design:elementAttributes>
+      </design:inputAttributes>
+    </design:parameterDefinitions>
+    <design:parameterDefinitions>
+      <design:inOutMode>In</design:inOutMode>
+      <design:attributes>
+        <design:name>value</design:name>
+        <design:position>2</design:position>
+        <design:nativeDataTypeCode>1</design:nativeDataTypeCode>
+        <design:precision>-1</design:precision>
+        <design:scale>-1</design:scale>
+        <design:nullability>Unknown</design:nullability>
+      </design:attributes>
+      <design:inputAttributes>
+        <design:elementAttributes>
+          <design:defaultValues>
+            <design:values></design:values>
+          </design:defaultValues>
+        </design:elementAttributes>
+      </design:inputAttributes>
+    </design:parameterDefinitions>
+    <design:parameterDefinitions>
+      <design:inOutMode>In</design:inOutMode>
+      <design:attributes>
+        <design:name>applicationType</design:name>
+        <design:position>3</design:position>
+        <design:nativeDataTypeCode>1</design:nativeDataTypeCode>
+        <design:precision>-1</design:precision>
+        <design:scale>-1</design:scale>
+        <design:nullability>Unknown</design:nullability>
+      </design:attributes>
+      <design:inputAttributes>
+        <design:elementAttributes>
+          <design:defaultValues>
+            <design:values></design:values>
+          </design:defaultValues>
+        </design:elementAttributes>
+      </design:inputAttributes>
+    </design:parameterDefinitions>
+  </design:DataSetParameters>
+  <design:ResultSets derivedMetaData="true">
+    <design:resultSetDefinitions>
+      <design:resultSetColumns>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:name>Name</design:name>
+            <design:position>1</design:position>
+            <design:nativeDataTypeCode>12</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>Name</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:name>Count</design:name>
+            <design:position>2</design:position>
+            <design:nativeDataTypeCode>4</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>Count</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+      </design:resultSetColumns>
+      <design:criteria/>
+    </design:resultSetDefinitions>
+  </design:ResultSets>
+</model:DesignValues>]]></xml-property>
+            <list-property name="privateDriverProperties">
+                <ex-property>
+                    <name>xmlQueryText</name>
+                    <value>table0#-TNAME-#table0#:#[//Statistic]#:#{Name;STRING;/name},{Count;INT;/count}#:#&lt;"SOAP-ENV","http:%%schemas.xmlsoap.org%soap%envelope%";"xsd","http:%%www.w3.org%2001%XMLSchema";"m","urn:fws";"SOAP-ENC","http:%%schemas.xmlsoap.org%soap%encoding%";"xsi","http:%%www.w3.org%2001%XMLSchema-instance"></value>
+                </ex-property>
+                <ex-property>
+                    <name>operationTrace</name>
+                    <value>WSStatisticsService$-$statistics$-$getStatistics</value>
+                </ex-property>
+                <ex-property>
+                    <name>xmlFileURI</name>
+                </ex-property>
+                <ex-property>
+                    <name>xsdFileURI</name>
+                </ex-property>
+            </list-property>
+        </oda-data-set>
+        <oda-data-set extensionID="org.eclipse.birt.report.data.oda.jdbc.JdbcSelectDataSet" name="HostChooser" id="9">
+            <property name="eventHandlerClass">com.groundwork.report.birt.eventhandler.HostByHostGroupDataSetEventHandler</property>
+            <structure name="cachedMetaData"/>
+            <property name="dataSource">Data Source</property>
+            <xml-property name="queryText"><![CDATA[select distinct HostName from Host [,HostGroup,HostGroupCollection where Host.HostID = HostGroupCollection.HostID and HostGroup.HostGroupID = HostGroupCollection.HostGroupID and HostGroup.Name IN (<list>)] order by HostName;]]></xml-property>
+        </oda-data-set>
+    </data-sets>
+    <styles>
+        <style name="legend" id="1149">
+            <property name="fontFamily">"SansSerif"</property>
+            <property name="fontSize">10pt</property>
+            <property name="color">#212121</property>
+        </style>
+        <style name="header" id="1150">
+            <property name="backgroundColor">#666666</property>
+            <property name="fontFamily">"SansSerif"</property>
+            <property name="fontSize">11pt</property>
+            <property name="fontWeight">bold</property>
+            <property name="color">#FFFFFF</property>
+            <property name="borderBottomColor">#666666</property>
+            <property name="borderBottomStyle">solid</property>
+            <property name="borderLeftColor">#666666</property>
+            <property name="borderLeftStyle">solid</property>
+            <property name="borderRightColor">#666666</property>
+            <property name="borderRightStyle">solid</property>
+            <property name="borderTopColor">#666666</property>
+            <property name="borderTopStyle">solid</property>
+            <property name="textIndent">5em</property>
+        </style>
+        <style name="tableheader" id="1151">
+            <property name="backgroundColor">#999999</property>
+            <property name="fontFamily">"SansSerif"</property>
+            <property name="fontSize">10pt</property>
+            <property name="color">#FFFFFF</property>
+            <property name="borderBottomColor">#999999</property>
+            <property name="borderBottomStyle">solid</property>
+            <property name="borderLeftColor">#999999</property>
+            <property name="borderLeftStyle">solid</property>
+            <property name="borderRightColor">#999999</property>
+            <property name="borderRightStyle">solid</property>
+            <property name="borderTopColor">#999999</property>
+            <property name="borderTopStyle">solid</property>
+        </style>
+        <style name="tabletext" id="1152">
+            <property name="fontFamily">sans-serif</property>
+            <property name="fontSize">8pt</property>
+            <property name="color">#666666</property>
+        </style>
+        <style name="tablerowdark" id="1153">
+            <property name="backgroundColor">#EAEAE9</property>
+            <property name="fontFamily">"SansSerif"</property>
+            <property name="fontSize">10pt</property>
+            <property name="color">#666666</property>
+            <property name="borderBottomColor">#EAEAE9</property>
+            <property name="borderBottomStyle">solid</property>
+            <property name="borderLeftColor">#EAEAE9</property>
+            <property name="borderLeftStyle">solid</property>
+            <property name="borderRightColor">#EAEAE9</property>
+            <property name="borderRightStyle">solid</property>
+            <property name="borderTopColor">#EAEAE9</property>
+            <property name="borderTopStyle">solid</property>
+        </style>
+        <style name="tablerowlight" id="1154">
+            <property name="backgroundColor">#FFFFFF</property>
+            <property name="fontFamily">"SansSerif"</property>
+            <property name="fontSize">10pt</property>
+            <property name="color">#666666</property>
+            <property name="borderBottomColor">#FFFFFF</property>
+            <property name="borderBottomStyle">solid</property>
+            <property name="borderLeftColor">#FFFFFF</property>
+            <property name="borderLeftStyle">solid</property>
+            <property name="borderRightColor">#FFFFFF</property>
+            <property name="borderRightStyle">solid</property>
+            <property name="borderTopColor">#FFFFFF</property>
+            <property name="borderTopStyle">solid</property>
+        </style>
+        <style name="footeritem" id="1155">
+            <property name="fontFamily">sans-serif</property>
+            <property name="fontSize">10pt</property>
+            <property name="color">#000000</property>
+        </style>
+        <style name="header1" id="193">
+            <property name="fontFamily">"SansSerif"</property>
+            <property name="fontSize">11pt</property>
+            <property name="fontWeight">bold</property>
+            <property name="color">#FA840F</property>
+            <property name="marginTop">0px</property>
+            <property name="marginLeft">0px</property>
+            <property name="marginBottom">0px</property>
+            <property name="marginRight">0px</property>
+            <property name="letterSpacing">1px</property>
+        </style>
+    </styles>
+    <page-setup>
+        <simple-master-page name="GWMaster" id="1196" extends="GW_styles.GWMaster">
+            <overridden-values>
+                <ref-entry baseId="1400" name="NewGrid" id="1400"/>
+                <ref-entry baseId="1401" id="1401"/>
+                <ref-entry baseId="1402" id="1402"/>
+                <ref-entry baseId="1403" id="1403"/>
+                <ref-entry baseId="1449" name="NewImage1" id="1449"/>
+                <ref-entry baseId="1486" name="NewGrid1" id="1486"/>
+                <ref-entry baseId="1487" id="1487"/>
+                <ref-entry baseId="1488" id="1488"/>
+                <ref-entry baseId="1489" id="1489"/>
+                <ref-entry baseId="1492" name="NewGrid3" id="1492"/>
+                <ref-entry baseId="1493" id="1493"/>
+                <ref-entry baseId="1494" id="1494"/>
+                <ref-entry baseId="1495" id="1495"/>
+                <ref-entry baseId="1496" id="1496"/>
+                <ref-entry baseId="1497" id="1497"/>
+                <ref-entry baseId="1498" id="1498"/>
+                <ref-entry baseId="1418" name="NewText" id="1418"/>
+                <ref-entry baseId="1499" id="1499"/>
+                <ref-entry baseId="1490" id="1490"/>
+                <ref-entry baseId="1491" id="1491"/>
+                <ref-entry baseId="1468" name="NewGrid2" id="1468"/>
+                <ref-entry baseId="1469" id="1469"/>
+                <ref-entry baseId="1470" id="1470"/>
+                <ref-entry baseId="1519" id="1519"/>
+                <ref-entry baseId="1475" id="1475"/>
+                <ref-entry baseId="1476" id="1476"/>
+                <ref-entry baseId="1477" id="1477"/>
+                <ref-entry baseId="1484" name="NewImage2" id="1484"/>
+                <ref-entry baseId="1478" id="1478"/>
+                <ref-entry baseId="1560" name="NewGrid41" id="1560"/>
+                <ref-entry baseId="1563" id="1563"/>
+                <ref-entry baseId="1565" id="1565"/>
+                <ref-entry baseId="1570" id="1570"/>
+                <ref-entry baseId="1574" name="NewTextData" id="1574"/>
+                <ref-entry baseId="1518" id="1518"/>
+                <ref-entry baseId="1534" name="NewGrid4" id="1534"/>
+                <ref-entry baseId="1546" id="1546"/>
+                <ref-entry baseId="1535" id="1535"/>
+                <ref-entry baseId="1536" id="1536"/>
+                <ref-entry baseId="1537" id="1537"/>
+                <ref-entry baseId="1538" id="1538"/>
+                <ref-entry baseId="1545" id="1545"/>
+                <ref-entry baseId="1547" name="NewText2" id="1547"/>
+                <ref-entry baseId="1539" id="1539"/>
+                <ref-entry baseId="1540" name="NewAutoText" id="1540"/>
+                <ref-entry baseId="1541" id="1541"/>
+                <ref-entry baseId="1542" name="NewText1" id="1542"/>
+                <ref-entry baseId="1543" id="1543"/>
+                <ref-entry baseId="1544" name="NewAutoText1" id="1544"/>
+                <ref-entry baseId="1483" id="1483"/>
+                <ref-entry baseId="1556" name="NewGrid7" id="1556"/>
+                <ref-entry baseId="1557" id="1557"/>
+                <ref-entry baseId="1558" id="1558"/>
+                <ref-entry baseId="1559" id="1559"/>
+                <ref-entry baseId="1386" name="NewLabel" id="1386"/>
+            </overridden-values>
+        </simple-master-page>
+    </page-setup>
+    <body>
+        <grid id="161">
+            <property name="width">5.9in</property>
+            <column id="162"/>
+            <row id="163">
+                <property name="fontFamily">sans-serif</property>
+                <cell id="164">
+                    <text-data id="1610">
+                        <property name="style">ReportTitle</property>
+                        <property name="backgroundColor">white</property>
+                        <property name="fontSize">18pt</property>
+                        <property name="color">#F48314</property>
+                        <property name="dataSet">getServicesForHost</property>
+                        <list-property name="visibility">
+                            <structure>
+                                <property name="format">all</property>
+                                <expression name="valueExpr" type="javascript">if (row["Total"] != null &amp; row["Total"] > 0 &amp; row["Total"] !=""){&#13;
+	countOfRows = row["Total"];&#13;
+	true&#13;
+}&#13;
+else{&#13;
+	countOfRows = row["Total"];&#13;
+	false&#13;
+	&#13;
+}</expression>
+                            </structure>
+                        </list-property>
+                        <list-property name="boundDataColumns">
+                            <structure>
+                                <property name="name">Service Description</property>
+                                <expression name="expression" type="javascript">dataSetRow["Service Description"]</expression>
+                                <property name="dataType">string</property>
+                            </structure>
+                            <structure>
+                                <property name="name">MonitorStatus</property>
+                                <expression name="expression" type="javascript">dataSetRow["MonitorStatus"]</expression>
+                                <property name="dataType">string</property>
+                            </structure>
+                            <structure>
+                                <property name="name">LastCheckTime</property>
+                                <expression name="expression" type="javascript">dataSetRow["LastCheckTime"]</expression>
+                                <property name="dataType">date-time</property>
+                            </structure>
+                            <structure>
+                                <property name="name">NextCheckTime</property>
+                                <expression name="expression" type="javascript">dataSetRow["NextCheckTime"]</expression>
+                                <property name="dataType">date-time</property>
+                            </structure>
+                            <structure>
+                                <property name="name">LastStateChange</property>
+                                <expression name="expression" type="javascript">dataSetRow["LastStateChange"]</expression>
+                                <property name="dataType">date-time</property>
+                            </structure>
+                            <structure>
+                                <property name="name">Total</property>
+                                <expression name="expression" type="javascript">dataSetRow["Total"]</expression>
+                                <property name="dataType">integer</property>
+                            </structure>
+                        </list-property>
+                        <expression name="valueExpr">"Host Status Report for Host - " + params["HostName"]</expression>
+                        <property name="contentType">html</property>
+                    </text-data>
+                    <label id="1611">
+                        <property name="color">red</property>
+                        <method name="onCreate"><![CDATA[if( countOfRows == 0 ){
+this.getStyle().fontStyle = "italic";
+this.getStyle().fontSize = "large";
+}else{
+this.text = "";
+}]]></method>
+                        <text-property name="text">No status information available for this Host.</text-property>
+                    </label>
+                </cell>
+            </row>
+            <row id="1156">
+                <cell id="1157">
+                    <grid id="1158">
+                        <property name="width">5.9in</property>
+                        <column id="1159">
+                            <property name="width">2in</property>
+                        </column>
+                        <column id="1160">
+                            <property name="width">3.9in</property>
+                            <property name="marginLeft">0pt</property>
+                        </column>
+                        <row id="1161">
+                            <cell id="1162">
+                                <property name="fontFamily">sans-serif</property>
+                                <label id="1139">
+                                    <property name="style">SectionTitle</property>
+                                    <property name="marginTop">0pt</property>
+                                    <property name="paddingLeft">3pt</property>
+                                    <list-property name="visibility">
+                                        <structure>
+                                            <property name="format">all</property>
+                                            <expression name="valueExpr" type="javascript">if( countOfRows == 0 ){&#13;
+true;&#13;
+}else{&#13;
+false;&#13;
+}</expression>
+                                        </structure>
+                                    </list-property>
+                                    <text-property name="text">Host Status</text-property>
+                                </label>
+                            </cell>
+                            <cell id="1163">
+                                <property name="fontFamily">sans-serif</property>
+                                <property name="borderBottomStyle">none</property>
+                                <property name="borderLeftColor">white</property>
+                                <property name="borderLeftStyle">solid</property>
+                                <label id="1142">
+                                    <property name="style">SectionTitle</property>
+                                    <property name="marginRight">0pt</property>
+                                    <property name="paddingLeft">3pt</property>
+                                    <property name="width">3.9in</property>
+                                    <list-property name="visibility">
+                                        <structure>
+                                            <property name="format">all</property>
+                                            <expression name="valueExpr" type="javascript">if( countOfRows == 0 ){&#13;
+true;&#13;
+}else{&#13;
+false;&#13;
+}</expression>
+                                        </structure>
+                                    </list-property>
+                                    <text-property name="text">Host Service Status Summary</text-property>
+                                </label>
+                            </cell>
+                        </row>
+                        <row id="1164">
+                            <property name="fontFamily">sans-serif</property>
+                            <cell id="1165">
+                                <table id="1024">
+                                    <property name="fontSize">8pt</property>
+                                    <property name="fontStyle">normal</property>
+                                    <property name="width">2in</property>
+                                    <property name="dataSet">getSimpleHost</property>
+                                    <list-property name="visibility">
+                                        <structure>
+                                            <property name="format">all</property>
+                                            <expression name="valueExpr" type="javascript">if (row["Total"] == null){&#13;
+	true&#13;
+}&#13;
+else{&#13;
+	false&#13;
+}</expression>
+                                        </structure>
+                                    </list-property>
+                                    <list-property name="boundDataColumns">
+                                        <structure>
+                                            <property name="name">Host Name</property>
+                                            <text-property name="displayName">Host Name</text-property>
+                                            <expression name="expression" type="javascript">dataSetRow["Host Name"]</expression>
+                                            <property name="dataType">string</property>
+                                        </structure>
+                                        <structure>
+                                            <property name="name">Last Check Time</property>
+                                            <text-property name="displayName">Last Check Time</text-property>
+                                            <expression name="expression" type="javascript">dataSetRow["Last Check Time"]</expression>
+                                            <property name="dataType">date-time</property>
+                                        </structure>
+                                        <structure>
+                                            <property name="name">Host Monitor Status</property>
+                                            <text-property name="displayName">Host Monitor Status</text-property>
+                                            <expression name="expression" type="javascript">dataSetRow["Host Monitor Status"]</expression>
+                                            <property name="dataType">string</property>
+                                        </structure>
+                                        <structure>
+                                            <property name="name">Total</property>
+                                            <text-property name="displayName">Total</text-property>
+                                            <expression name="expression" type="javascript">dataSetRow["Total"]</expression>
+                                            <property name="dataType">integer</property>
+                                        </structure>
+                                    </list-property>
+                                    <method name="onCreate"><![CDATA[globalCountOfRows.add(countOfRows);]]></method>
+                                    <property name="pageBreakInterval">50</property>
+                                    <column id="1073"/>
+                                    <column id="1074"/>
+                                    <detail>
+                                        <row id="1188">
+                                            <method name="onCreate"><![CDATA[if (row["Host Name"]) {
+	countOfRows++;
+}]]></method>
+                                            <property name="fontFamily">"Helvetica"</property>
+                                            <property name="fontSize">8pt</property>
+                                            <cell id="1189">
+                                                <property name="fontFamily">"SansSerif"</property>
+                                                <label id="1031">
+                                                    <property name="style">ReportParameterName</property>
+                                                    <property name="textAlign">left</property>
+                                                    <text-property name="text">Host Name</text-property>
+                                                </label>
+                                            </cell>
+                                            <cell id="1190">
+                                                <data id="1583">
+                                                    <property name="resultSetColumn">Host Name</property>
+                                                </data>
+                                            </cell>
+                                        </row>
+                                        <row id="1167">
+                                            <property name="fontFamily">"Helvetica"</property>
+                                            <property name="fontSize">8pt</property>
+                                            <cell id="1168">
+                                                <property name="fontFamily">"SansSerif"</property>
+                                                <label id="1043">
+                                                    <property name="style">ReportParameterName</property>
+                                                    <property name="textAlign">left</property>
+                                                    <text-property name="text">Last Checked</text-property>
+                                                </label>
+                                            </cell>
+                                            <cell id="1169">
+                                                <property name="colSpan">1</property>
+                                                <property name="rowSpan">1</property>
+                                                <text id="1606">
+                                                    <property name="contentType">html</property>
+                                                    <text-property name="content"><![CDATA[<VALUE-OF>
+importPackage(Packages.java.util);
+importPackage(Packages.java.text);
+
+if (row["Last Check Time"]){
+
+date = row["Last Check Time"];
+
+utcMiliseconds = date.getTime();
+calendar = new GregorianCalendar();
+calendar.setTimeInMillis(utcMiliseconds);
+localTime = new Date(utcMiliseconds + calendar.get(Calendar.ZONE_OFFSET) + calendar.get(Calendar.DST_OFFSET));
+
+sdf = new SimpleDateFormat("MM/dd/yyyy hh:mm a");
+displayDate = sdf.format(localTime);
+displayDate.toString();
+
+}
+</VALUE-OF>
+]]></text-property>
+                                                </text>
+                                            </cell>
+                                        </row>
+                                        <row id="1177">
+                                            <property name="fontFamily">"Helvetica"</property>
+                                            <property name="fontSize">8pt</property>
+                                            <cell id="1178">
+                                                <label id="1041">
+                                                    <property name="style">ReportParameterName</property>
+                                                    <property name="textAlign">left</property>
+                                                    <text-property name="text">Status</text-property>
+                                                </label>
+                                            </cell>
+                                            <cell id="1179">
+                                                <property name="colSpan">1</property>
+                                                <property name="rowSpan">1</property>
+                                                <data id="1585">
+                                                    <property name="resultSetColumn">Host Monitor Status</property>
+                                                </data>
+                                            </cell>
+                                        </row>
+                                    </detail>
+                                    <footer>
+                                        <row id="1063">
+                                            <list-property name="visibility">
+                                                <structure>
+                                                    <property name="format">all</property>
+                                                    <expression name="valueExpr" type="javascript">true</expression>
+                                                </structure>
+                                            </list-property>
+                                            <cell id="1064">
+                                                <property name="colSpan">2</property>
+                                                <property name="rowSpan">1</property>
+                                            </cell>
+                                        </row>
+                                    </footer>
+                                </table>
+                            </cell>
+                            <cell id="1166">
+                                <extended-item extensionName="Chart" name="NewChart" id="1147">
+                                    <xml-property name="xmlRepresentation"><![CDATA[<model:ChartWithoutAxes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:attribute="http://www.birt.eclipse.org/ChartModelAttribute" xmlns:layout="http://www.birt.eclipse.org/ChartModelLayout" xmlns:model="http://www.birt.eclipse.org/ChartModel" xmlns:type="http://www.birt.eclipse.org/ChartModelType">
+  <Version>2.5.1</Version>
+  <Type>Pie Chart</Type>
+  <SubType>Standard</SubType>
+  <Description>
+    <Value></Value>
+    <Font>
+      <Alignment/>
+    </Font>
+  </Description>
+  <Block>
+    <Children xsi:type="layout:TitleBlock">
+      <Bounds>
+        <Left>0.0</Left>
+        <Top>0.0</Top>
+        <Width>0.0</Width>
+        <Height>0.0</Height>
+      </Bounds>
+      <Insets>
+        <Top>3.0</Top>
+        <Left>3.0</Left>
+        <Bottom>3.0</Bottom>
+        <Right>3.0</Right>
+      </Insets>
+      <Row>-1</Row>
+      <Column>-1</Column>
+      <Rowspan>-1</Rowspan>
+      <Columnspan>-1</Columnspan>
+      <Outline>
+        <Style>Solid</Style>
+        <Thickness>1</Thickness>
+        <Color>
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>0</Green>
+          <Blue>0</Blue>
+        </Color>
+        <Visible>false</Visible>
+      </Outline>
+      <Visible>false</Visible>
+      <Label>
+        <Caption>
+          <Value>Host Service Status</Value>
+          <Font>
+            <Name>Arial</Name>
+            <Size>12.0</Size>
+            <Bold>true</Bold>
+            <Alignment>
+              <horizontalAlignment>Center</horizontalAlignment>
+              <verticalAlignment>Center</verticalAlignment>
+            </Alignment>
+          </Font>
+        </Caption>
+        <Background xsi:type="attribute:ColorDefinition">
+          <Transparency>0</Transparency>
+          <Red>255</Red>
+          <Green>255</Green>
+          <Blue>255</Blue>
+        </Background>
+        <Outline>
+          <Style>Solid</Style>
+          <Thickness>1</Thickness>
+          <Color>
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>0</Green>
+            <Blue>0</Blue>
+          </Color>
+        </Outline>
+        <Insets>
+          <Top>0.0</Top>
+          <Left>2.0</Left>
+          <Bottom>0.0</Bottom>
+          <Right>3.0</Right>
+        </Insets>
+        <Visible>true</Visible>
+      </Label>
+    </Children>
+    <Children xsi:type="layout:Plot">
+      <Bounds>
+        <Left>0.0</Left>
+        <Top>0.0</Top>
+        <Width>0.0</Width>
+        <Height>0.0</Height>
+      </Bounds>
+      <Insets>
+        <Top>3.0</Top>
+        <Left>3.0</Left>
+        <Bottom>3.0</Bottom>
+        <Right>3.0</Right>
+      </Insets>
+      <Row>-1</Row>
+      <Column>-1</Column>
+      <Rowspan>-1</Rowspan>
+      <Columnspan>-1</Columnspan>
+      <Outline>
+        <Style>Solid</Style>
+        <Thickness>1</Thickness>
+        <Color>
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>0</Green>
+          <Blue>0</Blue>
+        </Color>
+        <Visible>false</Visible>
+      </Outline>
+      <Visible>true</Visible>
+      <HorizontalSpacing>5</HorizontalSpacing>
+      <VerticalSpacing>5</VerticalSpacing>
+      <ClientArea>
+        <Outline>
+          <Style>Solid</Style>
+          <Thickness>0</Thickness>
+          <Color>
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>0</Green>
+            <Blue>0</Blue>
+          </Color>
+          <Visible>false</Visible>
+        </Outline>
+        <Insets>
+          <Top>0.0</Top>
+          <Left>0.0</Left>
+          <Bottom>0.0</Bottom>
+          <Right>0.0</Right>
+        </Insets>
+      </ClientArea>
+    </Children>
+    <Children xsi:type="layout:Legend">
+      <Bounds>
+        <Left>0.0</Left>
+        <Top>0.0</Top>
+        <Width>0.0</Width>
+        <Height>0.0</Height>
+      </Bounds>
+      <Insets>
+        <Top>3.0</Top>
+        <Left>3.0</Left>
+        <Bottom>3.0</Bottom>
+        <Right>3.0</Right>
+      </Insets>
+      <Row>-1</Row>
+      <Column>-1</Column>
+      <Rowspan>-1</Rowspan>
+      <Columnspan>-1</Columnspan>
+      <Outline>
+        <Style>Solid</Style>
+        <Thickness>1</Thickness>
+        <Color>
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>0</Green>
+          <Blue>0</Blue>
+        </Color>
+        <Visible>false</Visible>
+      </Outline>
+      <Visible>true</Visible>
+      <ClientArea>
+        <Outline>
+          <Style>Solid</Style>
+          <Thickness>0</Thickness>
+          <Color>
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>0</Green>
+            <Blue>0</Blue>
+          </Color>
+          <Visible>false</Visible>
+        </Outline>
+        <Insets>
+          <Top>2.0</Top>
+          <Left>2.0</Left>
+          <Bottom>2.0</Bottom>
+          <Right>2.0</Right>
+        </Insets>
+      </ClientArea>
+      <Text>
+        <Value></Value>
+        <Font>
+          <Name>Arial</Name>
+          <Size>8.0</Size>
+          <Alignment/>
+        </Font>
+        <Color>
+          <Transparency>255</Transparency>
+          <Red>51</Red>
+          <Green>51</Green>
+          <Blue>51</Blue>
+        </Color>
+      </Text>
+      <Orientation>Vertical</Orientation>
+      <Direction>Top_Bottom</Direction>
+      <Separator>
+        <Style>Solid</Style>
+        <Thickness>1</Thickness>
+        <Color>
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>0</Green>
+          <Blue>0</Blue>
+        </Color>
+        <Visible>true</Visible>
+      </Separator>
+      <Position>Right</Position>
+      <ItemType>Categories</ItemType>
+      <Title>
+        <Caption>
+          <Value></Value>
+          <Font>
+            <Alignment/>
+          </Font>
+        </Caption>
+        <Background xsi:type="attribute:ColorDefinition">
+          <Transparency>0</Transparency>
+          <Red>255</Red>
+          <Green>255</Green>
+          <Blue>255</Blue>
+        </Background>
+        <Outline>
+          <Style>Solid</Style>
+          <Thickness>1</Thickness>
+          <Color>
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>0</Green>
+            <Blue>0</Blue>
+          </Color>
+          <Visible>false</Visible>
+        </Outline>
+        <Insets>
+          <Top>0.0</Top>
+          <Left>2.0</Left>
+          <Bottom>0.0</Bottom>
+          <Right>3.0</Right>
+        </Insets>
+        <Visible>false</Visible>
+      </Title>
+      <TitlePosition>Above</TitlePosition>
+    </Children>
+    <Bounds>
+      <Left>0.0</Left>
+      <Top>0.0</Top>
+      <Width>280.8</Width>
+      <Height>200.0</Height>
+    </Bounds>
+    <Insets>
+      <Top>3.0</Top>
+      <Left>3.0</Left>
+      <Bottom>3.0</Bottom>
+      <Right>3.0</Right>
+    </Insets>
+    <Row>-1</Row>
+    <Column>-1</Column>
+    <Rowspan>-1</Rowspan>
+    <Columnspan>-1</Columnspan>
+    <Outline>
+      <Style>Solid</Style>
+      <Thickness>1</Thickness>
+      <Color>
+        <Transparency>255</Transparency>
+        <Red>0</Red>
+        <Green>0</Green>
+        <Blue>0</Blue>
+      </Color>
+      <Visible>false</Visible>
+    </Outline>
+    <Background xsi:type="attribute:ColorDefinition">
+      <Transparency>255</Transparency>
+      <Red>255</Red>
+      <Green>255</Green>
+      <Blue>255</Blue>
+    </Background>
+    <Visible>true</Visible>
+  </Block>
+  <Dimension>Two_Dimensional_With_Depth</Dimension>
+  <Script>/**&#xD;
+ * Called before drawing each datapoint graphical representation or marker.&#xD;
+ * &#xD;
+ * @param dph&#xD;
+ *            DataPointHints&#xD;
+ * @param fill&#xD;
+ *            Fill&#xD;
+ * @param icsc&#xD;
+ *            IChartScriptContext&#xD;
+ */&#xD;
+&#xD;
+function beforeDrawDataPoint(dph, fill, icsc)&#xD;
+{&#xD;
+	// Set fill color if a known monitor status&#xD;
+	var val = dph.getBaseDisplayValue();&#xD;
+	if (val == &quot;OK&quot;)&#xD;
+	{&#xD;
+		fill.set(0, 255, 0); // Light-Green&#xD;
+	}&#xD;
+	else if (val == &quot;UNSCHEDULED CRITICAL&quot;)&#xD;
+	{&#xD;
+		fill.set(255, 0, 0); // Red&#xD;
+	}&#xD;
+	else if (val == &quot;WARNING&quot;)&#xD;
+	{&#xD;
+		fill.set(255, 255, 0); // Yellow&#xD;
+	}&#xD;
+	else if (val == &quot;CRITICAL&quot;)&#xD;
+	{&#xD;
+		fill.set(255, 0, 0); // Dark-Red&#xD;
+	}&#xD;
+	else if (val == &quot;UNKNOWN&quot;)&#xD;
+	{&#xD;
+		fill.set(128, 128, 128); // Gray&#xD;
+	}&#xD;
+	else if (val == &quot;SCHEDULED CRITICAL&quot;)&#xD;
+	{&#xD;
+		fill.set(255, 165, 0); // Orange&#xD;
+	}	&#xD;
+	else if (val == &quot;PENDING&quot;)&#xD;
+	{&#xD;
+		fill.set(0,150,255);&#xD;
+	}&#xD;
+}&#xD;
+&#xD;
+
+/**
+ * Called before drawing the legend item.
+ * 
+ * @param lerh
+ * 			  LegendEntryRenderingHints
+ * @param bounds
+ * 			  Bounds
+ * @param icsc
+ * 			  IChartScriptContext
+ * @since Version 2.2.0
+ */
+
+function beforeDrawLegendItem( lerh, bounds, icsc )
+{&#xD;
+	&#xD;
+	val = lerh.getLabel().getCaption().getValue(); &#xD;
+	var globalCountOfRows = icsc.getExternalContext().getScriptable().getPersistentGlobalVariable(&quot;globalCountOfRows&quot;);&#xD;
+	&#xD;
+	if (globalCountOfRows.get(0) == 0) {&#xD;
+		lerh.getLabel().setVisible(false);&#xD;
+		bounds.setHeight(0);&#xD;
+		bounds.setWidth(0);&#xD;
+	} else {&#xD;
+&#xD;
+	fill = lerh.getFill(); &#xD;
+	if (val == &quot;OK&quot;)&#xD;
+	{&#xD;
+		fill.set(0, 255, 0); // Light-Green&#xD;
+	}&#xD;
+	else if (val == &quot;UNSCHEDULED CRITICAL&quot;)&#xD;
+	{&#xD;
+		fill.set(255, 0, 0); // Red&#xD;
+	}&#xD;
+	else if (val == &quot;WARNING&quot;)&#xD;
+	{&#xD;
+		fill.set(255, 255, 0); // Yellow&#xD;
+	}&#xD;
+	else if (val == &quot;CRITICAL&quot;)&#xD;
+	{&#xD;
+		fill.set(255, 0, 0);// Dark-Red&#xD;
+	}&#xD;
+	else if (val == &quot;UNKNOWN&quot;)&#xD;
+	{&#xD;
+		fill.set(128, 128, 128); // Gray&#xD;
+	}&#xD;
+	else if (val == &quot;SCHEDULED CRITICAL&quot;)&#xD;
+	{&#xD;
+		fill.set(255, 165, 0); // Orange&#xD;
+	}	&#xD;
+	else if (val == &quot;PENDING&quot;)&#xD;
+	{&#xD;
+		fill.set(0,150,255);&#xD;
+	}&#xD;
+	}
+}
+
+
+</Script>
+  <Units>Points</Units>
+  <SeriesThickness>10.0</SeriesThickness>
+  <GridColumnCount>1</GridColumnCount>
+  <ExtendedProperties>
+    <Name>enable.area.alt</Name>
+    <Value>false</Value>
+  </ExtendedProperties>
+  <SampleData>
+    <BaseSampleData>
+      <DataSetRepresentation>'A','B','C'</DataSetRepresentation>
+    </BaseSampleData>
+    <OrthogonalSampleData>
+      <DataSetRepresentation>5,4,12</DataSetRepresentation>
+      <SeriesDefinitionIndex>0</SeriesDefinitionIndex>
+    </OrthogonalSampleData>
+  </SampleData>
+  <Interactivity>
+    <Enable>true</Enable>
+    <LegendBehavior>ToggleSerieVisibility</LegendBehavior>
+  </Interactivity>
+  <EmptyMessage>
+    <Caption>
+      <Value></Value>
+      <Font>
+        <Alignment/>
+      </Font>
+    </Caption>
+    <Background xsi:type="attribute:ColorDefinition">
+      <Transparency>0</Transparency>
+      <Red>255</Red>
+      <Green>255</Green>
+      <Blue>255</Blue>
+    </Background>
+    <Outline>
+      <Style>Solid</Style>
+      <Thickness>1</Thickness>
+      <Color>
+        <Transparency>255</Transparency>
+        <Red>0</Red>
+        <Green>0</Green>
+        <Blue>0</Blue>
+      </Color>
+    </Outline>
+    <Insets>
+      <Top>0.0</Top>
+      <Left>2.0</Left>
+      <Bottom>0.0</Bottom>
+      <Right>3.0</Right>
+    </Insets>
+    <Visible>false</Visible>
+  </EmptyMessage>
+  <SeriesDefinitions>
+    <Query>
+      <Definition></Definition>
+    </Query>
+    <SeriesPalette>
+      <Entries xsi:type="attribute:ColorDefinition">
+        <Transparency>255</Transparency>
+        <Red>255</Red>
+        <Green>0</Green>
+        <Blue>0</Blue>
+      </Entries>
+      <Entries xsi:type="attribute:ColorDefinition">
+        <Transparency>255</Transparency>
+        <Red>0</Red>
+        <Green>204</Green>
+        <Blue>0</Blue>
+      </Entries>
+      <Entries xsi:type="attribute:ColorDefinition">
+        <Transparency>255</Transparency>
+        <Red>51</Red>
+        <Green>153</Green>
+        <Blue>255</Blue>
+      </Entries>
+      <Entries xsi:type="attribute:ColorDefinition">
+        <Transparency>255</Transparency>
+        <Red>255</Red>
+        <Green>153</Green>
+        <Blue>51</Blue>
+      </Entries>
+      <Entries xsi:type="attribute:ColorDefinition">
+        <Transparency>255</Transparency>
+        <Red>192</Red>
+        <Green>192</Green>
+        <Blue>192</Blue>
+      </Entries>
+      <Entries xsi:type="attribute:ColorDefinition">
+        <Transparency>255</Transparency>
+        <Red>255</Red>
+        <Green>0</Green>
+        <Blue>0</Blue>
+      </Entries>
+      <Entries xsi:type="attribute:ColorDefinition">
+        <Transparency>255</Transparency>
+        <Red>255</Red>
+        <Green>255</Green>
+        <Blue>51</Blue>
+      </Entries>
+      <Entries xsi:type="attribute:ColorDefinition">
+        <Transparency>255</Transparency>
+        <Red>128</Red>
+        <Green>128</Green>
+        <Blue>0</Blue>
+      </Entries>
+    </SeriesPalette>
+    <SeriesDefinitions>
+      <Query>
+        <Definition></Definition>
+        <Grouping>
+          <GroupType>Text</GroupType>
+          <AggregateExpression>Sum</AggregateExpression>
+        </Grouping>
+      </Query>
+      <SeriesPalette>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>255</Red>
+          <Green>0</Green>
+          <Blue>0</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>204</Green>
+          <Blue>0</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>51</Red>
+          <Green>153</Green>
+          <Blue>255</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>255</Red>
+          <Green>153</Green>
+          <Blue>51</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>128</Red>
+          <Green>128</Green>
+          <Blue>128</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>255</Red>
+          <Green>0</Green>
+          <Blue>0</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>255</Red>
+          <Green>255</Green>
+          <Blue>51</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>128</Red>
+          <Green>128</Green>
+          <Blue>0</Blue>
+        </Entries>
+      </SeriesPalette>
+      <Series xsi:type="type:PieSeries">
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Name>Arial</Name>
+              <Size>8.0</Size>
+              <Alignment/>
+            </Font>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>51</Red>
+              <Green>51</Green>
+              <Blue>51</Blue>
+            </Color>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>true</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>if (row[&quot;Count&quot;] > 0)&#xD;
+{&#xD;
+row[&quot;Count&quot;] ;&#xD;
+}</Definition>
+          <Grouping>
+            <GroupType>Text</GroupType>
+            <AggregateExpression>Sum</AggregateExpression>
+          </Grouping>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>-</Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+        <Explosion>4</Explosion>
+        <Title>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Size>16.0</Size>
+              <Bold>true</Bold>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>true</Visible>
+        </Title>
+        <TitlePosition>Below</TitlePosition>
+        <LeaderLineAttributes>
+          <Style>Solid</Style>
+          <Thickness>1</Thickness>
+          <Color>
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>0</Green>
+            <Blue>0</Blue>
+          </Color>
+          <Visible>true</Visible>
+        </LeaderLineAttributes>
+        <LeaderLineStyle>Fixed_Length</LeaderLineStyle>
+        <LeaderLineLength>20.0</LeaderLineLength>
+      </Series>
+      <Grouping>
+        <Enabled>false</Enabled>
+        <GroupingInterval>2.0</GroupingInterval>
+        <GroupType>Text</GroupType>
+        <AggregateExpression>Sum</AggregateExpression>
+      </Grouping>
+      <Sorting>Ascending</Sorting>
+      <SortKey>
+        <Definition></Definition>
+      </SortKey>
+    </SeriesDefinitions>
+    <Series>
+      <Visible>true</Visible>
+      <Label>
+        <Caption>
+          <Value></Value>
+          <Font>
+            <Alignment/>
+          </Font>
+        </Caption>
+        <Background xsi:type="attribute:ColorDefinition">
+          <Transparency>0</Transparency>
+          <Red>255</Red>
+          <Green>255</Green>
+          <Blue>255</Blue>
+        </Background>
+        <Outline>
+          <Style>Solid</Style>
+          <Thickness>1</Thickness>
+          <Color>
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>0</Green>
+            <Blue>0</Blue>
+          </Color>
+          <Visible>false</Visible>
+        </Outline>
+        <Insets>
+          <Top>0.0</Top>
+          <Left>2.0</Left>
+          <Bottom>0.0</Bottom>
+          <Right>3.0</Right>
+        </Insets>
+        <Visible>false</Visible>
+      </Label>
+      <DataDefinition>
+        <Definition>row[&quot;Name&quot;]</Definition>
+      </DataDefinition>
+      <SeriesIdentifier></SeriesIdentifier>
+      <DataPoint>
+        <Components>
+          <Type>Orthogonal_Value</Type>
+        </Components>
+        <Separator>, </Separator>
+      </DataPoint>
+      <LabelPosition>Outside</LabelPosition>
+      <Stacked>false</Stacked>
+    </Series>
+    <Grouping>
+      <Enabled>false</Enabled>
+      <GroupingInterval>2.0</GroupingInterval>
+      <GroupType>Text</GroupType>
+      <AggregateExpression>Sum</AggregateExpression>
+    </Grouping>
+    <Sorting>Ascending</Sorting>
+    <SortKey>
+      <Definition>row[&quot;Name&quot;]</Definition>
+    </SortKey>
+  </SeriesDefinitions>
+</model:ChartWithoutAxes>
+]]></xml-property>
+                                    <property name="outputFormat">SVG</property>
+                                    <property name="inheritColumns">false</property>
+                                    <property name="dataSet">getStatistics</property>
+                                    <property name="height">200pt</property>
+                                    <property name="width">3.9in</property>
+                                    <list-property name="visibility">
+                                        <structure>
+                                            <property name="format">all</property>
+                                            <expression name="valueExpr" type="javascript">if (row["Total"] == null){&#13;
+	true&#13;
+}&#13;
+else{&#13;
+	false&#13;
+}</expression>
+                                        </structure>
+                                    </list-property>
+                                    <list-property name="boundDataColumns">
+                                        <structure>
+                                            <property name="name">Name</property>
+                                            <expression name="expression" type="javascript">dataSetRow["Name"]</expression>
+                                            <property name="dataType">string</property>
+                                        </structure>
+                                        <structure>
+                                            <property name="name">Count</property>
+                                            <expression name="expression" type="javascript">dataSetRow["Count"]</expression>
+                                            <property name="dataType">integer</property>
+                                        </structure>
+                                        <structure>
+                                            <property name="name">Total</property>
+                                            <expression name="expression" type="javascript">dataSetRow["Total"]</expression>
+                                            <property name="dataType">integer</property>
+                                        </structure>
+                                    </list-property>
+                                </extended-item>
+                            </cell>
+                        </row>
+                    </grid>
+                </cell>
+            </row>
+            <row id="1134">
+                <property name="fontFamily">sans-serif</property>
+                <cell id="1135">
+                    <label id="1136">
+                        <property name="style">SectionTitle</property>
+                        <property name="marginRight">0pt</property>
+                        <property name="pageBreakBefore">always</property>
+                        <property name="width">5.9in</property>
+                        <list-property name="visibility">
+                            <structure>
+                                <property name="format">all</property>
+                                <expression name="valueExpr" type="javascript">if( countOfRows == 0 ){&#13;
+true;&#13;
+}else{&#13;
+false;&#13;
+}</expression>
+                            </structure>
+                        </list-property>
+                        <text-property name="text">Host Service Status</text-property>
+                    </label>
+                </cell>
+            </row>
+            <row id="169">
+                <cell id="170">
+                    <table id="1082">
+                        <property name="fontFamily">sans-serif</property>
+                        <property name="pageBreakBefore">auto</property>
+                        <property name="width">5.9in</property>
+                        <property name="dataSet">getServicesForHost</property>
+                        <list-property name="visibility">
+                            <structure>
+                                <property name="format">all</property>
+                                <expression name="valueExpr" type="javascript">if (row["Total"] == null){&#13;
+	true&#13;
+}&#13;
+else{&#13;
+	false&#13;
+}</expression>
+                            </structure>
+                        </list-property>
+                        <list-property name="boundDataColumns">
+                            <structure>
+                                <property name="name">Service Description</property>
+                                <text-property name="displayName">Service Description</text-property>
+                                <expression name="expression" type="javascript">dataSetRow["Service Description"]</expression>
+                                <property name="dataType">string</property>
+                            </structure>
+                            <structure>
+                                <property name="name">MonitorStatus</property>
+                                <text-property name="displayName">MonitorStatus</text-property>
+                                <expression name="expression" type="javascript">dataSetRow["MonitorStatus"]</expression>
+                                <property name="dataType">string</property>
+                            </structure>
+                            <structure>
+                                <property name="name">LastCheckTime</property>
+                                <text-property name="displayName">LastCheckTime</text-property>
+                                <expression name="expression" type="javascript">dataSetRow["LastCheckTime"]</expression>
+                                <property name="dataType">date-time</property>
+                            </structure>
+                            <structure>
+                                <property name="name">NextCheckTime</property>
+                                <text-property name="displayName">NextCheckTime</text-property>
+                                <expression name="expression" type="javascript">dataSetRow["NextCheckTime"]</expression>
+                                <property name="dataType">date-time</property>
+                            </structure>
+                            <structure>
+                                <property name="name">LastStateChange</property>
+                                <text-property name="displayName">LastStateChange</text-property>
+                                <expression name="expression" type="javascript">dataSetRow["LastStateChange"]</expression>
+                                <property name="dataType">date-time</property>
+                            </structure>
+                            <structure>
+                                <property name="name">Total</property>
+                                <text-property name="displayName">Total</text-property>
+                                <expression name="expression" type="javascript">dataSetRow["Total"]</expression>
+                                <property name="dataType">integer</property>
+                            </structure>
+                        </list-property>
+                        <property name="pageBreakInterval">10</property>
+                        <column id="1128">
+                            <property name="width">1.2in</property>
+                            <property name="suppressDuplicates">false</property>
+                        </column>
+                        <column id="1130">
+                            <property name="width">0.7in</property>
+                            <property name="marginLeft">0pt</property>
+                            <property name="canShrink">false</property>
+                        </column>
+                        <column id="1131">
+                            <property name="width">1.3in</property>
+                            <property name="suppressDuplicates">false</property>
+                        </column>
+                        <column id="1132">
+                            <property name="width">1.3in</property>
+                            <property name="canShrink">false</property>
+                        </column>
+                        <column id="1133">
+                            <property name="width">1.3in</property>
+                            <property name="suppressDuplicates">false</property>
+                        </column>
+                        <header>
+                            <row id="1083">
+                                <property name="height">0.2604166667in</property>
+                                <property name="style">DataTableHeading</property>
+                                <property name="verticalAlign">middle</property>
+                                <cell id="1088">
+                                    <property name="borderBottomStyle">none</property>
+                                    <property name="borderLeftStyle">none</property>
+                                    <property name="borderRightColor">white</property>
+                                    <property name="borderRightStyle">solid</property>
+                                    <property name="borderTopColor">white</property>
+                                    <property name="borderTopStyle">solid</property>
+                                    <label id="1187">
+                                        <property name="style">DataTableHeading</property>
+                                        <property name="borderBottomStyle">none</property>
+                                        <property name="marginLeft">0pt</property>
+                                        <property name="paddingLeft">3pt</property>
+                                        <property name="textAlign">left</property>
+                                        <property name="textTransform">none</property>
+                                        <text-property name="text">Description</text-property>
+                                    </label>
+                                </cell>
+                                <cell id="1092">
+                                    <property name="borderLeftColor">black</property>
+                                    <property name="borderRightColor">white</property>
+                                    <property name="borderRightStyle">solid</property>
+                                    <property name="borderTopColor">white</property>
+                                    <property name="borderTopStyle">solid</property>
+                                    <label id="1093">
+                                        <property name="style">DataTableHeading</property>
+                                        <property name="paddingLeft">3pt</property>
+                                        <property name="paddingBottom">1pt</property>
+                                        <property name="textAlign">left</property>
+                                        <text-property name="text">Status</text-property>
+                                    </label>
+                                </cell>
+                                <cell id="1094">
+                                    <property name="style">DataTableHeading</property>
+                                    <property name="borderLeftColor">black</property>
+                                    <property name="borderRightColor">white</property>
+                                    <property name="borderRightStyle">solid</property>
+                                    <property name="borderTopColor">white</property>
+                                    <property name="borderTopStyle">solid</property>
+                                    <label id="1095">
+                                        <property name="style">DataTableHeading</property>
+                                        <text-property name="text">Last Checked</text-property>
+                                    </label>
+                                </cell>
+                                <cell id="1096">
+                                    <property name="borderBottomStyle">none</property>
+                                    <property name="borderRightColor">white</property>
+                                    <property name="borderRightStyle">solid</property>
+                                    <property name="borderTopColor">white</property>
+                                    <property name="borderTopStyle">solid</property>
+                                    <label id="1097">
+                                        <property name="style">DataTableHeading</property>
+                                        <text-property name="text">Next Check</text-property>
+                                    </label>
+                                </cell>
+                                <cell id="1098">
+                                    <property name="borderBottomStyle">none</property>
+                                    <property name="borderRightColor">white</property>
+                                    <property name="borderRightStyle">none</property>
+                                    <property name="borderTopColor">white</property>
+                                    <property name="borderTopStyle">solid</property>
+                                    <label id="1099">
+                                        <property name="style">DataTableHeading</property>
+                                        <text-property name="text">Last State Change</text-property>
+                                    </label>
+                                </cell>
+                            </row>
+                        </header>
+                        <detail>
+                            <row id="1100">
+                                <property name="style">DataTableCells</property>
+                                <list-property name="highlightRules">
+                                    <structure>
+                                        <property name="operator">ne</property>
+                                        <property name="backgroundColor">#EEEEEE</property>
+                                        <expression name="testExpr">row[0] % 2</expression>
+                                        <simple-property-list name="value1">
+                                            <value>0</value>
+                                        </simple-property-list>
+                                    </structure>
+                                </list-property>
+                                <cell id="1105">
+                                    <property name="backgroundAttachment">scroll</property>
+                                    <property name="paddingTop">1pt</property>
+                                    <property name="textAlign">center</property>
+                                    <property name="textTransform">none</property>
+                                    <data id="1586">
+                                        <property name="resultSetColumn">Service Description</property>
+                                    </data>
+                                </cell>
+                                <cell id="1109">
+                                    <data id="1587">
+                                        <property name="resultSetColumn">MonitorStatus</property>
+                                    </data>
+                                </cell>
+                                <cell id="1111">
+                                    <text id="1599">
+                                        <property name="contentType">html</property>
+                                        <text-property name="content"><![CDATA[<VALUE-OF>
+importPackage(Packages.java.util);
+importPackage(Packages.java.text);
+if (row["LastCheckTime"]) {
+
+date = row["LastCheckTime"];
+
+utcMiliseconds = date.getTime();
+calendar = new GregorianCalendar();
+calendar.setTimeInMillis(utcMiliseconds);
+localTime = new Date(utcMiliseconds + calendar.get(Calendar.ZONE_OFFSET) + calendar.get(Calendar.DST_OFFSET));
+
+sdf = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss a");
+displayDate = sdf.format(localTime);
+displayDate.toString();
+}
+</VALUE-OF>
+]]></text-property>
+                                    </text>
+                                </cell>
+                                <cell id="1113">
+                                    <property name="borderRightStyle">none</property>
+                                    <property name="borderTopStyle">none</property>
+                                    <text id="1604">
+                                        <property name="contentType">html</property>
+                                        <text-property name="content"><![CDATA[<VALUE-OF>
+importPackage(Packages.java.util);
+importPackage(Packages.java.text);
+if(row["NextCheckTime"]) {
+
+date = row["NextCheckTime"];
+
+utcMiliseconds = date.getTime();
+calendar = new GregorianCalendar();
+calendar.setTimeInMillis(utcMiliseconds);
+localTime = new Date(utcMiliseconds + calendar.get(Calendar.ZONE_OFFSET) + calendar.get(Calendar.DST_OFFSET));
+
+sdf = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss a");
+displayDate = sdf.format(localTime);
+displayDate.toString();
+}
+</VALUE-OF>]]></text-property>
+                                    </text>
+                                </cell>
+                                <cell id="1115">
+                                    <text id="1605">
+                                        <property name="contentType">html</property>
+                                        <text-property name="content"><![CDATA[<VALUE-OF>
+importPackage(Packages.java.util);
+importPackage(Packages.java.text);
+if(row["LastStateChange"]) {
+
+date = row["LastStateChange"];
+
+utcMiliseconds = date.getTime();
+calendar = new GregorianCalendar();
+calendar.setTimeInMillis(utcMiliseconds);
+localTime = new Date(utcMiliseconds + calendar.get(Calendar.ZONE_OFFSET) + calendar.get(Calendar.DST_OFFSET));
+
+sdf = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss a");
+displayDate = sdf.format(localTime);
+displayDate.toString();
+}
+</VALUE-OF>]]></text-property>
+                                    </text>
+                                </cell>
+                            </row>
+                        </detail>
+                        <footer>
+                            <row id="1117">
+                                <cell id="1120"/>
+                                <cell id="1122"/>
+                                <cell id="1123"/>
+                                <cell id="1124"/>
+                                <cell id="1125"/>
+                            </row>
+                        </footer>
+                    </table>
+                </cell>
+            </row>
+        </grid>
+    </body>
+</report>

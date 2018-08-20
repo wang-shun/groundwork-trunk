@@ -1,0 +1,824 @@
+# logrotate configuration for GroundWork Monitor files
+
+# GroundWork syslog-ng
+#
+# This includes both files native to syslog-ng and files whose log rotation
+# has been taken over from the platform's native syslog daemon.
+#
+# GWMON-13440:  The /var/log/boot.log path is intentionally the first entry
+# of this list so it can be readily commmented out if the platform already
+# supplies a logrotate config file that handles this logfile.  That happens
+# with /etc/logrotate.d/bootlog on CentOS7, for example.
+#
+/var/log/boot.log
+/usr/local/groundwork/common/var/log/syslog-ng/*.log
+/var/log/messages
+/var/log/secure
+/var/log/maillog
+/var/log/spooler
+/var/log/cron
+{
+    su root root
+    daily
+    missingok
+    notifempty
+    delaycompress
+    rotate 8
+    sharedscripts
+    postrotate
+	/usr/bin/killall --exact -HUP syslog-ng
+    endscript
+}
+
+# Apache logrotate
+#
+# FIX THIS:  This should be replaced by log rotation of piped logs (see GWMON-5014).
+#
+/usr/local/groundwork/apache2/logs/access_log
+/usr/local/groundwork/apache2/logs/error_log
+/usr/local/groundwork/apache2/logs/ssl_request_log
+/usr/local/groundwork/apache2/logs/startup_messages
+{
+    daily
+    missingok
+    notifempty
+    rotate 8
+    sharedscripts
+    postrotate
+	/bin/kill -HUP `cat /usr/local/groundwork/apache2/logs/httpd.pid 2>/dev/null` 2> /dev/null || true
+    endscript
+}
+
+# Monarch sync script output
+#
+# /usr/local/groundwork/foundation/container/logs/nagios2collage_hostgroupcheck.log
+# is configured in /usr/local/groundwork/foundation/feeder/nagios2collage_hostgroupcheck.pl
+# which must be restarted in order to switch to a new logfile.  In fact, that script is not
+# a daemon process, and this log file gets truncated each time it is opened, so there is
+# little real incentive to rotate it here.  So we do so only if it somehow grows to a very
+# large size, perhaps due to unanticipated code changes over time.
+#
+/usr/local/groundwork/foundation/container/logs/nagios2collage_hostgroupcheck.log
+{
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 50M
+    rotate 8
+}
+
+# /usr/local/groundwork/foundation/container/logs/nagios2collage_eventlog.log
+# is configured in /usr/local/groundwork/config/event-feeder.conf for use by
+# /usr/local/groundwork/foundation/feeder/nagios2collage_eventlog.pl which
+# must be bounced in order to switch to a new logfile.  All we need to do is
+# kill the script, and it will be restarted automatically by "supervise".
+#
+/usr/local/groundwork/foundation/container/logs/nagios2collage_eventlog.log
+{
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 10M
+    rotate 8
+    postrotate
+	# Kill the process so it gets restarted and writes to the new log file.
+	pids=`ps -o pid,args --no-headers -C .perl.bin | fgrep /usr/local/groundwork/foundation/feeder/nagios2collage_eventlog.pl | awk '{print $1}'`
+	if [ -n "$pids" ]; then
+	    kill -TERM $pids || true
+	fi
+    endscript
+}
+
+# /usr/local/groundwork/foundation/container/logs/nagios2collage_socket.log
+# is configured in /usr/local/groundwork/config/status-feeder.properties for
+# use by /usr/local/groundwork/foundation/feeder/nagios2collage_socket.pl
+# which must be bounced in order to switch to a new logfile.  All we need to do is
+# kill the script, and it will be restarted automatically by "supervise".
+#
+/usr/local/groundwork/foundation/container/logs/nagios2collage_socket.log
+{
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 10M
+    rotate 8
+    postrotate
+	# Kill the process so it gets restarted and writes to the new log file.
+	pids=`ps -o pid,args --no-headers -C .perl.bin | fgrep /usr/local/groundwork/foundation/feeder/nagios2collage_socket.pl | awk '{print $1}'`
+	if [ -n "$pids" ]; then
+	    kill -TERM $pids || true
+	fi
+    endscript
+}
+
+# /usr/local/groundwork/foundation/container/logs/nedi_feeder.log
+# is configured in /usr/local/groundwork/config/nedi_feeder.conf for
+# use by /usr/local/groundwork/foundation/feeder/nedi_feeder.pl
+# which must be bounced in order to switch to a new logfile.  All we need to do is
+# kill the script, and it will be restarted automatically by "supervise".
+#
+/usr/local/groundwork/foundation/container/logs/nedi_feeder.log
+{
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 10M
+    rotate 8
+    postrotate
+	# Kill the process so it gets restarted and writes to the new log file.
+	pids=`ps -o pid,args --no-headers -C .perl.bin | fgrep /usr/local/groundwork/foundation/feeder/nedi_feeder.pl | awk '{print $1}'`
+	if [ -n "$pids" ]; then
+	    kill -TERM $pids || true
+	fi
+    endscript
+}
+
+# All the logfiles written to by freedt (supervise) dumblog processes invoked by
+# the base GroundWork Monitor product (i.e., excluding add-on packages).
+#
+# We wanted to take advantage here of an undocumented feature of logrotate, namely that it passes
+# to a postrotate script the list of files which have just been rotated, as a single command-line
+# argument.  If you're using sharedscripts and want to process the files individually, that one
+# argument must be trimmed and parsed by the script into its separate file components.  However,
+# that capability (passing the argument) was lost in the logrotate-3.7.1-6 release and apparently
+# not restored for about two years.  Thus we cannot depend on its availability, and must use
+# separate config sections for the individual dumblog "log/main/log" output files here.
+
+/usr/local/groundwork/core/services/feeder-nagios-log/log/main/log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 100M
+    rotate 4
+    postrotate
+	service='feeder-nagios-log/log'
+	# Signal the dumblog process so it closes and opens its log file.  The
+	# process we need to send a HUP signal to is the particular instance of
+	# dumblog which has a parent "supervise $service" process.  We find which
+	# is the proper "supervise" process by examining its command arguments.
+	ppids=`ps -o pid,args --no-headers -C supervise | fgrep $service | awk '{print $1}'`
+	if [ -n "$ppids" ]; then
+	    parent_pids=`echo $ppids | sed -e 's/ /,/g'`
+	    # This is a bit blind, killing all children of the appropriate "supervise" process rather than
+	    # selecting a "dumblog" process, but "ps" doesn't allow us to AND process-selection conditions
+	    # and we don't want to bother with a more-complex computation here.  Nonetheless, that supervise
+	    # process should only have the one child process running.
+	    pids=`ps -o pid --no-headers --ppid $parent_pids | awk '{print $1}'`
+	    if [ -n "$pids" ]; then
+		kill -HUP $pids || true
+	    fi
+	fi
+    endscript
+}
+
+/usr/local/groundwork/core/services/feeder-nagios-status/log/main/log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 100M
+    rotate 4
+    postrotate
+	service='feeder-nagios-status/log'
+	# Signal the dumblog process so it closes and opens its log file.  The
+	# process we need to send a HUP signal to is the particular instance of
+	# dumblog which has a parent "supervise $service" process.  We find which
+	# is the proper "supervise" process by examining its command arguments.
+	ppids=`ps -o pid,args --no-headers -C supervise | fgrep $service | awk '{print $1}'`
+	if [ -n "$ppids" ]; then
+	    parent_pids=`echo $ppids | sed -e 's/ /,/g'`
+	    # This is a bit blind, killing all children of the appropriate "supervise" process rather than
+	    # selecting a "dumblog" process, but "ps" doesn't allow us to AND process-selection conditions
+	    # and we don't want to bother with a more-complex computation here.  Nonetheless, that supervise
+	    # process should only have the one child process running.
+	    pids=`ps -o pid --no-headers --ppid $parent_pids | awk '{print $1}'`
+	    if [ -n "$pids" ]; then
+		kill -HUP $pids || true
+	    fi
+	fi
+    endscript
+}
+
+# This is the standard service for the Java Portal Process.  If the
+# system is set up as single-JBoss, this includes Foundation as well.
+/usr/local/groundwork/core/services/service-jpp/log/main/log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 100M
+    rotate 4
+    postrotate
+	service='service-jpp/log'
+	# Signal the dumblog process so it closes and opens its log file.  The
+	# process we need to send a HUP signal to is the particular instance of
+	# dumblog which has a parent "supervise $service" process.  We find which
+	# is the proper "supervise" process by examining its command arguments.
+	ppids=`ps -o pid,args --no-headers -C supervise | fgrep $service | awk '{print $1}'`
+	if [ -n "$ppids" ]; then
+	    parent_pids=`echo $ppids | sed -e 's/ /,/g'`
+	    # This is a bit blind, killing all children of the appropriate "supervise" process rather than
+	    # selecting a "dumblog" process, but "ps" doesn't allow us to AND process-selection conditions
+	    # and we don't want to bother with a more-complex computation here.  Nonetheless, that supervise
+	    # process should only have the one child process running.
+	    pids=`ps -o pid --no-headers --ppid $parent_pids | awk '{print $1}'`
+	    if [ -n "$pids" ]; then
+		kill -HUP $pids || true
+	    fi
+	fi
+    endscript
+}
+
+# This is the standard service for the Java Foundation Process in a dual-JBoss setup.  The file won't be
+# present in a single-JBoss setup, so it's safe to have this entry present no matter which setup is in use.
+/usr/local/groundwork/core/services/service-foundation/log/main/log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 100M
+    rotate 4
+    postrotate
+	service='service-foundation/log'
+	# Signal the dumblog process so it closes and opens its log file.  The
+	# process we need to send a HUP signal to is the particular instance of
+	# dumblog which has a parent "supervise $service" process.  We find which
+	# is the proper "supervise" process by examining its command arguments.
+	ppids=`ps -o pid,args --no-headers -C supervise | fgrep $service | awk '{print $1}'`
+	if [ -n "$ppids" ]; then
+	    parent_pids=`echo $ppids | sed -e 's/ /,/g'`
+	    # This is a bit blind, killing all children of the appropriate "supervise" process rather than
+	    # selecting a "dumblog" process, but "ps" doesn't allow us to AND process-selection conditions
+	    # and we don't want to bother with a more-complex computation here.  Nonetheless, that supervise
+	    # process should only have the one child process running.
+	    pids=`ps -o pid --no-headers --ppid $parent_pids | awk '{print $1}'`
+	    if [ -n "$pids" ]; then
+		kill -HUP $pids || true
+	    fi
+	fi
+    endscript
+}
+# This file is obsolete, the "foundation" service having been replaced by the "service-jpp" service
+# (along with the "service-foundation" service, in a dual-JBoss setup) in GWMEE 7.x releases.  We
+# leave this here only for historical interest, inasmuch as having it here doesn't cause any hiccups.
+/usr/local/groundwork/core/services/foundation/log/main/log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 100M
+    rotate 4
+    postrotate
+	service='foundation/log'
+	# Signal the dumblog process so it closes and opens its log file.  The
+	# process we need to send a HUP signal to is the particular instance of
+	# dumblog which has a parent "supervise $service" process.  We find which
+	# is the proper "supervise" process by examining its command arguments.
+	ppids=`ps -o pid,args --no-headers -C supervise | fgrep $service | awk '{print $1}'`
+	if [ -n "$ppids" ]; then
+	    parent_pids=`echo $ppids | sed -e 's/ /,/g'`
+	    # This is a bit blind, killing all children of the appropriate "supervise" process rather than
+	    # selecting a "dumblog" process, but "ps" doesn't allow us to AND process-selection conditions
+	    # and we don't want to bother with a more-complex computation here.  Nonetheless, that supervise
+	    # process should only have the one child process running.
+	    pids=`ps -o pid --no-headers --ppid $parent_pids | awk '{print $1}'`
+	    if [ -n "$pids" ]; then
+		kill -HUP $pids || true
+	    fi
+	fi
+    endscript
+}
+
+# Obsolete performance log
+#
+# /usr/local/groundwork/nagios/eventhandlers/process_service_perf.log
+# is configured in three different mutually-exclusive scripts, all of which
+# are now obsolete in the GW 6.0 release:
+#
+#     /usr/local/groundwork/nagios/eventhandlers/process_service_perf.pl
+#     /usr/local/groundwork/nagios/eventhandlers/process_service_perf_db.pl
+#     /usr/local/groundwork/nagios/eventhandlers/process_service_perf_db_file.pl
+#
+# Each of these scripts opens the file in append mode, and leaves it open until the
+# script exits.  Each script runs end-to-end periodically rather than as a persistent
+# daemon, so there is no need to send it a signal to tell it the file has been rotated.
+#
+/usr/local/groundwork/nagios/eventhandlers/process_service_perf.log
+{
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 20M
+    rotate 8
+}
+
+# Performance log
+#
+# /usr/local/groundwork/nagios/var/log/process_service_perfdata_file.log
+# and
+# /usr/local/groundwork/foundation/container/logs/process_perfdata_files.log
+# are configured in /usr/local/groundwork/config/perfdata.properties for use by
+# /usr/local/groundwork/nagios/eventhandlers/process_service_perfdata_file which
+# runs as one or two persistent daemons.  Each daemon opens its respective log
+# file in append mode on each iteration, and closes it at the end of that iteration.
+# Thus there is no need to send the script a signal that the file has been rotated,
+# as the next cycle will simply use the new file.
+#
+/usr/local/groundwork/nagios/var/log/process_service_perfdata_file.log
+/usr/local/groundwork/foundation/container/logs/process_perfdata_files.log
+{
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 20M
+    rotate 8
+}
+
+# Host Performance data log (rotated here only for safety purposes)
+#
+# /usr/local/groundwork/nagios/var/host-perfdata.dat is the default value for the
+# Nagios host_perfdata_file option.  This file is managed entirely by Nagios, so
+# there should be no reason at all for us to mess with it here.  In fact, doing so
+# will interfere with the operation of Nagios as it writes and processes this file.
+# So we only rotate this file if it has grown so huge that it appears that Nagios is
+# writing to it but never processing it.
+#
+/usr/local/groundwork/nagios/var/host-perfdata.dat
+{
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 100M
+    rotate 1
+}
+
+# Service Performance data log (rotated here only for safety purposes)
+#
+# /usr/local/groundwork/nagios/var/service-perfdata.dat is the default value for the
+# Nagios service_perfdata_file option.  This file is managed entirely by Nagios, so
+# there should be no reason at all for us to mess with it here.  In fact, doing so
+# will interfere with the operation of Nagios as it writes and processes this file.
+# So we only rotate this file if it has grown so huge that it appears that Nagios is
+# writing to it but never processing it.
+#
+# GWMON-12784:  The limits on file-size ("size") and kept-rotated-file-count ("rotate")
+# have been bumped up to accommodate very large sites that might have huge amounts of
+# accumulated pending data.  This means that if there is truly a problem at the site,
+# significantly more disk space will be used to store the unprocessed data.  But it
+# also means that if the data is supposed to be processed on this system, there will be
+# much more opportunity to do so before it disappears.
+#
+/usr/local/groundwork/nagios/var/service-perfdata.dat
+{
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 400M
+    rotate 7
+}
+
+# SNMP logs (for safety)
+#
+# /usr/local/groundwork/common/var/log/snmp/snmptt.debug
+# is configured in /usr/local/groundwork/common/etc/snmp/snmptt.ini
+# as the DEBUGGING_FILE option.  This option is used by the snmptt script, and the file
+# is opened and appended to but essentially never closed.  Thus the script (which normally
+# runs as a daemon) must be completely bounced to get this file properly rotated.
+#
+/usr/local/groundwork/common/var/log/snmp/snmptt.debug
+{
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 8
+    postrotate
+	/usr/local/groundwork/ctlscript.sh restart snmptt
+    endscript
+}
+
+# /var/log/snmpttsystem.log is configured in /usr/local/groundwork/common/etc/snmp/snmptt.ini
+# and written by the /usr/local/groundwork/common/sbin/snmptt script, if log_system_enable is
+# set to 1 and the file already exists.  (It cannot normally be created by the script, because
+# the directory that contains it is not writable by the nagios user the script runs as.)  There
+# is no reason to signal this script that the file has been rotated, because the file will be
+# opened, appended to, and closed on each individual access (SNMPTT v1.2, 4/11/2002).  However,
+# we do need to create the file here if we rotate it, because the script itself won't be able
+# to create the file.  This leaves a tiny window during which a message might be missed because
+# the file does not exist when the script goes to write it, but so be it.  The default setting
+# of log_system_enable in the configuration file we ship is 0, and the file is currently not
+# created by the snmptt start script, so this file won't normally exist or be written to.
+# If this becomes an issue, we should modify the start script to create the file before the
+# process is started, then either suspend and continue the script around the logfile rotation,
+# or just stop and start the script around the rotation.  And then revise this comment.
+#
+/var/log/snmpttsystem.log
+{
+    su root root
+    daily
+    missingok
+    notifempty
+    delaycompress
+    create 644 nagios nagios
+    size 10M
+    rotate 8
+}
+
+# /usr/local/groundwork/common/var/log/snmp/snmptrapd.log
+# is configured in /usr/local/groundwork/common/etc/snmp/snmpttd.init
+# and in /usr/local/groundwork/common/scripts/ctl-snmptrapd.sh
+# which both pass it as an argument to snmptrapd.  Though this behavior
+# is unfortunately not documented, SIGHUP can be used to force snmptrapd
+# to close and re-open its logfile.
+#
+/usr/local/groundwork/common/var/log/snmp/snmptrapd.log
+{
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 10M
+    rotate 8
+    postrotate
+	/usr/bin/killall --exact -HUP snmptrapd
+    endscript
+}
+
+# Other SNMP-processing files
+#
+# /usr/local/groundwork/common/var/log/snmp/snmptt.log
+# is configured in /usr/local/groundwork/common/etc/snmp/snmptt.ini
+# as the log_file option.  There is no reason to signal the snmptt script
+# that uses this option that the file has been rotated, because the file will be
+# opened, appended to, and closed on each individual access (SNMPTT v1.2, 4/11/2002).
+#
+# /usr/local/groundwork/common/var/log/snmp/snmptthandler.debug
+# is configured in /usr/local/groundwork/common/etc/snmp/snmptt.ini
+# as the DEBUGGING_FILE_HANDLER option.  This option is used by the
+# snmptthandler script, which opens and appends to the file, and the file is
+# never closed.  But that script is only run on a transient basis, so there
+# is no reason to signal or bounce anything once the file is rotated.
+#
+# /usr/local/groundwork/common/var/log/snmp/snmpttunknown.log
+# is configured in /usr/local/groundwork/common/etc/snmp/snmptt.ini
+# as the unknown_trap_log_file option.  There is no reason to signal the snmptt script
+# that uses this option that the file has been rotated, because the file will be
+# opened, appended to, and closed on each individual access (SNMPTT v1.2, 4/11/2002).
+#
+/usr/local/groundwork/common/var/log/snmp/snmptt.log
+/usr/local/groundwork/common/var/log/snmp/snmptthandler.debug
+/usr/local/groundwork/common/var/log/snmp/snmpttunknown.log
+{
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 8
+}
+
+# /usr/local/groundwork/common/var/log/snmp/gwprocesstrap.log
+# is configured in /usr/local/groundwork/nagios/eventhandlers/gwprocesstrap.pl
+# which opens, appends to, and closes the file on each individual access.
+# Thus there is no reason to signal this script that the file has been rotated.
+#
+/usr/local/groundwork/common/var/log/snmp/gwprocesstrap.log
+{
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 10M
+    rotate 8
+}
+
+# Event Broker log file
+#
+# /usr/local/groundwork/nagios/var/event_broker.log
+# is the default log_filename, otherwise set in the bronx.cfg config file.
+# Bronx opens, appends to, and closes the file on each individual access,
+# so there is no reason to take any action when the file has been rotated.
+#
+/usr/local/groundwork/nagios/var/event_broker.log
+{
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 10M
+    rotate 8
+}
+
+# Event Broker audit trail log
+#
+# /usr/local/groundwork/nagios/var/eventbroker_audit.log
+# is the default audit_trail_filename, otherwise set in the bronx.cfg config file.
+# Bronx opens, appends to, and closes the file on each individual access,
+# so there is no reason to take any action when the file has been rotated.
+#
+/usr/local/groundwork/nagios/var/eventbroker_audit.log
+{
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 10M
+    rotate 8
+}
+
+# Output from /usr/local/groundwork/log-reporting/lib/GWLogger.pm, referenced by scripts such as
+# /usr/local/groundwork/log-reporting/bin/importer.pl (run as a regular nagios cron job) and
+# /usr/local/groundwork/log-reporting/bin/reports.pl .
+#
+# This seems to be a shared logfile, and we don't have a convenient way to pause all running
+# scripts that might be using GWLogger so we can safely create a new copy here immediately
+# after the rotation (without race conditions from running scripts that might open a new file
+# themselves).  So we're going to have to depend on all of those scripts to be run as the same
+# user, so we don't have a problem with access permissions once the file is rotated and some
+# script creates a new one.
+#
+/usr/local/groundwork/log-reporting/logs/log-reporting.log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 10M
+    rotate 5
+}
+
+# Cacti log file
+#
+# /usr/local/groundwork/cacti/htdocs/log/cacti.log
+# is set as the standard (defaulted) Cacti log file, if the path_cactilog
+# config option in Cacti is not set to something else.  It is written to
+# by PHP scripts that appear to just open and close the file around every
+# message written to the file, so there is no reason to signal any scripts
+# when the logfile is rotated.
+/usr/local/groundwork/cacti/htdocs/log/cacti.log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 4
+}
+
+# find_cacti_graphs debug log
+#
+# /usr/local/groundwork/foundation/container/logs/find_cacti_graphs.log
+# is configured in /usr/local/groundwork/foundation/feeder/find_cacti_graphs
+# which currently runs periodically as a cron job.  Thus there is no reason
+# to signal the script when the logfile is rotated.
+#
+/usr/local/groundwork/foundation/container/logs/find_cacti_graphs.log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 4
+}
+
+# Remote client auto-registration debug log
+#
+# /usr/local/groundwork/foundation/container/logs/register_agent.log
+# is configured in /usr/local/groundwork/config/register_agent.properties
+# to capture messages from the registerAgentByProfile.pl script, which
+# runs briefly in response to individual web-service calls.  Thus there
+# is no reason to signal the script when the logfile is rotated.
+#
+/usr/local/groundwork/foundation/container/logs/register_agent.log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 6
+}
+
+# Log archiving
+#
+# /usr/local/groundwork/foundation/container/logs/log-archive-receive.log
+# is configured in /usr/local/groundwork/config/log-archive-receive.conf
+# and generated by the /usr/local/groundwork/core/archive/bin/log-archive-receive.pl
+# script, which runs once per day.  That script opens the log file just once,
+# at the beginning of each run, so there is no need for any kind of coordination
+# here between the logfile rotation and the script other than to delay compression.
+#
+# /usr/local/groundwork/foundation/container/logs/log-archive-send.log
+# is configured in /usr/local/groundwork/config/log-archive-send.conf
+# and generated by the /usr/local/groundwork/core/archive/bin/log-archive-send.pl
+# script, which runs once per day.  That script opens the log file just once,
+# at the beginning of each run, so there is no need for any kind of coordination
+# here between the logfile rotation and the script other than to delay compression.
+#
+/usr/local/groundwork/foundation/container/logs/log-archive-receive.log
+/usr/local/groundwork/foundation/container/logs/log-archive-send.log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 10M
+    rotate 4
+}
+
+# NoMa daemon debug log
+#
+# /usr/local/groundwork/noma/var/noma_debug.log
+# is configured in /usr/local/groundwork/noma/etc/NoMa.yaml to capture
+# messages from the /usr/local/groundwork/noma/notifier/noma_daemon.pl
+# script, which runs as a daemon.  When it wants to write a message to
+# this file, it opens the file, writes the message, and immediately
+# closes the file.  Thus there is no reason to signal the script when
+# the logfile is rotated.
+#
+/usr/local/groundwork/noma/var/noma_debug.log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 6
+}
+
+# NoMa UI debug log
+#
+# /usr/local/groundwork/noma/var/NoMa-logfile.log
+# is configured in /usr/local/groundwork/noma/etc/NoMa.yaml to capture
+# messages from the NoMa front-end PHP scripts, which run in short-lived
+# fashion to support the NoMa GUI.  When the PHP scripting wants to write
+# a message to this file, it opens the file if it is not already open,
+# writes the message, and leaves the file open for possible future writes.
+# However, the lifetime of such script runs should be short, so the file
+# will be closed when the PHP script ends.  Thus there is no reason to
+# signal the script (if we could even unambiguously identify which scripts
+# might have the file open) when the logfile is rotated.
+#
+/usr/local/groundwork/noma/var/NoMa-logfile.log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 6
+}
+
+# Cacti feeder log
+#
+# /usr/local/groundwork/foundation/container/logs/cacti_feeder.log
+# is configured in /usr/local/groundwork/config/cacti_feeder.log4perl.conf
+# for use by cacti_feeder.pl.
+/usr/local/groundwork/foundation/container/logs/cacti_feeder.log
+{
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 8
+    size 5M
+    postrotate
+	# Signal the process so it closes the old logfile and writes to the new logfile.
+	pids=`ps -o pid,args --no-headers -C .perl.bin | fgrep /usr/local/groundwork/foundation/feeder/cacti_feeder.pl | awk '{print $1}'`
+	if [ -n "$pids" ]; then
+	    kill -HUP $pids || true
+	fi
+    endscript
+}
+
+# PHP log file
+#
+# /usr/local/groundwork/php/tmp/php.log
+# is set as the error_log output in our global /usr/local/groundwork/php/etc/php.ini
+# PHP config file.  This setting seems to apply to any PHP program run by our PHP
+# interpreter, not just some particular application.  Inasmuch as we therefore
+# have no specific script to notify that the log file has changed, we won't run
+# any postrotate command when we rotate this file.  That is not expected to be a
+# problem, because we don't have any persistent daemons written in PHP, unless
+# certain Foundation war-file content qualifies in that regard.  But we also don't
+# know whether such scripts might just open and close the file around every message
+# written to the file, which would make it unnecessary to signal any scripts anyway.
+/usr/local/groundwork/php/tmp/php.log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 5M
+    rotate 4
+}
+
+# Log Bridge feeder log
+# /usr/local/groundwork/foundation/container/logs/logbridge_feeder.log
+# is configured in logbridge.log4perl.conf, which is used by logbridge_feeder.pl.
+/usr/local/groundwork/foundation/container/logs/logbridge_feeder.log
+{
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 8
+    size 5M
+    postrotate
+        # Signal the process so it closes the old logfile and writes to the new logfile.
+        pids=`ps -o pid,args --no-headers -C .perl.bin | fgrep /usr/local/groundwork/foundation/feeder/logbridge_feeder.pl | awk '{print $1}'`
+        if [ -n "$pids" ]; then
+           kill -HUP $pids || true
+        fi
+    endscript
+}
+
+# gwevents_to_es feeder log
+# /usr/local/groundwork/foundation/container/logs/gwevents_to_es.log
+# is configured in gwevents_to_es.conf, which is used by gwevents_to_es.pl
+/usr/local/groundwork/foundation/container/logs/gwevents_to_es.log
+{
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 8
+    size 5M
+    postrotate
+        # Signal the process so it closes the old logfile and writes to the new logfile.
+        pids=`ps -o pid,args --no-headers -C .perl.bin | fgrep /usr/local/groundwork/foundation/feeder/gwevents_to_es.pl | awk '{print $1}'`
+        if [ -n "$pids" ]; then
+           kill -HUP $pids || true
+        fi
+    endscript
+}
+
+# SCOM feeder log
+# /usr/local/groundwork/foundation/container/logs/scom_feeder.log
+# is configured in scom_feeder.conf, which is used by scom_feeder.pl
+/usr/local/groundwork/foundation/container/logs/scom_feeder.log
+{
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 8
+    size 5M
+    postrotate
+        # Signal the process so it closes the old logfile and writes to the new logfile.
+        pids=`ps -o pid,args --no-headers -C .perl.bin | fgrep /usr/local/groundwork/foundation/feeder/scom_feeder.pl | awk '{print $1}'`
+        if [ -n "$pids" ]; then
+           kill -HUP $pids || true
+        fi
+    endscript
+}
+
+# InfluxDB
+# /usr/local/groundwork/influxdb/var/log/influxdb.log
+# The name of this log is configured in /usr/local/groundwork/influxdb/ctl.sh
+# These settings have been tested, but are the stock settings from InfluxDB and might need tuning.
+/usr/local/groundwork/influxdb/var/log/influxd.log {
+    daily
+    rotate 7
+    missingok
+    dateext
+    copytruncate
+    compress
+}
+

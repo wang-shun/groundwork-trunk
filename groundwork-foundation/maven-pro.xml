@@ -1,0 +1,109 @@
+	<goal name='proBuild'
+		description='Builds Foundation Professional components' >
+
+		<attainGoal name='pro.collagefeeder' /> 
+		<attainGoal name='build' />		
+		
+	</goal>
+	
+	<goal name='configure.unittest'
+		description='Setup files needsed for running the unit tests in a professional version' >
+
+		<!-- Deploy the db.properties for the unit tests -->
+		<echo message="** Deploy db.properties file for Unit Test into ${org.groundwork.deploy.config.base}/${org.groundwork.deploy.conf} **" />
+         <copy file="resources/db.properties"   tofile="${org.groundwork.deploy.config.base}/${org.groundwork.deploy.conf}/db.properties" >
+            <filterset begintoken="@" endtoken="@">
+               <filter token="DATABASE_USER"     value="${com.groundwork.collage.production.database.user}"/>
+               <filter token="DATABASE_PASSWORD" value="${com.groundwork.collage.production.database.password}"/>
+               <filter token="DATABASE_DRIVER"   value="${com.groundwork.collage.production.database.driver}"/>
+               <filter token="DATABASE_URL"      value="${com.groundwork.collage.production.database.url}"/>
+            </filterset>
+         </copy>		
+	
+		<copy 
+	        file="resources/foundation.properties" 
+	        tofile="${org.groundwork.deploy.config.base}/${org.groundwork.deploy.conf}/foundation.properties" overwrite="true"
+	  	/>
+	  	
+		<copy 
+	        file="resources/adapter.properties" 
+	        tofile="${org.groundwork.deploy.config.base}/${org.groundwork.deploy.conf}/adapter.properties" overwrite="true"
+	  	/>	  	
+	</goal>
+	
+	
+	<goal name="proClean"
+	        description="Clean the master project and all subprojects">
+	    <attainGoal name="allClean"/>
+
+	<maven:reactor
+               basedir="${basedir}/collagefeeder/adapters/syslog"
+               includes="project.xml"
+               goals="clean"
+               banner="Builds GroundWork Syslog Data Feeder"
+               postProcessing="false"
+               ignoreFailures="true"/>
+
+	 <maven:reactor
+               basedir="${basedir}/collagefeeder/adapters/snmp"
+               includes="project.xml"
+               goals="clean"
+               banner="Builds GroundWork SNMP Data Feeder"
+               postProcessing="false"
+               ignoreFailures="true"/>
+
+	</goal>
+
+	
+	<goal name="proDeploy"
+		description="Deploy build components into web container" >
+		<attainGoal name="clean.deploy" />
+		<attainGoal name='deploy' />
+		
+	</goal>
+
+<!-- 
+		Build individual components of the GroundWork Monitor
+		
+		Add a goal for any new component
+ -->
+      
+     <goal name="pro.collagefeeder"
+  		description="Build GroundWork Professional Feeders">
+
+	<maven:reactor
+               basedir="${basedir}/collage"
+               includes="project.xml"
+               goals="build"
+               banner="Builds GroundWork Foundation API"
+               postProcessing="false"
+               ignoreFailures="false"/>
+                              
+	<maven:reactor
+               basedir="${basedir}/collagefeeder/api"
+               includes="project.xml"
+               goals="jar:install"
+               banner="Builds GroundWork Adapter API"
+               postProcessing="false"
+               ignoreFailures="false"/>
+               
+    <maven:reactor
+               basedir="${basedir}/collagefeeder/adapters"
+               includes="project.xml"
+               goals="syslog"
+               banner="Builds GroundWork Syslog Data Feeder"
+               postProcessing="false"
+               ignoreFailures="false"/>
+
+	 <maven:reactor
+               basedir="${basedir}/collagefeeder/adapters"
+               includes="project.xml"
+               goals="snmp"
+               banner="Builds GroundWork SNMP Data Feeder"
+               postProcessing="false"
+               ignoreFailures="false"/>
+
+     </goal>
+
+	
+</project>

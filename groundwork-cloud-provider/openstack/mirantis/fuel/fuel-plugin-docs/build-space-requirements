@@ -1,0 +1,12 @@
+fpb --build .
+Unexpected error
+Shell command executed with "1" exit code: rpmbuild -vv --nodeps --define "_topdir /home/anon/fuel-plugin-groundwork-monitor/.build/rpm" -bb /home/anon/fuel-plugin-groundwork-monitor/.build/rpm/plugin_rpm.spec 
+Makefile:28: recipe for target 'rpm' failed
+make: *** [rpm] Error 255
+
+Note that it takes a LOT of space to build the plugin, since you will
+end up with multiple copies of the GroundWork installer:  one in the
+source tree, at least three temporary copies in the _build tree, and
+one in the built plugin, of which there might be multiple copies in
+the build tree and the final location at the top of the plugin source
+code.

@@ -1,0 +1,491 @@
+##############################################################################
+#                                 sendpage.cf                                #
+##############################################################################
+#
+# There are four majors sections:
+#	- global	Any global settings
+#	- "modem"	Each modem's settings
+#	- "pc"		Each Paging Central's settings
+#	- "recip"	Each recipient name's settings
+#
+# Except for global, each section starts with the section name in
+# []'s.  So, to define a modem named "sportster", the section name
+# would be "[modem:sportster]", and all of the sportster's settings
+# would follow.
+#
+# section names cannot have "=", "@", or ":" in their text.
+#
+# For each major section, I go through all the default values
+# and their variable names.  If you don't like a default value,
+# just comment in the variable name, and change the value to something
+# else.
+#
+
+
+
+#############################
+# global section
+#############################
+# queue & manager-level debugging.  Default is "false"
+#
+#debug=true
+
+# select-loop debugging.  Default is "false"
+#	Leave this as it is unless you're digging around in the select
+#	loop code.  It is VERY annoying.  :)
+#
+#debug-select=true
+
+# SNPP activity debugging.  Default is "false"
+#
+#debug-snpp=true
+
+# alias-expansion debugging.  Default is "false"
+#
+#alias-debug=true
+
+# Filename prefix for writing process ID files.
+# 	Default is "/var/spool/sendpage/sendpage"
+#
+#pidfileprefix = /tmp/var/spool/sendpage/sendpage
+
+# Filename prefix for writing UUCP-style device locks.
+#	Default is "/var/lock/LCK.."
+#
+#lockprefix = /tmp/var/lock/LCK..
+
+# Directory to store Paging Central pager queues
+#	Default is "/var/spool/sendpage"
+#
+#queuedir = /tmp/var/spool/sendpage
+
+# Database dbi type/connection info for large user lists
+#
+#	Defaults are all ""
+#
+#dsn = dbi:Pg:Db:dbname=sendpage
+#dsn = dbi:mysql:database=sendpage;host=db.mydomain.name;port=3306
+#dbuser = sendpage
+#dbpass = mekmitasdigoat
+#dbtable = sendpage
+
+# Username that sendpage should be running as.
+#	Default is "sendpage"
+#user = nemesis
+
+# Group sendpage needs to lock devices.  
+#	Default is "uucp"
+#group-lock=lock
+
+# Group sendpage needs to read/write devices.
+#	Default is "tty"
+#group-tty=users
+
+# Email address that page emails claims to be coming from.
+#	Default is "sendpage"
+#
+#page-daemon = nemesis@outflux.net
+
+# Will page-daemon be Cc'd on email failures?
+#	Default is "true"
+#cc-on-error = false
+
+# By which mechanism should email be delivered?  mail, sendmail, or SMTP?
+#	Default is "sendmail"
+#mail-agent = mail
+
+# Should page senders be notified about permanent failures?
+#	Default is "true"
+#fail-notify = false
+
+# Page senders should be notified every Xth temporary failure.
+# (0 means 'never')
+#	Default is "5".
+#tempfail-notify-after=10
+
+# How many times does a page hit a temporary error before failing forever?
+#	Default is "20"
+#max-tempfail=50
+
+# Should syslog be used instead of STDERR for logging?
+#	Default is "true"
+#syslog=false
+
+# When using syslog, which syslog options should be used?
+# (any of "pid", "ndelay", "cons", or "nowait")
+#	Default is "pid"
+#syslog-opt= pid, cons
+
+# Which syslog facility should be used?  man syslog for more info
+#	Default is "daemon"
+#syslog-facility=local6
+
+# What port sendpage binds to for the SNPP server.
+#	Default is "444"
+#snpp-port=3044
+
+# What local address sendpage binds the SNPP server to.  
+#   *NOTE*
+#	You should set this to "0.0.0.0" if you want to receive pages from
+#	the rest of the world.
+#
+#	You can use this to limit which IP address SNPP is bound to.
+#   *NOTE*
+#
+#	Default is "localhost"
+#snpp-addr=0.0.0.0
+
+# What to do about incoming SNPP requests (multiple entries allowed)
+#   *NOTE*
+#	You should set this to "0.0.0.0/0.0.0.0:ALLOW" if you want
+#	anyone to connect to your SNPP server.
+#   *NOTE*
+#
+#	Format is "NET/MASK:WAY" where WAY is either "ALLOW" or "DENY"
+#
+#	ACL processing is done top to bottom, and if no match occurs,
+#	the connection is rejected.
+#
+#	Default is "127.0.0.1/255.255.255.255:ALLOW"
+#snpp-acl="128.174.5.0/255.255.255.0:ALLOW"
+#snpp-acl="128.23.1.10/255.255.255.255:DENY"
+#snpp-acl="128.23.1.0/255.255.255.0:ALLOW"
+
+# List of modems a PC should use if not told explicitly.
+#	Default is all available modems.
+#
+#modems = sportster
+
+# Default domain for email-cc (not implemented yet)
+#fallback-email-domain	=	@cpoint.net
+
+# Command to run after each successful or failed page
+#	Default is unset
+#	Command gets contents of page on stdin, and 2 command line
+#	parameters:
+#		arg 1: status (0=page failed, 1=page succeeded)
+#		arg 2: page alias (who was paged)
+#
+#completion-cmd = "/usr/local/bin/page-sent"
+
+######################
+# modem configuration
+# 	Each section should be called "modem".  (e.g.  "[modem:sportster]")
+######################
+
+# My first "modem" section.  I named it "sportster" because that's what it is
+[modem:sportster]
+# Should this modem's character-level debugging be turned on?
+#	Default is "false"
+#debug	= true
+
+# This modem's transmission settings.
+#	Defaults are data=7, parity=even, stop=1, flow=rts,
+#                    baud=9600, strict-parity=false
+#data	       = 8
+#parity	       = none
+#stop	       = 1
+#flow          = soft
+#baud          = 38400
+#strict-parity = true
+
+# Which device this modem should use
+#	Default is "/dev/null", so you better specify one.  :)
+dev	= /dev/modem
+
+# This modem's initialization string
+#	Default is "ATZ"
+#init   = ATE&1
+
+# This modem's "okay" response string (this is a regexp)
+#	Default is "OK"
+#initok = 0
+
+# What to look for if something has gone wrong while init'ing (this is a regexp)
+#	Default is "ERROR"
+#error=1
+
+# How many seconds to wait for initok after init with this modem
+#	Default is "4"
+#initwait=1
+
+# How many times to try to initialize the modem
+#	Default is "2"
+#initretries=1
+
+# The dialing prefix for this modem
+#	Default is "ATDT"
+#dial=ATDP
+
+# The telephone prefix to get a dialtone out of the building (for PBXs, etc)
+#	Default is ""
+#dialout="9,"
+
+# The areacode this modem has (for figuring areacode matches with PCs)
+#	Default is unset
+# If you never use area code, either make this "-" or don't use "areacode"
+# options in the PC definitions.
+#areacode="847"
+
+# The dialing prefix for dialing long distance calls (some PBXs do weird stuff)
+#	Default is "1-"
+#longdist="81"
+
+# What to look for after connecting successfully (this is a regexp)
+#	Default is "CONNECT.*\r"
+#dialok=0
+
+# What to look for if something goes wrong while dialing (this is a regexp)
+#	Default is "ERROR|NO CARRIER|BUSY|NO DIAL|VOICE"
+#no-carrier=ERROR
+
+# How many seconds to wait for dialing to connect
+#	Default is "60"
+#dialwait=30
+
+# How many times to try and redial (unimplemented, actually...)
+#	Default is "3"
+#dialretries=1
+
+# How should "carrier detection" be done?  "on", "off", "dsr"
+# "DSR" can be used when a cable or OS doesn't correctly provide CD
+#	Default is "on"
+#carrier-detect=dsr
+
+# How many seconds should the DTR be held down during initialization?
+#	Default is "0.5"
+#dtrtime=1.5
+
+
+## As an example, this is what a directly attached paging terminal
+## might look like:
+##
+#[modem:direct]
+#carrier-detect=off
+#dtrtime=0
+#init=""
+#initok=""
+#dial=""
+#dialok=""
+#dev=/dev/serial
+
+
+#########################
+# Paging central section
+#	each section should be called "pc" (e.g. "[pc:ameritech]")
+#########################
+#[pc:example]
+# Is this PC enabled?  Set to false to stop processing a PC, for example
+#	Default is "true"
+#enabled= false
+
+# This PC's protocol-level debugging.
+#	Default is "false"
+#debug	= true
+
+# Email address that page emails claims to be coming from.
+#	Default is unset, and will fall back to the global "page-daemon" setting
+#
+#page-daemon = someone@other.place
+
+# Will page-daemon be Cc'd on email failures for this PC?
+#	Default is unset, and will fall back to global "cc-on-error" setting
+#cc-on-error = true
+
+# Should page senders be notified about permanent failures?
+#	Default is unset; will fall back to global option
+#fail-notify = false
+
+# Page senders should be notified every Xth temporary failure.
+# (0 means 'never')
+#	Default is unset; will fall back to global option
+#tempfail-notify-after=10
+
+# How many times does a page hit a temporary error before failing forever?
+#	Default is unset; will fall back to global option
+#max-tempfail=50
+
+# Command to run after each successful or failed page, overrides global
+#	Default is unset
+#	Command gets contents of page on stdin, and 2 command line
+#	parameters:
+#		arg 1: status (0=page failed, 1=page succeeded)
+#		arg 2: page alias (who was paged)
+#
+#completion-cmd = "/usr/local/bin/page-sent"
+
+# If for some reason you need to override the default list of modems,
+# do it here.
+#	Default is all available modems.
+#modems	= sportster
+
+# If you need specific communication settings for this PC, they go here.
+#	Defaults are data=7, parity=even, stop=1, flow=rts,
+#                    baud=115200, strict-parity=false
+#data	       = 8
+#parity	       = none
+#stop	       = 1
+#flow	       = soft
+#baud	       = 9600
+#strict-parity = true
+
+# What areacode is this PC in?  If unset, the modem won't match areacodes
+#	Default is unset
+#areacode= 312
+
+# What phone number to reach this PC at.
+#	Default is "", so you better fill one in
+#phonenum= 5149243
+
+# How many pages can be sent in each session with this PC?
+#	Default is 0 (unlimited)
+#maxpages=12
+
+# How many blocks can be sent in each session with this PC?
+#	Default is 0 (unlimited)
+#maxblocks=60
+
+# How many characters can be sent in each page for this PC? (For UCP, not TAP)
+#	Default is 1024
+#maxchars=300
+
+# How many characters per block are allowed during TAP transmission?
+# The protocol normally has this at "250" (due to the 256 limit, and
+# encoding requires 6 chars).  Making this higher than 250 isn't sensible,
+# but some TAPs need it smaller.
+#	Default is "250"
+#chars-per-block=230
+
+# How many times are we allowed to split up a page that exceeds the
+# max chars limit?  (For example, if maxchars was "100" and maxsplits was
+# "5" and someone sent a 2000 character page, sendpage would generate
+# five 100-character pages before cutting off the page.)
+#	Default is "6"
+#maxsplits=2
+
+# Which TAP protocol to use.  Should be one of "PG1", "PG3", or "UCP"
+#   Regular TAP PagingCentrals are "PG1".
+#   UCP PagingCentrals will need "UCP".
+# If you had a "pet3" style PC before, this needs to be "PG3"
+#	Default is "PG1"
+#proto=PG3
+
+# How many fields does the PC expect to be getting during Block Transmission?
+# If you had a "pet3" style PC before, this needs to be "3".
+#	Default is "2"
+#fields=3
+
+# What is the password for accessing this Paging Central?
+#	Default is "000000".  Shouldn't be more than 6 characters.
+#password=123456
+
+# Should we assume strict TAP protocol, and require CR before each answer?
+# If you can set this to true, do so, as it makes textual response codes
+# easier to read.  However, very few PCs use those codes, and very few
+# PCs have correctly implemented strict TAP, so it's unlikely you want this. 
+#	Default is "false"
+#stricttap=true
+
+# Characters less than 0x20 are allowed in a block's field?
+# If you can set this, it makes pages prettier (can send tabs, newlines,
+# etc), but some PCs really don't like this.  See 'esc' and 'lfok' options.
+#	Default is "false"
+#ctrl=true
+
+# Can characters less than 0x20 be escaped, as in TAP spec 1.8?
+# If you can't set "ctrl" to true, see if this one set to true works.
+#	Default is "false"
+#esc=true
+
+# Is LF explicitly allowed by this PC? (only useful if "ctrl=false")
+# 	Default is "false"
+#lfok=true
+
+# Can fields be split across blocks?
+#	Default is "true"
+#fieldsplits=false
+
+# How many seconds to wait before sending CR when waiting for the ID= tag?
+#	Default is "2", from the T1 of the TAP protocol
+#answerwait=10
+
+# How many retries to allow before giving up waiting for the ID= tag?
+#	Default is "3", from the N3 of the TAP protocol
+#answerretries=3
+
+# How many seconds before we giving up trying to dial this PC?
+#	Default is whatever the modem's dialwait is
+#dialwait=20
+
+# How many seconds should this PC wait between queue scans?
+#	Default is "20"
+#rundelay=10
+
+
+# I have a skytel that only works in Illinois, and I've only called this
+# number from chicago, but I think it's valid as a national TAP access
+# number.
+[pc:skytel]
+areacode=800
+phonenum=7596366
+stricttap=true
+
+# I have a nextel that should work Nationally, but I've only called this
+# number from Chicago, while I was IN Chicago with the NexTel.
+[pc:nextel]
+areacode=312
+phonenum=9076683
+stricttap=true
+
+# This is the BellSouth RIM pager
+[pc:rim-pager]
+areacode=800
+phonenum=868-2835
+stricttap=true
+
+
+###################
+# Recipients
+#	This section starts with "recip".  (e.g. "[recip:cook]")
+#	Sorry this section is so clunky...
+#
+#	'email-cc' will get passed down to an expanding alias.  For
+#	example, look at the "[recip:cook]" below.  I have an email-cc,
+#	and it'll stick with the recip alias, even though it finally
+#	expands the "dest" to be "cook_ameritech".  Did that make any sense?
+#
+#	dest:		Where to send the page.  Either PIN@paging-central, or
+#			another recip name.
+#	email-cc:	Where to send an email CC of the page
+#		
+###################
+
+# My three pagers
+[recip:cook_ameritech]
+dest	=	1234567@ameritech
+[recip:cook_nextel]
+dest	=	1234567@nextel
+[recip:cook_skytel]
+dest	=	1234567@skytel
+[recip:cook]
+dest	=	cook_ameritech
+email-cc=	cooke@cpoint.net
+
+# Paul's nextel
+[recip:pholcomb]
+dest	=	1234567@nextel
+
+# Kirsten's ameritech pager
+[recip:kirsten]
+dest	=	1234567@ameritech
+email-cc=	dragoon@blight.com
+
+# Christian's RIM pager
+[recip:cvoid]
+dest	=	1234567@rim-pager
+
+# A group alias for Paul and me
+[recip:oncall]
+dest	=	cook, pholcomb
+email-cc=	qpoint@cpoint.net
+

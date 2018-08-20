@@ -1,0 +1,55 @@
+Copyright 2007 GroundWork Open Source, Inc. ("GroundWork")  
+All rights reserved. This program is free software; you can redistribute it
+and/or modify it under the terms of the GNU General Public License version 2
+as published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU General Public License for 
+more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
+
+
+Instructions for installing MIBs into SNMPTT
+
+1. Copy mib file into directory "/usr/local/groundwork/share/snmp/mibs".
+
+2. Change to that directory with command 
+	cd /usr/local/groundwork/share/snmp/mibs
+
+2. Enter command "export MIBS=ALL"
+
+3. Create the new conf file with the following command where MIBFILE is the name of the new MIB.
+	a.  export MIBS=ALL
+	b.  /usr/local/groundwork/bin/snmpttconvertmib --in=MIBFILE   --out=MIBFILE.conf --format_desc=3 --exec='/usr/local/groundwork/nagios/eventhandlers/gwprocesstrap.pl "$x" "$X" "$aA" "$A" "$o" "$O" "$s" "$N" "$c" "$+*" '
+
+Note: If you need to rerun the command, delete the conf file. If it exists, entries will be appended.
+
+4. If you want to customize the trap process, edit the EXEC entry in the MIBFILE.conf file:
+	a. To modify the output text for the trap, edit the text.
+	b. To modify the severity for the trap, change the $s variable to any one the following:
+		NORMAL, OK, MINOR, WARNING, MAJOR, CRITICAL, UNKNOWN
+
+5. Move the conf file into the configuration directory with the command:
+	mv MIBFILE.conf /usr/local/groundwork/etc/snmp/
+
+6. Add the MIBFILE.conf file to the snmptt ini file "/usr/local/groundwork/etc/snmp/snmptt.ini". Near the end of the file in the TrapFiles section, add to the snmptt_conf_files directive.
+
+	[TrapFiles]
+	# A list of snmptt.conf files (this is NOT the snmptrapd.conf file).  The COMPLETE path
+	# and filename.  Ex: '/etc/snmp/snmptt.conf'
+	snmptt_conf_files = <<END
+	/usr/local/groundwork/etc/snmp/snmptt.conf
+	.
+	.
+	/usr/local/groundwork/etc/snmp/MIBFILE.conf
+	END	
+
+7. Restart snmptt with the command:
+	/etc/init.d/snmptt restart
+
+

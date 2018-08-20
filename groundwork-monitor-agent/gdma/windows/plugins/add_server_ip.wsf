@@ -1,0 +1,30 @@
+<job>
+<runtime>
+  <description>
+add_server_ip.wsf (nrpe_nt-plugin) 1.1
+The nagios plugins come with ABSOLUTELY NO WARRANTY. You may redistribute
+copies of the plugins under the terms of the GNU General Public License.
+For more information about these matters, see the file named COPYING.
+Copyright (c) 1999-2004 - jfitzhugh@macromedia.com
+
+Adds the server IP to the config file.
+  </description>
+  <named
+    name="i"
+    helpstring="IP to add"
+    type="string"
+    required="true"
+  />
+  <example>
+Example: add_server_ip.wsf /i:10.1.1.1
+</example>
+</runtime>
+<script language="VBScript">
+
+Dim objFSO, objFile
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+set nrpeFile = objFSO.openTextFile("c:\nrpe_nt\nrpe.cfg", 8)
+nrpeFile.writeLine("server_address=" & Wscript.Arguments.Named("i"))
+nrpeFile.Close
+</script>
+</job>

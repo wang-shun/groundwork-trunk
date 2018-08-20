@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets"
+	xmlns:c="http://java.sun.com/jstl/core">
+	<ui:define name="content">
+
+		<ice:panelGrid columns="1" id="HV_panelActs" width="100%"
+			rendered="#{userRoleBean.userInAdminOrOperatorRole}"
+			styleClass="UniqueActionsIDhv UniqueActionsID portletStyle hv_actions">
+			<ui:include src="actions.jspx" />
+		</ice:panelGrid>
+
+		<ice:panelGrid columns="2" id="HVpanel1" width="100%" border="0"
+			cellpadding="0" cellspacing="0">
+			<ice:panelGrid columns="1" id="HVpanel15"
+				styleClass="portletStyle hv_hostHealth">
+				<ui:include src="hv_hostHealth.jspx" />
+			</ice:panelGrid>
+
+			<ice:panelGrid columns="1" id="HVpanel16"
+				styleClass="portletStyle hv_filterView">
+				<ui:include src="hv_filterView.jspx" />
+			</ice:panelGrid>
+
+			<ice:panelGrid columns="1" id="HVpanel81"
+				styleClass="portletStyle hv_hostInformation">
+				<ui:include src="hv_hostInformation.jspx" />
+			</ice:panelGrid>
+
+			<ice:panelGrid columns="1" id="HVpanel82"
+				styleClass="portletStyle hv_Service">
+				<ui:include src="hv_Service.jspx" />
+			</ice:panelGrid>
+		</ice:panelGrid>
+
+
+
+		<ice:panelCollapsible id="hostAvailPanel" expanded="false">
+			<f:facet name="header">
+				<ice:panelGroup>
+					<ice:outputText id="hostAvailHeader"
+						value="Host Availability &amp; Performance Measurement" />
+				</ice:panelGroup>
+			</f:facet>
+			<ice:panelGrid columns="1" id="HVpanelHostAvailability"
+				styleClass="portletStyle hv_hostAvailability">
+				<ui:include src="hv_hostAvailability.jspx" />
+			</ice:panelGrid>
+
+			<ice:panelGrid columns="1" id="HVpanel3"
+				styleClass="portletStyle hv_perfmeasurementEE">
+				<ui:include src="hv_perfmeasurementEE.jspx" />
+			</ice:panelGrid>
+		</ice:panelCollapsible>
+
+		<ice:panelCollapsible id="servicelistPanel" expanded="false">
+			<f:facet name="header">
+				<ice:panelGroup>
+					<ice:outputText id="servicelistHeader" value="Service List" />
+				</ice:panelGroup>
+			</f:facet>
+			<ice:panelGrid columns="1" id="HVpanel4"
+				styleClass="portletStyle hv_serviceListView">
+				<ui:include src="hv_serviceListView.jspx" />
+			</ice:panelGrid>
+		</ice:panelCollapsible>
+
+		<ice:panelCollapsible id="eventPanel" expanded="false">
+			<f:facet name="header">
+				<ice:panelGroup>
+					<ice:outputText id="eventHeader" value="Events" />
+				</ice:panelGroup>
+			</f:facet>
+			<ice:panelGrid columns="1" id="HVpanelEvent"
+				styleClass="portlet_maxwidth portletStyle hv_allv_event">
+				<ui:include src="allv_event.jspx" />
+			</ice:panelGrid>
+		</ice:panelCollapsible>
+
+		<ice:panelCollapsible id="commentsPanel" expanded="false" rendered="#{actionBean.rendered}">
+			<f:facet name="header">
+				<ice:panelGroup>
+					<ice:outputText id="commentsHeader" value="Comments" />
+				</ice:panelGroup>
+			</f:facet>
+			<ice:panelGrid columns="1" id="HVpanel5"
+				style="margin:0 0 3px 0px; width:100%;" styleClass="portletStyle"
+				cellpadding="0" cellspacing="0">
+				<ice:panelGrid columns="1" id="hostMegaPortletInner_panel1"
+					style=" border-bottom:1px solid #ababab;background:url(/portal-statusviewer/css/css-images/dt_typb_hdr_bg.gif) repeat-x bottom;">
+					<ice:outputText value="Host Comments" />
+				</ice:panelGrid>
+
+				<ice:panelGrid columns="1" id="hostMegaPortletInner_panel2"
+					cellpadding="2" style="margin:10px 0;">
+					<ui:include src="hv_commentsView.jspx" />
+				</ice:panelGrid>
+			</ice:panelGrid>
+		</ice:panelCollapsible>
+		<!-- Panel Pop-up for Integration with Action Portlet links  -->
+		<ui:include src="/jsp/acknowledgePopup.jspx">
+		</ui:include>
+		<!-- Info Panel Pop-up to be displayed when nagios is down  -->
+		<ui:include src="/jsp/acknowledgeErrorPopup.jspx"></ui:include>
+
+		<!-- Modal pop-up to be displayed when user clicks on any child menu-->
+		<ui:include src="/jsp/actionsPortletPopup.jspx"></ui:include>
+		<!-- Modal pop-up for info to be displayed when user clicks on any child menu and the nagios is down-->
+		<ui:include src="/jsp/actionsPortletNagiosDownPopup.jspx"></ui:include>
+
+	</ui:define>
+</ui:composition>

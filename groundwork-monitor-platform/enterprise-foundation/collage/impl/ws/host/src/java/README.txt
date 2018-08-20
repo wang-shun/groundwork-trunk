@@ -1,0 +1,1 @@
+Structure generated from fwshostgroup.wsdl

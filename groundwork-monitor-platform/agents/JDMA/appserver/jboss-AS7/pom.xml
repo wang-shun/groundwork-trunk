@@ -1,0 +1,101 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.groundwork</groupId>
+        <artifactId>gw-jdma-pom</artifactId>
+        <version>2.5-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <groupId>org.groundwork</groupId>
+    <artifactId>gw-jdma-jbossas7</artifactId>
+    <packaging>war</packaging>
+    <version>2.5-SNAPSHOT</version>
+    <name>JDMA JBoss AS7 Agent</name>
+    <description>Groundwork JDMA JBoss AS7 Agent</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <skipTests>true</skipTests>
+        <appserver_camelcase>JBossAS7</appserver_camelcase>
+        <appserver_lowercase>jbossas7</appserver_lowercase>
+        <appserver_shortname>jbossas7</appserver_shortname>
+        <appserver_config_path>/usr/local/groundwork/jpp/modules/com/groundwork/jdma/jbossas7/main/</appserver_config_path>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.groundwork</groupId>
+            <artifactId>gw-jdma-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>servlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.googlecode.jsendnsca</groupId>
+            <artifactId>jsendnsca</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.groundwork</groupId>
+            <artifactId>agents-common</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.spec.javax.management.j2ee</groupId>
+            <artifactId>jboss-j2eemgmt-api_1.1_spec</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss</groupId>
+            <artifactId>jboss-client</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <sourceDirectory>${basedir}/src</sourceDirectory>
+        <finalName>gwos-jbossas7-monitoringAgent</finalName>
+        <resources>
+            <resource>
+                <directory>${basedir}/resources</directory>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-resources</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/${project.build.finalName}/</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>../../common/webapp</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                            <overwrite>true</overwrite>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <configuration>
+                    <warSourceDirectory>${basedir}/WebContent</warSourceDirectory>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

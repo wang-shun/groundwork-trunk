@@ -1,0 +1,729 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions targetNamespace="urn:fws"  xmlns:fwsmodel="http://model.ws.foundation.groundwork.org" xmlns:apachesoap="http://xml.apache.org/xml-soap" xmlns:impl="urn:fws" xmlns:intf="urn:fws" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:wsdlsoap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Inc. info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-->
+
+<wsdl:import namespace="urn:fwsmodel"
+			xmlns:fwsmodel="http://model.ws.foundation.groundwork.org"
+			location="../fwsmodel.wsdl" />
+			<!-- location="http://172.28.113.227/fwsmodel.wsdl" /> -->
+
+<wsdl:documentation>Event Web Service is an API that manages LogMessage stored in Foundation</wsdl:documentation>
+   	<wsdl:message name="getEventsForDeviceResponse">
+
+      <wsdl:part name="getEventsForDeviceReturn" type="fwsmodel:WSFoundationCollection"/>
+
+   	</wsdl:message>
+
+   	<wsdl:message name="getEventsForDeviceRequest">
+	<wsdl:documentation>Event WS under request message.
+			getEventsForDeviceRequest - Description for parts.
+		</wsdl:documentation>
+      <wsdl:part name="deviceName" type="xsd:string">
+      	<wsdl:documentation>String parameter as device name.   </wsdl:documentation></wsdl:part>
+
+   	</wsdl:message>
+
+	<wsdl:message name="getEventsRequest">
+      <wsdl:documentation>Event WS under request message.getEventsRequest - Description for parts.</wsdl:documentation>
+
+      <wsdl:part name="type" type="fwsmodel:EventQueryType">
+      	<wsdl:documentation>EventQueryType is an enumeration of possible parameters to be used to retrieve Events. Type can be one of - ALL, DEVICEID, DEVICEIDENTIFICATION, HOSTGROUPID, HOSTGROUPNAME, HOSTID, HOSTNAME, SERVICEDESCRIPTION, EVENTID,  FOUNDATION_QUERY_PREPARE</wsdl:documentation></wsdl:part>
+
+      <wsdl:part name="value" type="xsd:string">
+      	<wsdl:documentation>Applicable for types except “ALL”. Specify LogmessageID Or device definition  or host group Id or host group name or host id as per the type</wsdl:documentation></wsdl:part>
+
+      <wsdl:part name="appType" type="xsd:string">
+      	<wsdl:documentation>A type of application that has been  configured to be monitored through the collage system. E.g NAGIOS</wsdl:documentation></wsdl:part>
+	  
+      <wsdl:part name="startRange" type="xsd:string">
+      	<wsdl:documentation>valid start date string 
+			Example:-2009-11-20 20:10:55
+</wsdl:documentation></wsdl:part>
+
+      <wsdl:part name="endRange" type="xsd:string">
+      	<wsdl:documentation>) valid end date string 
+Example:-2009-11-25 20:10:05
+</wsdl:documentation></wsdl:part>
+      
+      <wsdl:part name="orderedBy" type="fwsmodel:SortCriteria">
+      	<wsdl:documentation>Defines sorting – ascending or descending order.</wsdl:documentation></wsdl:part>
+      
+      <wsdl:part name="firstResult" type="xsd:int">
+      	<wsdl:documentation>beginning record number [first result]</wsdl:documentation></wsdl:part>
+      
+      <wsdl:part name="maxResults" type="xsd:int">
+      	<wsdl:documentation>last record number [maximum results]</wsdl:documentation></wsdl:part>      
+            
+   </wsdl:message>
+   
+   <wsdl:message name="getEventsResponse">
+      <wsdl:documentation>Returns WSFoundationCollection: collection of Log messages as per the input parameters specified.</wsdl:documentation>
+
+      <wsdl:part name="getEventsReturn" type="fwsmodel:WSFoundationCollection"/>
+
+   </wsdl:message>   
+   
+	<wsdl:message name="getEventsByStringRequest">
+      <wsdl:documentation>Event WS under request message.getEventsByStringRequest - Description for parts.</wsdl:documentation>
+
+      <wsdl:part name="type" type="xsd:string">
+      	<wsdl:documentation>Type is String parameters to be used to retrieve Events. Type can be one of - ALL, DEVICEID, DEVICEIDENTIFICATION, HOSTGROUPID, HOSTGROUPNAME, HOSTID, HOSTNAME, SERVICEDESCRIPTION, EVENTID,  FOUNDATION_QUERY_PREPARE. </wsdl:documentation></wsdl:part>
+
+      <wsdl:part name="value" type="xsd:string">
+      	<wsdl:documentation>Applicable for types except “ALL”. Specify LogmessageID Or device definition  or host group Id or host group name or host id as per the type.</wsdl:documentation></wsdl:part>
+
+      <wsdl:part name="appType" type="xsd:string">
+      	<wsdl:documentation>A type of application that has been  configured to be monitored through the collage system. E.g NAGIOS</wsdl:documentation></wsdl:part>
+	  
+      <wsdl:part name="startRange" type="xsd:string">
+      	<wsdl:documentation>): valid string format  start date 
+Example:-2009-11-20 20:10:55
+</wsdl:documentation></wsdl:part>
+
+      <wsdl:part name="endRange" type="xsd:string">
+      	<wsdl:documentation>valid string format  end date  
+Example:-2009-11-25 20:10:05
+</wsdl:documentation></wsdl:part>
+      
+      <wsdl:part name="sortOrder" type="xsd:string">
+      	<wsdl:documentation>Defines sorting – ascending or descending order.
+Note:-currently not supported
+</wsdl:documentation></wsdl:part>
+       
+      <wsdl:part name="sortField" type="xsd:string">
+      	<wsdl:documentation>Defines  sort Field name.
+Note:-currently not supported
+</wsdl:documentation></wsdl:part>
+      
+      <wsdl:part name="firstResult" type="xsd:string">
+      	<wsdl:documentation> beginning record number [first result]</wsdl:documentation></wsdl:part>
+      
+      <wsdl:part name="maxResults" type="xsd:string">
+      	<wsdl:documentation>last record number [maximum results]</wsdl:documentation></wsdl:part>            
+            
+   </wsdl:message>
+   
+   <wsdl:message name="getEventsByStringResponse">
+      <wsdl:documentation>Returns WSFoundationCollection: collection of Log messages as per the input parameters specified.</wsdl:documentation>
+
+      <wsdl:part name="getEventsByStringReturn" type="fwsmodel:WSFoundationCollection"/>
+
+   </wsdl:message>
+   <wsdl:message name="getEventStatisticsByHostRequest">
+      <wsdl:documentation>Event WS under request message.getEventStatisticsByHostRequest - Description for parts.</wsdl:documentation>
+
+      <wsdl:part name="appType" type="xsd:string">
+      	<wsdl:documentation>A type of application that has been  configured to be monitored through the collage system. E.g NAGIOS</wsdl:documentation></wsdl:part>
+
+	  <wsdl:part name="hostName" type="xsd:string">
+	  	<wsdl:documentation>Valid String Host name.</wsdl:documentation></wsdl:part>
+	  
+      <wsdl:part name="startRange" type="xsd:string">
+      	<wsdl:documentation>valid string format  start date 
+Example:-2009-11-20 20:10:55
+</wsdl:documentation></wsdl:part>
+
+      <wsdl:part name="endRange" type="xsd:string">
+      	<wsdl:documentation>valid string format  end date  
+Example:-2009-11-25 20:10:05
+</wsdl:documentation></wsdl:part>
+      
+      <wsdl:part name="statisticType" type="xsd:string">
+      	<wsdl:documentation>statisticType One of the following: SEVERITY, OPERATION_STATUS, MONITOR_STATUS</wsdl:documentation></wsdl:part>
+            
+   </wsdl:message>
+   <wsdl:message name="getEventStatisticsByHostResponse">
+      <wsdl:documentation>Returns WSFoundationCollection: collection of Log messages as per the input parameters specified.</wsdl:documentation>
+
+      <wsdl:part name="getEventStatisticsByHostReturn" type="fwsmodel:WSFoundationCollection"/>
+
+   </wsdl:message>  
+   
+   <wsdl:message name="getEventStatisticsByHostGroupRequest">
+      <wsdl:documentation>Event WS under request message.getEventStatisticsByHostGroupRequest - Description for parts.</wsdl:documentation>
+
+      <wsdl:part name="appType" type="xsd:string">
+      	<wsdl:documentation>A type of application that has been  configured to be monitored through the collage system. E.g NAGIOS</wsdl:documentation></wsdl:part>
+
+	  <wsdl:part name="hostGroupName" type="xsd:string">
+	  	<wsdl:documentation>Valid String Host group name.</wsdl:documentation></wsdl:part>
+	  
+      <wsdl:part name="startRange" type="xsd:string">
+      	<wsdl:documentation>valid string format  start date 
+Example:-2009-11-20 20:10:55
+</wsdl:documentation></wsdl:part>
+
+      <wsdl:part name="endRange" type="xsd:string">
+      	<wsdl:documentation>) valid string format  end date  
+Example:-2009-11-25 20:10:05
+</wsdl:documentation></wsdl:part>
+      
+      <wsdl:part name="statisticType" type="xsd:string">
+      	<wsdl:documentation>One of the following: SEVERITY, OPERATION_STATUS, MONITOR_STATUS</wsdl:documentation></wsdl:part>
+            
+   </wsdl:message>
+   
+   <wsdl:message name="getEventStatisticsByHostGroupResponse">
+      <wsdl:documentation>Returns WSFoundationCollection: collection of Log messages as per the input parameters specified.</wsdl:documentation>
+
+      <wsdl:part name="getEventStatisticsByHostGroupReturn" type="fwsmodel:WSFoundationCollection"/>
+
+   </wsdl:message>     
+   
+   <wsdl:message name="getEventsByCriteriaRequest">
+      <wsdl:documentation>Event WS under request messagegetEventsByCriteriaRequest - Description for parts.</wsdl:documentation>
+
+      <wsdl:part name="filter" type="fwsmodel:Filter">
+      	<wsdl:documentation>A filter is provided to build the criteria for doing the required queries on the model (Foundation). Filters can be composed .
+Example:-get all open events
+Filter filter=new Filter(“operationStatus.name”,FilterOperator.EQ,”open”) 
+ </wsdl:documentation></wsdl:part>
+      <wsdl:part name="sort" type="fwsmodel:Sort">
+      	<wsdl:documentation>Returns collection of events which sort by SortItem object</wsdl:documentation></wsdl:part>
+      <wsdl:part name="firstResult" type="xsd:int">
+      	<wsdl:documentation>beginning record number [first result]</wsdl:documentation></wsdl:part>
+      <wsdl:part name="maxResults" type="xsd:int">
+      	<wsdl:documentation>last record number [maximum results]</wsdl:documentation></wsdl:part>            
+
+   </wsdl:message>
+   
+   <wsdl:message name="getEventsByCriteriaResponse">
+      <wsdl:documentation>Returns WSFoundationCollection: collection of Log messages as per the input parameters specified.</wsdl:documentation>
+
+      <wsdl:part name="getEventsByCriteriaReturn" type="fwsmodel:WSFoundationCollection"/>
+
+   </wsdl:message>  
+   
+   <wsdl:message name="getEventsByIdsRequest">
+      <wsdl:documentation>Event WS under request message getEventsByIdsRequest - Description for parts.</wsdl:documentation>
+      <wsdl:part name="ids" type="xsd:int[]">
+      	<wsdl:documentation>integer array of  LogMessageID [Refer Log message table under GWcollage database]</wsdl:documentation></wsdl:part>
+      <wsdl:part name="sort" type="fwsmodel:Sort">
+      	<wsdl:documentation>Returns collection of events which sort by SortItem object </wsdl:documentation></wsdl:part>
+      <wsdl:part name="firstResult" type="xsd:int">
+      	<wsdl:documentation>beginning record number [first result]</wsdl:documentation></wsdl:part>
+      <wsdl:part name="maxResults" type="xsd:int">
+      	<wsdl:documentation>last record number [maximum results]  </wsdl:documentation></wsdl:part>            
+
+   </wsdl:message>
+   
+   <wsdl:message name="getEventsByIdsResponse">
+      <wsdl:documentation>Returns WSFoundationCollection: collection of Log messages as per the input parameters specified.</wsdl:documentation>
+
+      <wsdl:part name="getEventsByIdsReturn" type="fwsmodel:WSFoundationCollection"/>
+
+   </wsdl:message>     
+   
+      <wsdl:message name="getHostStateTransitionsRequest">
+      <wsdl:documentation>Event WS under request message getHostStateTransitionsRequest- Description for parts.</wsdl:documentation>
+      <wsdl:part name="hostName" type="xsd:string">
+      	<wsdl:documentation>valid String host name</wsdl:documentation></wsdl:part>
+      <wsdl:part name="startDate" type="xsd:string">
+      	<wsdl:documentation> valid start date string 
+Example:-2009-11-20 20:10:55
+</wsdl:documentation></wsdl:part>
+      <wsdl:part name="endDate" type="xsd:string">
+      	<wsdl:documentation>valid end date string 
+Example:-2009-11-25 20:10:05
+</wsdl:documentation></wsdl:part>            
+
+   </wsdl:message>
+   
+   <wsdl:message name="getHostStateTransitionsResponse">
+      <wsdl:documentation>Returns WSFoundationCollection: collection of Log messages as per the input parameters specified.</wsdl:documentation>
+
+      <wsdl:part name="getHostStateTransitionsReturn" type="fwsmodel:WSFoundationCollection"/>
+
+   </wsdl:message>  
+   
+      <wsdl:message name="getServiceStateTransitionsRequest">
+      <wsdl:documentation>Event WS under request message getServiceStateTransitionsRequest-Description for parts.</wsdl:documentation>
+      <wsdl:part name="hostName" type="xsd:string">
+      	<wsdl:documentation>Valid String host name</wsdl:documentation></wsdl:part>
+       <wsdl:part name="serviceName" type="xsd:string">
+       	<wsdl:documentation>Valid String  Service name </wsdl:documentation></wsdl:part>
+      <wsdl:part name="startDate" type="xsd:string">
+      	<wsdl:documentation>Valid start date string 
+Example:-2009-11-20 20:10:55
+</wsdl:documentation></wsdl:part>
+      <wsdl:part name="endDate" type="xsd:string">
+      	<wsdl:documentation>Valid end date string 
+Example:-2009-11-25 20:10:05
+</wsdl:documentation></wsdl:part>           
+
+   </wsdl:message>
+   
+   <wsdl:message name="getServiceStateTransitionsResponse">
+      <wsdl:documentation>Returns WSFoundationCollection: collection of Log messages as per the input parameters specified.</wsdl:documentation>
+
+      <wsdl:part name="getServiceStateTransitionsReturn" type="fwsmodel:WSFoundationCollection"/>
+
+   </wsdl:message>  
+   
+     <wsdl:message name="getEventsByCategoryRequest">
+      <wsdl:documentation>Event WS under request message getServiceStateTransitionsRequest-Description for parts.</wsdl:documentation>
+      <wsdl:part name="categoryName" type="xsd:string">
+      	<wsdl:documentation>Name of the category.</wsdl:documentation></wsdl:part>
+       <wsdl:part name="entityTypeName" type="xsd:string">
+       	<wsdl:documentation>Entity Type name.</wsdl:documentation></wsdl:part>
+       <wsdl:part name="filter" type="fwsmodel:Filter">
+       	<wsdl:documentation>A filter is provided to build the criteria for doing the required queries on the model (Foundation). Filters can be composed with the help of disjunctions (AND) and conjunctions (OR). </wsdl:documentation></wsdl:part>
+      <wsdl:part name="sort" type="fwsmodel:Sort">
+      	<wsdl:documentation>Returns collection of events which sort by SortItem object</wsdl:documentation></wsdl:part>
+      <wsdl:part name="firstResult" type="xsd:int">
+      	<wsdl:documentation>beginning record number [first result]</wsdl:documentation></wsdl:part>
+      <wsdl:part name="maxResults" type="xsd:int">
+      	<wsdl:documentation>last record number [maximum results]</wsdl:documentation></wsdl:part>                   
+
+   </wsdl:message>
+   
+   <wsdl:message name="getEventsByCategoryResponse">
+      <wsdl:documentation>Returns WSFoundationCollection: collection of Log messages as per the input parameters specified.</wsdl:documentation>
+
+      <wsdl:part name="getEventsByCategoryReturn" type="fwsmodel:WSFoundationCollection"/>
+
+   </wsdl:message>  
+      
+          <wsdl:message name="getEventsByRestrictedHostGroupsAndServiceGroupsRequest">
+      <wsdl:documentation>Event WS under request message getEventsByRestrictedHostGroupsAndServiceGroupsRequest-Description for parts.</wsdl:documentation>
+      <wsdl:part name="hostGroupList" type="xsd:string">
+      	<wsdl:documentation>Comma separated host group name list.</wsdl:documentation></wsdl:part>
+       <wsdl:part name="serviceGroupList" type="xsd:string">
+       	<wsdl:documentation>Comma separated service group name list.</wsdl:documentation></wsdl:part>
+       <wsdl:part name="filter" type="fwsmodel:Filter">
+       	<wsdl:documentation>A filter is provided to build the criteria for doing the required queries on the model (Foundation). Filters can be composed with the help of disjunctions (AND) and conjunctions (OR). </wsdl:documentation></wsdl:part>
+      <wsdl:part name="sort" type="fwsmodel:Sort">
+      	<wsdl:documentation>Returns collection of events which sort by SortItem object</wsdl:documentation></wsdl:part>
+      <wsdl:part name="firstResult" type="xsd:int">
+      	<wsdl:documentation>beginning record number [first result]</wsdl:documentation></wsdl:part>
+      <wsdl:part name="maxResults" type="xsd:int">
+      	<wsdl:documentation>last record number [maximum results]</wsdl:documentation></wsdl:part>                   
+
+   </wsdl:message>
+   
+   <wsdl:message name="getEventsByRestrictedHostGroupsAndServiceGroupsResponse">
+      <wsdl:documentation>Returns WSFoundationCollection: collection of Log messages as per the input parameters specified.</wsdl:documentation>
+
+      <wsdl:part name="getEventsByRestrictedHostGroupsAndServiceGroupsReturn" type="fwsmodel:WSFoundationCollection"/>
+
+   </wsdl:message> 
+      
+   <wsdl:message name="WSFoundationException">
+
+      <wsdl:part name="fault" element="fwsmodel:WSFoundationException"/>
+
+   </wsdl:message>
+
+   <wsdl:portType name="WSEvent">
+
+      <wsdl:operation name="getEvents" parameterOrder="type value appType startRange endRange orderedBy firstResult maxResults">
+         <wsdl:documentation>Gets events for the specified time period and event type.  If type and   value are null, return all events for the specified time period.  It is 
+ Valid to provide only type and value and no time.  This will cause all events related to the specified object type to be returned.
+</wsdl:documentation>
+
+         <wsdl:input message="impl:getEventsRequest" name="getEventsRequest"/>
+
+         <wsdl:output message="impl:getEventsResponse" name="getEventsResponse"/>
+
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+
+      </wsdl:operation>
+
+      <wsdl:operation name="getEventsByString" parameterOrder="type value appType startRange endRange sortOrder sortField firstResult maxResults">
+         <wsdl:documentation>Gets events for the specified time period and event type.  If type and value are null, return all events for the specified time period.  It is 
+ Valid to provide only type and value and no time.  This will cause all events related to the specified object type to be returned. All parameters are String type
+</wsdl:documentation>
+
+         <wsdl:input message="impl:getEventsByStringRequest" name="getEventsByStringRequest"/>
+
+         <wsdl:output message="impl:getEventsByStringResponse" name="getEventsByStringResponse"/>
+
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+
+      </wsdl:operation>
+      
+      <wsdl:operation name="getEventsForDevice" parameterOrder="deviceName">
+         <wsdl:documentation>Retrieves collection of event as per the specified parameter.</wsdl:documentation>
+
+         <wsdl:input message="impl:getEventsForDeviceRequest" name="getEventsForDeviceRequest"/>
+
+         <wsdl:output message="impl:getEventsForDeviceResponse" name="getEventsForDeviceResponse"/>
+
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+
+      </wsdl:operation>
+      <wsdl:operation name="getEventStatisticsByHost" parameterOrder="appType hostName startRange endRange statisticType">
+         <wsdl:documentation>Retrieves current event statistics for host as per the specified type and other parameters.</wsdl:documentation>
+
+         <wsdl:input message="impl:getEventStatisticsByHostRequest" name="getEventStatisticsByHostRequest"/>
+
+         <wsdl:output message="impl:getEventStatisticsByHostResponse" name="getEventStatisticsByHostResponse"/>
+
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+
+      </wsdl:operation>
+      <wsdl:operation name="getEventStatisticsByHostGroup" parameterOrder="appType hostGroupName startRange endRange statisticType">
+         <wsdl:documentation>Retrieves current event statistics for host group as per the specified type and other parameters.</wsdl:documentation>
+
+         <wsdl:input message="impl:getEventStatisticsByHostGroupRequest" name="getEventStatisticsByHostGroupRequest"/>
+
+         <wsdl:output message="impl:getEventStatisticsByHostGroupResponse" name="getEventStatisticsByHostGroupResponse"/>
+
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+
+      </wsdl:operation>
+      <wsdl:operation name="getEventsByCriteria" parameterOrder="filter sort firstResult maxResults">
+         <wsdl:documentation>Returns collection of events which match specified filter criteria and other parameters.</wsdl:documentation>
+
+         <wsdl:input message="impl:getEventsByCriteriaRequest" name="getEventsByCriteriaRequest"/>
+
+         <wsdl:output message="impl:getEventsByCriteriaResponse" name="getEventsByCriteriaResponse"/>
+
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+
+      </wsdl:operation>
+      <wsdl:operation name="getEventsByIds" parameterOrder="ids sort firstResult maxResults">
+         <wsdl:documentation>Returns collection of events which match ids specified and pagination criteria</wsdl:documentation>
+
+         <wsdl:input message="impl:getEventsByIdsRequest" name="getEventsByIdsRequest"/>
+
+         <wsdl:output message="impl:getEventsByIdsResponse" name="getEventsByIdsResponse"/>
+
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+
+      </wsdl:operation>   
+      
+       <wsdl:operation name="getHostStateTransitions" parameterOrder="hostName startDate endDate">
+	      <wsdl:documentation>Returns host state transitions for the supplied host and the date range.</wsdl:documentation>
+	      <wsdl:input message="impl:getHostStateTransitionsRequest" name="getHostStateTransitionsRequest"/>
+          <wsdl:output message="impl:getHostStateTransitionsResponse" name="getHostStateTransitionsResponse" />
+	       <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+      </wsdl:operation>
+      
+       <wsdl:operation name="getServiceStateTransitions" parameterOrder="hostName serviceName startDate endDate">
+	      <wsdl:documentation>Returns service state transitions for the supplied host, service and the date range.</wsdl:documentation>
+	      <wsdl:input message="impl:getServiceStateTransitionsRequest" name="getServiceStateTransitionsRequest"/>
+          <wsdl:output message="impl:getServiceStateTransitionsResponse" name="getServiceStateTransitionsResponse" />
+	       <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+      </wsdl:operation>
+      
+      <wsdl:operation name="getEventsByCategory" parameterOrder="categoryName entityTypeName filter sort firstResult maxResults">
+         <wsdl:documentation>Gets events for the supplied categoryName and entityName.</wsdl:documentation>
+
+         <wsdl:input message="impl:getEventsByCategoryRequest" name="getEventsByCategoryRequest"/>
+
+         <wsdl:output message="impl:getEventsByCategoryResponse" name="getEventsByCategoryResponse"/>
+
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+
+      </wsdl:operation>
+      
+      <wsdl:operation name="getEventsByRestrictedHostGroupsAndServiceGroups" parameterOrder="hostGroupList serviceGroupList filter sort firstResult maxResults">
+         <wsdl:documentation>Gets events for the supplied comma separated host group list and service group list.</wsdl:documentation>
+
+         <wsdl:input message="impl:getEventsByRestrictedHostGroupsAndServiceGroupsRequest" name="getEventsByRestrictedHostGroupsAndServiceGroupsRequest"/>
+
+         <wsdl:output message="impl:getEventsByRestrictedHostGroupsAndServiceGroupsResponse" name="getEventsByRestrictedHostGroupsAndServiceGroupsResponse"/>
+
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+
+      </wsdl:operation>   
+   </wsdl:portType>
+
+   <wsdl:binding name="eventSoapBinding" type="impl:WSEvent">
+
+      <wsdlsoap:binding style="rpc" transport="http://schemas.xmlsoap.org/soap/http" />
+
+      <wsdl:operation name="getEvents">
+
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsevent"/>
+
+         <wsdl:input name="getEventsRequest">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:input>
+
+         <wsdl:output name="getEventsResponse">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException" >
+
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+
+         </wsdl:fault>
+
+      </wsdl:operation>
+
+      <wsdl:operation name="getEventsByString">
+
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsevent"/>
+
+         <wsdl:input name="getEventsByStringRequest">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:input>
+
+         <wsdl:output name="getEventsByStringResponse">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException" >
+
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+
+         </wsdl:fault>
+
+      </wsdl:operation>
+      
+      <wsdl:operation name="getEventsForDevice">
+
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsevent"/>
+
+         <wsdl:input name="getEventsForDeviceRequest">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:input>
+
+         <wsdl:output name="getEventsForDeviceResponse">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException">
+
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+
+         </wsdl:fault>
+
+      </wsdl:operation>
+      
+      <wsdl:operation name="getEventStatisticsByHost">
+
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsevent"/>
+
+         <wsdl:input name="getEventStatisticsByHostRequest">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:input>
+
+         <wsdl:output name="getEventStatisticsByHostResponse">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException" >
+
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+
+         </wsdl:fault>
+
+      </wsdl:operation>
+      <wsdl:operation name="getEventStatisticsByHostGroup">
+
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsevent"/>
+
+         <wsdl:input name="getEventStatisticsByHostGroupRequest">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:input>
+
+         <wsdl:output name="getEventStatisticsByHostGroupResponse">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException" >
+
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+
+         </wsdl:fault>
+
+      </wsdl:operation>
+
+      <wsdl:operation name="getEventsByCriteria">
+
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsevent"/>
+
+         <wsdl:input name="getEventsByCriteriaRequest">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:input>
+
+         <wsdl:output name="getEventsByCriteriaResponse">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException">
+
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+
+         </wsdl:fault>
+
+      </wsdl:operation>
+      
+      <wsdl:operation name="getEventsByIds">
+
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsevent"/>
+
+         <wsdl:input name="getEventsByIdsRequest">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:input>
+
+         <wsdl:output name="getEventsByIdsResponse">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException">
+
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+
+         </wsdl:fault>
+
+      </wsdl:operation>  
+      
+       <wsdl:operation name="getHostStateTransitions">
+
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsevent"/>
+
+         <wsdl:input name="getHostStateTransitionsRequest">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:input>
+
+         <wsdl:output name="getHostStateTransitionsResponse">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException">
+
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+
+         </wsdl:fault>
+
+      </wsdl:operation>      
+      
+      <wsdl:operation name="getServiceStateTransitions">
+
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsevent"/>
+
+         <wsdl:input name="getServiceStateTransitionsRequest">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:input>
+
+         <wsdl:output name="getServiceStateTransitionsResponse">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException">
+
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+
+         </wsdl:fault>
+
+      </wsdl:operation>    
+      
+       <wsdl:operation name="getEventsByCategory">
+
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsevent"/>
+
+         <wsdl:input name="getEventsByCategoryRequest">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:input>
+
+         <wsdl:output name="getEventsByCategoryResponse">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException">
+
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+
+         </wsdl:fault>
+
+      </wsdl:operation>
+      
+      <wsdl:operation name="getEventsByRestrictedHostGroupsAndServiceGroups">
+
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsevent"/>
+
+         <wsdl:input name="getEventsByRestrictedHostGroupsAndServiceGroupsRequest">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:input>
+
+         <wsdl:output name="getEventsByRestrictedHostGroupsAndServiceGroupsResponse">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException">
+
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+
+         </wsdl:fault>
+
+      </wsdl:operation>
+          
+   </wsdl:binding>
+
+   <wsdl:service name="WSEventService">
+
+      <wsdl:port binding="impl:eventSoapBinding" name="wsevent">
+
+	  	<wsdlsoap:address location="http://localhost:8080/foundation-webapp/services/wsevent"/>
+
+      </wsdl:port>
+
+   </wsdl:service>
+
+</wsdl:definitions>

@@ -1,0 +1,156 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+# Copyright (c) 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+#
+# create_cloud_objects
+#
+# This script is a convenience to create and install certain Monarch objects
+# during the installation of the Cloud Connector RPM, to simplify getting the
+# package up and running by avoiding the need for manual actions.
+
+# Change log:
+#
+# 2010-10-22	v0.1	Initial version.
+# 2010-11-05	v0.2	Split EC2 and Eucalyptus support into separate profiles.
+
+use strict;
+
+my $PROGNAME = 'create_cloud_objects';
+my $VERSION  = '0.2';
+
+my $inactive_hosts_hostgroup = 'Inactive Cloud Hosts';
+
+# FIX LATER:  we might someday also provide these additional profiles:
+#     host profile:     host-profile-eucalyptus-server.xml
+#     service profile:  service-profile-eucalyptus-server.xml
+# for a Eucalyptus server and its components.
+
+my %host_profiles_to_import = (
+  'host-profile-ec2-availability-zone'        => 'host-profile-ec2-availability-zone.xml',
+  'host-profile-eucalyptus-availability-zone' => 'host-profile-eucalyptus-availability-zone.xml',
+  'host-profile-cloud-machine-default'        => 'host-profile-cloud-machine-default.xml'
+);
+my %service_profiles_to_import = (
+  'ec2-availability-zone'        => 'service-profile-ec2-availability-zone.xml',
+  'eucalyptus-availability-zone' => 'service-profile-eucalyptus-availability-zone.xml',
+  'ssh-hadoop'                   => 'service-profile-ssh-hadoop.xml'
+);
+
+use Getopt::Long;
+
+use dassmonarch;
+use monarchWrapper;
+
+# ================================================================
+
+use vars qw($opt_h $opt_v);
+
+sub print_usage {
+    print "usage:  $PROGNAME\n";
+}
+
+my $status = GetOptions( 'v' => \$opt_v, 'version' => \$opt_v, 'h' => \$opt_h, 'help' => \$opt_h );
+
+if ( not $status ) {
+    print "FATAL:  Cannot understand command-line arguments.\n";
+    exit 1;
+}
+
+if ($opt_v) {
+    print "Version:  $PROGNAME $VERSION\n";
+    exit 0;
+}
+
+if ($opt_h) {
+    print_usage();
+    exit 0;
+}
+
+#################################################################
+# Setup
+#################################################################
+
+use sigtrap qw(die untrapped normal-signals QUIT stack-trace error-signals);
+
+#################################################################
+# Read data from Monarch and make updates as necessary
+#################################################################
+
+my $monarchapi = dassmonarch->new();
+$monarchapi->set_debuglevel('warning');
+
+# create inactive hostgroup if necessary
+if ( !defined($inactive_hosts_hostgroup) || $inactive_hosts_hostgroup eq '' ) {
+    print "FATAL:  The configured inactive_hosts_hostgroup is blank.\n";
+    exit 1;
+}
+if ( !$monarchapi->hostgroup_exists($inactive_hosts_hostgroup) ) {
+    print "NOTICE:  inactive cloud hosts hostgroup \"$inactive_hosts_hostgroup\" does not exist; will create.\n";
+    my $result = $monarchapi->create_hostgroup( $inactive_hosts_hostgroup, $inactive_hosts_hostgroup );
+    if ( !$result ) {
+	print "FATAL:  Could not create the inactive cloud hosts hostgroup.\n";
+	exit 1;
+    }
+}
+else {
+    print "NOTICE:  inactive cloud hosts hostgroup \"$inactive_hosts_hostgroup\" already exists.\n";
+}
+
+my @files  = ();
+
+# Import host profiles for the cloud.
+foreach my $profile (keys %host_profiles_to_import) {
+    my %where = ( 'name' => $profile );
+    my %results = monarchWrapper->fetch_one_where( 'profiles_host', \%where );
+    if (%results) {
+	my $profiledesc = $results{'description'};
+	print "NOTICE:  host profile \"$profile\" ($profiledesc) already exists.\n";
+    }
+    else {
+	print "NOTICE:  host profile \"$profile\" does not exist; will import.\n";
+	push @files, $host_profiles_to_import{$profile};
+    }
+}
+
+# Import service profiles for the cloud.
+foreach my $profile (keys %service_profiles_to_import) {
+    my %where = ( 'name' => $profile );
+    my %results = monarchWrapper->fetch_one_where( 'profiles_service', \%where );
+    if (%results) {
+	my $profiledesc = $results{'description'};
+	print "NOTICE:  service profile \"$profile\" ($profiledesc) already exists.\n";
+    }
+    else {
+	print "NOTICE:  service profile \"$profile\" does not exist; will import.\n";
+	push @files, $service_profiles_to_import{$profile};
+    }
+}
+
+my $folder = '/usr/local/groundwork/core/profiles';
+my @messages  = ();
+my $overwrite = 0;
+
+my $errors = 0;
+if (@files) {
+    use MonarchProfileImport;
+    push @messages, "-----------------------------------------------------";
+    foreach my $file (@files) {
+	push @messages, "Importing $file";
+	my @msgs = ProfileImporter->import_profile( $folder, $file, $overwrite );
+	if ( $msgs[0] =~ /error/i && $messages[0] !~ /error/i ) {
+	    unshift @messages, 'Error(s) occurred while importing profile(s). See below for details.';
+	    $errors = 1;
+	}
+	push @messages, @msgs;
+	push @messages, "-----------------------------------------------------";
+    }
+}
+else {
+    push @messages, "No profile files are specified for importing.";
+}
+
+print join( "\n", @messages ) . "\n";
+
+exit $errors ? 1 : 0;
+

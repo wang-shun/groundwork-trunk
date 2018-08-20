@@ -1,0 +1,978 @@
+<!--
+	GroundWork Monitor - The ultimate data integration framework.
+	Copyright (C) 2008 GroundWork Open Source Solutions
+	info@itgroundwork.com
+
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of version 2 of the GNU General Public License
+	as published by the Free Software Foundation.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+-->
+
+<project default="allBuild"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+
+
+<goal name='allBuild'>
+    <attainGoal name='db4' />
+    <attainGoal name='openssl' /> 
+    <attainGoal name='openldap' />
+    <attainGoal name='beecrypt' /> 
+	<attainGoal name='libmd' />
+    <attainGoal name='radius' /> 
+    <attainGoal name='libradius' /> 
+    <attainGoal name='libol' />
+    <attainGoal name='bison' />
+    <attainGoal name='flex' />
+    <attainGoal name='nmap' />
+    <attainGoal name='gettext' />
+    <attainGoal name='eventlog' />
+    <attainGoal name='pkgconfig' />
+    <attainGoal name='glib' />
+    <attainGoal name='syslog' /> 
+    <attainGoal name='libmcrypt' />
+    <attainGoal name='tcl8' />	
+    <attainGoal name='ncurses' />
+    <attainGoal name='supervise' /> 
+    <attainGoal name='sysstat' />
+    <attainGoal name='findutils' />
+    <attainGoal name='readline' />
+	<attainGoal name='fping' />
+	<attainGoal name='apr' />
+	<attainGoal name='aprutil' />
+</goal>
+
+  <goal name="allClean"
+        description="Clean the master project and all subprojects">
+       <delete dir="${basedir}/${com.groundwork.syslib.db4}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.openldap}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.openssl}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.beecrypt}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.libmd}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.radius}"/>
+       <delete dir="${basedir}/${dir.groundwork.syslib.libradius}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.libol}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.bison}"/>
+       <delete dir="${basedir}/${dir.groundwork.syslib.flex}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.nmap}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.gettext}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.eventlog}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.pkgconfig}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.glib}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.syslog}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.libmcrypt}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.tcl8}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.sysstat}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.daemontools.dir}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.findutils}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.readline}"/>
+       <delete dir="${basedir}/${com.groundwork.syslib.ncurses}"/>
+  	   <delete dir="${basedir}/${com.groundwork.syslib.fping}"/>
+	   <delete dir="${basedir}/${com.groundwork.syslib.apr}"/>
+	   <delete dir="${basedir}/${com.groundwork.syslib.aprutil}"/>
+   </goal>
+
+<!-- 
+		Build individual components of SYSLIB
+		
+		Add a goal for any new component
+ -->
+  <!-- START BUILDING BeeCrypt - Cryptography library -->
+ <goal name="beecrypt" description="Build BeeCrypt-Cryptography library and install it into /usr/local/groundwork">
+
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.beecrypt}.tar.gz" dest="${basedir}"/>
+
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.beecrypt}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.beecrypt}/" executable="sh" >
+      <arg line="./configure  --prefix=${org.groundwork.deploy.prefix}
+			      --without-python	
+									   "/>
+    </exec>
+
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.beecrypt}/" executable="make" >
+      <arg line=""/>
+    </exec>
+
+    <!-- INSTALL -->
+    <exec dir="${basedir}/${com.groundwork.syslib.beecrypt}/" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>
+  <!-- STOP BUILDING BeeCrypt -->
+
+  <!-- START BUILDING NCURSES -->
+  <goal name="ncurses" description="Build NCURSES and install it into /usr/local/groundwork">
+
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.ncurses}.tar.gz" dest="${basedir}"/>
+
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.ncurses}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.ncurses}/" executable="sh" >
+      <arg line="./configure  --prefix=${org.groundwork.deploy.prefix}
+			      --libdir=${org.groundwork.deploy.prefix}/${libdir}	
+			      --with-shared 	
+									   "/>
+    </exec>
+
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.ncurses}/" executable="make" >
+      <arg line=""/>
+    </exec>
+
+    <!-- INSTALL -->
+    <exec dir="${basedir}/${com.groundwork.syslib.ncurses}/" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>
+  <!-- STOP BUILDING NCURSES -->
+
+  <!-- START BUILDING READLINE -->
+  <goal name="readline" description="Build READLINE and install it into /usr/local/groundwork">
+
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.readline}.tar.gz" dest="${basedir}"/>
+
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.readline}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.readline}/" executable="sh" >
+      <arg line="./configure  --prefix=${org.groundwork.deploy.prefix}"/>
+    </exec>
+
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.readline}/" executable="make" >
+      <arg line=""/>
+    </exec>
+
+    <!-- INSTALL -->
+    <exec dir="${basedir}/${com.groundwork.syslib.readline}/" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>
+  <!-- STOP BUILDING READLINE -->
+
+
+  <!-- START BUILDING DB-4 -->
+  <goal name="db4" description="Build Berkeley DB and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.db4}.tar.gz" dest="${basedir}"/>
+    
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.db4}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.db4}/build_unix/" executable="sh" >
+      <arg line="../dist/configure  	--prefix=${org.groundwork.deploy.prefix}
+				    	--libdir=${org.groundwork.deploy.prefix}/${libdir}
+					--enable-java
+					--enable-cxx						
+										  "/>
+    </exec>
+    
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.db4}/build_unix/" executable="make" >
+      <arg line=""/>
+    </exec>
+    
+    <!-- INSTALL -->
+    <exec dir="${basedir}/${com.groundwork.syslib.db4}/build_unix/" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>   
+  <!-- STOP BUILDING DB-4 -->
+
+  <!-- START BUILDING OPENLDAP -->
+  <goal name="openldap" description="Build Lightweight Directory Access Protocol and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.openldap}.tar.gz" dest="${basedir}"/>
+    
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.openldap}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.openldap}" executable="sh" >
+      <arg line="configure  --prefix=${org.groundwork.deploy.prefix} 
+			    --libdir=${org.groundwork.deploy.prefix}/${libdir}	
+			    --enable-dns	
+			    --enable-dynamic 
+			    --enable-shared
+			    --enable-crypt
+			    --with-wrappers
+			    --with-gnu-ld
+			    --disable-debug
+			    --enable-bdb
+			    --enable-dnssrv
+			    --enable-ldap
+			    --enable-ldbm
+			    --enable-meta
+			    --enable-null
+			    --enable-passwd
+			    --enable-shell
+			    --enable-overlays
+			    --enable-accesslog
+			    --enable-denyop
+			    --enable-dyngroup
+			    --enable-dynlist
+			    --enable-lastmod
+			    --enable-ppolicy
+			    --enable-proxycache
+			    --enable-refint
+			    --enable-retcode
+			    --enable-rwm
+			    --enable-translucent
+			    --enable-unique
+			    --enable-valsort
+			    --enable-perl"/>
+    </exec>
+    
+    <!-- DEPENDENCIES -->
+    <exec dir="${basedir}/${com.groundwork.syslib.openldap}" executable="make" >
+      <arg line="depend"/>
+    </exec>
+    
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.openldap}" executable="make" >
+      <arg line=""/>
+    </exec>
+    	
+    <!-- TEST-->
+    <j:set var="__skip_test__" value="${maven.test.skip}" />
+    <j:if test="${!__skip_test__.equals('true')}">
+    <exec dir="${basedir}/${com.groundwork.syslib.openldap}" executable="make" >
+      <arg line="test"/>
+    </exec>
+    </j:if>
+
+    <!-- INSTALL -->
+    <exec dir="${basedir}/${com.groundwork.syslib.openldap}" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>   
+  <!-- STOP BUILDING OPENLDAP -->
+
+  <!-- START BUILDING OPENSSL -->
+  <goal name="openssl" description="Build OpenSSL which provide various cryptographic algorithms and protocols and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.openssl}.tar.gz" dest="${basedir}"/>
+    
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.openssl}" executable="chmod" >
+      <arg line="-R +x ./"/>
+
+    </exec>
+
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.openssl}" executable="sh" >
+      <arg line="./Configure ${compiler} shared --prefix=${org.groundwork.deploy.prefix} -L${org.groundwork.deploy.prefix}/${libdir} -I${org.groundwork.deploy.prefix}/include "/>
+    </exec>
+    
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.openssl}" executable="make" >
+      <arg line=""/>
+    </exec>
+    	
+    <!-- TEST-->
+    <j:set var="__skip_test__" value="${maven.test.skip}" />
+    <j:if test="${!__skip_test__.equals('true')}">
+    <exec dir="${basedir}/${com.groundwork.syslib.openssl}" executable="make" >
+      <arg line="test"/>
+    </exec>
+    </j:if>
+
+    <!-- INSTALL -->
+    <exec dir="${basedir}/${com.groundwork.syslib.openssl}" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>   
+  <!-- STOP BUILDING OPENSSL-->
+
+  <!-- START BUILDING LIBMD -->
+  <goal name="libmd" description="Build libmd dependencies requirement for libradius and install it into /usr/local/groundwork">
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.libmd}.tar.gz" dest="${basedir}"/>
+    <exec dir="${basedir}/${com.groundwork.syslib.libmd}" executable="cp" >
+      <arg line="../Makefile.libmd Makefile"/>
+    </exec>
+    <exec dir="${basedir}/${com.groundwork.syslib.libmd}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.libmd}" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>   
+  <!-- STOP BUILDING LIBMD-->
+  
+  <!-- START BUILDING RADIUSCLIENT-->
+  <goal name="radius" description="Build Open-radius and install it into /usr/local/groundwork">
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.radius}.tar.gz" 
+	dest="${basedir}"/>
+	<exec dir="${basedir}/${com.groundwork.syslib.radius}" executable="chmod" >
+      		<arg line="-R +x ./"/>
+    	</exec>
+
+    <exec dir="${basedir}/${com.groundwork.syslib.radius}" executable="cp" >
+      <arg line="../Makefile.gwrk Makefile.gwrk"/>
+    </exec>
+
+    <exec dir="${basedir}/${com.groundwork.syslib.radius}" executable="cp" >
+      <arg line="../defs.h.radius server/defs.h"/>
+    </exec>
+  
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.radius}" executable="make" >
+      <arg line="all -f Makefile.gwrk"/>
+    </exec>
+
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.radius}" executable="make" >
+      <arg line="-f Makefile.gwrk install"/>
+    </exec>
+  </goal>   
+  <!-- STOP BUILDING RADIUSCLIENT -->
+
+  <!-- START BUILDING LIBRADIUS-->
+  <goal name="libradius" description="Build libradius and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.libradius}.tar.gz" dest="${basedir}"/>
+    
+	<exec dir="${basedir}/${dir.groundwork.syslib.libradius}" executable="cp" >
+          <arg line="../Makefile.libradius Makefile"/>
+        </exec>
+    <exec dir="${basedir}/${dir.groundwork.syslib.libradius}" executable="chmod" >
+
+      <arg line="-R +x ./"/>
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${dir.groundwork.syslib.libradius}" executable="make" >
+      <arg line=""/>
+    </exec>
+
+    <!-- MAKE-->
+    <exec dir="${basedir}/${dir.groundwork.syslib.libradius}" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>   
+  <!-- STOP BUILDING LIBRADIUS-->
+
+  <!-- START BUILDING LIBOL-->
+  <goal name="libol" description="Build libol and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.libol}.tar.gz" dest="${basedir}"/>
+
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.libol}" executable="sh" >
+      <arg line="configure --prefix=${org.groundwork.deploy.prefix}
+			   --libdir=${org.groundwork.deploy.prefix}/${libdir}
+									"/>
+    </exec>
+
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.libol}" executable="make" >
+      <arg line=""/>
+    </exec>
+
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.libol}" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>   
+  <!-- STOP BUILDING LIBOL-->
+
+  <!-- START BUILDING FLEX -->
+  <goal name="flex" description="Build FLEX and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.flex}.tar.gz" dest="${basedir}"/>
+    
+    <!-- MAKE -->
+    <exec dir="${basedir}/${dir.groundwork.syslib.flex}" executable="chmod" >
+      <arg line="-R +x ./"/>
+
+    </exec>
+
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${dir.groundwork.syslib.flex}" executable="sh" >
+      <arg line="configure --prefix=${org.groundwork.deploy.prefix}"/>
+    </exec>
+    
+    <!-- MAKE-->
+    <exec dir="${basedir}/${dir.groundwork.syslib.flex}" executable="make" >
+      <arg line=""/>
+
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${dir.groundwork.syslib.flex}" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>   
+  <!-- STOP BUILDING FLEX -->
+
+  <!-- START BUILDING BISON -->
+  <goal name="bison" description="Build BISON and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.bison}.tar.gz" dest="${basedir}"/>
+    
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.bison}" executable="chmod" >
+      <arg line="-R +x ./"/>
+
+    </exec>
+
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.bison}" executable="sh" >
+      <arg line="configure --prefix=${org.groundwork.deploy.prefix}
+			   --libdir=${org.groundwork.deploy.prefix}/${libdir}
+									"/>
+    </exec>
+    
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.bison}" executable="make" >
+      <arg line=""/>
+
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.bison}" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>   
+  <!-- STOP BUILDING BISON -->
+	
+  <!-- START BUILDING NMAP -->
+  <goal name="nmap" description="Build Nmap and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.nmap}.tar.gz" dest="${basedir}"/>
+    
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.nmap}" executable="chmod" >
+      <arg line="-R +x ./"/>
+
+    </exec>
+
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.nmap}" executable="sh" >
+      <arg line="configure      --prefix=${org.groundwork.deploy.prefix}
+				--libdir=${org.groundwork.deploy.prefix}/${libdir}
+				CPPFLAGS=-I/usr/local/groundwork/include
+                LDFLAGS=-L/usr/local/groundwork/${libdir}
+				--with-openssl=${org.groundwork.deploy.prefix}
+									"/>
+    </exec>
+    
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.nmap}" executable="make" >
+      <arg line=""/>
+
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.nmap}" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>   
+  <!-- STOP BUILDING NMAP-->
+
+  <!-- START BUILDING GETTEXT -->
+  <goal name="gettext" description="Build gettext and install it into /usr/local/groundwork">
+
+    <!-- UNZIP/UNTAR -->
+      <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.gettext}.tar.gz" dest="${basedir}"/>
+
+	<!-- MAKE -->
+	  <exec dir="${basedir}/${com.groundwork.syslib.gettext}" executable="chmod" >
+	    <arg line="-R +x ./"/>
+	  </exec>
+
+	<!-- RUN CONFIGURE -->
+	  <exec dir="${basedir}/${com.groundwork.syslib.gettext}" executable="sh" >
+	    <arg line="configure      --prefix=${org.groundwork.deploy.prefix}
+	                              --libdir=${org.groundwork.deploy.prefix}/${libdir}"/>
+	  </exec>
+
+	  <exec dir="${basedir}/${com.groundwork.syslib.gettext}" executable="make" >
+	    <arg line=""/>
+	  </exec>
+	  
+  	<!-- MAKE-->
+	  <exec dir="${basedir}/${com.groundwork.syslib.gettext}" executable="make" >
+	    <arg line="install"/>
+	  </exec>
+
+  </goal>
+  <!-- STOP BUILDING GETTEXT-->
+
+  <!-- START BUILDING EVENTLOG -->
+  <goal name="eventlog" description="Build eventlog and install it into /usr/local/groundwork">
+
+    <!-- UNZIP/UNTAR -->
+      <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.eventlog}.tar.gz" dest="${basedir}"/>
+
+	<!-- MAKE -->
+	  <exec dir="${basedir}/${com.groundwork.syslib.eventlog}" executable="chmod" >
+	    <arg line="-R +x ./"/>
+	  </exec>
+
+	<!-- RUN CONFIGURE -->
+	  <exec dir="${basedir}/${com.groundwork.syslib.eventlog}" executable="sh" >
+	    <arg line="configure      --prefix=${org.groundwork.deploy.prefix}
+	                              --libdir=${org.groundwork.deploy.prefix}/${libdir}"/>
+	  </exec>
+
+	  <exec dir="${basedir}/${com.groundwork.syslib.eventlog}" executable="make" >
+	    <arg line=""/>
+      </exec>
+  	
+    <!-- MAKE-->
+      <exec dir="${basedir}/${com.groundwork.syslib.eventlog}" executable="make" >
+	    <arg line="install"/>
+	  </exec>
+
+  </goal>
+  <!-- STOP BUILDING EVENTLOG-->
+
+  <!-- START BUILDING GLIB -->
+    <goal name="glib" description="Build glib and install it into /usr/local/groundwork">
+
+	<!-- UNZIP/UNTAR -->
+	  <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.glib}.tar.gz" dest="${basedir}"/>
+
+	<!-- MAKE -->
+	  <exec dir="${basedir}/${com.groundwork.syslib.glib}" executable="chmod" >
+	    <arg line="-R +x ./"/>
+	  </exec>
+
+	<!-- RUN CONFIGURE -->
+	  <exec dir="${basedir}/${com.groundwork.syslib.glib}" executable="sh" >
+	    <arg line="configure      --prefix=${org.groundwork.deploy.prefix}
+	                              --libdir=${org.groundwork.deploy.prefix}/${libdir}"/>
+	  </exec>
+
+	  <exec dir="${basedir}/${com.groundwork.syslib.glib}" executable="make" >
+	    <arg line=""/>
+	  </exec>
+	  
+    <!-- MAKE-->
+	  <exec dir="${basedir}/${com.groundwork.syslib.glib}" executable="make" >
+	    <arg line="install"/>
+	  </exec>
+
+	</goal>
+	<!-- STOP BUILDING GLIB-->
+
+	<!-- START BUILDING SYSLOG-NG -->
+    <goal name="syslog" description="Build SYSLOG-NG and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.syslog}.tar.gz" dest="${basedir}"/>
+    
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.syslog}" executable="chmod" >
+      <arg line="-R +x ./"/>
+
+    </exec>
+
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.syslog}" executable="sh" >
+      <arg line="configure 	--prefix=${org.groundwork.deploy.prefix} 
+				--libdir=${org.groundwork.deploy.prefix}/${libdir}
+      			--enable-dynamic-linking
+      			--with-libol=${org.groundwork.deploy.prefix}/bin/"/>
+    </exec>
+    
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.syslog}" executable="make" >
+      <arg line=""/>
+
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.syslog}" executable="make" >
+      <arg line="install"/>
+    </exec>
+    <!--COPY syslog-ng config file-->
+     <exec dir="${basedir}/${com.groundwork.syslib.syslog}" executable="cp" >
+          <arg line="../syslog-ng.conf ${org.groundwork.deploy.prefix}/etc/"/>
+     </exec>
+
+    <!--COPY syslog-ng boot script-->
+     <exec dir="${basedir}/${com.groundwork.syslib.syslog}" executable="cp" >
+          <arg line="../syslog-ng.init ${org.groundwork.deploy.prefix}/etc/"/>
+     </exec>
+
+    <!-- MAKE -->
+    <exec dir="${org.groundwork.deploy.prefix}" executable="mkdir" >
+      <arg line="-p var "/>
+    </exec>
+
+    <!-- MAKE -->
+    <exec dir="${org.groundwork.deploy.prefix}/var" executable="mkdir" >
+      <arg line="-p log "/>
+    </exec>
+
+    <!-- MAKE -->
+    <exec dir="${org.groundwork.deploy.prefix}/var/log" executable="mkdir" >
+      <arg line="-p syslog-ng "/>
+    </exec>
+
+  </goal>   
+  <!-- STOP BUILDING SYSLOG-NG-->
+
+  <!-- START BUILDING LIBMCRYPT -->
+  <goal name="libmcrypt" description="Build LIBMCRYPT and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.libmcrypt}.tar.gz" dest="${basedir}"/>
+    
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.libmcrypt}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+
+    <!-- RUN SEPARATE CONFIGURE for libltdl -->
+    <exec dir="${basedir}/${com.groundwork.syslib.libmcrypt}/libltdl" executable="sh" >
+      <arg line="configure 	--prefix=${org.groundwork.deploy.prefix} 
+      			--libdir=${org.groundwork.deploy.prefix}/${libdir}
+				--enable-dynamic-loading 
+				--enable-static=yes 
+				--enable-shared=yes
+			   	--enable-ltdl-install"/>
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.libmcrypt}/libltdl" executable="make" >
+      <arg line=""/>
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.libmcrypt}/libltdl" executable="make" >
+      <arg line="check"/>
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.libmcrypt}/libltdl" executable="make" >
+      <arg line="install"/>
+    </exec>
+
+    <!-- RUN CONFIGURE for LIBMCRYPT --> 
+    <exec dir="${basedir}/${com.groundwork.syslib.libmcrypt}" executable="sh" >
+      <arg line="./configure 	--prefix=${org.groundwork.deploy.prefix}
+      			--libdir=${org.groundwork.deploy.prefix}/${libdir}
+				--enable-static=yes 
+				--enable-shared=yes 
+				--enable-ltdl-install=yes
+				--enable-dynamic-loading"/>
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.libmcrypt}" executable="make" >
+      <arg line=""/>
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.libmcrypt}" executable="make" >
+      <arg line="check"/>
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.libmcrypt}" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>   
+  <!-- STOP BUILDING LIBMCRYPT-->
+
+  <!-- START BUILDING PKGCONFIG -->
+  <goal name="pkgconfig" description="Build PKGCONFIG and install it into /usr/local/groundwork">
+
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.pkgconfig}.tar.gz" dest="${basedir}"/>
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.pkgconfig}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+
+    <!-- Copy Makefile, don't run check-requires-private test -->
+	<exec dir="${basedir}/${com.groundwork.syslib.pkgconfig}/check" executable="cp" >
+  		<arg line="-p ${basedir}/${com.groundwork.syslib}/Makefile.am.pkgconfig Makefile.am"/>
+	</exec>
+	<exec dir="${basedir}/${com.groundwork.syslib.pkgconfig}/check" executable="cp" >
+	    <arg line="-p ${basedir}/${com.groundwork.syslib}/Makefile.in.pkgconfig Makefile.in "/>
+	</exec>
+
+ 	
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.pkgconfig}" executable="sh" >
+      <arg line="configure 	--prefix=${org.groundwork.deploy.prefix}
+				--libdir=${org.groundwork.deploy.prefix}/${libdir}
+									    "/>
+    </exec>
+    
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.pkgconfig}" executable="make" >
+      <arg line=""/>
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.pkgconfig}" executable="make" >
+      <arg line="check"/>
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.pkgconfig}" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>   
+  <!-- STOP BUILDING PKGCONFIG-->
+
+    <!-- START BUILDING TCL8 -->
+  <goal name="tcl8" description="Build TCL8 and install it into /usr/local/groundwork">
+
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.tcl8}.tar.gz" dest="${basedir}"/>
+    <!-- MAKE -->
+    <exec dir="${basedir}/${dir.groundwork.syslib.tcl8}/unix" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${dir.groundwork.syslib.tcl8}/unix" executable="sh" >
+      <arg line="./configure    --prefix=${org.groundwork.deploy.prefix}
+                                --enable-threads
+                                --enable-shared"/>
+    </exec>
+
+    <!-- MAKE-->
+    <exec dir="${basedir}/${dir.groundwork.syslib.tcl8}/unix" executable="make" >
+      <arg line=""/>
+    </exec>
+
+ <!-- MAKE-->
+    <j:set var="__skip_test__" value="${maven.test.skip}" />
+    <j:if test="${!__skip_test__.equals('true')}">
+    <exec dir="${basedir}/${dir.groundwork.syslib.tcl8}/unix" executable="make" >
+      <arg line="test"/>
+    </exec>
+    </j:if>
+
+    <!-- MAKE-->
+    <exec dir="${basedir}/${dir.groundwork.syslib.tcl8}/unix" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>
+  <!-- STOP BUILDING TCL8 -->
+	
+ <!-- START BUILDING SUPERVISE --> 
+  <goal name='supervise' description="build supervise (process watcher) tool">
+
+    <!-- UNZIP/UNTAR -->
+    <mkdir dir="${basedir}/${com.groundwork.syslib.freedt}" />
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.freedt}.tar.gz" dest="${basedir}/${com.groundwork.syslib}"/>
+
+        <!-- MAKE -->
+                <exec dir="${basedir}/${com.groundwork.syslib.freedt}" executable="chmod" >
+                        <arg line="-R +x ./"/>
+                </exec>
+
+    <!-- MAKE -->
+    <exec dir="${org.groundwork.deploy.prefix}" executable="mkdir" >
+      <arg line="-p services"/>
+    </exec>
+
+        <!-- RUN CONFIGURE -->
+        <exec dir="${basedir}/${com.groundwork.syslib.freedt}" executable="sh" >
+        <arg line="./configure  --prefix=${org.groundwork.deploy.prefix}
+				--libdir=${org.groundwork.deploy.prefix}/${libdir}
+                                CPPFLAGS=-I${org.groundwork.deploy.prefix}/include
+                                LDFLAGS=-L${org.groundwork.deploy.prefix}/${libdir}
+                                                                                "/>
+    </exec>
+
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.freedt}" executable="make" >
+      <arg line=""/>
+    </exec>
+
+    <!-- MAKE INSTALL -->
+    <exec dir="${basedir}/${com.groundwork.syslib.freedt}" executable="make" >
+      <arg line="install"/>
+    </exec>
+
+     <!-- Delete the supervise file structure inside the deploy directory -->
+    <exec dir="/bin" executable="rm" >
+      <arg line=" -rf ${org.groundwork.deploy.prefix}/services/feeder-nagios-status"/>
+    </exec>
+
+     <!-- Create the supervise file structure inside the deploy directory -->
+      <exec dir="${org.groundwork.deploy.prefix}/bin" executable="mkservice" >
+      <arg line="nagios nagios ${org.groundwork.deploy.prefix}/services/feeder-nagios-status"/>
+     </exec>
+
+        <chmod dir="${org.groundwork.deploy.prefix}/bin" perm="ugo+rx"  includes="**/*"/>
+
+   <!-- Copy run instructions -->
+<copy tofile="${org.groundwork.deploy.prefix}/services/feeder-nagios-status/run" file="nagios-status-run" overwrite="true" />
+   <!-- Copy log file -->
+<copy tofile="${org.groundwork.deploy.prefix}/services/feeder-nagios-status/log/run" file="nagios-status-log-run" overwrite="true"/>
+
+	<!-- Create the down file so supervise does not start the feeder automatically -->
+	<touch file="${org.groundwork.deploy.prefix}/services/feeder-nagios-status/down" />
+
+   <!-- Boot script -->
+   <copy file="${basedir}/gwservices" todir="${org.groundwork.deploy.prefix}/services"/>
+   <chmod dir="${org.groundwork.deploy.prefix}/services" perm="ugo+rx"  includes="**/*"/>
+
+  </goal>
+
+  <!-- STOP BUILDING SUPERVISE-->
+
+  <!-- START BUILDING SYSSTAT -->
+  <goal name="sysstat" description="Build SYSSTAT and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.sysstat}.tar.gz" dest="${basedir}"/>
+
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.sysstat}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+    
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.sysstat}" executable="sh" >
+      <arg line="./configure    --prefix=${org.groundwork.deploy.prefix}
+				--libdir=${org.groundwork.deploy.prefix}/${libdir}
+									"/>
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.sysstat}" executable="make" >
+      <arg line=""/>
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.sysstat}" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>   
+  <!-- STOP BUILDING SYSSTAT-->
+
+  <!-- START BUILDING FINDUTILS -->
+  <goal name="findutils" description="Build FINDUTILS and install it into /usr/local/groundwork">
+  
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.findutils}.tar.gz" dest="${basedir}"/>
+
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.findutils}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.syslib.findutils}" executable="sh" >
+      <arg line="./configure    --prefix=${org.groundwork.deploy.prefix}
+				--libdir=${org.groundwork.deploy.prefix}/${libdir}
+									"/>
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.findutils}" executable="make" >
+      <arg line=""/>
+    </exec>
+    <!-- MAKE-->
+    <exec dir="${basedir}/${com.groundwork.syslib.findutils}" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>   
+  <!-- STOP BUILDING FINDUTILS -->
+	
+	  <!-- START BUILDING FPING -->
+	  <goal name="fping" description="Build FPING and install it into /usr/local/groundwork">
+	  
+	    <!-- UNZIP/UNTAR -->
+	    <untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.fping}.tar.gz" dest="${basedir}"/>
+
+	    <!-- MAKE -->
+	    <exec dir="${basedir}/${com.groundwork.syslib.fping}" executable="chmod" >
+	      <arg line="-R +x ./"/>
+	    </exec>
+
+	    <!-- RUN CONFIGURE -->
+	    <exec dir="${basedir}/${com.groundwork.syslib.fping}" executable="sh" >
+	      <arg line="./configure    --prefix=${org.groundwork.deploy.prefix}
+					--libdir=${org.groundwork.deploy.prefix}/${libdir}
+										"/>
+	    </exec>
+	    <!-- MAKE-->
+	    <exec dir="${basedir}/${com.groundwork.syslib.fping}" executable="make" >
+	      <arg line=""/>
+	    </exec>
+	    <!-- MAKE-->
+	    <exec dir="${basedir}/${com.groundwork.syslib.fping}" executable="make" >
+	      <arg line="install"/>
+	    </exec>
+	  </goal> 
+
+	<goal name="apr" description="Build APR and install it into /usr/local/groundwork">
+		<untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.apr}.tar.gz" dest="${basedir}"/>
+
+	    <exec dir="${basedir}/${com.groundwork.syslib.apr}" executable="chmod" >
+	      <arg line="-R +x ./"/>
+	    </exec>
+
+		<exec dir="${basedir}/${com.groundwork.syslib.apr}" executable="sh">
+			<arg line="./configure --prefix=${org.groundwork.deploy.prefix}
+						--libdir=${org.groundwork.deploy.prefix}/${libdir}"/>
+		</exec>
+
+		<exec dir="${basedir}/${com.groundwork.syslib.apr}" executable="make">
+			<arg line=""/>
+		</exec>
+
+		<exec dir="${basedir}/${com.groundwork.syslib.apr}" executable="make">
+			<arg line="install"/>
+		</exec>
+
+	</goal>
+
+	<goal name="aprutil" description="Build APR Utility Library and install it into /usr/local/groundwork">
+		<untar compression="gzip" src="${org.groundwork.build.share}/syslib/${com.groundwork.syslib.aprutil}.tar.gz" dest="${basedir}"/>
+
+	    <exec dir="${basedir}/${com.groundwork.syslib.aprutil}" executable="chmod" >
+	      <arg line="-R +x ./"/>
+	    </exec>
+
+		<exec dir="${basedir}/${com.groundwork.syslib.aprutil}" executable="sh">
+			<arg line="./configure --prefix=${org.groundwork.deploy.prefix}
+									--libdir=${org.groundwork.deploy.prefix}/${libdir} 
+									--with-expat=builtin 
+									--with-apr=${org.groundwork.deploy.prefix}" />
+		</exec>
+
+		<exec dir="${basedir}/${com.groundwork.syslib.aprutil}" executable="make">
+			<arg line=""/>
+		</exec>
+
+		<exec dir="${basedir}/${com.groundwork.syslib.aprutil}" executable="make">
+			<arg line="install"/>
+		</exec>
+	</goal>
+
+
+</project>

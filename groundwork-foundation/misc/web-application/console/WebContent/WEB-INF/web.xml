@@ -1,0 +1,139 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE web-app PUBLIC
+  "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+  "http://java.sun.com/dtd/web-app_2_3.dtd">
+
+<web-app>
+
+	<context-param>
+		<param-name>com.icesoft.faces.debugDOMUpdate</param-name>
+		<param-value>false</param-value>
+	</context-param>
+
+	<context-param>
+		<param-name>javax.faces.STATE_SAVING_METHOD</param-name>
+		<param-value>client</param-value>
+		<description>
+			State saving method: "client" or "server" (= default) See
+			JSF Specification 2.5.2
+		</description>
+	</context-param>
+
+	<context-param>
+		<param-name>com.icesoft.faces.concurrentDOMViews</param-name>
+		<param-value>false</param-value>
+	</context-param>
+
+	<context-param>
+		<param-name>com.icesoft.faces.synchronousUpdate</param-name>
+		<param-value>false</param-value>
+	</context-param>
+	
+	<!--Filter  -->
+	<filter>
+		<filter-name>ConsoleFilter</filter-name>
+		<description>
+			This filter gets the parameter from guava and puts it to the
+			HTTPSession.
+		</description>
+		<filter-class>
+			com.groundworkopensource.webapp.console.ConsoleFilter
+		</filter-class>
+	</filter>
+
+	<filter-mapping>
+		<filter-name>ConsoleFilter</filter-name>
+		<url-pattern>*.jsf</url-pattern>
+	</filter-mapping>
+	
+	
+	<listener>
+		<listener-class>
+			com.icesoft.faces.util.event.servlet.ContextEventRepeater
+		</listener-class>
+	</listener>
+	
+
+	<!-- Faces Servlet -->
+	<servlet>
+		<servlet-name>Faces Servlet</servlet-name>
+		<servlet-class>javax.faces.webapp.FacesServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+
+	<servlet>
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<servlet-class>
+			com.icesoft.faces.webapp.xmlhttp.PersistentFacesServlet
+
+		</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+
+	<servlet>
+		<servlet-name>Blocking Servlet</servlet-name>
+		<servlet-class>
+			com.icesoft.faces.webapp.xmlhttp.BlockingServlet
+		</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet>
+		<servlet-name>ConsoleInitServlet</servlet-name>
+		<display-name>ConsoleInitServlet</display-name>
+		<description></description>
+		<servlet-class>
+			com.groundworkopensource.webapp.console.ConsoleInitServlet
+		</servlet-class>
+		<init-param>
+			<param-name>log4j-init-file</param-name>
+			<param-value>/usr/local/groundwork/config/log4j.properties</param-value>
+		</init-param>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	
+	<!-- extension mapping --><!--
+		<servlet-mapping>
+		<servlet-name>Faces Servlet</servlet-name>
+		<url-pattern>*.jsf</url-pattern>
+		</servlet-mapping>
+	-->
+	<servlet-mapping>
+
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<url-pattern>*.jsf</url-pattern>
+	</servlet-mapping>
+
+	<servlet-mapping>
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<url-pattern>*.iface</url-pattern>
+	</servlet-mapping>
+
+	<servlet-mapping>
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<url-pattern>/xmlhttp/*</url-pattern>
+	</servlet-mapping>
+
+	<servlet-mapping>
+		<servlet-name>Blocking Servlet</servlet-name>
+		<url-pattern>/block/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>ConsoleInitServlet</servlet-name>
+		<url-pattern>/ConsoleInitServlet</url-pattern>
+	</servlet-mapping>
+	
+
+
+	<session-config>
+		<session-timeout>480</session-timeout>
+	</session-config>
+
+	<!-- Welcome files -->
+	<welcome-file-list>
+		<welcome-file>index.jsf</welcome-file>
+		<welcome-file>index.jsp</welcome-file>
+		<welcome-file>index.html</welcome-file>
+	</welcome-file-list>
+
+</web-app>

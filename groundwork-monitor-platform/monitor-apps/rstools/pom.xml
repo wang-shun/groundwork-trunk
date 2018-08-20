@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2018  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License
+    as published by the Free Software Foundation.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.groundwork</groupId>
+        <artifactId>gw-monitor-apps-pom</artifactId>
+        <version>7.2.2-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>rstools</artifactId>
+    <version>7.2.2-SNAPSHOT</version>
+    <name>Realstuff Tools WAR</name>
+    <description>Groundwork Portal Realstuff Tools WAR</description>
+    <packaging>pom</packaging>
+
+    <properties>
+        <rstools-version>1.13.1.17-a63a9d7e</rstools-version>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.googlecode.maven-download-plugin</groupId>
+                <artifactId>download-maven-plugin</artifactId>
+                <version>1.3.0</version>
+                <executions>
+                    <execution>
+                        <id>download-nms</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <configuration>
+                            <url>http://morat/webextension-source/rstools/nms-rstools-${rstools-version}.war</url>
+                            <unpack>false</unpack>
+                            <outputFileName>nms-rstools.war</outputFileName>
+                            <outputFileDirectory>${project.build.directory}</outputFileDirectory>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>download-bsmChecker</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <configuration>
+                            <url>http://morat/webextension-source/rstools/rstools_bsmChecker-${rstools-version}.tar.gz</url>
+                            <unpack>true</unpack>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

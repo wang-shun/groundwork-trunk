@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2013  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License
+    as published by the Free Software Foundation.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.groundwork</groupId>
+        <artifactId>gw-collage-pom</artifactId>
+        <version>7.2.2-SNAPSHOT</version>
+    </parent>
+
+    <groupId>org.groundwork</groupId>
+    <artifactId>gw-database</artifactId>
+    <version>7.2.2-SNAPSHOT</version>
+    <name>Groundwork Test Database</name>
+    <description>Groundwork Test Database Creation and Seeding</description>
+    <packaging>jar</packaging>
+
+    <profiles>
+        <profile>
+            <id>production</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <!-- Database Properties Default Values: these values can be overriden in your $HOME/.m2/settings.xml -->
+                <com.groundwork.collage.test.database.url>jdbc:postgresql://localhost:5432/gwcollagedb?prepareThreshold=1</com.groundwork.collage.test.database.url>
+                <com.groundwork.collage.test.database.driver>org.postgresql.Driver</com.groundwork.collage.test.database.driver>
+                <com.groundwork.collage.test.database.user>postgres</com.groundwork.collage.test.database.user>
+                <com.groundwork.collage.test.database.password>postgres</com.groundwork.collage.test.database.password>
+                <com.groundwork.collage.master.database.url>jdbc:postgresql://localhost:5432/postgres</com.groundwork.collage.master.database.url>
+                <com.groundwork.collage.test.database.sid>gwcollagedb</com.groundwork.collage.test.database.sid>
+            </properties>
+        </profile>
+        <profile>
+            <id>test</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <!-- Database Properties Default Values: these values can be overriden in your $HOME/.m2/settings.xml -->
+                <com.groundwork.collage.test.database.url>jdbc:postgresql://localhost:5432/gwtest?prepareThreshold=1</com.groundwork.collage.test.database.url>
+                <com.groundwork.collage.test.database.driver>org.postgresql.Driver</com.groundwork.collage.test.database.driver>
+                <com.groundwork.collage.test.database.user>postgres</com.groundwork.collage.test.database.user>
+                <com.groundwork.collage.test.database.password>postgres</com.groundwork.collage.test.database.password>
+                <com.groundwork.collage.master.database.url>jdbc:postgresql://localhost:5432/postgres</com.groundwork.collage.master.database.url>
+                <com.groundwork.collage.test.database.sid>gwtest</com.groundwork.collage.test.database.sid>
+            </properties>
+        </profile>
+    </profiles>
+
+    <properties>
+        <!--  String substitution by token -->
+        <DATABASE_NAME>${com.groundwork.collage.test.database.sid}</DATABASE_NAME>
+        <DATABASE_URL>${com.groundwork.collage.test.database.url}</DATABASE_URL>
+        <DATABASE_DRIVER>${com.groundwork.collage.test.database.driver}</DATABASE_DRIVER>
+        <DATABASE_USER>${com.groundwork.collage.test.database.user}</DATABASE_USER>
+        <DATABASE_PASSWORD>${com.groundwork.collage.test.database.password}</DATABASE_PASSWORD>
+        <MASTER_DATABASE>${com.groundwork.collage.master.database.url}</MASTER_DATABASE>
+    </properties>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>schema/postgresql</directory>
+                <includes>
+                    <include>create-production-db.sql</include>
+                    <include>GWCollageDB.sql</include>
+                </includes>
+                <filtering>false</filtering>
+             </resource>
+            <resource>
+                <directory>schema/postgresql</directory>
+                <includes>
+                    <include>GWCollage-State.sql</include>
+                    <include>GWCollage-Console.sql</include>
+                    <include>GWCollage-Metadata.sql</include>
+                    <include>nagios-properties.sql</include>
+                    <include>snmp-properties.sql</include>
+                    <include>system-properties.sql</include>
+                    <include>syslog-seed.sql</include>
+                    <include>GWCollage_PerformanceLabelData.sql</include>
+                    <include>foundation-base-data.sql</include>
+                </includes>
+                <filtering>false</filtering>
+            </resource>
+             <resource>
+                 <directory>schema/postgresql</directory>
+                 <includes>
+                    <include>GWCollage-Version.sql</include>
+                 </includes>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>sql-maven-plugin</artifactId>
+                <dependencies>
+                    <!-- specify the dependent jdbc driver here -->
+                    <dependency>
+                        <groupId>org.postgresql</groupId>
+                        <artifactId>postgresql</artifactId>
+                        <version>9.4.1212.jre7</version>
+                    </dependency>
+                </dependencies>
+
+                <!-- common configuration shared by all executions -->
+                <configuration>
+                    <driver>${DATABASE_DRIVER}</driver>
+                    <url>${DATABASE_URL}</url>
+                    <username>${DATABASE_USER}</username>
+                    <password>${DATABASE_PASSWORD}</password>
+                    <!-- You can comment out username/password configurations and
+                         have maven to look them up in your settings.xml using ${settingsKey}
+                        <settingsKey>sensibleKey</settingsKey>
+                    -->
+                    <!--all executions are ignored if -Dmaven.test.skip=true-->
+                    <skip>${skipTests}</skip>
+                </configuration>
+
+                <executions>
+                <execution>
+                    <id>drop-db-before-test-if-any</id>
+                    <phase>process-test-resources</phase>
+                    <goals>
+                        <goal>execute</goal>
+                    </goals>
+                    <configuration>
+                        <!-- need another database to drop the targeted one -->
+                        <url>${MASTER_DATABASE}</url>
+                        <autocommit>true</autocommit>
+                        <sqlCommand>drop database ${DATABASE_NAME}</sqlCommand>
+                        <!-- ignore error when database is not avaiable -->
+                        <onError>continue</onError>
+                        <skipOnConnectionError>true</skipOnConnectionError>
+                    </configuration>
+                </execution>
+
+                    <execution>
+                        <id>create-db</id>
+                        <phase>process-test-resources</phase>
+                        <goals>
+                            <goal>execute</goal>
+                        </goals>
+                        <configuration>
+                            <url>${MASTER_DATABASE}</url>
+                            <!-- no transaction -->
+                            <autocommit>true</autocommit>
+                            <sqlCommand>create database ${DATABASE_NAME}</sqlCommand>
+                        </configuration>
+                    </execution>
+
+
+                    <execution>
+                        <id>create-schema</id>
+                        <phase>process-test-resources</phase>
+                        <goals>
+                            <goal>execute</goal>
+                        </goals>
+                        <configuration>
+                            <autocommit>true</autocommit>
+                            <srcFiles>
+                                <!--<srcFile>${project.build.outputDirectory}/create-production-db.sql</srcFile>-->
+                                <srcFile>${project.build.outputDirectory}/GWCollageDB.sql</srcFile>
+                            </srcFiles>
+                        </configuration>
+                    </execution>
+
+                    <execution>
+                        <id>create-seed-data</id>
+                        <phase>process-test-resources</phase>
+                        <goals>
+                            <goal>execute</goal>
+                        </goals>
+                        <configuration>
+                            <autocommit>true</autocommit>
+                            <srcFiles>
+                                <srcFile>${project.build.outputDirectory}/GWCollage-State.sql</srcFile>
+                                <srcFile>${project.build.outputDirectory}/GWCollage-Console.sql</srcFile>
+                                <srcFile>${project.build.outputDirectory}/GWCollage-Version.sql</srcFile>
+                                <srcFile>${project.build.outputDirectory}/GWCollage-Metadata.sql</srcFile>
+                                <srcFile>${project.build.outputDirectory}/nagios-properties.sql</srcFile>
+                                <srcFile>${project.build.outputDirectory}/snmp-properties.sql</srcFile>
+                                <srcFile>${project.build.outputDirectory}/system-properties.sql</srcFile>
+                                <srcFile>${project.build.outputDirectory}/syslog-seed.sql</srcFile>
+                                <srcFile>${project.build.outputDirectory}/GWCollage_PerformanceLabelData.sql</srcFile>
+                                <srcFile>${project.build.outputDirectory}/foundation-base-data.sql</srcFile>
+                            </srcFiles>
+                        </configuration>
+                    </execution>
+
+                    <!--<execution>-->
+                        <!--<id>drop-db-after-test</id>-->
+                        <!--<phase>test</phase>-->
+                        <!--<goals>-->
+                            <!--<goal>execute</goal>-->
+                        <!--</goals>-->
+                        <!--<configuration>-->
+                            <!--<url>${MASTER_DATABASE}</url>-->
+                            <!--<autocommit>true</autocommit>-->
+                            <!--<sqlCommand>drop database ${DATABASE_NAME}</sqlCommand>-->
+                        <!--</configuration>-->
+                    <!--</execution>-->
+
+                </executions>
+
+            </plugin>
+
+        </plugins>
+    </build>
+</project>
+
+

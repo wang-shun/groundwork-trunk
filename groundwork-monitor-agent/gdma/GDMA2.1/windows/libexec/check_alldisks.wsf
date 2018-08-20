@@ -1,0 +1,161 @@
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' "check_alldisks.wsf"
+' ssites@liberty.edu
+'
+' 04/03/2005 ver 1.0
+' 
+' --------------------------------------------------------------
+' Does disk space check on all fixed disks at one time.
+'
+
+<job>
+<runtime>
+  <description>
+check_alldisks (nrpe_nt-plugin) 1.0
+The nagios plugins come with ABSOLUTELY NO WARRANTY. You may redistribute
+copies of the plugins under the terms of the GNU General Public License.
+For more information about these matters, see the file named COPYING.
+Copyright (c) 1999-2001 Ethan Galstad/Seth Sites (ssites@liberty.edu)
+
+Checks If at least one defined process Is running.
+  </description>
+  <named
+    name="h"
+    helpstring="Help"
+    type="simple"
+    required="false" 
+  />
+  <named
+    name="w"
+    helpstring="Warning watermark. Defined in MB (/w:100) or % (/w:80%)"
+    type="string"
+    required="true"
+  />
+  <named
+    name="c"
+    helpstring="Critical watermark. Defined in MB (/c:100) or % (/c:90%)"
+    type="string"
+    required="true"
+  />
+  <example>
+Example: check_alldisks.wsf /w:200 /c:100
+  </example>
+</runtime>
+<script language="VBScript">
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Const's and Var's
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'Cons for return val's
+Const intOK = 0
+Const intWarning = 1
+Const intCritical = 2
+Const intUnknown = 3
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Help
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+If Wscript.Arguments.Named.Exists("h") Then
+	Wscript.Echo "Plugin help screen:"
+      Wscript.Arguments.ShowUsage()
+      Wscript.Quit(intUnknown)
+End If
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Main
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Dim intReturn, intFree, intTotal, intUsed, intFreePro, intUsedPro, strDriveName, strFreeType, strTotalType, strUsedType, strOutput, intStringPrinted, intCurrentDiskNum, strReturnString
+
+strFreeType = "MB"
+strTotalType = "MB"
+strUsedType = "MB"
+intReturn = intOK
+intCurrentDiskNum = 0
+
+strComputer = "."
+Set objWMIService = GetObject("winmgmts:" _
+    & "{impersonationLevel=impersonate}!\\" & strComputer & "\root\cimv2")
+Set colDisks = objWMIService.ExecQuery _
+    ("SELECT * FROM Win32_LogicalDisk Where DriveType=3")
+    
+For each objDisk in colDisks
+	intCurrentDiskNum = intCurrentDiskNum + 1
+	if intCurrentDiskNum > 1 Then
+		strReturnString = strReturnString & "<br>"
+	End If
+    intStringPrinted = 0
+    intFree = CLng(FormatNumber(objDisk.FreeSpace/1048576, 0))
+    intTotal = CLng(FormatNumber(objDisk.Size/1048576, 0))
+    intUsed = intTotal - intFree
+
+    intFreePro = (intFree*100)/intTotal
+    intUsedPro = (intUsed*100)/intTotal
+
+    intFreeOut = intFree
+    intUsedOut = intUsed
+    intTotalOut = intTotal
+    If intFreeOut > 1024 Then
+        intFreeOut = Round(intFreeOut/1024,2)
+        strFreeType = "GB"
+    End If
+    If intUsedOut > 1024 Then
+        intUsedOut = Round(intUsedOut/1024,2)
+        strUsedType = "GB"
+    End If
+    If intTotalOut > 1024 Then
+        intTotalOut = Round(intTotalOut/1024,2)
+        strTotalType = "GB"
+    End If
+
+    strOutput =  "Drive "& UCase(objDisk.DeviceID) &" - Total: "& intTotalOut &" "& strTotalType &" - Free: "& intFreeOut &" "& strFreeType &" ("& Round(intFreePro,0) &"%) - Used: "& intUsedOut &" "& strUsedType &" ("& Round(intUsedPro,0) &"%)"
+
+    If InStr(Wscript.Arguments.Named("c"),"%") Then
+        If intFreePro <=CInt(Replace(Wscript.Arguments.Named("c"),"%","")) Then
+            if intStringPrinted = 0 Then
+                strReturnString = strReturnString & "<b>" & strOutput & "</b>"
+                intStringPrinted = 1
+            End if
+            intReturn = intCritical
+        End if
+    Else
+        If intFree <= CInt(Wscript.Arguments.Named("c")) Then
+            if intStringPrinted = 0 Then
+                strReturnString = strReturnString & "<b>" & strOutput & "</b>"
+                intStringPrinted = 1
+            End if
+            intReturn = intCritical
+        End if
+    End if
+
+    If InStr(Wscript.Arguments.Named("w"),"%") Then
+        If intFreePro <=CInt(Replace(Wscript.Arguments.Named("w"),"%","")) Then
+            if intStringPrinted = 0 Then
+                strReturnString = strReturnString & "<b>" & strOutput & "</b>"
+                intStringPrinted = 1
+            End if
+            If intReturn < intWarning Then
+                intReturn = intWarning
+            End if
+        End if
+    Else
+        If intFree <= CInt(Wscript.Arguments.Named("w")) Then
+            if intStringPrinted = 0 Then
+                strReturnString = strReturnString & "<b>" & strOutput & "</b>"
+                intStringPrinted = 1
+            End if
+            If intReturn < intWarning Then
+                intReturn = intWarning
+            End if
+        End if
+    End if
+
+    If intStringPrinted = 0 Then
+        strReturnString = strReturnString & strOutput
+    End if    
+Next
+Wscript.echo strReturnString
+Wscript.Quit(intReturn)
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+</script>
+</job>

@@ -1,0 +1,37 @@
+--- nedi-std/html/index.php	2012-04-23 10:02:19.000000000 -0700
++++ nedi-gw/html/index.php	2012-04-23 10:02:05.000000000 -0700
+@@ -29,6 +29,34 @@
+ $_GET  = preg_replace("/;|http(s)?:\/\//","", sanitize($_GET) );			# Only allow local links
+ $goto  = isset($_GET['goto']) ? $_GET['goto'] : "User-Profile.php";
+ 
++/* GWM: Check user and add if not present. */
++
++/* Use current authenticated tomcat user. */
++$remote_user = $_SERVER['REMOTE_USER'];
++$link   = @DbConnect($dbhost,$dbuser,$dbpass,$dbname); # moved for SSO from below
++if (empty($_POST['user']) && $remote_user) {
++	$passwd = md5( $remote_user );
++	$query = sprintf("SELECT password FROM users WHERE %s='%s'", DbEscapeIdentifier('user'), DbEscapeString($remote_user));
++	$res = DbQuery($query,$link);
++	if (!$res) {
++		die("ERROR:  Cannot access the $dbhost database.");
++	}
++	if (DbNumRows($res) == 0) {
++		$now = time();
++		# FIX LATER:  This query must be revisited with each NeDi release, to make sure all
++		# the inserted values match up with the then-current definition of the "users" table.
++		# The groups value of 63 includes all known groups, as a bitmask.
++		$u_query = sprintf("insert into users (".DbEscapeIdentifier('user').", password, groups, email, phone, ".DbEscapeIdentifier('time').", lastlogin, comment, language, theme, volume, columns, msglimit, graphs, dateformat, viewdev) values('%s', '%s', 63, '', '', '" . $now . "', '" . $now . "', 'GWM User', 'english', default, default, default, default, default, 'Y M j, H:i', '')",DbEscapeString($remote_user), DbEscapeString($passwd));
++		$res = DbQuery($u_query,$link);
++		$_POST['user'] = $remote_user;
++		$_POST['pass'] = $remote_user;
++	} else {
++		$_POST['user'] = $remote_user;
++		$_POST['pass'] = $remote_user;
++	}
++}
++/* GWM: End of patch. */
++
+ $raderr = "";
+ $tz = date_default_timezone_get();
+ 

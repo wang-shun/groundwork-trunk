@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<!DOCTYPE web-app PUBLIC
+   "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+   "http://java.sun.com/dtd/web-app_2_3.dtd">
+<web-app>
+
+    <!-- Filter to shutdown REST clients on request thread -->
+    <filter>
+        <filter-name>RestClientShutdownFilter</filter-name>
+        <filter-class>org.groundwork.rs.client.web.RestClientShutdownFilter</filter-class>
+    </filter>
+
+    <!-- Filter to shutdown REST clients on request thread -->
+    <filter-mapping>
+        <filter-name>RestClientShutdownFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+        <dispatcher>FORWARD</dispatcher>
+        <dispatcher>REQUEST</dispatcher>
+        <dispatcher>INCLUDE</dispatcher>
+    </filter-mapping>
+    
+	<session-config>
+		<session-timeout>480</session-timeout>
+	</session-config>
+
+    <security-role>
+        <description>Groundwork User</description>
+        <role-name>GWUser</role-name>
+    </security-role>
+
+    <security-role>
+        <description>Groundwork Admin</description>
+        <role-name>GWAdmin</role-name>
+    </security-role>
+
+    <security-role>
+        <description>Groundwork Operator</description>
+        <role-name>GWOperator</role-name>
+    </security-role>
+
+</web-app>

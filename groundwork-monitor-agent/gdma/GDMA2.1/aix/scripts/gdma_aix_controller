@@ -1,0 +1,73 @@
+#!/bin/sh
+
+# AIX System Resource Controller daemon script for the gdma subsystem.
+# Starts the subsystem when it runs, hangs around waiting for SIGTERM,
+# then stops the subsystem when that signal is received.
+
+# Copyright (c) 2011-2017 GroundWork Open Source, Inc.  ("GroundWork").
+# All rights reserved.
+
+# The AIX System Resource Controller will take care of not starting more
+# than one gdma_aix_controller script, so we don't take any precautions
+# to ensure that we have at most one copy of this script running.
+
+# Function to encapsulate the action we will take later, so it can be
+# referenced in a simple form.
+stop_gdma() {
+    # Stop the GDMA subsystem.
+    /usr/local/groundwork/ctlscript.sh stop
+    # Stop our child process (sleep, below), if any, so as not to
+    # leave orphans if we can easily avoid it.
+    kill %%
+}
+
+# nohup ourselves, so we can watch forever; but still leave ourselves
+# vulnerable to SIGTERM for easy takedown.
+trap "" HUP
+
+# Disconnect ourselves from our controlling terminal, so the shell
+# that spawned us can exit without hanging, waiting for our demise,
+# in case this script was run directly from a terminal.  (Note that
+# such an invocation outside the context of the AIX System Resource
+# Controller may violate our general belief that we don't need to
+# protect against more than one concurrent copy of this script.)
+exec 0</dev/null 1>/dev/null 2>&1
+
+# If we receive a SIGTERM, we need to pass that along to the rest of
+# the GDMA processes.  Then we turn off the fallback exit processing
+# so we don't re-invoke the stop_gdma() function on script exit, and
+# exit this controller script.
+trap "stop_gdma; trap '' EXIT; exit 0" TERM
+
+# If this daemon goes down for some reason other than receipt and full
+# processing of a SIGTERM, it should take the rest of the subsystem
+# with it, so the AIX System Resource Controller has an accurate idea
+# of whether the subsystem is still running.
+trap "stop_gdma" EXIT
+
+# Start the GDMA subsystem.
+/usr/local/groundwork/ctlscript.sh start
+
+# Now we need to wait until the AIX System Resource Controller tells
+# us to shut down this service, by sending us a SIGTERM signal.  What
+# we want is to execute the pause(2), sigsuspend(2), or sigwait(3)
+# call in a form that we can access and run at the shell level.
+#
+# I hate to waste an entire other process on this wait, but I don't
+# see any builtin-only way to do this.  "suspend" waits for SIGCONT,
+# not for SIGTERM, and testing shows it wouldn't work here.
+# We sleep in moderate-sized increments so that if the sleep is
+# somehow orphaned, it will disappear on its own in not too long.
+# We loop not just because the sleeps will constantly exit on their
+# own, but also to make ourself immune to unexpected death of this
+# subsidiary process.
+while true
+do
+    # We run this sleep in the background so we can later refer to it
+    # with a %% job specifier, so we can kill it when we go down.
+    sleep 3600 &
+    wait
+done
+
+# If we exit through this path, declare an error via the exit status.
+exit 1

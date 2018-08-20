@@ -1,0 +1,342 @@
+#!/bin/bash
+# init.d script to manage services related to GroundWork Monitor
+#
+# Copyright 2009-2010 GroundWork Open Source, Inc. ("GroundWork")
+# All rights reserved. This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public License version 2
+# as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+# Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Comments to support chkconfig on RedHat Linux
+# chkconfig: 2345 99 01
+# description: A very fast and reliable data integration framework.
+
+
+### BEGIN INIT INFO
+# Provides: gwservices
+# Required-Start: $local_fs $remote_fs
+# X-UnitedLinux-Should-Start: $named $syslog $time
+# Required-Stop:  $local_fs $remote_fs
+# X-UnitedLinux-Should-Stop: $named $syslog $time
+# Default-Start:  3 5
+# Default-Stop:   0 1 2 6
+# Short-Description: GroundWork Services
+# Description:    Starting GroundWork Services
+### END INIT INFO
+
+list_pids () {
+	SAVED_IFS="$IFS"
+	IFS=,
+	ps -f -p "$*"
+	IFS="$SAVED_IFS"
+}
+
+export GW_HOME=/usr/local/groundwork
+export PATH=$GW_HOME/bin:$GW_HOME/sbin:$GW_HOME/common/bin:$JAVA_HOME/bin:/sbin:$PATH
+status_gwservices ()
+{
+	JBossPIDs=(     `ps -w -w -o pid,args --no-headers -C java | fgrep jboss | fgrep container         | awk '{print $1}'` )
+	SvscanPIDs=(    `ps -w -w -o pid,args --no-headers -C svscan                                       | awk '{print $1}'` )
+	DumblogPIDs=(   `ps -w -w -o pid,args --no-headers -C dumblog                                      | awk '{print $1}'` )
+	SupervisePIDs=( `ps -w -w -o pid,args --no-headers -C supervise | fgrep foundation                 | awk '{print $1}'` )
+	FeederPIDs=(    `ps -w -w -o pid,args --no-headers -C supervise | fgrep feeder-nagios              | awk '{print $1}'` )
+	StatusPIDs=(    `ps -w -w -o pid,args --no-headers -C .perl.bin | fgrep nagios2collage_socket.pl   | awk '{print $1}'` )
+
+	# In this part of the probing, we set Status to:
+	# (Status == 0) => some processes are not running
+	# (Status == 1) => all processes are running, as far as we know
+	# (Status == 2) => some processes have too many copies running
+	Status=1
+
+	echo ""
+
+	if [ ${#JBossPIDs[@]} -eq 0 ]; then
+		echo "    JBoss is not running"
+		Status=0
+	fi
+	if [ ${#SvscanPIDs[@]} -eq 0 ]; then
+		echo "    svscan is not running"
+		Status=0
+	fi
+	if [ ${#DumblogPIDs[@]} -eq 0 ]; then
+		echo "    dumblogs are not running"
+		Status=0
+	fi
+	if [ ${#SupervisePIDs[@]} -eq 0 ]; then
+		echo "    supervise is not running"
+		Status=0
+	fi
+	if [ ${#FeederPIDs[@]} -eq 0 ]; then
+		echo "    Feeders are not running"
+		Status=0
+	fi
+	if [ ${#StatusPIDs[@]} -eq 0 ]; then
+		echo "    nagios2collage_socket is not running"
+		Status=0
+	fi
+
+	if [ ${#JBossPIDs[@]} -gt 1 ]; then
+		echo "    JBoss has too many copies running:"
+		list_pids ${JBossPIDs[@]}
+		Status=2
+	fi
+	if [ ${#StatusPIDs[@]} -gt 1 ]; then
+		echo "    nagios2collage_socket has too many copies running:"
+		list_pids ${StatusPIDs[@]}
+		Status=2
+	fi
+
+	# Now, a further refinement.  In this part of the probing, we set Status to:
+	# (Status == 0) => no processes are running
+	# (Status == 1) => all processes are running as expected
+	# (Status == 2) => out of kilter -- either too many, or a mixture of some running and some not
+	if [ $Status -eq 0 ]; then
+		if [ ${#JBossPIDs[@]} -ne 0 ]; then
+			echo "    JBoss is running"
+			Status=2
+		fi
+		if [ ${#SvscanPIDs[@]} -ne 0 ]; then
+			echo "    svscan is running"
+			Status=2
+		fi
+		if [ ${#DumblogPIDs[@]} -ne 0 ]; then
+			echo "    dumblogs are running"
+			Status=2
+		fi
+		if [ ${#SupervisePIDs[@]} -ne 0 ]; then
+			echo "    supervise is running"
+			Status=2
+		fi
+		if [ ${#FeederPIDs[@]} -ne 0 ]; then
+			echo "    Feeders are running"
+			Status=2
+		fi
+		if [ ${#StatusPIDs[@]} -ne 0 ]; then
+			echo "    nagios2collage_socket is running"
+			Status=2
+		fi
+	fi
+
+	# Establish the return value:
+	# 0 => everything is up
+	# 1 => everything is down
+	# 2 => out of kilter
+	if [ $Status == 1 ]; then
+		return 0
+	elif [ $Status == 0 ]; then
+		return 1
+	fi
+	return 2
+}
+
+killproc_gwservices ()
+{
+	# First we kill the "svscan" process(es), to prevent "supervise" processes from being restarted when we shut them down.
+	SvscanPIDs=( `ps -w -w -o pid,args --no-headers -C svscan | awk '{print $1}'` )
+	if [ ${#SvscanPIDs[@]} -ne 0 ]; then
+		kill -TERM ${SvscanPIDs[@]} >/dev/null 2>&1
+	fi
+
+	# Next, allow a bit of time for svscan to shut down, and if that doesn't happen, then
+	# make sure that "svscan" is down, so it doesn't interfere with the following actions.
+	for i in `seq 10`
+	do
+		sleep 2
+		SvscanPIDs=( `ps -w -w -o pid,args --no-headers -C svscan | awk '{print $1}'` )
+		if [ ${#SvscanPIDs[@]} -eq 0 ]; then
+			break
+		fi
+	done
+	if [ ${#SvscanPIDs[@]} -ne 0 ]; then
+		# Let's stop kidding around; maybe the process is completely stuck ...
+		echo ""
+		echo -n "Sending SIGKILL to svscan process(es):"
+		list_pids ${SvscanPIDs[@]}
+		kill -KILL ${SvscanPIDs[@]} >/dev/null 2>&1
+		# Give up the processor for (probably) long enough for the kill to take effect.
+		sleep 2
+	fi
+
+	# Next, we politely ask each "supervise" process to shut down its managed service (-d), which will send
+	# SIGTERM followed by SIGCONT to the child process; and then we ask that "supervise" shut itself down (-x).
+	find "/usr/local/groundwork/core/services" -mindepth 1 -maxdepth 2 -type d -name \
+		'[^.]*' \( \! -path "/usr/local/groundwork/core/services/*/*" -or -name 'log' \) \
+		-print0 | xargs -0 /usr/local/groundwork/common/bin/svc -d -x > /dev/null 2>&1
+
+	# Next, allow a bit of time for the "supervise" processes to shut down on their own.
+	for i in `seq 10`
+	do
+		sleep 2
+		SupervisePIDs=( `ps -w -w -o pid,args --no-headers -C supervise | egrep 'foundation|feeder-nagios' | awk '{print $1}'` )
+		if [ ${#SupervisePIDs[@]} -eq 0 ]; then
+			break
+		fi
+	done
+
+	# If they didn't stop on their own, kill all remaining supervise processes.
+	# Note that this kind of signaling is inherently dangerous -- we may be killing some PID which
+	# has already been re-used by some other process between the time we probed to find the PID and
+	# the time we issue the kill, if supervise did in fact shut down cleanly as requested.
+	# FIX MINOR:  If we have to kill "supervise", then likely the managed child process didn't die either --
+	# but we're not taking any steps here to shut it down.  That's partly why we're listing the PIDs, to
+	# give some clue as to which copies of supervise (and their child services) might be so affected.
+	if [ ${#SupervisePIDs[@]} -ne 0 ]; then
+		# Let's stop kidding around; maybe the process is completely stuck ...
+		echo ""
+		echo "Sending SIGTERM to supervise process(es):"
+		list_pids ${SupervisePIDs[@]}
+		kill -TERM ${SupervisePIDs[@]} >/dev/null 2>&1
+	fi
+
+	# Kill all dumblog processes, if there are any left.  There shouldn't be, as they
+	# should have been shut down along with their parent supervise processes.
+	DumblogPIDs=( `ps -w -w -o pid,args --no-headers -C dumblog | awk '{print $1}'` )
+	if [ ${#DumblogPIDs[@]} -ne 0 ]; then
+		echo ""
+		echo "Sending SIGTERM to dumblog process(es):"
+		list_pids ${DumblogPIDs[@]}
+		kill -TERM ${DumblogPIDs[@]} >/dev/null 2>&1
+	fi
+
+	# Kill Foundation Webapp processes
+	cd $GW_HOME/foundation/container
+	./stop-foundation.sh > /dev/null 2>&1
+	# Give some time in the case of a re-start.
+	# (Huh?  This is seriously confused.  "wait" with no arguments pauses only for
+	# direct child processes to complete.  But we have run all the commands we have
+	# invoked in the foreground, so there are no background children to wait for.)
+	wait
+
+	for i in `seq 10`
+	do
+		JBossPIDs=( `ps -w -w -o pid,args --no-headers -C java | fgrep jboss | fgrep container | awk '{print $1}'` )
+		if [ ${#JBossPIDs[@]} -ne 0 ]; then
+			sleep 5
+		else
+			break
+		fi
+	done
+
+	# Make sure thread is gone ...
+	# GWMON-5240
+	JBossPIDs=( `ps -w -w -o pid,args --no-headers -C java | fgrep jboss | fgrep container | awk '{print $1}'` )
+	if [ ${#JBossPIDs[@]} -ne 0 ]; then
+		kill -TERM ${JBossPIDs[@]} >/dev/null 2>&1
+		sleep 5
+		# Let's stop kidding around; maybe the process is completely stuck ...
+		JBossPIDs=( `ps -w -w -o pid,args --no-headers -C java | fgrep jboss | fgrep container | awk '{print $1}'` )
+		if [ ${#JBossPIDs[@]} -ne 0 ]; then
+			kill -KILL ${JBossPIDs[@]} >/dev/null 2>&1
+			# Give up the processor for (probably) long enough for the kill to take effect.
+			sleep 2
+		fi
+	fi
+}
+
+# These terminal escape sequences really ought to be derived from tput,
+# not hardcoded here.  These seem to be the standard xterm control sequences.
+# The bold settings select White first as a backup, then the desired color.
+bold_green='\e[1;37;32m'
+bold_red='\e[1;37;31m'
+def_attr='\e[0m'
+col61='\e[61G'
+col63='\e[63G'
+
+# Initial comments about what each case is supposed to do are drawn from:
+# http://refspecs.freestandards.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/iniscrptact.html
+case "$1" in
+    (start)
+	# start the service
+	echo -n "Checking for GroundWork Services:"
+	status_gwservices
+	status=$?
+	if [ $status -eq 0 ]; then
+		echo "GroundWork Services are already running, as these PIDs:"
+		echo svscan ${SvscanPIDs[@]}
+		echo dumblog ${DumblogPIDs[@]}
+		echo supervise ${SupervisePIDs[@]} ${FeederPIDs[@]}
+		echo nagios2collage_socket ${StatusPIDs[@]}
+		echo jboss ${JBossPIDs[@]}
+	else
+		echo -n "Starting GroundWork Services:"
+		/bin/rm -rf /usr/local/groundwork/tmp/*
+		exec /usr/local/groundwork/common/bin/svscan /usr/local/groundwork/core/services >/dev/null 2>&1 &
+		/usr/local/groundwork/foundation/feeder/check-listener.pl localhost 4913
+		if [ $? -eq 0 ]; then
+			echo -n "GroundWork Services start "
+			echo -e "${def_attr}${col61}[ ${col63}${bold_green}OK${def_attr} ]"
+		else
+			echo -n "GroundWork Services start failed "
+			echo -e "${def_attr}${col61}[ ${col63}${bold_red}FAILED${def_attr} ]"
+		fi
+	fi
+	;;
+    (stop)
+	# stop the service
+	echo -n "Stopping GroundWork Services: "
+	killproc_gwservices
+	# Here, the reported status should be OK if everything is down,
+	# and FAILED if some processes remain up.
+	details=`status_gwservices`
+	if [ $? -eq 1 ]; then
+		echo -e "${def_attr}${col61}[ ${col63}${bold_green}OK${def_attr} ]"
+	else
+		echo "$details"
+		echo -e "${def_attr}${col61}[ ${col63}${bold_red}FAILED${def_attr} ]"
+	fi
+	;;
+    (try-restart)
+	# restart the service if the service is already running
+	echo -n "Checking for GroundWork Services:"
+	status_gwservices
+	status=$?
+	if [ $status -eq 0 ]; then
+		$0 stop
+		$0 start
+	fi
+	;;
+    (restart)
+	# stop and restart the service if the service is already running, otherwise start the service
+	$0 stop
+	$0 start
+	;;
+    (force-reload)
+	# cause the configuration to be reloaded if the service supports this, otherwise restart the service if it is running
+	$0 try-restart
+	;;
+    (reload)
+	# cause the configuration of the service to be reloaded without actually stopping and restarting the service
+	#
+	# We haven't looked in detail to see how to reload the configuration of each of
+	# the individual services without a restart, so we take the easy way out here
+	# and just clumsily simulate the desired behavior.  (This is an optional action
+	# for an init script, anyway.)
+	$0 stop
+	$0 start
+	;;
+    (status)
+	# print the current status of the service
+	echo -n "Checking for GroundWork Services:"
+	status_gwservices
+	status=$?
+	echo -n "GroundWork Services: "
+	if [ $status -eq 0 ]; then
+		echo -e "${def_attr}${col61}[ ${col63}${bold_green}running${def_attr} ]"
+	elif [ $status -eq 1 ]; then
+		echo -e "${def_attr}${col61}[ ${col63}${bold_red}dead${def_attr} ]"
+	else
+		echo -e "${def_attr}${col61}[ ${col63}${bold_red}broken${def_attr} ]"
+	fi
+	;;
+    (*)
+	echo "Usage: gwservices {start|stop|restart|reload|status}"
+	exit 1
+	;;
+esac

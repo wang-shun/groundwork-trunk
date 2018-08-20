@@ -1,0 +1,221 @@
+This file contains various notes on the use of NoMa within GroundWork
+Monitor.
+
+================================================================
+Porting the back-end database to use PostgreSQL
+================================================================
+
+The effort to use PostgreSQL for the back-end database ran into a few
+snags, some of which are important enough to document here for the use
+of anyone who maintains either this code or our re-write of the NoMa
+front end.
+
+(*) We used the DBConvert tool to convert the MySQL database schema and
+    seed data from NoMa 2.0.3 (which matches the schema, at least, in
+    NoMa 2.0.4) into PostgreSQL.  Then we had to make a few adjustments.
+
+    (+) The DBConvert tool often converts MySQL tinyint fields into
+	PostgreSQL boolean fields, somehow believing that this is
+	appropriate.  But since small integers are generally stored in
+	such fields, this breaks compatibility with the code (PostgreSQL
+	uses "t" and "f" values for boolean fields, and returns these
+	characters when retrieving data from boolean fields).  We manually
+	adjusted the schema for such fields to use smallint, and manually
+	converted any corresponding seed-data values.
+
+    (+) We had to change ownership of objects in the database to the
+	"noma" user, to be able to directly manage objects as that user.
+
+    (+) The escalation_stati.time_string field in MySQL is a character
+	string.  But in fact it is used everywhere in the code as an
+	integer.  This causes PostgreSQL to choke because it has no
+	native implicit conversion from string to integer.  To cope,
+	we changed the field type to integer.
+
+    (+) That field and several other timestamp-type fields are currently
+	stored as 32-bit "integer" values.  When the year 2038 rolls
+	around, these will need to be upsized to "bigint".  By then, all
+	UNIX platforms will have converted to bigint for time_t values,
+	and 32-bit machines will be a distant memory.
+
+    (+) A few fields ended up quoted in the PostgreSQL schema.
+
+	notification_logs.timestamp
+
+	    Quoted because "timestamp" is the name of a PostgreSQL type.
+	    In practice, while this field name must be quoted in the
+	    CREATE TABLE command, this causes no problem in SELECT,
+	    INSERT, and UPDATE commands, since the use of this field
+	    name in such statements does not appear to be in contexts
+	    where the field name might be confused with the type name.
+	    So no special code adjustments appear to be necessary.
+
+	notification_logs.user
+
+	    Quoted because it conflicts with the PostgreSQL "user"
+	    function, which must be called without trailing parentheses.
+	    This means that ALL references to this column in SQL
+	    statements must be identifier-quoted to avoid confusion.
+	    In the interest of limiting the changes to the base NoMa
+	    release, so we can more easily upgrade to later upstream
+	    releases, we have chosen to keep this name (instead
+	    of changing it to something like "username").  We then
+	    built quoteIdentifier() routines (in both Perl and PHP) to
+	    perform the necessary per-database quoting (using back-ticks
+	    for MySQL, and double-quotes for SQLite and PostgreSQL),
+	    and called those routines as needed throughout the code.
+	    So any time we would have had a bare reference to a
+
+		user
+
+	    column name, we now instead use
+
+		quoteIdentifier("user")
+
+	    to wrap the name in database-appropriate quote characters.
+	    Do not further quote the result of this function.  The
+	    quoteIdentifier() routine can be safely used on any column
+	    name, not just this one, if that makes your code easier
+	    to write.  It can also correctly handle table.column names:
+
+		quoteIdentifier("notification_logs.user")
+
+	    if that type of construction is needed.
+
+	timeframes.dt_validFrom
+
+	    Quoted because it contains mixed-case characters.  This is
+	    problematic (PostgreSQL lowercases all unquoted column
+	    names in SQL statements, which would then not match the
+	    actual column name in the database), and must be dealt with.
+	    We chose to lowercase the entire column name in the database.
+	    However, some code expects the mixed-case name as a column
+	    label when it retrieves data from the database.  Such code
+	    must be ported to use a 'dt_validFrom AS "dt_validFrom"'
+	    alias during a SELECT fetch.  This overall strategy avoids
+	    the need to support quoting around the name, or lowercasing
+	    the column name, in the rest of the statement and in other
+	    statement types.  In cases where a "SELECT *" is being used
+	    and no per-field aliases are easily specified, if the column
+	    label is to be used, the code must be equipped to understand
+	    that the lowercase form will be available when PostgreSQL
+	    is in use.	Note that when you do identifier-quote the
+	    alias name in an AS clause, you must use the proper type
+	    of identifier-quoting characters for the database in use
+	    (again, using back-ticks for MySQL, and double-quotes for
+	    SQLite and PostgreSQL).
+
+	timeframes.dt_validTo
+
+	    Quoted because it contains mixed-case characters.  Handled as
+	    above.
+
+	tmp_active.user
+
+	    Same as for the notification_logs.user field.  Wherever this
+	    column name is used in your SQL statements, you must apply
+	    the quoteIdentifier() function.
+
+	In all of these cases, it would be good to convince the upstream
+	maintainers to change these field names to something else, and
+	make corresponding variable-name adjustments throughout the code.
+
+    (+) The notifications.notification_name field got changed in an
+	upstream post-2.0.4 NoMa update from varchar(40) to varchar(255).
+	We have folded that change into our PostgreSQL database
+	definition, so as not to need such an upgrade in the future.
+
+(*) We found some residual problems in code that referenced constructions
+    valid in MySQL and SQLite but not in PostgreSQL.
+
+(*) We found another construction that was valid in MySQL but not even
+    valid in SQLite.  Apparently this is a bug that has gone unnoticed
+    by the upstream maintainers.
+
+================================================================
+Converting NoMa to use PostgreSQL
+================================================================
+
+Although we are porting NoMa to use PostgreSQL as a back-end database,
+our 7.1.0 dev builds still (as of this writing) use SQLite for the
+back-end database.  This is so our daily builds remain stable while we
+are in the process of making the conversion.  During this period, the
+following steps must be taken to switch to PostgreSQL.  These steps do
+not include migrating any data from the noma/var/NoMa.db SQLite database
+to the PostgreSQL database.  I suppose we will need to do that during
+a formal GWMEE release upgrade, but we don't have scripting for such a
+data transfer at this point.
+
+(*) Create and populate the PostgreSQL version of the noma database.
+
+    Run the following commands.  The "psql" commands will prompt for
+    the PostgreSQL database administrator password.
+
+	cd /usr/local/groundwork/core/databases/postgresql
+	/usr/local/groundwork/postgresql/bin/psql < create-fresh-noma.sql 
+	/usr/local/groundwork/postgresql/bin/psql -d noma < noma-db.sql
+	/usr/local/groundwork/postgresql/bin/psql -d noma < noma-seed.sql
+
+(*) Change the NoMa configuration file to point to the PostgreSQL version
+    of the database.
+
+    Make the following changes:
+
+	# cd /usr/local/groundwork/noma/etc
+	# diff NoMa.yaml.orig NoMa.yaml
+	10,11c10,11
+	<   type: sqlite3
+	<   automatic_db_upgrade: yes
+	---
+	>   type: postgresql
+	>   automatic_db_upgrade: no
+	24c24
+	<    password: noma
+	---
+	>    password: nomapass
+
+    I am presuming that the GroundWork version of the NoMa front-end UI
+    code still accesses the NoMa.yaml config file for such parameters,
+    so no further config changes will be necessary.
+
+(*) Restart the NoMa daemon process (noma/notifier/noma_daemon.pl),
+    run under gwservices, so it picks up the new configuration.
+
+	service groundwork restart noma
+
+================================================================
+Converting NoMa to use internally generated ID values
+================================================================
+
+Use of the alert_via_noma.pl -u option has been found to be problematic,
+both because all outside alerting agents must track host/service status
+over time and provide stable values as long as the host/service is in
+non-UP/OK state, and because multiple different alerting agents would
+need to coordinate the values they use for such purposes to ensure that
+they use different ranges so they do not collide.  To solve this, we
+have extended NoMa to support the notifier:generate_IDs option, which
+if set true will cause the NoMa daemon to ignore all incoming -u option
+values and generate and maintain its own unique-id values instead.
+
+That's fine as it is, but then we still have a problem of how to deal
+with existing databases.  To that end, we need to convert the unique-ID
+values that might collide with new values so they both conform to the
+new convention if possible, and are moved out of the way of possible
+future collisions if not.
+
+The switch_noma_to_generated_ids.sql script, part of our GWMEE migration
+scripting, is to be used for such data conversions.  It is to be used
+both during application of omnibus NoMa patches, and during GWMEE
+product upgrades.  The pg_migrate_noma.pl script is used to invoke the
+switch_noma_to_generated_ids.sql script in concert with adjusting the
+NoMa.yaml file to turn on internally generated IDs.
+
+Note that our current noma_2.0.3_NoMa.yaml.in.patch patch sets the new
+notifier:generate_IDs option to 0, even though we will henceforth want
+this option enabled in all GWMEE installations.  That's because our patch
+of that particular config file represents something more akin to the set
+of changes we will want to push upstream.  The actual copy of NoMa.yaml
+that we will include in our builds is presently being maintained as a
+full separate file, as the gwos/NoMa.yaml file relative to where this
+README resides.  That file does have the option set to 1.
+

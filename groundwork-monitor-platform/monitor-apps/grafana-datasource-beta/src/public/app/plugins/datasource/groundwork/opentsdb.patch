@@ -1,0 +1,22 @@
+--- partials/query.editor.html	2015-08-10 14:11:21.283613568 -0600
++++ partials/query.editor.html	2015-09-10 11:11:43.081954991 -0600
+@@ -3,7 +3,7 @@
+   <div  ng-repeat="target in panel.targets"
+         style="margin-bottom: 10px;"
+         ng-class="{'tight-form-disabled': target.hide}"
+-        ng-controller="OpenTSDBQueryCtrl"
++        ng-controller="GroundWorkOpenTSDBQueryCtrl"
+         ng-init="init()">
+ 
+     <div class="tight-form">
+--- datasource.js	2015-08-10 14:11:21.283613568 -0600
++++ datasource.js	2015-09-11 09:14:30.323003458 -0600
+@@ -167,7 +167,7 @@
+     };
+ 
+     OpenTSDBDatasource.prototype.testDatasource = function() {
+-      return this.performSuggestQuery('cpu', 'metrics').then(function () {
++      return this._performSuggestQuery('cpu', 'metrics').then(function () {
+         return { status: "success", message: "Data source is working", title: "Success" };
+       });
+     };

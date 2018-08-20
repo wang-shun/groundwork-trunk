@@ -1,0 +1,222 @@
+Copyright 2004-2007 GroundWork Open Source, Inc. ("GroundWork"). All 
+rights reserved. Use is subject to GroundWork commercial license terms. 
+For information on licensing and open source elements comprising 
+GroundWork Monitor Professional, please see a list of IP Ingredients at 
+http://www.groundworkopensource.com/products/pro-ipingredients.html. 
+GroundWork, GroundWork Open Source, GroundWork Monitor 
+Professional, GroundWork Foundation, GroundWork Status Viewer, 
+Monarch, and GroundWork Guava are trademarks of GroundWork Open 
+Source, Inc. Other trademarks, logos and service marks (each, a "Mark") 
+used in GroundWork’s products, including Nagios, which is a registered 
+trademark of Ethan Galstad, are the property of other third parties. These 
+Marks may not be used without the prior written consent of GroundWork 
+Open Source or the third party that owns the respective Mark.
+
+GroundWork Monitor Professional 5.1.3 Release Notes
+
+PURPOSE
+The purpose of this document is to outline new features in GroundWork 
+Monitor Professional 5.1.x. 
+
+DISTRIBUTION NOTES
+In addition to this Release Notes document, please read the Readme and 
+Installation Guide which accompany this release. These documents 
+contain important information regarding bug fixes, known issues, and new 
+installation and upgrading instructions.
+
+SUPPORT
+Product support is available through a GroundWork subscription 
+agreement. For more information, go to GroundWork Support at 
+http://www.groundworkopensource.com/support/options.html.
+
+CONTENTS
+SECTION 1 – WHAT’S NEW IN GROUNDWORK MONITOR PROFESSIONAL 5.1.x
+SECTION 2 – BEHAVIOR THAT HAS CHANGED IN VERSION 5.1.0
+SECTION 3 – BEHAVIOR THAT HAS CHANGED IN VERSION 5.1.3
+
+--------------------
+SECTION 1 – WHAT’S NEW IN GROUNDWORK MONITOR PROFESSIONAL 5.1.x
+--------------------
+GroundWork Monitor Professional is designed to provide 
+centralized visibility and control over your entire IT infrastructure. It 
+monitors systems, applications, databases, and network 
+equipment. GroundWork Monitor Professional features a flexible 
+architecture that supports custom configurations and custom 
+reporting. The system is built on a modern architecture that 
+combines the best of open source with innovative software 
+developed by GroundWork's IT management experts for 
+monitoring and managing your network availability and 
+performance. New features in this version include:
+
+Performance Improvements:
+– We are seeing performance increases of 2x to 5x for data 
+intensive screens.  In almost all cases the screens refresh 
+within a couple of seconds.
+
+– The improved Status Viewer allows users to quickly navigate 
+to the information of interest, with fewer clicks, and a cleaner 
+interface.
+
+– With a more complete implementation of web services at the 
+data retrieval level, all screens that access data from the 
+Foundation database are more responsive.  This includes 
+Status Viewer, Console, and Dashboards. 
+
+Scalability:
+– The product scales to 15 concurrent users, maintaining 
+acceptable performance.
+
+– Support for 500 hosts per monitoring server
+
+– Support for 500 service checks per minute (5000 service 
+checks total)
+
+– Support for 6 child servers (total of 3000 hosts, 3000 service 
+checks/minute)
+
+Enhanced Status Viewer:
+Optimized Display
+– Eliminates redundant clicks to get to pertinent information 
+
+– More efficiently structured to handle large datasets 
+
+– More efficiently retrieves data and less memory required per 
+user 
+
+– Faster display by only retrieving visible information 
+Host Search on all pages:
+
+– Tree Navigation on all pages
+
+– Navigate and expand tree to see status of all host groups, 
+hosts and services 
+
+– Pie charts to better visualize system state 
+
+– Dual pane TroubleView 
+
+– Independent scrolling of hosts and services 
+
+– Bar graph indicates overall health of hosts and services 
+
+Additional supported configurations:
+– Seamless upgrade from GroundWork Monitor Open Source 
+5.1.x to GroundWork Monitor Professional 5.1.x
+
+– With version 5.1.x, the persistent data store is the same 
+between the two products providing a seamless upgrade from 
+Open Source to Professional.
+
+– Support for SSL
+– Our new Configuration Guide documents how to set-up SSL 
+with GroundWork Monitor Professional
+
+– Support for LDAP
+– Our new Configuration Guide documents how to integrate 
+LDAP with GroundWork Monitor Professional
+
+--------------------
+SECTION 2 – BEHAVIOR THAT HAS CHANGED IN VERSION 5.1.0
+--------------------
+– Support for Firefox 1.5.x dropped due to Security Issues
+Support for Firefox 1.5.x has been dropped for GroundWork 
+Monitor Professional 5.1.x because Firefox 1.5.x does not set 
+the http referrer header for resource requests that are 
+generated in javascript.  This opens up a security hole in 
+accessing various applications such as Advanced Reports, 
+Performance, etc.  The release does support Firefox 2.x and 
+Internet Explorer 6 and 7.  
+For customers that require Firefox 2.x, and are comfortable 
+with the security exposure, the Configuration Guide for 
+GroundWork Monitor Professional 5.1.x shows how to 
+reconfigure version 5.1.x to work with Firefox 1.5.x.
+
+– Logic used to determine Pending status for services
+In GroundWork Monitor Professional 5.0 there was an 
+inconsistency between how Nagios and GroundWork Monitor 
+determined which services are “pending”.  The logic that 
+Nagios uses (and GroundWork has adopted for version 5.1.x):
+For either passive or active checks, look at the following fields 
+in the status.log:
+
+– If both the "has been checked" and "last checked" field are "0", 
+then the service should be shown as "pending"
+
+– If either the "has been checked” field is "1", or "last checked" 
+is non-zero, then use the "current status" field to determine the 
+service's status.
+
+– Pending status in TroubleView
+In the 5.0 version of the product, services that were in a 
+pending state were shown in TroubleView.  With release 5.1.x, 
+that is no longer the case.  This change was made because 
+many of our customers have passive checks that may remain 
+in a pending state for long periods of time, and consequently 
+these services are not considered to be in trouble.
+
+– Console suppresses columns with no data
+When the console display is rendered, if an entire column to 
+be displayed contains no data, then the column is hidden.  
+This enhancement was made to make it easier to navigate the 
+page, since some fields such as “acknowledged by” or 
+“acknowledge comments” are commonly empty.  If the page 
+subsequently is updated and the column gets data, the 
+column is then displayed.  The redisplay can occur when 
+either the user navigates through the console screens, or a 
+currently displayed console screen is updated with new data.
+
+– Status Viewer will move to the bottom of the main drop down 
+menu when upgrading from a previous version of GroundWork 
+Monitor Professional 
+When an existing installation upgrades to version 5.1.x, the 
+previous Status Viewer is removed and the enhanced Status 
+Viewer application is installed.  This causes the new Status 
+Viewer to show up at the bottom of the main drop down menu 
+for existing users that have Status Viewer in their menu.  The 
+position of Status Viewer on the drop down menu can be 
+changed via the Administration tab. 
+
+– Profiles need to be imported into the product
+Previously, when a user installed the Professional product, all 
+the prepackaged Profiles were pre-loaded into the system.  
+With version 5.1.x, a user needs to import the Profiles into the 
+product.  This behavior has been changed to avoid the 
+situation where existing profiles are overwritten, losing any 
+changes a user might have made to the previously installed 
+profiles.  The steps to import the profiles are described in the 
+online Bookshelf documentation in the Administrator’s Guide, 
+Section 4, Chapter 4.
+
+– FilterView has been removed from Status Viewer
+With the Dashboard feature added in version 5.0, the 
+functionality that FilterView provided can more easily be 
+satisfied through dashboards.  With the enhanced Status 
+Viewer, the FilterView has been removed.
+To make the Console Widget behavior consistent between 
+Status Viewer and Dashboards, the “De-activate Refresh” and 
+“Sort Option” buttons have been removed from the Console 
+Widget for Dashboards.
+
+– Default polling time changed from 5 minutes to 10 minutes
+The best practices recommendations from our Professional 
+Services group is to actively poll the hosts and services on a 
+10 minute interval, so the default polling time has been 
+updated accordingly in the default settings of the product.
+
+--------------------
+SECTION 3 – BEHAVIOR THAT HAS CHANGED IN VERSION 5.1.3
+--------------------
+-  TroubleView suppresses display of services on hosts that
+are down
+To avoid crowding the display and allow faster location of
+problem hosts and services, the behavior of the TroubleView
+has changed. Services in a non OK and non-pending state will
+not be shown in the Troubled Services section of the display
+if the hosts to which they are associated are down. Note that
+this may result in the bar graph for Troubled Services showing
+red and/or yellow for services in critical or warning states,
+and yet none of these services may be listed. This is by design. 
+
+Release: GroundWork Monitor Professional 5.1.3
+Release Notes: 071907a	
+GroundWork Open Source, Inc.

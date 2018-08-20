@@ -1,0 +1,174 @@
+
+README for merge-similar-hosts.sql version 1.0 of 2016-10-17
+------------------------------------------------------------
+
+The purpose of this script is to handle all the host and service collisions
+identified by the companion show-similar-hosts.sql script.  That is done 
+by selecting one host of each set of similar hostnames (differing only in 
+lettercase) to be retained, while all the others are deleted.  Services from
+the deleted hosts are transferred to the corresponding retained hosts.  When
+all the adjustments here are complete, the show-similar-hosts.sql script
+should display no remaining similar hostnames.
+
+Similar considerations apply when similar hosts are found to have duplicate
+services assigned.  One service in the set of duplicate services is selected
+to be retained, while all the others are deleted.  Again, after this script
+has been run, the show-similar-hosts.sql script should display no remaining
+duplicate services.
+
+To complete this work, retaining as much setup as possible for the hosts
+to be deleted, adjustments are made in several tables.  The aim here is to
+perform all necessary cleanup, but only in the runtime database.  Afterward,
+the conflicting_archive_service_rows.pl script must be run to make a set of
+corresponding adjustments in the archive database so daily log archiving will
+run without error.
+
+When crossing the GroundWork Montitor release boundary where this matters
+(going from 7.0.2-SP02 or earlier to 7.0.2-SP03 or later), both of the
+show-similar-hosts.sql and merge-similar-hosts.sql scripts must be run before
+the upgrade so the upgrade scripting does not stumble over host and service
+conflicts.  On the other hand, the conflicting_archive_service_rows.pl script
+should generally be run immediately after the upgrade, to guarantee that the
+archive database schema has been fully modified to its correct setup before
+making modifications to the data in that database.
+
+
+CAVEATS
+-------
+
+If all we do is remove duplicate services here, what is to stop some agent from
+adding back the colliding service before we get to running an upgrade?  And
+even if we do delete entire hosts, what is to stop some agent from adding back
+such hosts and their colliding services before we get to running an upgrade?
+There's nothing we can do about that from within this script.  All we can do is
+to document a procedure that involves taking certain steps before this script is
+run, to shut down monitoring activities that might undo what this script does.
+See GWMON-12600 for more information on such a procedure.
+
+The merge-similar-hosts.sql script handles the merging of servicegroup
+memberships from to-be-deleted services on to-be-deleted hosts to corresponding
+existing services on their associated to-be-retained hosts.  Servicegroups are
+managed within the gwcollagedb database as "categories".
+
+If the to-be-deleted services belonged to any categories with an entitytype
+other than SERVICE_GROUP, the current processing may empty them out without
+deleting the categories themselves.  We don't handle that situation right now
+mostly because we don't know what other categories might be in play, and how
+they ought to be treated.
+
+Also, this script deals only with servicegroup categories.  If there is some
+category information associated with deleted hosts, that information will be
+orphaned (not deleted) in the gwcollagedb database.
+
+
+HOW TO RUN THIS SCRIPT
+----------------------
+
+This script alters the gwcollagedb database to eliminate similar hosts and
+duplicate services on such hosts.  It is to be run from a terminal window
+while logged in as the nagios user, with the following command (assuming
+that a copy of this script has been placed into the /tmp directory):
+
+/usr/local/groundwork/postgresql/bin/psql -U collage -d gwcollagedb -f /tmp/merge-similar-hosts.sql
+
+
+PRINCIPLES OF OPERATION
+-----------------------
+
+Adjustments made in various tables of the runtime database are:
+
+(*) All hostgroup membership of each to-be-deleted host is transferred to the
+    similar to-be-retained host.
+
+(*) Historical logmessage (event) data for to-be-deleted hosts is re-attributed
+    to the similar to-be-retained hosts.
+
+(*) Duplicate services on multiple hosts in each set of similar hosts are resolved
+    by selecting one service to retain, and deleting all the others.  Before the
+    other services are deleted, all servicegroup membership of the to-be-deleted
+    services is transferred to the one retained service, and any logmessage rows
+    and logperformancedata rows referring to those to-be-deleted services are
+    updated to refer instead to the one to-be-retained service.
+
+(*) All remaining services on hosts to be deleted are moved to the retained host
+    before those hosts are deleted.  As this is done, all servicegroup membership
+    of the moved services is adjusted to refer to the retained host instead of
+    the hosts to be deleted.
+
+(*) Finally, the similar hosts are deleted, leaving only one retained host in
+    each set of similar hosts.  That one retained host refers to as much of the
+    setup and data of the similar deleted hosts as was possible to transfer over.
+
+
+DETAILED STEPS
+--------------
+
+Here is the complete set of steps, to be taken in this exact order:
+
+(*) begin transaction
+
+(*) in the following two items, create temporary tables to be used to store
+    critical associations regarding similar hosts and duplicate services
+
+(*) identify all groups of similar hosts, and the particular to-be-retained
+    host in each group
+
+(*) identify all groups of duplicate services to resolve, and the particular
+    to-be-retained service in each group
+
+(*) for each to-be-deleted similar host, transfer (merge) its hostgroup
+    memberships to the associated to-be-retained host
+
+(*) for each to-be-deleted similar host, transfer its logmessage host
+    attribution to the associated to-be-retained host (update both hoststatusid
+    and deviceid fields to match the values from the to-be-retained host)
+
+(*) for each to-be-deleted duplicate service, transfer (merge) its
+    servicegroup memberships to the associated to-be-retained service (follow
+    the chain of associations:
+
+	servicestatus.servicestatusid => categoryentity.objectid
+	categoryentity.categoryid => category.categoryid
+	category.entitytypeid => entitytype.entitytypeid
+	entitytype = 'SERVICE_GROUP'
+
+    to identify service groups to which a particular service belongs)
+
+(*) for each to-be-deleted duplicate service, transfer its logmessage service
+    attribution to the associated to-be-retained service (update just the
+    servicestatusid field to match the value from the to-be-retained service)
+
+(*) for each to-be-deleted duplicate service, transfer its logperformancedata
+    service attribution to the associated to-be-retained service (update just the
+    servicestatusid field to match the value from the to-be-retained service)
+
+(*) we do not attempt to transfer any of the servicestatusproperty values from
+    to-be-deleted duplicate services to the associated to-be-retained services;
+    most notably, this will lose "Comments" data for the to-be-deleted duplicate
+    services
+
+(*) delete all to-be-deleted duplicate services
+
+(*) transfer all host association in servicegroups for remaining services on
+    to-be-deleted similar hosts to the associated to-be-retained hosts (there's
+    nothing actually to be done for this; servicegroup membership is tracked
+    directly against the services [in the categoryentity entries], and it is
+    only through them that host associations are made as well; so when we
+    transfer the remaining services on the to-be-deleted similar hosts to the
+    associated to-be-retained hosts in the next step, the host associations for
+    the servicegroups will automatically come along for the ride)
+
+(*) transfer all remaining services on to-be-deleted similar hosts to the
+    associated to-be-retained hosts (change the servicestatus.hostid field
+    from the hostid of the to-be-deleted similar host to the hostid of the
+    to-be-retained host)
+
+(*) we do not attempt to transfer any of the hoststatusproperty values from
+    the to-be-deleted similar hosts to the associated to-be-retained hosts; most
+    notably, this will lose "Comments" data for the to-be-deleted similar hosts
+
+(*) delete all to-be-deleted similar hosts
+
+(*) rollback (for development purposes, to allow easy re-tries) or commit (for
+    production purposes)
+

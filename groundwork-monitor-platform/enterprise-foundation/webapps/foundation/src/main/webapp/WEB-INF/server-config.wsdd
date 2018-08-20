@@ -1,0 +1,2489 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+/*
+ * Collage - The ultimate data integration framework.
+ * Copyright (C) 2004-2006  GroundWork Open Source Solutions info@groundworkopensource.com
+ *     This program is free software; you can redistribute it and/or modify
+ *     it under the terms of version 2 of the GNU General Public License
+ *     as published by the Free Software Foundation.
+ *     This program is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *     You should have received a copy of the GNU General Public License
+ *     along with this program; if not, write to the Free Software
+ *     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+ -->
+<deployment xmlns="http://xml.apache.org/axis/wsdd/" xmlns:java="http://xml.apache.org/axis/wsdd/providers/java">
+ <globalConfiguration>
+  <parameter name="sendMultiRefs" value="true"/>
+  <parameter name="disablePrettyXML" value="true"/>
+  <parameter name="adminPassword" value="admin"/>
+  <parameter name="attachments.Directory" value="/usr/local/apache/apache-tomcat-5.5.12/webapps/foundation-webapp/WEB-INF/attachments"/>
+  <parameter name="dotNetSoapEncFix" value="true"/>
+  <parameter name="enableNamespacePrefixOptimization" value="false"/>
+  <parameter name="sendXMLDeclaration" value="true"/>
+  <parameter name="sendXsiTypes" value="true"/>
+  <parameter name="attachments.implementation" value="org.apache.axis.attachments.AttachmentsImpl"/>
+  <requestFlow>
+   <handler type="java:org.apache.axis.handlers.JWSHandler">
+    <parameter name="scope" value="session"/>
+   </handler>
+   <handler type="java:org.apache.axis.handlers.JWSHandler">
+    <parameter name="scope" value="request"/>
+    <parameter name="extension" value=".jwr"/>
+   </handler>
+  </requestFlow>
+ </globalConfiguration>
+ <handler name="LocalResponder" type="java:org.apache.axis.transport.local.LocalResponder"/>
+ <handler name="URLMapper" type="java:org.apache.axis.handlers.http.URLMapper"/>
+ <handler name="Authenticate" type="java:org.apache.axis.handlers.SimpleAuthenticationHandler"/>
+ <service name="AdminService" provider="java:MSG">
+  <parameter name="allowedMethods" value="AdminService"/>
+  <parameter name="enableRemoteAdmin" value="false"/>
+  <parameter name="className" value="org.apache.axis.utils.Admin"/>
+  <namespace>http://xml.apache.org/axis/wsdd/</namespace>
+ </service>
+ <service name="Version" provider="java:RPC">
+  <parameter name="allowedMethods" value="getVersion"/>
+  <parameter name="className" value="org.apache.axis.Version"/>
+ </service>
+ <!--
+ 	GroundWork Web Services:
+ 	Event, 	Host, HostGroup, Device, Statistics
+ 
+ -->
+
+ <!-- Services from EventService WSDL service -->
+  
+   <!-- Services from EventService WSDL service -->   
+    <service name="wsevent" provider="java:RPC" style="rpc" use="literal">
+      <wsdlFile>/WEB-INF/fwsevent.wsdl</wsdlFile>
+      <parameter name="wsdlTargetNamespace" value="urn:fws"/>
+      <parameter name="wsdlServiceElement" value="WSEventService"/>
+      <parameter name="schemaUnqualified" value="http://model.ws.foundation.groundwork.org"/>
+      <parameter name="wsdlServicePort" value="wsevent"/>
+      <parameter name="className" value="org.groundwork.foundation.ws.impl.EventSoapBindingImpl"/>
+      <parameter name="wsdlPortType" value="WSEvent"/>
+      <parameter name="typeMappingVersion" value="1.2"/>
+      <operation name="getEvents" qname="operNS:getEvents" xmlns:operNS="urn:fws" returnQName="getEventsReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsevent" >
+        <parameter qname="type" type="tns:EventQueryType" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="appType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startRange" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="orderedBy" type="tns:SortCriteria" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="firstResult" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="maxResults" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <operation name="getEventsForDevice" qname="operNS:getEventsForDevice" xmlns:operNS="urn:fws" returnQName="getEventsForDeviceReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsevent" >
+        <parameter qname="in0" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <operation name="getEventsByString" qname="operNS:getEventsByString" xmlns:operNS="urn:fws" returnQName="getEventsByStringReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsevent" >
+        <parameter qname="type" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="appType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startRange" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="sortOrder" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="sortField" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <parameter qname="firstResult" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="maxResults" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>  
+      <operation name="getEventStatisticsByHost" qname="operNS:getEventStatisticsByHost" xmlns:operNS="urn:fws" returnQName="getEventStatisticsByHostReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsevent" >
+        <parameter qname="appType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="hostName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startRange" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="statisticType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>     
+      <operation name="getEventStatisticsByHostGroup" qname="operNS:getEventStatisticsByHostGroup" xmlns:operNS="urn:fws" returnQName="getEventStatisticsByHostGroupReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsevent" >
+        <parameter qname="appType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="hostGroupName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startRange" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="statisticType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>      
+      <operation name="getEventsByCriteria" qname="operNS:getEventsByCriteria" xmlns:operNS="urn:fws" returnQName="getEventsByCriteriaReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsevent" >
+        <parameter qname="filter" type="tns:Filter" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="sort" type="tns:Sort" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="firstResult" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+		<parameter qname="maxResults" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>        
+      <operation name="getEventsByIds" qname="operNS:getEventsByIds" xmlns:operNS="urn:fws" returnQName="getEventsByIdsReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsevent" >
+        <parameter qname="ids" type="tns:int[]" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="sort" type="tns:Sort" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="firstResult" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+		<parameter qname="maxResults" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>  
+       <operation name="getHostStateTransitions" qname="operNS:getHostStateTransitions" xmlns:operNS="urn:fws" returnQName="getHostStateTransitionsReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsevent" >
+        <parameter qname="hostName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startDate" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endDate" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+		<fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>  
+      
+        <operation name="getServiceStateTransitions" qname="operNS:getServiceStateTransitions" xmlns:operNS="urn:fws" returnQName="getServiceStateTransitionsReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsevent" >
+        <parameter qname="hostName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="serviceName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startDate" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endDate" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+		<fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation> 
+      
+      <operation name="getEventsByCategory" qname="operNS:getEventsByCategory" xmlns:operNS="urn:fws" returnQName="getEventsByCategoryReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsevent" >
+         <parameter qname="categoryName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="entityTypeName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="filter" type="tns:Filter" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="sort" type="tns:Sort" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="firstResult" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+		<parameter qname="maxResults" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+       
+       <operation name="getEventsByRestrictedHostGroupsAndServiceGroups" qname="operNS:getEventsByRestrictedHostGroupsAndServiceGroups" xmlns:operNS="urn:fws" returnQName="getEventsByRestrictedHostGroupsAndServiceGroupsReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsevent" >
+         <parameter qname="hostGroupList" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="serviceGroupList" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="filter" type="tns:Filter" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="sort" type="tns:Sort" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="firstResult" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+		<parameter qname="maxResults" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>  
+            
+      <parameter name="allowedMethods" value="getEventsForDevice getEvents getEventsByString getEventStatisticsByHost getEventStatisticsByHostGroup getEventsByCriteria getEventsByIds getHostStateTransitions getServiceStateTransitions getEventsByCategory getEventsByRestrictedHostGroupsAndServiceGroups"/>
+      <parameter name="scope" value="Session"/>
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:SortCriteria"
+        type="java:org.groundwork.foundation.ws.model.impl.SortCriteria"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Host"
+        type="java:org.groundwork.foundation.ws.model.impl.Host"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:EventQueryType"
+        type="java:org.groundwork.foundation.ws.model.impl.EventQueryType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostGroup"
+        type="java:org.groundwork.foundation.ws.model.impl.HostGroup"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ServiceStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.ServiceStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationException"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationException"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Component"
+        type="java:org.groundwork.foundation.ws.model.impl.Component"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:PropertyTypeBinding"
+        type="java:org.groundwork.foundation.ws.model.impl.PropertyTypeBinding"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:OperationStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.OperationStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ExceptionType"
+        type="java:org.groundwork.foundation.ws.model.impl.ExceptionType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StringProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.StringProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:MonitorStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.MonitorStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.HostStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Priority"
+        type="java:org.groundwork.foundation.ws.model.impl.Priority"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Severity"
+        type="java:org.groundwork.foundation.ws.model.impl.Severity"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:TypeRule"
+        type="java:org.groundwork.foundation.ws.model.impl.TypeRule"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:LongProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.LongProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:BooleanProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.BooleanProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Device"
+        type="java:org.groundwork.foundation.ws.model.impl.Device"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:CheckType"
+        type="java:org.groundwork.foundation.ws.model.impl.CheckType"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:DoubleProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.DoubleProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:IntegerProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.IntegerProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:TimeProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.TimeProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StateType"
+        type="java:org.groundwork.foundation.ws.model.impl.StateType"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationCollection"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationCollection"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:LogMessage"
+        type="java:org.groundwork.foundation.ws.model.impl.LogMessage"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:DateProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.DateProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StatisticProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.StatisticProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />      
+
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Filter"
+        type="java:org.groundwork.foundation.ws.model.impl.Filter"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:FilterOperator"
+        type="java:org.groundwork.foundation.ws.model.impl.FilterOperator"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />    
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:FilterValue"
+        type="java:org.groundwork.foundation.ws.model.impl.FilterValue"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />     
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Sort"
+        type="java:org.groundwork.foundation.ws.model.impl.Sort"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      /> 
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:SortItem"
+        type="java:org.groundwork.foundation.ws.model.impl.SortItem"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StateTransition"
+        type="java:org.groundwork.foundation.ws.model.impl.StateTransition"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />                               
+  </service>   
+   
+  <service name="wshost" provider="java:RPC" style="rpc" use="literal">
+   <wsdlFile>/WEB-INF/fwshost.wsdl</wsdlFile>
+      <parameter name="wsdlTargetNamespace" value="urn:fws"/>
+      <parameter name="wsdlServiceElement" value="WSHostService"/>
+      <parameter name="schemaUnqualified" value="http://model.ws.foundation.groundwork.org"/>
+      <parameter name="wsdlServicePort" value="wshost"/>
+      <parameter name="className" value="org.groundwork.foundation.ws.impl.HostSoapBindingImpl"/>
+      <parameter name="wsdlPortType" value="WSHost"/>
+      <parameter name="typeMappingVersion" value="1.2"/>
+      <operation name="getHosts" qname="operNS:getHosts" xmlns:operNS="urn:fws" returnQName="getHostsReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wshost" >
+        <parameter qname="type" type="tns:HostQueryType" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="applicationType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="orderedBy" type="tns:SortCriteria" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <operation name="hostLookup" qname="operNS:lookupHost" xmlns:operNS="urn:fws" returnQName="lookupHostReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wshost" >
+        <parameter qname="hostName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <operation name="getHostsByString" qname="operNS:getHostsByString" xmlns:operNS="urn:fws" returnQName="getHostsByStringReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wshost" >
+        <parameter qname="type" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="applicationType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startRange" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="sortOrder" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="sortField" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <operation name="getHostsByCriteria" qname="operNS:getHostsByCriteria" xmlns:operNS="urn:fws" returnQName="getHostsByCriteriaReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wshost" >
+        <parameter qname="filter" type="tns:Filter" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="sort" type="tns:Sort" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="firstResult" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+		<parameter qname="maxResults" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>                                
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>   
+       <operation name="getHostList" qname="operNS:getHostList" xmlns:operNS="urn:fws" returnQName="getHostListReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wshost" >
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:>WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>  
+      
+      <operation name="getSimpleHosts" qname="operNS:getSimpleHosts" xmlns:operNS="urn:fws" returnQName="getSimpleHostsReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wshost" >
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:>WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>  
+       <operation name="getSimpleHostsByHostGroupName" qname="operNS:getSimpleHostsByHostGroupName" xmlns:operNS="urn:fws" returnQName="getSimpleHostsByHostGroupNameReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wshost" >
+         <parameter qname="hostGroupName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+         <parameter qname="deep" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:>WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation> 
+        
+        <operation name="getSimpleHost" qname="operNS:getSimpleHost" xmlns:operNS="urn:fws" returnQName="getSimpleHostReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wshost" >
+         <parameter qname="hostName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="deep" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:>WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <operation name="getSimpleHostByCriteria" qname="operNS:getSimpleHostByCriteria" xmlns:operNS="urn:fws" returnQName="getSimpleHostByCriteriaReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wshost" >
+        <parameter qname="filter" type="tns:Filter" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+          <parameter qname="sort" type="tns:Sort" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="firstResult" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+		<parameter qname="maxResults" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>          
+        <parameter qname="deep" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>                         
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>             
+      <parameter name="allowedMethods" value="getHosts getHostsByString hostLookup getHostsByCriteria getHostList getSimpleHosts getSimpleHostsByHostGroupName getSimpleHost getSimpleHostByCriteria"/>
+ 
+      <parameter name="scope" value="Session"/>
+
+	  <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:SortCriteria"
+        type="java:org.groundwork.foundation.ws.model.impl.SortCriteria"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+       <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:SimpleHost"
+        type="java:org.groundwork.foundation.ws.model.impl.SimpleHost"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+       <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:SimpleServiceStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.SimpleServiceStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Host"
+        type="java:org.groundwork.foundation.ws.model.impl.Host"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostGroup"
+        type="java:org.groundwork.foundation.ws.model.impl.HostGroup"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ServiceStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.ServiceStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationException"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationException"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Component"
+        type="java:org.groundwork.foundation.ws.model.impl.Component"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:PropertyTypeBinding"
+        type="java:org.groundwork.foundation.ws.model.impl.PropertyTypeBinding"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:OperationStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.OperationStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ExceptionType"
+        type="java:org.groundwork.foundation.ws.model.impl.ExceptionType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StringProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.StringProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:MonitorStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.MonitorStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.HostStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Priority"
+        type="java:org.groundwork.foundation.ws.model.impl.Priority"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Severity"
+        type="java:org.groundwork.foundation.ws.model.impl.Severity"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:TypeRule"
+        type="java:org.groundwork.foundation.ws.model.impl.TypeRule"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:LongProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.LongProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StatisticProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.StatisticProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:BooleanProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.BooleanProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Device"
+        type="java:org.groundwork.foundation.ws.model.impl.Device"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:CheckType"
+        type="java:org.groundwork.foundation.ws.model.impl.CheckType"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:DoubleProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.DoubleProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:IntegerProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.IntegerProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:TimeProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.TimeProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StateType"
+        type="java:org.groundwork.foundation.ws.model.impl.StateType"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationCollection"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationCollection"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostQueryType"
+        type="java:org.groundwork.foundation.ws.model.impl.HostQueryType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:LogMessage"
+        type="java:org.groundwork.foundation.ws.model.impl.LogMessage"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:DateProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.DateProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Filter"
+        type="java:org.groundwork.foundation.ws.model.impl.Filter"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:FilterOperator"
+        type="java:org.groundwork.foundation.ws.model.impl.FilterOperator"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />       
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:FilterValue"
+        type="java:org.groundwork.foundation.ws.model.impl.FilterValue"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />         
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Sort"
+        type="java:org.groundwork.foundation.ws.model.impl.Sort"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      /> 
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:SortItem"
+        type="java:org.groundwork.foundation.ws.model.impl.SortItem"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      /> 
+    
+  </service>   
+       
+ <!-- Services from WSHostGroupService WSDL service -->
+
+<!-- Services from WSHostGroupService WSDL service -->
+<service name="wshostgroup" provider="java:RPC" style="rpc" use="literal">
+    <wsdlFile>/WEB-INF/fwshostgroup.wsdl</wsdlFile>
+      <parameter name="wsdlTargetNamespace" value="urn:fws"/>
+      <parameter name="wsdlServiceElement" value="WSHostGroupService"/>
+      <parameter name="schemaUnqualified" value="http://model.ws.foundation.groundwork.org"/>
+      <parameter name="wsdlServicePort" value="wshostgroup"/>
+      <parameter name="className" value="org.groundwork.foundation.ws.impl.HostgroupSoapBindingImpl"/>
+      <parameter name="wsdlPortType" value="WSHostGroup"/>
+      <parameter name="typeMappingVersion" value="1.2"/>
+      <operation name="getHostGroups" qname="operNS:getHostGroups" xmlns:operNS="urn:fws" returnQName="getHostGroupsReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wshostgroup" >
+        <parameter qname="type" type="tns:HostGroupQueryType" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="applicationType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="deep" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="orderedBy" type="tns:SortCriteria" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <operation name="getHostGroupsByString" qname="operNS:getHostGroupsByString" xmlns:operNS="urn:fws" returnQName="getHostGroupsByStringReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wshostgroup" >
+        <parameter qname="type" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="applicationType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="deep" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startRange" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="sortOrder" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="sortField" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>   
+      <operation name="getHostGroupInfo" qname="operNS:getHostGroupInfo" xmlns:operNS="urn:fws" returnQName="getHostGroupInfoReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wshostgroup" >
+        <parameter qname="type" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>        
+      <operation name="getHostGroupsByCriteria" qname="operNS:getHostGroupsByCriteria" xmlns:operNS="urn:fws" returnQName="getHostGroupsByCriteriaReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wshostgroup" >
+        <parameter qname="filter" type="tns:Filter" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="sort" type="tns:Sort" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="firstResult" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+		<parameter qname="maxResults" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/> 
+		<parameter qname="deep" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>       
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>           
+      <parameter name="allowedMethods" value="getHostGroups getHostGroupsByString getHostGroupInfo getHostGroupsByCriteria"/>
+      <parameter name="scope" value="Session"/>
+      
+	  <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:SortCriteria"
+        type="java:org.groundwork.foundation.ws.model.impl.SortCriteria"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Host"
+        type="java:org.groundwork.foundation.ws.model.impl.Host"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostGroup"
+        type="java:org.groundwork.foundation.ws.model.impl.HostGroup"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ServiceStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.ServiceStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationException"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationException"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Component"
+        type="java:org.groundwork.foundation.ws.model.impl.Component"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:PropertyTypeBinding"
+        type="java:org.groundwork.foundation.ws.model.impl.PropertyTypeBinding"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:OperationStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.OperationStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ExceptionType"
+        type="java:org.groundwork.foundation.ws.model.impl.ExceptionType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StringProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.StringProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:MonitorStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.MonitorStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.HostStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Priority"
+        type="java:org.groundwork.foundation.ws.model.impl.Priority"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Severity"
+        type="java:org.groundwork.foundation.ws.model.impl.Severity"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:TypeRule"
+        type="java:org.groundwork.foundation.ws.model.impl.TypeRule"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:LongProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.LongProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:BooleanProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.BooleanProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Device"
+        type="java:org.groundwork.foundation.ws.model.impl.Device"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:CheckType"
+        type="java:org.groundwork.foundation.ws.model.impl.CheckType"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:DoubleProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.DoubleProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:IntegerProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.IntegerProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:TimeProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.TimeProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StateType"
+        type="java:org.groundwork.foundation.ws.model.impl.StateType"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationCollection"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationCollection"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostGroupQueryType"
+        type="java:org.groundwork.foundation.ws.model.impl.HostGroupQueryType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:LogMessage"
+        type="java:org.groundwork.foundation.ws.model.impl.LogMessage"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:DateProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.DateProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostGroupInfo"
+        type="java:org.groundwork.foundation.ws.model.impl.HostGroupInfo"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />     
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostGroupInfoQueryType"
+        type="java:org.groundwork.foundation.ws.model.impl.HostGroupInfoQueryType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />
+            
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Filter"
+        type="java:org.groundwork.foundation.ws.model.impl.Filter"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:FilterOperator"
+        type="java:org.groundwork.foundation.ws.model.impl.FilterOperator"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />    
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:FilterValue"
+        type="java:org.groundwork.foundation.ws.model.impl.FilterValue"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />     
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Sort"
+        type="java:org.groundwork.foundation.ws.model.impl.Sort"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      /> 
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:SortItem"
+        type="java:org.groundwork.foundation.ws.model.impl.SortItem"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />         
+  </service>    
+  
+   <!-- Services from WSServiceService WSDL service -->
+  <service name="wsservice" provider="java:RPC" style="rpc" use="literal">
+  <wsdlFile>/WEB-INF/fwsservice.wsdl</wsdlFile>
+      <parameter name="wsdlTargetNamespace" value="urn:fws"/>
+      <parameter name="wsdlServiceElement" value="WSServiceService"/>
+      <parameter name="schemaUnqualified" value="http://model.ws.foundation.groundwork.org"/>
+      <parameter name="wsdlServicePort" value="wsservice"/>
+      <parameter name="className" value="org.groundwork.foundation.ws.impl.ServiceSoapBindingImpl"/>
+      <parameter name="wsdlPortType" value="WSService"/>
+      <parameter name="typeMappingVersion" value="1.2"/>
+      <operation name="getServices" qname="operNS:getServices" xmlns:operNS="urn:fws" returnQName="getServicesReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsservice" >
+        <parameter qname="type" type="tns:ServiceQueryType" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="appType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="orderedBy" type="tns:SortCriteria" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <operation name="getServicesByString" qname="operNS:getServicesByString" xmlns:operNS="urn:fws" returnQName="getServicesByStringReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsservice" >
+        <parameter qname="type" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="appType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startRange" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="sortOrder" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="sortField" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>            
+      <operation name="getServicesByCriteria" qname="operNS:getServicesByCriteria" xmlns:operNS="urn:fws" returnQName="getServicesByCriteriaReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsservice" >
+        <parameter qname="filter" type="tns:Filter" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="sort" type="tns:Sort" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="firstResult" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+		<parameter qname="maxResults" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>       
+      
+      <operation name="getTroubledServices" qname="operNS:getTroubledServices" xmlns:operNS="urn:fws" returnQName="getTroubledServicesReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsservice" >
+        <parameter qname="sort" type="tns:Sort" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="firstResult" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+		<parameter qname="maxResults" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation> 
+       <operation name="getServiceListByHostName" qname="operNS:getServiceListByHostName" xmlns:operNS="urn:fws" returnQName="getServiceListByHostNameReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsservice" >
+        <parameter qname="hostName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      
+        <operation name="getSimpleServiceListByHostName" qname="operNS:getSimpleServiceListByHostName" xmlns:operNS="urn:fws" returnQName="getSimpleServiceListByHostNameReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsservice" >
+        <parameter qname="hostName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      
+       <operation name="getSimpleServiceListByCriteria" qname="operNS:getSimpleServiceListByCriteria" xmlns:operNS="urn:fws" returnQName="getSimpleServiceListByCriteriaReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsservice" >
+        <parameter qname="filter" type="tns:Filter" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+         <parameter qname="sort" type="tns:Sort" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="firstResult" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+		<parameter qname="maxResults" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+         <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>       
+      
+      <parameter name="allowedMethods" value="getServices getServicesByString getServicesByCriteria getTroubledServices getServiceListByHostName getSimpleServiceListByHostName getSimpleServiceListByCriteria"/>      
+      <parameter name="scope" value="Session"/>
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:SortCriteria"
+        type="java:org.groundwork.foundation.ws.model.impl.SortCriteria"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Host"
+        type="java:org.groundwork.foundation.ws.model.impl.Host"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostGroup"
+        type="java:org.groundwork.foundation.ws.model.impl.HostGroup"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ServiceQueryType"
+        type="java:org.groundwork.foundation.ws.model.impl.ServiceQueryType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ServiceStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.ServiceStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationException"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationException"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Component"
+        type="java:org.groundwork.foundation.ws.model.impl.Component"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:PropertyTypeBinding"
+        type="java:org.groundwork.foundation.ws.model.impl.PropertyTypeBinding"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:OperationStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.OperationStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ExceptionType"
+        type="java:org.groundwork.foundation.ws.model.impl.ExceptionType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StringProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.StringProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:MonitorStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.MonitorStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.HostStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Priority"
+        type="java:org.groundwork.foundation.ws.model.impl.Priority"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Severity"
+        type="java:org.groundwork.foundation.ws.model.impl.Severity"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:TypeRule"
+        type="java:org.groundwork.foundation.ws.model.impl.TypeRule"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:LongProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.LongProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:BooleanProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.BooleanProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Device"
+        type="java:org.groundwork.foundation.ws.model.impl.Device"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:CheckType"
+        type="java:org.groundwork.foundation.ws.model.impl.CheckType"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:DoubleProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.DoubleProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:IntegerProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.IntegerProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:TimeProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.TimeProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StateType"
+        type="java:org.groundwork.foundation.ws.model.impl.StateType"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationCollection"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationCollection"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:LogMessage"
+        type="java:org.groundwork.foundation.ws.model.impl.LogMessage"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:DateProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.DateProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StatisticProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.StatisticProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+                  
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Filter"
+        type="java:org.groundwork.foundation.ws.model.impl.Filter"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:FilterOperator"
+        type="java:org.groundwork.foundation.ws.model.impl.FilterOperator"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />    
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:FilterValue"
+        type="java:org.groundwork.foundation.ws.model.impl.FilterValue"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />     
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Sort"
+        type="java:org.groundwork.foundation.ws.model.impl.Sort"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      /> 
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:SortItem"
+        type="java:org.groundwork.foundation.ws.model.impl.SortItem"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />             
+  </service>
+    
+  <!-- Services from WSCommonService WSDL service -->
+  <service name="wscommon" provider="java:RPC" style="rpc" use="literal">
+  <wsdlFile>/WEB-INF/fwscommon.wsdl</wsdlFile>
+      <parameter name="wsdlTargetNamespace" value="urn:fws"/>
+      <parameter name="wsdlServiceElement" value="WSCommonService"/>
+      <parameter name="schemaUnqualified" value="http://model.ws.foundation.groundwork.org"/>
+      <parameter name="wsdlServicePort" value="wscommon"/>
+      <parameter name="className" value="org.groundwork.foundation.ws.impl.CommonSoapBindingImpl"/>
+      <parameter name="wsdlPortType" value="WSCommon"/>
+      <parameter name="typeMappingVersion" value="1.2"/>
+      <operation name="login" qname="operNS:login" xmlns:operNS="urn:fws" returnQName="loginReturn" returnType="rtns:string" xmlns:rtns="http://www.w3.org/2001/XMLSchema" soapAction="" >
+        <parameter qname="userName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="password" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="realUserName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+      </operation>
+      <operation name="logout" qname="operNS:logout" xmlns:operNS="urn:fws" soapAction="" >
+      </operation>  
+      <operation name="getAttributeData" qname="operNS:getAttributeData" xmlns:operNS="urn:fws" returnQName="getAttributeDataReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscommon" >
+        <parameter qname="type" type="tns:AttributeQueryType" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>      
+      <operation name="getAttributeDataByString" qname="operNS:getAttributeDataByString" xmlns:operNS="urn:fws" returnQName="getAttributeDataByStringReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscommon" >
+        <parameter qname="type" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation> 
+      <operation name="cancelQuery" qname="operNS:cancelQuery" xmlns:operNS="urn:fws" returnQName="cancelQueryReturn" returnType="rtns:string" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscommon" >
+        <parameter qname="sessionID" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <operation name="executeQuery" qname="operNS:executeQuery" xmlns:operNS="urn:fws" returnQName="executeQueryReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscommon" >
+        <parameter qname="sessionID" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation> 
+             
+      <operation name="getEntityTypes" qname="operNS:getEntityTypes" xmlns:operNS="urn:fws" returnQName="getEntityTypesReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscommon" >
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>          
+      <operation name="getEntityTypeProperties" qname="operNS:getEntityTypeProperties" xmlns:operNS="urn:fws" returnQName="getEntityTypePropertiesReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscommon" >
+        <parameter qname="entityType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="appType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="componentProperties" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>         
+      <operation name="performEntityQuery" qname="operNS:performEntityQuery" xmlns:operNS="urn:fws" returnQName="performEntityQueryReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscommon" >
+        <parameter qname="entityType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="filter" type="tns:Filter" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="sort" type="tns:Sort" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="firstResult" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+		<parameter qname="maxResults" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>  
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>            
+      <operation name="performEntityCountQuery" qname="operNS:performEntityCountQuery" xmlns:operNS="urn:fws" returnQName="performEntityCountQueryReturn" returnType="rtns:int" xmlns:rtns="http://www.w3.org/2001/XMLSchema" soapAction="/foundation-webapp/services/wscommon" >
+        <parameter qname="entityType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="filter" type="tns:Filter" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>                
+      <operation name="getActionsByApplicationType" qname="operNS:getActionsByApplicationType" xmlns:operNS="urn:fws" returnQName="getActionsByApplicationTypeReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscommon" >
+        <parameter qname="appType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="includeSystem" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>  
+      <operation name="getActionsByCriteria" qname="operNS:getActionsByCriteria" xmlns:operNS="urn:fws" returnQName="getActionsByCriteriaReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscommon" >
+        <parameter qname="filter" type="tns:Filter" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="sort" type="tns:Sort" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="firstResult" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+		<parameter qname="maxResults" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>  
+      <operation name="performActions" qname="operNS:performActions" xmlns:operNS="urn:fws" returnQName="performActionsReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscommon" >
+        <parameter qname="actionPerforms" type="tns:ActionPerform[]" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>   
+      <operation name="searchEntity" qname="operNS:searchEntity" xmlns:operNS="urn:fws" returnQName="searchEntityReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscommon" >
+        <parameter qname="text" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="maxresults" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+         <parameter qname="extRoleServiceGroupList" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+         <parameter qname="extRoleHostGroupList" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>         
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>   
+      
+      <parameter name="allowedMethods"
+      value="login logout getAttributeData getAttributeDataByString cancelQuery executeQuery getEntityTypes getEntityTypeProperties performEntityQuery performEntityCountQuery getActionsByApplicationType getActionsByCriteria performActions searchEntity"/>
+      <parameter name="scope" value="Session"/>
+      
+     <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationException"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationException"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationCollection"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationCollection"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ExceptionType"
+        type="java:org.groundwork.foundation.ws.model.impl.ExceptionType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:AttributeQueryType"
+        type="java:org.groundwork.foundation.ws.model.impl.AttributeQueryType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />   
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:AttributeData"
+        type="java:org.groundwork.foundation.ws.model.impl.AttributeData"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />            
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Filter"
+        type="java:org.groundwork.foundation.ws.model.impl.Filter"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:FilterOperator"
+        type="java:org.groundwork.foundation.ws.model.impl.FilterOperator"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />    
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:FilterValue"
+        type="java:org.groundwork.foundation.ws.model.impl.FilterValue"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />     
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Sort"
+        type="java:org.groundwork.foundation.ws.model.impl.Sort"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      /> 
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:SortItem"
+        type="java:org.groundwork.foundation.ws.model.impl.SortItem"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />        
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:PropertyDataType"
+        type="java:org.groundwork.foundation.ws.model.impl.PropertyDataType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:EntityType"
+        type="java:org.groundwork.foundation.ws.model.impl.EntityType"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />        
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:EntityTypeProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.EntityTypeProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />             
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:PropertyTypeBinding"
+        type="java:org.groundwork.foundation.ws.model.impl.PropertyTypeBinding"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ApplicationType"
+        type="java:org.groundwork.foundation.ws.model.impl.ApplicationType"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />         
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Action"
+        type="java:org.groundwork.foundation.ws.model.impl.Action"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StringProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.StringProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ActionPerform"
+        type="java:org.groundwork.foundation.ws.model.impl.ActionPerform"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />        
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ActionReturn"
+        type="java:org.groundwork.foundation.ws.model.impl.ActionReturn"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+     
+  </service>
+  
+  <!-- Services from WSDeviceService WSDL service -->
+
+  <service name="wsdevice" provider="java:RPC" style="rpc" use="literal">
+  <wsdlFile>/WEB-INF/fwsdevice.wsdl</wsdlFile>
+      <parameter name="wsdlTargetNamespace" value="urn:fws"/>
+      <parameter name="wsdlServiceElement" value="WSDeviceService"/>
+      <parameter name="schemaUnqualified" value="http://model.ws.foundation.groundwork.org"/>
+      <parameter name="wsdlServicePort" value="wsdevice"/>
+      <parameter name="className" value="org.groundwork.foundation.ws.impl.DeviceSoapBindingImpl"/>
+      <parameter name="wsdlPortType" value="WSDevice"/>
+      <parameter name="typeMappingVersion" value="1.2"/>
+      <operation name="getDevice" qname="operNS:getDevice" xmlns:operNS="urn:fws" returnQName="getDeviceReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsdevice" >
+        <parameter qname="type" type="tns:DeviceQueryType" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="orderedBy" type="tns:SortCriteria" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <operation name="getDeviceByString" qname="operNS:getDeviceByString" xmlns:operNS="urn:fws" returnQName="getDeviceByStringReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsdevice" >
+        <parameter qname="type" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startRange" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="sortOrder" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="sortField" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <operation name="getDevicesByCriteria" qname="operNS:getDevicesByCriteria" xmlns:operNS="urn:fws" returnQName="getDevicesByCriteriaReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsdevice" >
+        <parameter qname="filter" type="tns:Filter" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="sort" type="tns:Sort" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="firstResult" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+		<parameter qname="maxResults" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>       
+      <parameter name="allowedMethods" value="getDevice getDeviceByString getDevicesByCriteria"/>
+      <parameter name="scope" value="Session"/>
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:SortCriteria"
+        type="java:org.groundwork.foundation.ws.model.impl.SortCriteria"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StatisticProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.StatisticProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Host"
+        type="java:org.groundwork.foundation.ws.model.impl.Host"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostGroup"
+        type="java:org.groundwork.foundation.ws.model.impl.HostGroup"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ServiceStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.ServiceStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationException"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationException"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Component"
+        type="java:org.groundwork.foundation.ws.model.impl.Component"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:PropertyTypeBinding"
+        type="java:org.groundwork.foundation.ws.model.impl.PropertyTypeBinding"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:OperationStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.OperationStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ExceptionType"
+        type="java:org.groundwork.foundation.ws.model.impl.ExceptionType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StringProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.StringProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:MonitorStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.MonitorStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.HostStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Priority"
+        type="java:org.groundwork.foundation.ws.model.impl.Priority"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Severity"
+        type="java:org.groundwork.foundation.ws.model.impl.Severity"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:TypeRule"
+        type="java:org.groundwork.foundation.ws.model.impl.TypeRule"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:LongProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.LongProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:BooleanProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.BooleanProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Device"
+        type="java:org.groundwork.foundation.ws.model.impl.Device"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:CheckType"
+        type="java:org.groundwork.foundation.ws.model.impl.CheckType"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:DoubleProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.DoubleProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:IntegerProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.IntegerProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:TimeProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.TimeProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StateType"
+        type="java:org.groundwork.foundation.ws.model.impl.StateType"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationCollection"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationCollection"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:DeviceQueryType"
+        type="java:org.groundwork.foundation.ws.model.impl.DeviceQueryType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:LogMessage"
+        type="java:org.groundwork.foundation.ws.model.impl.LogMessage"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:DateProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.DateProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+       
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Filter"
+        type="java:org.groundwork.foundation.ws.model.impl.Filter"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:FilterOperator"
+        type="java:org.groundwork.foundation.ws.model.impl.FilterOperator"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />    
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:FilterValue"
+        type="java:org.groundwork.foundation.ws.model.impl.FilterValue"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />     
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Sort"
+        type="java:org.groundwork.foundation.ws.model.impl.Sort"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />       
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:SortItem"
+        type="java:org.groundwork.foundation.ws.model.impl.SortItem"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />         
+  </service>
+  
+    <!-- Services from WSStatisticsService WSDL service -->
+
+  <service name="wsstatistics" provider="java:RPC" style="rpc" use="literal">
+  <wsdlFile>/WEB-INF/fwsstatistics.wsdl</wsdlFile>
+      <parameter name="wsdlTargetNamespace" value="urn:fws"/>
+      <parameter name="wsdlServiceElement" value="WSStatisticsService"/>
+      <parameter name="schemaUnqualified" value="http://model.ws.foundation.groundwork.org"/>
+      <parameter name="wsdlServicePort" value="statistics"/>
+      <parameter name="className" value="org.groundwork.foundation.ws.impl.StatisticsSoapBindingImpl"/>
+      <parameter name="wsdlPortType" value="WSStatistics"/>
+      <parameter name="typeMappingVersion" value="1.2"/>
+      <operation name="getStatistics" qname="operNS:getStatistics" xmlns:operNS="urn:fws" returnQName="getStatisticsReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsstatistics" >
+        <parameter qname="statisticQueryType" type="tns:StatisticQueryType" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="applicationType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+       <operation name="getGroupStatistics" qname="operNS:getGroupStatistics" xmlns:operNS="urn:fws" returnQName="getGroupStatisticsReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsstatistics" >
+        <parameter qname="statisticQueryType" type="tns:StatisticQueryType" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+         <parameter qname="filter" type="tns:Filter" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="applicationType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <operation name="getNagiosStatistics" qname="operNS:getNagiosStatistics" xmlns:operNS="urn:fws" returnQName="getStatisticsReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsstatistics" >
+        <parameter qname="nagiosStatisticsQueryType" type="tns:NagiosStatisticQueryType" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <operation name="getStatisticsByString" qname="operNS:getStatisticsByString" xmlns:operNS="urn:fws" returnQName="getStatisticsByStringReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsstatistics" >
+        <parameter qname="statisticQueryType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="applicationType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <operation name="getNagiosStatisticsByString" qname="operNS:getNagiosStatisticsByString" xmlns:operNS="urn:fws" returnQName="getStatisticsByStringReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsstatistics" >
+        <parameter qname="nagiosStatisticsQueryType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <operation name="getHostAvailabilityForHostgroup" qname="operNS:getHostAvailabilityForHostgroup" xmlns:operNS="urn:fws" returnQName="getStatisticsByDoubleReturn" returnType="tns:double"  xmlns:tns="http://www.w3.org/2001/XMLSchema" soapAction="/foundation-webapp/services/wsstatistics" >
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <operation name="getServiceAvailabilityForHostgroup" qname="operNS:getServiceAvailabilityForHostgroup" xmlns:operNS="urn:fws" returnQName="getStatisticsByDoubleReturn" returnType="tns:double"  xmlns:tns="http://www.w3.org/2001/XMLSchema" soapAction="/foundation-webapp/services/wsstatistics" >
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+        <operation name="getServiceAvailabilityForServiceGroup" qname="operNS:getServiceAvailabilityForServiceGroup" xmlns:operNS="urn:fws" returnQName="getServiceAvailabilityForServiceGroupReturn" returnType="tns:double"  xmlns:tns="http://www.w3.org/2001/XMLSchema" soapAction="/foundation-webapp/services/wsstatistics" >
+        <parameter qname="value" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      <parameter name="allowedMethods" value="getNagiosStatistics getStatistics getNagiosStatisticsByString getStatisticsByString getHostAvailabilityForHostgroup getServiceAvailabilityForHostgroup getServiceAvailabilityForServiceGroup getGroupStatistics"/>
+      <parameter name="scope" value="Session"/>
+
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Host"
+        type="java:org.groundwork.foundation.ws.model.impl.Host"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostGroup"
+        type="java:org.groundwork.foundation.ws.model.impl.HostGroup"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ServiceStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.ServiceStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationException"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationException"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Component"
+        type="java:org.groundwork.foundation.ws.model.impl.Component"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:PropertyTypeBinding"
+        type="java:org.groundwork.foundation.ws.model.impl.PropertyTypeBinding"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:OperationStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.OperationStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:ExceptionType"
+        type="java:org.groundwork.foundation.ws.model.impl.ExceptionType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StringProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.StringProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:NagiosStatisticQueryType"
+        type="java:org.groundwork.foundation.ws.model.impl.NagiosStatisticQueryType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:MonitorStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.MonitorStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostStatus"
+        type="java:org.groundwork.foundation.ws.model.impl.HostStatus"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Priority"
+        type="java:org.groundwork.foundation.ws.model.impl.Priority"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Severity"
+        type="java:org.groundwork.foundation.ws.model.impl.Severity"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:TypeRule"
+        type="java:org.groundwork.foundation.ws.model.impl.TypeRule"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:LongProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.LongProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:BooleanProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.BooleanProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Device"
+        type="java:org.groundwork.foundation.ws.model.impl.Device"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:CheckType"
+        type="java:org.groundwork.foundation.ws.model.impl.CheckType"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StatisticProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.StatisticProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:HostGroupStatisticProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.HostGroupStatisticProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />         
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StatisticQueryType"
+        type="java:org.groundwork.foundation.ws.model.impl.StatisticQueryType"
+        serializer="org.apache.axis.encoding.ser.EnumSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.EnumDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:DoubleProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.DoubleProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:IntegerProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.IntegerProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:TimeProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.TimeProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StateType"
+        type="java:org.groundwork.foundation.ws.model.impl.StateType"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationCollection"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationCollection"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:LogMessage"
+        type="java:org.groundwork.foundation.ws.model.impl.LogMessage"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:DateProperty"
+        type="java:org.groundwork.foundation.ws.model.impl.DateProperty"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:StateStatistics"
+        type="java:org.groundwork.foundation.ws.model.impl.StateStatistics"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+  </service>
+  <!-- Services from CategoryService WSDL service -->   
+    <service name="wscategory" provider="java:RPC" style="rpc" use="literal">
+      <wsdlFile>/WEB-INF/fwscategory.wsdl</wsdlFile>
+      <parameter name="wsdlTargetNamespace" value="urn:fws"/>
+      <parameter name="wsdlServiceElement" value="WSCategoryService"/>
+      <parameter name="schemaUnqualified" value="http://model.ws.foundation.groundwork.org"/>
+      <parameter name="wsdlServicePort" value="wscategory"/>
+      <parameter name="className" value="org.groundwork.foundation.ws.impl.CategorySoapBindingImpl"/>
+      <parameter name="wsdlPortType" value="WSCategory"/>
+      <parameter name="typeMappingVersion" value="1.2"/>
+      <operation name="getRootCategories" qname="operNS:getRootCategories" xmlns:operNS="urn:fws" returnQName="getRootCategoriesReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscategory" >
+        <parameter qname="entityTypeName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="orderBy" type="tns:SortCriteria" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="retrieveChildren" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="namePropertyOnly" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      
+      <operation name="getCategoryEntities" qname="operNS:getCategoryEntities" xmlns:operNS="urn:fws" returnQName="getCategoryEntitiesReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscategory" >
+      	<parameter qname="categoryName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+       	<parameter qname="entityTypeName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="orderBy" type="tns:SortCriteria" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="retrieveChildren" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="namePropertyOnly" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      
+      <operation name="getCategoryByName" qname="operNS:getCategoryByName" xmlns:operNS="urn:fws" returnQName="getCategoryByNameReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscategory" >
+        <parameter qname="categoryName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+       	<parameter qname="entityTypeName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>       
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>  
+      
+      <operation name="getCategories" qname="operNS:getCategories" xmlns:operNS="urn:fws" returnQName="getCategoriesReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscategory" >
+        <parameter qname="filter" type="tns:Filter" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      	<parameter qname="startRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+      	<parameter qname="orderBy" type="tns:SortCriteria" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="retrieveChildren" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="namePropertyOnly" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>     
+      
+      <operation name="getCategoriesByEntityType" qname="operNS:getCategoriesByEntityType" xmlns:operNS="urn:fws" returnQName="getCategoriesByEntityTypeReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscategory" >
+       	<parameter qname="entityTypeName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>      
+        <parameter qname="startRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="orderBy" type="tns:SortCriteria" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="retrieveChildren" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="namePropertyOnly" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>      
+      
+      <operation name="getCategoryById" qname="operNS:getCategoryById" xmlns:operNS="urn:fws" returnQName="getCategoryByIdReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscategory" >
+        <parameter qname="categoryId" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>        
+      
+      <parameter name="allowedMethods" value="getRootCategories getCategoryEntities getCategoryByName getCategories getCategoriesByEntityType getCategoryById"/>
+      <parameter name="scope" value="Session"/>
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:OrderBy"
+        type="java:org.groundwork.foundation.ws.model.impl.SortCriteria"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Filter"
+        type="java:org.groundwork.foundation.ws.model.impl.Filter"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationException"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationException"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationCollection"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationCollection"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Category"
+        type="java:org.groundwork.foundation.ws.model.impl.Category"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:CategoryEntity"
+        type="java:org.groundwork.foundation.ws.model.impl.CategoryEntity"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+  </service>  
+ <service name="wsrrd" provider="java:RPC" style="rpc" use="literal">
+  <wsdlFile>/WEB-INF/fwsrrd.wsdl</wsdlFile>
+      <parameter name="wsdlTargetNamespace" value="urn:fws"/>
+      <parameter name="wsdlServiceElement" value="WSRRDService"/>
+      <parameter name="schemaUnqualified" value="http://model.ws.foundation.groundwork.org"/>
+      <parameter name="wsdlServicePort" value="rrd"/>
+      <parameter name="className" value="org.groundwork.foundation.ws.impl.RRDSoapBindingImpl"/>
+      <parameter name="wsdlPortType" value="WSRRD"/>
+      <parameter name="typeMappingVersion" value="1.2"/>
+      <operation name="getGraph" qname="operNS:getGraph" xmlns:operNS="urn:fws" returnQName="getGraphReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsrrd" >
+        <parameter qname="hostName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="serviceName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startDate" type="tns:long" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endDate" type="tns:long" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="applicationType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="graphWidth" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+     
+      <parameter name="allowedMethods" value="getGraph"/>
+      <parameter name="scope" value="Session"/>
+
+      
+  </service>
+ <transport name="http">
+  <requestFlow>
+   <handler type="URLMapper"/>
+   <handler type="java:org.apache.axis.handlers.http.HTTPAuthHandler"/>
+  </requestFlow>
+  <parameter name="qs:list" value="org.apache.axis.transport.http.QSListHandler"/>
+  <parameter name="qs:wsdl" value="org.apache.axis.transport.http.QSWSDLHandler"/>
+  <parameter name="qs.list" value="org.apache.axis.transport.http.QSListHandler"/>
+  <parameter name="qs.method" value="org.apache.axis.transport.http.QSMethodHandler"/>
+  <parameter name="qs:method" value="org.apache.axis.transport.http.QSMethodHandler"/>
+  <parameter name="qs.wsdl" value="org.apache.axis.transport.http.QSWSDLHandler"/>
+ </transport>
+ <transport name="local">
+  <responseFlow>
+   <handler type="LocalResponder"/>
+  </responseFlow>
+ </transport>
+</deployment>

@@ -1,0 +1,67 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:ui="http://java.sun.com/jsf/facelets"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:c="http://java.sun.com/jstl/core"
+	xmlns:ice-cc="http://www.icesoft.com/icefaces-composite-comps"
+	xmlns:jsp="http://java.sun.com/JSP/Page">
+
+	<ice:portlet>
+		<ice:panelGroup>
+			<ice:messages layout="table"
+				style="text-align:left; border:solid 1px #FF0000; background:#F3F781;color:#000000;padding:20px;text-align:left; margin: 20px; padding: 2px;" />
+			<ice:form id="editCustomGroupForm" partialSubmit="true">
+				<div
+					style="padding: 6px 3px 3px 3px; background-color: #528398; border-radius: 6px 6px 3px 3px;">
+					<div style="margin-bottom: 2px;">
+						<ice:outputText value="Edit CustomGroup"
+							style="font-size:larger;font-weight:bold;color:#FFF;" />
+						&amp;nbsp;
+					</div>
+
+					<div style="padding: 8px 8px 4px 8px; background-color: #FFF;">
+						<ice:panelGrid columns="2"
+							columnClasses="pnlGrdClass, pnlGrdClass, pnlGrdClassLong">
+							<ice:outputLabel for="grpName" value="Group Name" />
+							<ice:inputText id="grpName" value="#{customGroup.groupName}"
+								style="background: none repeat scroll 0 0 #C4C9D2;" styleClass="text" partialSubmit="true" maxlength="250" readonly="true"/>
+						</ice:panelGrid>
+						<ice:panelGrid columns="2"
+							columnClasses="pnlGrdClass, pnlGrdClass, pnlGrdClassLong">
+							<ice:outputLabel for="grpType" value="Group Type" />
+							<ice:selectOneRadio layout="lineDirection"
+								value="#{customGroup.entityType.entityTypeId}">
+								<f:selectItems id="SlctgroupItems"
+									value="#{customGroupBean.entityTypes}" />
+							</ice:selectOneRadio>
+						</ice:panelGrid>
+
+						<ice:panelGrid columns="2"
+							columnClasses="pnlGrdClass, pnlGrdClass, pnlGrdClassLong">
+							<ice:outputLabel for="SlctChildren" value="Children"
+								style="line-height:200%" />
+							<ice-cc:dualList id="SlctChildren"
+								bean="#{customGroup.entityType.entityTypeId=='1' ? customGroupBean.hostGroups : (customGroup.entityType.entityTypeId=='2' ? customGroupBean.serviceGroups : customGroupBean.customGroupSelectItems)}"
+								listWidth="200px" listHeight="300px" />
+						</ice:panelGrid>
+						<ice:panelGrid columns="3" styleClass="iceDatTbl_typG">
+							<ice:commandButton id="btn_save" styleClass="cust_portlet_filter_button"
+								action="#{customGroupBean.updateAndSave}" value="Save" />
+							<ice:commandButton id="btn_publish" styleClass="cust_portlet_filter_button"
+								action="#{customGroupBean.updateAndPublish}"
+								value="Save and Publish" />
+							<ice:commandButton id="btn_cancel" styleClass="cust_portlet_filter_button"
+								action="#{customGroupBean.cancel}" value="Cancel" />
+						</ice:panelGrid>
+
+					</div>
+
+				</div>
+
+			</ice:form>
+
+		</ice:panelGroup>
+		<jsp:directive.include file="jsp/customGroupList.jspx" />
+	</ice:portlet>
+</ui:composition>

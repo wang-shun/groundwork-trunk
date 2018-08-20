@@ -1,0 +1,99 @@
+<?xml version="1.0"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Inc. info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-->
+<!DOCTYPE hibernate-mapping PUBLIC
+    "-//Hibernate/Hibernate Mapping DTD 2.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd" >
+    
+<hibernate-mapping default-lazy="false" >
+<!-- 
+    Created by the Middlegen Hibernate plugin 2.1
+
+    http://boss.bekk.no/boss/middlegen/
+    http://www.hibernate.org/
+-->
+
+<class 
+    name="com.groundwork.collage.model.impl.HostGroup" 
+    table="HostGroup"
+>
+
+    <id
+        name="hostGroupId"
+        type="java.lang.Integer"
+        column="HostGroupID"
+    >
+       <generator class="native">
+            <param name="sequence">hostgroup_hostgroupid_seq</param>
+         </generator>
+    </id>
+
+    <property
+        name="name"
+        type="java.lang.String"
+        column="Name"
+        length="254"
+        not-null="true"
+    />
+    <property
+        name="description"
+        type="java.lang.String"
+        column="Description"
+        length="254"
+    />    
+    
+     <property
+        name="alias"
+        type="java.lang.String"
+        column="Alias"
+        length="254"
+        not-null="false"
+    />
+
+    <property
+            name="agentId"
+            type="java.lang.String"
+            column="agentid"
+            length="128"
+            not-null="false"
+            />
+
+    <!-- Associations -->
+    
+	<many-to-one
+		name="applicationType"
+		class="com.groundwork.collage.model.impl.ApplicationType"
+		not-null="true"
+		cascade="none"
+	>
+		<column name="ApplicationTypeID" />
+	</many-to-one>   
+    
+    <!-- bi-directional many-to-many to Hosts -->
+    <set 
+        name="hosts"
+        table = "HostGroupCollection"
+        lazy="true"
+        cascade="save-update"
+        inverse="true"
+    >
+        <key column="HostGroupID" />
+        <many-to-many class="com.groundwork.collage.model.impl.Host" column="HostID" />
+    </set>    
+</class>
+</hibernate-mapping>

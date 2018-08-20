@@ -1,0 +1,51 @@
+#
+# Copyright 2016-2017 GroundWork Open Source, Inc. (GroundWork)
+# All rights reserved. This program is free software; you can redistribute
+# it and/or modify it under the terms of the GNU General Public License
+# version 2 as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+
+# These tasks will be merged into the deployment graph.  Here
+# you can specify new tasks for any roles, even built-in ones.
+
+# This task defines a new group for the tasks that will belong to the new
+# "groundwork_monitor" role that we are creating with this plugin.
+- id: groundwork_monitor
+  type: group
+  role: [groundwork_monitor]
+  tasks: [globals]
+  # FIX MINOR:  Do the "requires" and "required_for" elements have
+  # any value being specified here, with no actual commands to run?
+  requires: [deploy_start]
+  required_for: [deploy_end]
+  parameters:
+    strategy:
+      type: parallel
+    timeout: 600
+
+# Once the Fuel Plugin is deployed on a given machine, we run a local
+# deployment script on that machine that in turn runs the GroundWork
+# installer (or installer emulator).
+# FIX MINOR:  The timeout here is set by a bit of guesswork, to override
+# the default value of 300 seconds.  (The GroundWork installer can sometimes
+# take awhile to run, depending on the resources available on the machine.)
+# It's possible we might need to bump up the timeout for some environments.
+- id: fuel-plugin-groundwork-monitor-post-deployment-sh
+  version: 2.0.0
+  type: shell
+  role: [groundwork_monitor]
+  requires: [post_deployment_start]
+  required_for: [post_deployment_end]
+  parameters:
+    cmd: bash deploy.sh
+    retries: 0
+    timeout: 600

@@ -1,0 +1,62 @@
+<groundwork_performance_configuration>
+<service_profile name="gdma_linux_disk profile">
+<graph name="graph">
+<host>*</host>
+<service regx="1"><![CDATA[gdma_linux_disk]]></service>
+<type>nagios</type>
+<enable>1</enable>
+<label>GDM Agent Disk Free</label>
+<rrdname><![CDATA[/usr/local/groundwork/rrd/$HOST$_$SERVICE$.rrd]]></rrdname>
+<rrdcreatestring><![CDATA[$RRDTOOL$ create $RRDNAME$ --step 300 --start n-1yr DS:percent:GAUGE:900:U:U RRA:AVERAGE:0.5:1:2880 RRA:AVERAGE:0.5:5:4032 RRA:AVERAGE:0.5:15:5760 RRA:AVERAGE:0.5:60:8640]]></rrdcreatestring>
+<rrdupdatestring><![CDATA[$RRDTOOL$ update $RRDNAME$ $LASTCHECK$:$VALUE1$ 2>&1]]></rrdupdatestring>
+<graphcgi><![CDATA[]]></graphcgi>
+<parseregx first="1"><![CDATA[\(([\d\.]+)%.*\)]]></parseregx>
+<perfidstring></perfidstring>
+</graph>
+</service_profile>
+<service_profile name="gdma_linux_load profile">
+<graph name="graph">
+<host>*</host>
+<service regx="0"><![CDATA[gdma_linux_load]]></service>
+<type>nagios</type>
+<enable>1</enable>
+<label>GDM Agent Load Average</label>
+<rrdname><![CDATA[/usr/local/groundwork/rrd/$HOST$_$SERVICE$.rrd]]></rrdname>
+<rrdcreatestring><![CDATA[$RRDTOOL$ create $RRDNAME$ --step 300 --start n-1yr DS:load1:GAUGE:900:U:U DS:load5:GAUGE:900:U:U DS:load15:GAUGE:900:U:U  RRA:AVERAGE:0.5:1:2880 RRA:AVERAGE:0.5:5:4032 RRA:AVERAGE:0.5:15:5760 RRA:AVERAGE:0.5:60:8640]]></rrdcreatestring>
+<rrdupdatestring><![CDATA[$RRDTOOL$ update $RRDNAME$ $LASTCHECK$:$VALUE1$:$VALUE2$:$VALUE3$ 2>&1]]></rrdupdatestring>
+<graphcgi><![CDATA[]]></graphcgi>
+<parseregx first="0"><![CDATA[]]></parseregx>
+<perfidstring></perfidstring>
+</graph>
+</service_profile>
+<service_profile name="gdma_linux_mem profile">
+<graph name="graph">
+<host>*</host>
+<service regx="0"><![CDATA[gdma_linux_mem]]></service>
+<type>nagios</type>
+<enable>1</enable>
+<label>GDM Agent Memory Free</label>
+<rrdname><![CDATA[/usr/local/groundwork/rrd/$HOST$_$SERVICE$.rrd]]></rrdname>
+<rrdcreatestring><![CDATA[$RRDTOOL$ create $RRDNAME$ --step 300 --start n-1yr DS:percent:GAUGE:900:U:U RRA:AVERAGE:0.5:1:2880 RRA:AVERAGE:0.5:5:4032 RRA:AVERAGE:0.5:15:5760 RRA:AVERAGE:0.5:60:8640]]></rrdcreatestring>
+<rrdupdatestring><![CDATA[$RRDTOOL$ update $RRDNAME$ $LASTCHECK$:$VALUE1$ 2>&1]]></rrdupdatestring>
+<graphcgi><![CDATA[]]></graphcgi>
+<parseregx first="0"><![CDATA[pct:\s+([\d\.]+)]]></parseregx>
+<perfidstring></perfidstring>
+</graph>
+</service_profile>
+<service_profile name="gdma_linux_swap profile">
+<graph name="graph">
+<host>*</host>
+<service regx="0"><![CDATA[gdma_linux_swap]]></service>
+<type>nagios</type>
+<enable>1</enable>
+<label>GDM Agent Swap Free</label>
+<rrdname><![CDATA[/usr/local/groundwork/rrd/$HOST$_$SERVICE$.rrd]]></rrdname>
+<rrdcreatestring><![CDATA[$RRDTOOL$ create $RRDNAME$ --step 300 --start n-1yr DS:percent:GAUGE:900:U:U RRA:AVERAGE:0.5:1:2880 RRA:AVERAGE:0.5:5:4032 RRA:AVERAGE:0.5:15:5760 RRA:AVERAGE:0.5:60:8640]]></rrdcreatestring>
+<rrdupdatestring><![CDATA[$RRDTOOL$ update $RRDNAME$ $LASTCHECK$:$VALUE1$ 2>&1]]></rrdupdatestring>
+<graphcgi><![CDATA[]]></graphcgi>
+<parseregx first="1"><![CDATA[([\d\.]+)% free]]></parseregx>
+<perfidstring></perfidstring>
+</graph>
+</service_profile>
+</groundwork_performance_configuration>

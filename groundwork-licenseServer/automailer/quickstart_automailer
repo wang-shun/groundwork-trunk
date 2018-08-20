@@ -1,0 +1,112 @@
+#!/bin/bash
+
+# A script to start and stop the Quickstart license automailer.
+
+# Copyright (c) 2010 GroundWork Open Source (www.groundworkopensource.com).
+# All rights reserved.
+
+# Development path:
+# automailer_path=/home/gherteg/license/generate_quickstart_license
+# Production path:
+automailer_path=/home/license/automailer/generate_quickstart_license
+
+find_pids="/bin/ps --no-headers -o pid -C generate_quickstart_license"
+
+print_usage() {
+    echo "usage:  quickstart_automailer [start|restart|stop|status|help]"
+}
+
+if [ $# != 1 ]; then
+    print_usage
+    exit 1
+fi
+
+action="$1"
+
+# Note:  The man page for test says the -t option defaults the
+# file descriptor to 1, but actual testing shows otherwise.
+if test -t 1; then
+    stdout_is_tty=1
+else
+    stdout_is_tty=0
+fi
+
+start() {
+    pids=`$find_pids`
+    if [ -z "$pids" ]; then
+	if [ $stdout_is_tty -ne 0 ]; then
+	    echo "Starting the Quickstart license automailer ..."
+	fi
+	$automailer_path
+    else
+	# Convert newlines to spaces, so we can easily test for
+	# multiple processes and print all the PIDs on one line.
+	allpids=`echo $pids`
+	if [ `expr index "$allpids" ' '` -ne 0 ]; then
+	    processes="processes: $allpids"
+	else
+	    processes="process $pids"
+	fi
+	if [ $stdout_is_tty -ne 0 ]; then
+	    echo "The Quickstart license automailer is already up ($processes)."
+	fi
+    fi
+}
+
+stop() {
+    pids=`$find_pids`
+    if [ -z "$pids" ]; then
+	echo "The Quickstart license automailer is already down."
+    else
+	echo "Stopping the Quickstart license automailer ..."
+	allpids=`echo $pids`
+	kill -TERM $allpids
+    fi
+}
+
+status() {
+    pids=`$find_pids`
+    if [ -z "$pids" ]; then
+	if [ $stdout_is_tty -ne 0 ]; then
+	    echo "The Quickstart license automailer is down."
+	fi
+    else
+	allpids=`echo $pids`
+	if [ `expr index "$allpids" ' '` -ne 0 ]; then
+	    processes="processes: $allpids"
+	else
+	    processes="process $pids"
+	fi
+	if [ $stdout_is_tty -ne 0 ]; then
+	    echo "The Quickstart license automailer is up ($processes)."
+	fi
+    fi
+}
+
+case "$action" in
+    start)
+	start
+        ;;
+    restart)
+	stop
+	# Allow a brief time for a graceful shutdown before we try to start,
+	# so (hopefully) we don't confuse the prior process with the one we
+	# want to start now.  This period should be slightly longer than the
+	# sleep interval built into the automailer when it shuts down.
+	sleep 15
+	start
+	;;
+    stop)
+	stop
+        ;;
+    status)
+	status
+        ;;
+    help)
+	print_usage
+        ;;
+    *)
+	print_usage
+	exit 1
+        ;;
+esac

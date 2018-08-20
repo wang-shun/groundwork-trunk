@@ -1,0 +1,29 @@
+*** auth.php.orig	2009-10-23 16:02:44.000000000 -0700
+--- auth.php	2009-10-23 16:05:09.000000000 -0700
+***************
+*** 52,59 ****
+  
+  /* START PATCH AUTH{ */
+  /* We make it single sign-on for groundwork */
+!         $remote_user = $_SERVER['REMOTE_USER'];
+!         $_SESSION["sess_user_id"] =     db_fetch_cell("select id from user_auth where username='" . $remote_user . "'");
+          if (empty($_SESSION["sess_user_id"])) {
+                  $password = md5($remote_user);
+                  db_execute("insert into user_auth values('','" . $remote_user . "','" . $password . "','0','" . $remote_user . "','','on','on','on','on','1','1','1','1','1','on')");
+--- 52,67 ----
+  
+  /* START PATCH AUTH{ */
+  /* We make it single sign-on for groundwork */
+!         if (strpos($_SERVER['QUERY_STRING'],'gwuid=')=== false ) {
+! 	/*	echo("User already set: ");echo($SESSION['GWRK_USER']);*/
+!         }
+!         else
+!         {
+! 	   /* Store the user in a session and keep it around for the other pages */
+!            $_SESSION['GWRK_USER'] = substr($_SERVER['QUERY_STRING'], strpos($_SERVER['QUERY_STRING'],"gwuid=")+6, 20);
+!         }
+! 	$remote_user = $_SESSION['GWRK_USER'];
+! 	$_SESSION["sess_user_id"] =     db_fetch_cell("select id from user_auth where username='" . $remote_user . "'");
+          if (empty($_SESSION["sess_user_id"])) {
+                  $password = md5($remote_user);
+                  db_execute("insert into user_auth values('','" . $remote_user . "','" . $password . "','0','" . $remote_user . "','','on','on','on','on','1','1','1','1','1','on')");

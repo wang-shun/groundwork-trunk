@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<ice:inputHidden id="hiddenHostListField"
+			value="#{hostListHandler.hostListNavHiddenField}"></ice:inputHidden>
+		<ice:inputHidden id="hiddenHostListField"
+			value="#{hostListHandler.hostListHiddenField}">
+		</ice:inputHidden>
+		<!--  error / info message -->
+		<ice:panelGroup rendered="#{hostListHandler.dataTableBean.message}"
+			id="hlpanelsGroupError">
+			<ice:column id="HLcolumnError"
+				rendered="#{hostListHandler.dataTableBean.error}">
+				<ui:include src="/jsp/error.jspx">
+					<ui:param name="errorMessage"
+						value="#{hostListHandler.dataTableBean.errorMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:column id="HLhlcolumninfo"
+				rendered="#{hostListHandler.dataTableBean.info}">
+				<ui:include src="/jsp/info.jspx">
+					<ui:param name="infoMessage"
+						value="#{hostListHandler.dataTableBean.infoMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:commandButton id="HLcmdRetryNow"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{hostListHandler.reloadPage}">
+			</ice:commandButton>
+		</ice:panelGroup>
+
+		<!-- Host List -->
+		<ice:panelGroup id="HLpnlgrpAllItms"
+			rendered="#{!hostListHandler.dataTableBean.message}">
+			<ice:panelGroup id="HLpnlgrpTotal">
+				<ice:dataPaginator id="HLHostListPagerUpper" for="HLtblHost"
+					fastStep="5" pageCountVar="pageCount" pageIndexVar="pageIndex"
+					paginator="true" paginatorMaxPages="20" rowsCountVar="rowsCount"
+					displayedRowsCountVar="displayedRowsCountVar"
+					renderFacetsIfSinglePage="false">
+					<ice:outputFormat
+						value="#{message['com_groundwork_portal_statusviewer_hostlist_outputtext_total']}{0}"
+						styleClass="iceOutTxt">
+						<f:param value="#{rowsCount}" />
+					</ice:outputFormat>
+				</ice:dataPaginator>
+			</ice:panelGroup>
+			<br />
+			<ice:panelGroup id="HLpnlgrpHostTable" >
+				<ice:dataTable id="HLtblHost" var="host" style="margin:none;"
+					value="#{hostListHandler.currentDataTableBean}" cellspacing="0"
+					sortColumn="#{hostListHandler.dataTableBean.sortColumnName}"
+					rows="#{hostListHandler.dataTableBean.tableRows}"
+					styleClass="iceDatTbl_typB" headerClasses="iceDatTblColHdr1_typB"
+					columnClasses="iceDatTblCol1_typB"
+					rowClasses="iceDatTblRow1_typB iceDatTblRow2_typB">
+
+					<!-- icon name -->
+					<ice:column id="HLcolumnName" style="width: 150px"
+						styleClass="borderLeft">
+						<f:facet name="header">
+							<ice:commandSortHeader id="HLsortColHeader"
+								actionListener="#{hostListHandler.dataTableBean.sort}"
+								columnName="hostName" arrow="true">
+								<ice:outputText id="HLtxtColumnName"
+									value="#{message['com_groundwork_portal_statusviewer_hostlist_outputtext_hostname']}"></ice:outputText>
+							</ice:commandSortHeader>
+						</f:facet>
+						<ice:panelGroup id="HLpanelgridHostName">
+							<ice:graphicImage id="HLimgStatusIcon" style="float:left;"
+								value="#{host.status.iconPath}" />
+							<ice:outputLink id="HLLinkName" value="#{host.url}"
+								onclick="blockNavigation();" rendered="#{!empty host.url }">
+								<ice:outputText id="HLTxtName"
+									style="text-decoration:none; color:#5078AA; float:left;"
+									styleClass="cust_hostList_hostname_color" value="#{host.name}">
+								</ice:outputText>
+							</ice:outputLink>
+							<ice:outputText id="HLTxtName"
+									style="text-decoration:none; float:left;"
+									styleClass="cust_hostList_hostname_color" value="#{host.name}" rendered="#{empty host.url}">
+								</ice:outputText>
+						</ice:panelGroup>
+					</ice:column>
+
+					<!-- duration -->
+					<ice:column id="HLcolumnDuration" style="width: 200px"
+						styleClass="borderLeft">
+						<f:facet name="header">
+							<ice:outputText id="HLtxtDurationHeader"
+								value="#{message['com_groundwork_portal_statusviewer_hostlist_outputtext_duration']}">
+							</ice:outputText>
+						</f:facet>
+						<ice:outputText id="HLtxtDuration" value="#{host.duration}">
+						</ice:outputText>
+					</ice:column>
+
+					<!-- icon name -->
+					<ice:column id="HLcolumnStatusInfo" style="width: 200px"
+						styleClass="borderLeft">
+						<f:facet name="header">
+							<ice:outputText id="HLtxtStatusInfoHeader"
+								value="#{message['com_groundwork_portal_statusviewer_hostlist_outputtext_statusinformationdetails']}">
+							</ice:outputText>
+						</f:facet>
+						<ice:outputText id="HLtxtStatusInfo"
+							value="#{host.statusInfoDetails}"
+							title="header=[] body=[#{host.statusInfoDetailsToolTip}]">
+						</ice:outputText>
+					</ice:column>
+					<ice:column id="HLcolumnAck" style="width: 200px"
+						styleClass="borderLeft">
+						<f:facet name="header">
+							<ice:outputText id="HLtxtAckHeader"
+								value="#{message['com_groundwork_portal_statusviewer_hostlist_outputtext_acknowledged']}" />
+						</f:facet>
+						<ice:panelGroup id="HLpanelGrpAck"
+							rendered="#{host.acknowledgeStatus}">
+							<ice:outputText id="HLtxtAck" style="float:left;"
+								value="#{host.hostAcknowledged}" />
+							<!-- Acknowledge Icon logic -->
+							<ice:graphicImage id="HLimgAck" value="/images/host-ack.gif"
+								rendered="#{host.hostAcknowledged == 'No' and userRoleBean.userInAdminOrOperatorRole}" style="float:left;"
+								title="#{message['com_groundwork_portal_statusviewer_hostList_tooltip_notAcknowledged']}" />
+							<ice:commandLink id="HLlinkAck"
+								actionListener="#{hostListHandler.showAcknowledgementPopup}"
+								rendered="#{host.hostAcknowledged == 'No' and userRoleBean.userInAdminOrOperatorRole}">
+								<f:attribute name="hostName" value="#{host.name}" />
+								<ice:outputText
+									style="float:left;text-decoration:underline;color:#5078AA;"
+									id="HLtxtAckLink" value="Acknowledge" />
+							</ice:commandLink>
+
+						</ice:panelGroup>
+						<!-- For UP/PENDING HOSTS -->
+						<ice:outputText id="HLtxtAckforUpPendingStatus"
+							rendered="#{!host.acknowledgeStatus}"
+							value="#{message['com_groundwork_portal_statusviewer_hostList_not_applicable']}" />
+					</ice:column>
+					<ice:column id="HLcolumnServiceStatus" style="width: 100px"
+						styleClass="borderLeft">
+						<f:facet name="header">
+							<ice:outputText id="HLtxtServiceStatusHeader"
+								value="#{message['com_groundwork_portal_statusviewer_hostlist_outputtext_servicestatus']}"></ice:outputText>
+						</f:facet>
+
+						<ice:graphicImage id="HLimgServiceStatus"
+							title="header=[#{host.serviceStatus.status} #{message['com_groundwork_statusviewer_service']}:] body=[#{host.serviceStatusToolTip}]"
+							value="#{host.serviceStatus.iconPath}"
+							style="margin-left: 2px; margin-right: 2px; ">
+						</ice:graphicImage>
+					</ice:column>
+				</ice:dataTable>
+				<div align="center"><ice:dataPaginator
+					id="HostListPagerBottom" for="HLtblHost" fastStep="5"
+					pageCountVar="pageCount" pageIndexVar="pageIndex" paginator="true"
+					paginatorMaxPages="20" rowsCountVar="rowsCount"
+					displayedRowsCountVar="displayedRowsCountVar"
+					renderFacetsIfSinglePage="false" style="text-align: center;">
+					<ice:outputFormat id="HLoutptFmtPage" value="{0} of {1}">
+						<f:param value="#{pageIndex}" />
+						<f:param value="#{pageCount}" />
+					</ice:outputFormat>
+					<f:facet name="first">
+						<ice:graphicImage url="/images/arrow-first.gif" id="HLimgFirst"
+							style="border:none;" title="First Page" />
+					</f:facet>
+					<f:facet name="last">
+						<ice:graphicImage url="/images/arrow-last.gif" id="HLimgLast"
+							style="border:none;" title="Last Page" />
+					</f:facet>
+					<f:facet name="previous">
+						<ice:graphicImage url="/images/arrow-previous.gif" id="HLimgPrev"
+							style="border:none;" title="Previous Page" />
+					</f:facet>
+					<f:facet name="next">
+						<ice:graphicImage url="/images/arrow-next.gif" id="HLimgNext"
+							style="border:none;" title="Next Page" />
+					</f:facet>
+					<f:facet name="fastforward">
+						<ice:graphicImage url="/images/arrow-ff.gif" id="HLimgFF"
+							style="border:none;" title="Fast Forward" />
+					</f:facet>
+					<f:facet name="fastrewind">
+						<ice:graphicImage url="/images/arrow-fr.gif" id="HLimgFR"
+							style="border:none;" title="Fast Backwards" />
+					</f:facet>
+				</ice:dataPaginator></div>
+			</ice:panelGroup>
+			<ice:messages />
+		</ice:panelGroup>
+		<!-- end Host List -->
+	</ui:define>
+</ui:composition>

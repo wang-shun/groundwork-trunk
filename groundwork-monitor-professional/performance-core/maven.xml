@@ -1,0 +1,62 @@
+<!--
+	Copyright (C) 2008 GroundWork Open Source, Inc. ("GroundWork")
+	All rights reserved. Use is subject to GroundWork commercial license terms.
+-->
+
+<project default="allBuild"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+
+<goal name='allBuild'>
+	
+	<!-- Add Performance config table to Collage Database -->
+	<attainGoal name="db.execute" />
+	
+	<!-- Make sure nagios eventhandler directory exists -->
+	<mkdir dir="${com.groundwork.deploy.prefix}/nagios/eventhandlers" />
+	
+	<copy todir="${com.groundwork.deploy.prefix}/nagios/eventhandlers" overwrite="true">
+    <fileset dir="${basedir}/eventhandler">
+       <exclude name="**/CVS"/>
+    </fileset>
+  </copy>
+	
+</goal>
+
+  <goal name="allClean" >
+       <delete file="${com.groundwork.deploy.prefix}/nagios/eventhandlers/process_service_pref_db.pl" />
+    </goal>
+	
+	<!-- Execute the database script -->
+	<goal name="db.execute">    
+	    <echo>Add PerformanceConfig table to ${com.groundwork.collage.production.database.url}</echo>
+	    <sql 
+	       	driver="${com.groundwork.collage.production.database.driver}"
+	         url="${com.groundwork.collage.production.database.url}"
+	         userid="${com.groundwork.collage.production.database.user}"
+	         password="${com.groundwork.collage.production.database.password}"
+	         print='true'
+			output="${basedir}/database/performance_config.log">
+	      <transaction src="${basedir}/database/performance-config.sql"/>         
+	      <classpath>
+	        <pathelement location="${com.groundwork.collage.jdbc.drivers.path}"/>
+	      </classpath>
+	    </sql>
+		
+		<echo>Add Performance Config SEED data to ${com.groundwork.collage.production.database.url}</echo>
+		 <sql 
+			       	driver="${com.groundwork.collage.production.database.driver}"
+			         url="${com.groundwork.collage.production.database.url}"
+			         userid="${com.groundwork.collage.production.database.user}"
+			         password="${com.groundwork.collage.production.database.password}"
+			         print='true'
+					output="${basedir}/database/performance_config-seed.log">
+			      <transaction src="${basedir}/database/performance-config-seed.sql"/>         
+			      <classpath>
+			        <pathelement location="${com.groundwork.collage.jdbc.drivers.path}"/>
+			      </classpath>
+			    </sql>
+	  </goal>
+
+</project>

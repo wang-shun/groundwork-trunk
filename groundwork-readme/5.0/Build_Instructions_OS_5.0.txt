@@ -1,0 +1,186 @@
+Build Instructions rev 1.1	Current Release: GroundWork Monitor Open Source 5.0.2
+
+GroundWork Monitor Open Source 5.0 is free software; you can redistribute it and/or modify it under the terms of the GNU 
+General Public License as published by the Free Software Foundation; either version 2, or (at your option) any later version. 
+GroundWork Monitor Open Source is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without 
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General 
+Public License for more details.
+
+Table of Contents
+1	PURPOSE
+2	BUILD ENVIRONMENT
+3	EXECUTE THE BUILD
+4	SUPPORT
+----------
+1	PURPOSE
+Important Note: The distributed Readme document should be reviewed prior to the installation or upgrade 
+of GroundWork Monitor Open Source 5.0.
+
+The purpose of the “Build Instructions” document is to describe the steps to build the GroundWork Monitor 
+Open Source 5.0 product from source. Additionally, the documents “Installation”, “Readme”, and “Release 
+Notes” include bug fixes and known issues; new features in this release; and an outline of system hardware 
+requirements, pre-installation planning, and installation instructions, respectively. All documents are 
+distributed in .txt and .pdf formats.
+
+----------
+2	BUILD ENVIRONMENT
+Building GroundWork Monitor Open Source 5.0 from source requires preparing build environment, installing 
+prerequisite software components, and executing the build script. Instructions are listed below and are also 
+in the open source repository at this URL: http://archive.groundworkopensource.com/groundwork-
+opensource/trunk/build/. Building GroundWork Monitor Open Source 5.0 from source requires preparing the 
+build environment, installing prerequisite software components, and executing the build script. Note: 
+Feedback is invited! Please post corrections and/or improvements to this document to the GroundWork 
+Community Support Forums: http://www.groundworkopensource.com/community/forums/.
+
+These steps describe how to set up the build environment. Currently, these instructions have been used to 
+perform successful builds on the platforms listed below. Specialized instructions for a specific platform are 
+denoted with the appropriate heading (e.g. CentOS4).
+-	Red Hat Enterprise Linux 4 (RHEL4)
+-	CentOS 4.3 (CENTOS4) 32 bit
+1.	The following packages must be installed before attempting a build of GroundWork Monitor Open 
+Source:
+-	gcc (3.4.3-9 or later) http://gcc.gnu.org/ 
+-	gcc-c++ (3.4.3-9 or later) http://gcc.gnu.org/ 
+-	glibc (3.4.3-9 or later) http://ftp.gnu.org/gnu/glibc/ 
+-	Java Development Toolkit (JDK) (1.5.0_05 or later) http://java.sun.com/
+-	MySQL Database server (5.0.18 or later) http://dev.mysql.com/downloads/ 
+-	Subversion (version 1.3 or later) http://subversion.tigris.org/project_packages.html 
+-	ant (1.6.5 - get it from GroundWork - see below)
+-	maven (1.0.2 - get it from GroundWork - see below)
+To check the existing versions of these packages use the command rpm -qa | grep packagename. For 
+example, to verify that these packages are installed and are of the correct version:
+-	Execute this command to check gcc and gcc-c++
+% rpm -qa |grep gcc
+
+Expect this output:
+
+gcc-3.4.3-9.EL4
+libgcc-3.4.3-9.EL4
+gcc-c++-3.4.3-9.EL4
+
+-	Execute the following command to check glibc
+% rpm -qa |grep glibc
+
+Expect this output:
+
+glibc-2.3.4-2
+glibc-devel-2.3.4-2
+glibc-headers-2.3.4-2
+2.	Make sure that rpm-devel package is not installed as it conflicts with the libbeecrypt compilation. To 
+verify that this package is not installed:
+-	Execute this command to check rpm-devel:
+% rpm -qa | grep rpm-devel
+
+If you see this output:
+
+rpm-devel-4.3.3-13_nonptl
+(or any version of rpm-devel) you need to uninstall rpm-devel.
+
+-	Execute this command to uninstall rpm-devel:
+% rpm -e rpm-devel-4.3.3
+(specify the version according to what you have installed)
+
+3.	Install Java 5
+-	Download and install JDK 1.5 from http://java.sun.com/. Install by following Sun's instructions 
+for your platform.
+-	Change the link in /etc/alternatives/java to point to the Java5 install 
+/usr/java/jdk1.5.0_05/bin/java.
+4.	Install MySQL 5.0
+RHEL4
+-	Red Hat installs some MySQL4 packages. You can identify the versions of the packages with 
+the command rpm -qa | grep -i mysql.
+-	To uninstall run this command, replacing xx with the version identified above:
+      rpm -e mysql-client-xx cyrus-sasl-sql-2.1.19-5.EL4.i386
+-	Download the MySQL rpm files from the MySQL web site, http://dev.mysql.com/downloads/. 
+The packages are:
+MySQL-server-standard
+MySQL-client-standard
+MySQL-shared-standard
+MySQL-devel-standard
+
+If you put all the files into the same temporary directory, rpm can install them all, in the right 
+order, with a single command:
+cd /tmp/mysql
+rpm -Uvh MySQL-*
+CENTOS4
+-	Download the CentOS-specific MySQL 5 packages available at 
+http://mirror.centos.org/centos/4/centosplus/i386/RPMS/.
+-	You need the following files, installed in this order:
+mysqlclient14-4.1.14-4.2.c4.1.i386.rpm
+mysql-5.0.22-1.centos.1.i386.rpm (you may need the CentOS Install Disk 1 in the CD 
+drive)
+mysql-server-5.0.22-1.centos.1.i386.rpm
+-	Check for the proper installation of these files using rpm -qa, for example:
+rpm -qa | grep -i mysql
+
+expect this output:
+
+mysql-server-5.0.22-1.centos.1
+mysqlclient14-4.1.14-4.2.c4.1
+mysql-5.0.22-1.centos.1
+perl-DBD-MySQL-2.9004-3.1
+5.	Modify /etc/hosts
+-	Make sure that localhost entry in /etc/hosts is valid:
+127.0.0.1    localhost localhost.localdomain
+Note that the "localhost" is *before* the "localhost.localdomain".
+6.	Install Apache Runtime Utilities (apr) Subversion
+-	Use the RPM install:
+apr-util-0.9.4-17.i386.rpm &
+subversion-1.3.2-1.rhel4.i386.rpm
+7.	Configure ldconfig
+-	Note that the build has to be run as root. This is because some of the components execute the 
+ldconfig command.
+-	Edit /etc/ld.so.conf and add /usr/local/groundwork/lib as the first line. Run ldconfig.
+8.	Install ant and maven
+-	GroundWork uses the 1.0.2 version of maven. You can get the right versions of these tools from 
+our repository:
+wget -c ftp://archive.groundworkopensource.com/pub/groundwork-core/build/*
+-	untar files into an appropriate location, such as:
+/usr/local/ant
+/usr/local/maven
+9.	Update the .bash_profile
+-	Note that the build has to be run as root. This is because some of the components execute the 
+ldconfig command.
+-	These environment variables must be set for the user running the build, in the .bash_profile, 
+for example:
+export GW_HOME=/usr/local/groundwork
+export JAVA_HOME=/usr/java/jdk1.5.0_05
+export ANT_HOME=/home/nagios/apache/apache-ant-1.6.5
+export MAVEN_HOME=/home/nagios/apache/maven-1.0.2
+export LDFLAGS=-L$GW_HOME/lib
+export LD_RUN_PATH=$GW_HOME/lib:$LD_RUN_PATH
+export LD_LIBRARY_PATH=$GW_HOME/lib:$LD_LIBRARY_PATH
+export CPPFLAGS=-I$GW_HOME/include
+export 
+PATH=$GW_HOME/bin:$PATH:$MAVEN_HOME/bin:$ANT_HOME/bin:$JAVA_HOME/bin
+-	Confirm all paths and versions are correct: the build does do a pre-flight check and will abort 
+early if it can't find a necessary build component.
+----------
+3.	EXECUTE THE BUILD
+1.	Invoke the master_build.sh script:
+2.	Make sure you are root. Then execute these commands:
+# mkdir /home/nagios
+# cd /home/nagios
+# svn co http://archive.groundworkopensource.com/groundwork-opensource/trunk \
+   groundwork-monitor
+# cd groundwork-monitor/build
+# nohup ./master-build.sh &
+3.	It can take a couple of hours to build. You can keep an eye on things by tailing the output:
+# tail -f nohup.out
+4.	The master_build.sh script will build all of the components, deploy them into /usr/local/groundwork, 
+and will build an RPM for Red Hat.
+5.	Find the RPM in (e.g. /usr/src/redhat/RPMS/i386/groundwork-monitor-os-5.0-xx.rhel4.i386.rpm).
+6.	See the section 7 INSTALLATION INSTRUCTIONS below for information about how to install the RPM.
+Note: The RPM should not be installed in the same environment where it was built. This is because the 
+installation procedure will clobber some of the components of the build.
+----------
+4	SUPPORT/FEEDBACK/PROBLEM REPORTS/DISCUSSION
+GroundWork Monitor Open Source Support
+GroundWork Monitor Open Source 5.0 software is user supported.  If you have problems, please review the 
+GroundWork Support Forum at http://www.groundworkopensource.com/community/forums/. If you cannot 
+find the answer, please inquire on the GroundWork Support Forum. Issues, such as bug reports, should 
+also be reported using the GroundWork Support Forum at 
+http://www.groundworkopensource.com/community/forums/. The forums are monitored by the GroundWork 
+team.
+		
+© GroundWork Open Source, Inc.		Page 1 of 4

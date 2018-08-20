@@ -1,0 +1,496 @@
+--- nagios-3.2.0/base/config.c.orig	2009-05-17 05:54:28.000000000 -0700
++++ nagios-3.2.0/base/config.c	2010-08-14 18:13:02.000000000 -0700
+@@ -200,6 +200,12 @@
+ extern servicedependency *servicedependency_list;
+ extern hostdependency   *hostdependency_list;
+ extern hostescalation   *hostescalation_list;
++extern servicedependency *servicedependency_list_last;
++extern hostdependency   *hostdependency_list_last;
++extern unsigned char	*servicedependency_circular_path_checked;
++extern unsigned char	*hostdependency_circular_path_checked;
++extern size_t		servicedependency_count;
++extern size_t		hostdependency_count;
+ 
+ extern host		**host_hashlist;
+ extern service		**service_hashlist;
+@@ -2674,6 +2680,23 @@
+ }
+ 
+ 
++int compare_sd_ptrs (const void *A, const void *B){
++	if ( ((servicedependency_ptr *)A)->dependent_service_ptr < ((servicedependency_ptr *)B)->dependent_service_ptr )
++		return -1;
++	if ( ((servicedependency_ptr *)A)->dependent_service_ptr > ((servicedependency_ptr *)B)->dependent_service_ptr )
++		return 1;
++	return 0;
++	}
++
++int compare_hd_ptrs (const void *A, const void *B){
++	if ( ((hostdependency_ptr *)A)->dependent_host_ptr < ((hostdependency_ptr *)B)->dependent_host_ptr )
++		return -1;
++	if ( ((hostdependency_ptr *)A)->dependent_host_ptr > ((hostdependency_ptr *)B)->dependent_host_ptr )
++		return 1;
++	return 0;
++	}
++
++
+ /* check for circular paths and dependencies */
+ int pre_flight_circular_check(int *w, int *e){
+ 	host *temp_host=NULL;
+@@ -2681,10 +2704,17 @@
+ 	servicedependency *temp_sd2=NULL;
+ 	hostdependency *temp_hd=NULL;
+ 	hostdependency *temp_hd2=NULL;
+-	int found=FALSE;
+-	int result=OK;
+ 	int warnings=0;
+ 	int errors=0;
++	int temp_pos;
++	servicedependency *saved_servicedependency_list;
++	servicedependency *array_sd;
++	hostdependency *saved_hostdependency_list;
++	hostdependency *array_hd;
++	servicedependency_ptr *servicedependency_sorted;
++	servicedependency_ptr *temp_sd_ptr;
++	hostdependency_ptr *hostdependency_sorted;
++	hostdependency_ptr *temp_hd_ptr;
+ 
+ 
+ 	/* bail out if we aren't supposed to verify circular paths */
+@@ -2699,11 +2729,8 @@
+ 		printf("Checking for circular paths between hosts...\n");
+ 
+ 	/* check routes between all hosts */
+-	found=FALSE;
+-	result=OK;
+-
+ 
+-	/* We clean the dsf status from previous check */
++	/* We clean the dfs status from previous check */
+ 	for (temp_host = host_list; temp_host != NULL; temp_host = temp_host->next) {
+ 		dfs_set_status(temp_host, DFS_UNCHECKED);
+ 	}
+@@ -2727,15 +2754,37 @@
+ 	if(verify_config==TRUE)
+ 		printf("Checking for circular host and service dependencies...\n");
+ 
++	servicedependency_count = 0;
++	for(temp_sd=servicedependency_list;temp_sd!=NULL;temp_sd=temp_sd->next){
++		++servicedependency_count;
++	        }
++	if (servicedependency_count) {
++		servicedependency_circular_path_checked = malloc(servicedependency_count * sizeof(*servicedependency_circular_path_checked));
++		servicedependency_sorted = malloc(servicedependency_count * sizeof(*servicedependency_sorted));
++		for(temp_sd=servicedependency_list,temp_sd_ptr=servicedependency_sorted;temp_sd!=NULL;temp_sd=temp_sd->next,++temp_sd_ptr){
++			temp_sd_ptr->dependent_service_ptr = temp_sd->dependent_service_ptr;
++			temp_sd_ptr->service_dep = temp_sd;
++			}
++		qsort((void *)servicedependency_sorted, servicedependency_count, sizeof(*servicedependency_sorted), compare_sd_ptrs);
++		saved_servicedependency_list = servicedependency_list;
++		servicedependency_list = malloc(servicedependency_count * sizeof(*servicedependency_list));
++		for(temp_pos=servicedependency_count,temp_sd_ptr=servicedependency_sorted,array_sd=servicedependency_list;--temp_pos>=0;
++			++temp_sd_ptr,++array_sd){
++			*array_sd = *temp_sd_ptr->service_dep;
++			array_sd->next = array_sd + 1;
++			}
++		--array_sd;
++		array_sd->next = NULL;
++		servicedependency_list_last = servicedependency_list + servicedependency_count - 1;
++		}
++
+ 	/* check execution dependencies between all services */
+ 	for(temp_sd=servicedependency_list;temp_sd!=NULL;temp_sd=temp_sd->next){
+ 
+ 		/* clear checked flag for all dependencies */
+-		for(temp_sd2=servicedependency_list;temp_sd2!=NULL;temp_sd2=temp_sd2->next)
+-			temp_sd2->circular_path_checked=FALSE;
++		memset(servicedependency_circular_path_checked, 0, servicedependency_count * sizeof(*servicedependency_circular_path_checked));
+ 
+-		found=check_for_circular_servicedependency_path(temp_sd,temp_sd,EXECUTION_DEPENDENCY);
+-		if(found==TRUE){
++		if( check_for_circular_servicedependency_path(temp_sd,temp_sd,EXECUTION_DEPENDENCY) ){
+ 			logit(NSLOG_VERIFICATION_ERROR,TRUE,"Error: A circular execution dependency (which could result in a deadlock) exists for service '%s' on host '%s'!",temp_sd->service_description,temp_sd->host_name);
+ 			errors++;
+ 		        }
+@@ -2745,25 +2794,52 @@
+ 	for(temp_sd=servicedependency_list;temp_sd!=NULL;temp_sd=temp_sd->next){
+ 
+ 		/* clear checked flag for all dependencies */
+-		for(temp_sd2=servicedependency_list;temp_sd2!=NULL;temp_sd2=temp_sd2->next)
+-			temp_sd2->circular_path_checked=FALSE;
++		memset(servicedependency_circular_path_checked, 0, servicedependency_count * sizeof(*servicedependency_circular_path_checked));
+ 
+-		found=check_for_circular_servicedependency_path(temp_sd,temp_sd,NOTIFICATION_DEPENDENCY);
+-		if(found==TRUE){
++		if( check_for_circular_servicedependency_path(temp_sd,temp_sd,NOTIFICATION_DEPENDENCY) ){
+ 			logit(NSLOG_VERIFICATION_ERROR,TRUE,"Error: A circular notification dependency (which could result in a deadlock) exists for service '%s' on host '%s'!",temp_sd->service_description,temp_sd->host_name);
+ 			errors++;
+ 		        }
+ 	        }
+ 
++	if (servicedependency_count) {
++		free(servicedependency_circular_path_checked);
++		free(servicedependency_sorted);
++		free(servicedependency_list);
++		servicedependency_list = saved_servicedependency_list;
++		}
++
++	hostdependency_count = 0;
++	for(temp_hd=hostdependency_list;temp_hd!=NULL;temp_hd=temp_hd->next){
++		++hostdependency_count;
++	        }
++	if (hostdependency_count) {
++		hostdependency_circular_path_checked = malloc(hostdependency_count * sizeof(*hostdependency_circular_path_checked));
++		hostdependency_sorted = malloc(hostdependency_count * sizeof(*hostdependency_sorted));
++		for (temp_hd=hostdependency_list,temp_hd_ptr=hostdependency_sorted;temp_hd!=NULL;temp_hd=temp_hd->next,++temp_hd_ptr) {
++			temp_hd_ptr->dependent_host_ptr = temp_hd->dependent_host_ptr;
++			temp_hd_ptr->host_dep = temp_hd;
++			}
++		qsort((void *)hostdependency_sorted, hostdependency_count, sizeof(*hostdependency_sorted), compare_hd_ptrs);
++		saved_hostdependency_list = hostdependency_list;
++		hostdependency_list = malloc(hostdependency_count * sizeof(*hostdependency_list));
++		for(temp_pos=hostdependency_count,temp_hd_ptr=hostdependency_sorted,array_hd=hostdependency_list;--temp_pos>=0;
++			++temp_hd_ptr,++array_hd){
++			*array_hd = *temp_hd_ptr->host_dep;
++			array_hd->next = array_hd + 1;
++			}
++		--array_hd;
++		array_hd->next = NULL;
++		hostdependency_list_last = hostdependency_list + hostdependency_count - 1;
++		}
++
+ 	/* check execution dependencies between all hosts */
+ 	for(temp_hd=hostdependency_list;temp_hd!=NULL;temp_hd=temp_hd->next){
+ 
+ 		/* clear checked flag for all dependencies */
+-		for(temp_hd2=hostdependency_list;temp_hd2!=NULL;temp_hd2=temp_hd2->next)
+-			temp_hd2->circular_path_checked=FALSE;
++		memset(hostdependency_circular_path_checked, 0, hostdependency_count * sizeof(*hostdependency_circular_path_checked));
+ 
+-		found=check_for_circular_hostdependency_path(temp_hd,temp_hd,EXECUTION_DEPENDENCY);
+-		if(found==TRUE){
++		if( check_for_circular_hostdependency_path(temp_hd,temp_hd,EXECUTION_DEPENDENCY) ){
+ 			logit(NSLOG_VERIFICATION_ERROR,TRUE,"Error: A circular execution dependency (which could result in a deadlock) exists for host '%s'!",temp_hd->host_name);
+ 			errors++;
+ 		        }
+@@ -2773,16 +2849,20 @@
+ 	for(temp_hd=hostdependency_list;temp_hd!=NULL;temp_hd=temp_hd->next){
+ 
+ 		/* clear checked flag for all dependencies */
+-		for(temp_hd2=hostdependency_list;temp_hd2!=NULL;temp_hd2=temp_hd2->next)
+-			temp_hd2->circular_path_checked=FALSE;
++		memset(hostdependency_circular_path_checked, 0, hostdependency_count * sizeof(*hostdependency_circular_path_checked));
+ 
+-		found=check_for_circular_hostdependency_path(temp_hd,temp_hd,NOTIFICATION_DEPENDENCY);
+-		if(found==TRUE){
++		if( check_for_circular_hostdependency_path(temp_hd,temp_hd,NOTIFICATION_DEPENDENCY) ){
+ 			logit(NSLOG_VERIFICATION_ERROR,TRUE,"Error: A circular notification dependency (which could result in a deadlock) exists for host '%s'!",temp_hd->host_name);
+ 			errors++;
+ 		        }
+ 	        }
+ 
++	if (hostdependency_count) {
++		free(hostdependency_circular_path_checked);
++		free(hostdependency_sorted);
++		free(hostdependency_list);
++		hostdependency_list = saved_hostdependency_list;
++		}
+ 
+         /* update warning and error count */
+ 	*w+=warnings;
+--- nagios-3.2.0/common/objects.c.orig	2009-05-17 05:54:28.000000000 -0700
++++ nagios-3.2.0/common/objects.c	2010-08-14 18:13:02.000000000 -0700
+@@ -54,6 +54,12 @@
+ servicedependency *servicedependency_list=NULL,*servicedependency_list_tail=NULL;
+ hostdependency  *hostdependency_list=NULL,*hostdependency_list_tail=NULL;
+ hostescalation  *hostescalation_list=NULL,*hostescalation_list_tail=NULL;
++servicedependency *servicedependency_list_last=NULL;
++hostdependency  *hostdependency_list_last=NULL;
++unsigned char   *servicedependency_circular_path_checked=NULL;
++unsigned char   *hostdependency_circular_path_checked=NULL;
++size_t		servicedependency_count=0;
++size_t		hostdependency_count=0;
+ 
+ skiplist *object_skiplists[NUM_OBJECT_SKIPLISTS];
+ 
+@@ -2347,7 +2353,6 @@
+ 	new_servicedependency->fail_on_critical=(fail_on_critical==1)?TRUE:FALSE;
+ 	new_servicedependency->fail_on_pending=(fail_on_pending==1)?TRUE:FALSE;
+ #ifdef NSCORE
+-	new_servicedependency->circular_path_checked=FALSE;
+ 	new_servicedependency->contains_circular_path=FALSE;
+ #endif
+ 
+@@ -2437,7 +2442,6 @@
+ 	new_hostdependency->fail_on_unreachable=(fail_on_unreachable==1)?TRUE:FALSE;
+ 	new_hostdependency->fail_on_pending=(fail_on_pending==1)?TRUE:FALSE;
+ #ifdef NSCORE
+-	new_hostdependency->circular_path_checked=FALSE;
+ 	new_hostdependency->contains_circular_path=FALSE;
+ #endif
+ 
+@@ -3456,28 +3460,95 @@
+ 
+ #ifdef NSCORE
+ 
++/* customized, specialty binary search */
++servicedependency *find_first_dependent_service(service *service_ptr){
++	servicedependency *first;
++	servicedependency *middle;
++	servicedependency *last;
++	first = servicedependency_list;
++	last  = servicedependency_list_last;
++	while (first < last) {
++		middle = first + (last - first)/2;
++		if (service_ptr > middle->dependent_service_ptr) {
++			first = middle + 1;
++			}
++		else {
++			last = middle;
++			}
++		}
++	return
++	    (
++	    /*
++	    // We don't bother checking to see if the list is non-empty,
++	    // because by external construction we wouldn't be here if it
++	    // wasn't.  We're more interested in absolute speed than in
++	    // generality, which is partly why this routine is customized.
++	    first == last &&
++	    */
++	    first->dependent_service_ptr == service_ptr
++	    )
++	    ? first : NULL;
++	}
++
++/* customized, specialty binary search */
++hostdependency *find_first_dependent_host(host *host_ptr){
++	hostdependency *first;
++	hostdependency *middle;
++	hostdependency *last;
++	first = hostdependency_list;
++	last  = hostdependency_list_last;
++	while (first < last) {
++		middle = first + (last - first)/2;
++		if (host_ptr > middle->dependent_host_ptr) {
++			first = middle + 1;
++			}
++		else {
++			last = middle;
++			}
++		}
++	return
++	    (
++	    /*
++	    // We don't bother checking to see if the list is non-empty,
++	    // because by external construction we wouldn't be here if it
++	    // wasn't.  We're more interested in absolute speed than in
++	    // generality, which is partly why this routine is customized.
++	    first == last &&
++	    */
++	    first->dependent_host_ptr == host_ptr
++	    )
++	    ? first : NULL;
++	}
++
++
+ /* checks to see if there exists a circular dependency for a service */
+ int check_for_circular_servicedependency_path(servicedependency *root_dep, servicedependency *dep, int dependency_type){
+-	servicedependency *temp_sd=NULL;
+ 
++	servicedependency *temp_sd;
++	size_t dep_pos;
++
++	/*
++	// Checked externally -- no sense in wasting time here.
+ 	if(root_dep==NULL || dep==NULL)
+ 		return FALSE;
++	*/
+ 
+ 	/* this is not the proper dependency type */
+ 	if(root_dep->dependency_type!=dependency_type || dep->dependency_type!=dependency_type)
+ 		return FALSE;
+ 
+ 	/* don't go into a loop, don't bother checking anymore if we know this dependency already has a loop */
+-	if(root_dep->contains_circular_path==TRUE)
++	if(root_dep->contains_circular_path)
+ 		return TRUE;
+ 
+ 	/* dependency has already been checked - there is a path somewhere, but it may not be for this particular dep... */
+ 	/* this should speed up detection for some loops */
+-	if(dep->circular_path_checked==TRUE)
++	dep_pos = dep - servicedependency_list;
++	if (servicedependency_circular_path_checked[dep_pos])
+ 		return FALSE;
+ 
+ 	/* set the check flag so we don't get into an infinite loop */
+-	dep->circular_path_checked=TRUE;
++	servicedependency_circular_path_checked[dep_pos]=TRUE;
+ 
+ 	/* is this service dependent on the root service? */
+ 	if(dep!=root_dep){
+@@ -3493,15 +3564,16 @@
+ 		return FALSE;
+ 
+ 	/* check all parent dependencies */
+-	for(temp_sd=servicedependency_list;temp_sd!=NULL;temp_sd=temp_sd->next){
+-
++	service *master_service_ptr = dep->master_service_ptr;
++	servicedependency *list_first = find_first_dependent_service(master_service_ptr);
++	servicedependency *list_last = servicedependency_list_last;
++	if (list_first) {
+ 		/* only check parent dependencies */
+-		if(dep->master_service_ptr!=temp_sd->dependent_service_ptr)
+-			continue;
+-
+-		if(check_for_circular_servicedependency_path(root_dep,temp_sd,dependency_type)==TRUE)
+-			return TRUE;
+-	        }
++		for(temp_sd=list_first;temp_sd<=list_last && temp_sd->dependent_service_ptr==master_service_ptr;++temp_sd){
++			if(check_for_circular_servicedependency_path(root_dep,temp_sd,dependency_type))
++				return TRUE;
++			}
++		}
+ 
+ 	return FALSE;
+         }
+@@ -3509,26 +3581,32 @@
+ 
+ /* checks to see if there exists a circular dependency for a host */
+ int check_for_circular_hostdependency_path(hostdependency *root_dep, hostdependency *dep, int dependency_type){
+-	hostdependency *temp_hd=NULL;
+ 
++	hostdependency *temp_hd;
++	size_t dep_pos;
++
++	/*
++	// Checked externally -- no sense in wasting time here.
+ 	if(root_dep==NULL || dep==NULL)
+ 		return FALSE;
++	*/
+ 
+ 	/* this is not the proper dependency type */
+ 	if(root_dep->dependency_type!=dependency_type || dep->dependency_type!=dependency_type)
+ 		return FALSE;
+ 
+ 	/* don't go into a loop, don't bother checking anymore if we know this dependency already has a loop */
+-	if(root_dep->contains_circular_path==TRUE)
++	if(root_dep->contains_circular_path)
+ 		return TRUE;
+ 
+ 	/* dependency has already been checked - there is a path somewhere, but it may not be for this particular dep... */
+ 	/* this should speed up detection for some loops */
+-	if(dep->circular_path_checked==TRUE)
++	dep_pos = dep - hostdependency_list;
++	if (hostdependency_circular_path_checked[dep_pos])
+ 		return FALSE;
+ 
+ 	/* set the check flag so we don't get into an infinite loop */
+-	dep->circular_path_checked=TRUE;
++	hostdependency_circular_path_checked[dep_pos]=TRUE;
+ 
+ 	/* is this host dependent on the root host? */
+ 	if(dep!=root_dep){
+@@ -3544,15 +3622,16 @@
+ 		return FALSE;
+ 
+ 	/* check all parent dependencies */
+-	for(temp_hd=hostdependency_list;temp_hd!=NULL;temp_hd=temp_hd->next){
+-
++	host *master_host_ptr = dep->master_host_ptr;
++	hostdependency *list_first = find_first_dependent_host(master_host_ptr);
++	hostdependency *list_last = hostdependency_list_last;
++	if (list_first) {
+ 		/* only check parent dependencies */
+-		if(dep->master_host_ptr!=temp_hd->dependent_host_ptr)
+-			continue;
+-
+-		if(check_for_circular_hostdependency_path(root_dep,temp_hd,dependency_type)==TRUE)
+-			return TRUE;
+-	        }
++		for(temp_hd=list_first;temp_hd<=list_last && temp_hd->dependent_host_ptr==master_host_ptr;++temp_hd){
++			if(check_for_circular_hostdependency_path(root_dep,temp_hd,dependency_type))
++				return TRUE;
++			}
++		}
+ 
+ 	return FALSE;
+         }
+--- nagios-3.2.0/include/objects.h.orig	2009-05-17 05:54:28.000000000 -0700
++++ nagios-3.2.0/include/objects.h	2010-08-14 18:13:02.000000000 -0700
+@@ -545,6 +545,13 @@
+ 
+ /* SERVICE DEPENDENCY structure */
+ typedef struct servicedependency_struct{
++#ifdef NSCORE
++	/* dependent_service_ptr is first for optimization reasons */
++	service *dependent_service_ptr;
++	service *master_service_ptr;
++	int     contains_circular_path;	/* offset in structure must be a power of 2 for faster execution */
++	timeperiod *dependency_period_ptr;
++#endif
+ 	int     dependency_type;
+ 	char    *dependent_host_name;
+ 	char    *dependent_service_description;
+@@ -557,18 +564,15 @@
+ 	int     fail_on_unknown;
+ 	int     fail_on_critical;
+ 	int     fail_on_pending;
+-#ifdef NSCORE
+-	int     circular_path_checked;
+-	int     contains_circular_path;
+-
+-	service *master_service_ptr;
+-	service *dependent_service_ptr;
+-	timeperiod *dependency_period_ptr;
+-#endif
+ 	struct servicedependency_struct *next;
+ 	struct servicedependency_struct *nexthash;
+         }servicedependency;
+ 
++typedef struct servicedependency_ptr_struct{
++	service *dependent_service_ptr;
++	servicedependency *service_dep;
++	}servicedependency_ptr;
++
+ 
+ /* HOST ESCALATION structure */
+ typedef struct hostescalation_struct{
+@@ -593,6 +597,13 @@
+ 
+ /* HOST DEPENDENCY structure */
+ typedef struct hostdependency_struct{
++#ifdef NSCORE
++	/* dependent_host_ptr is first for optimization reasons */
++	host    *dependent_host_ptr;
++	host    *master_host_ptr;
++	int     contains_circular_path;	/* offset in structure must be a power of 2 for faster execution */
++	timeperiod *dependency_period_ptr;
++#endif
+ 	int     dependency_type;
+ 	char    *dependent_host_name;
+ 	char    *host_name;
+@@ -602,18 +613,15 @@
+ 	int     fail_on_down;
+ 	int     fail_on_unreachable;
+ 	int     fail_on_pending;
+-#ifdef NSCORE
+-	int     circular_path_checked;
+-	int     contains_circular_path;
+-
+-	host    *master_host_ptr;
+-	host    *dependent_host_ptr;
+-	timeperiod *dependency_period_ptr;
+-#endif
+ 	struct hostdependency_struct *next;
+ 	struct hostdependency_struct *nexthash;
+         }hostdependency;
+ 
++typedef struct hostdependency_ptr_struct{
++	host    *dependent_host_ptr;
++	hostdependency *host_dep;
++	}hostdependency_ptr;
++
+ 
+ 
+ 

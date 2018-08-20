@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+    Copyright (C) 2010-2011 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+
+<project xmlns:ant="jelly:ant"
+	xmlns:j="jelly:core"
+	xmlns:maven="jelly:maven">
+    
+    <goal name="clean" >			
+	<!-- remove deployed war file and configuration -->
+	<maven:reactor basedir="${basedir}"
+	    includes="**/project.xml"
+	    goals="clean:clean" />
+    </goal>
+
+    <goal name="war" description="Build war file">
+	<attainGoal name="war:war"/>
+    </goal>
+
+    <goal name="deploy" description="Regular deploy does not include Cloud Connector.  Call standalone-deploy instead.">
+	<echo message="Regular deploy does not include Cloud Connector.  Call:  maven standalone-deploy instead."/>
+    </goal>
+
+    <goal name="undeploy" description="Un-deploy the generated warfile.  I don't really know why you would want to.">
+	<delete file="${org.groundwork.foundation.deploy.root}/container/webapps/cloud-connector.war" />
+    </goal>
+
+    <goal name="standalone-deploy" prereqs="war">
+	<!-- Copy war -->
+	<copy todir="${org.groundwork.foundation.deploy.root}/container/webapps" overwrite="true"> 
+	    <fileset dir="${basedir}/target/" includes="*.war" excludes="*svn" />
+	</copy>
+    </goal>
+</project>

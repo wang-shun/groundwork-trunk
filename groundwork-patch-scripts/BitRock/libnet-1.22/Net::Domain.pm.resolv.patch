@@ -1,0 +1,26 @@
+--- libnet-1.22/Net/Domain.pm.orig	2007-08-26 05:14:12.000000000 -0700
++++ libnet-1.22/Net/Domain.pm	2010-12-21 14:36:13.000000000 -0800
+@@ -127,13 +127,21 @@
+   local *RES;
+   local ($_);
+ 
++  my $res_first_search_domain;
++
+   if (open(RES, "/etc/resolv.conf")) {
+     while (<RES>) {
+-      $domain = $1
+-        if (/\A\s*(?:domain|search)\s+(\S+)/);
++      if (/\A\s*domain\s+(\S+)/) {
++        $domain = $1;
++        last;
++      }
++      $res_first_search_domain = $1
++        if (/\A\s*search\s+(\S+)/);
+     }
+     close(RES);
+ 
++    $domain ||= $res_first_search_domain;
++
+     return $domain
+       if (defined $domain);
+   }

@@ -1,0 +1,22 @@
+# logrotate configuration for GroundWork Service Desk Express integration files
+
+# Service Desk Express integration log output
+#
+# /usr/local/groundwork/servicedeskexpress/logs/oneway.log
+# /usr/local/groundwork/servicedeskexpress/logs/twoway.log
+# are configured in:
+# /usr/local/groundwork/servicedeskexpress/config/oneway_helpdesk.conf
+# /usr/local/groundwork/servicedeskexpress/config/twoway_helpdesk.conf
+# respectively.  Both the oneway_helpdesk.pl and twoway_helpdesk.pl scripts
+# open and close their logfile in append mode around every message written
+# to their respective logfile, so there is no issue with synchronizing log
+# rotation actions here with the operations of the scripts.
+#
+/usr/local/groundwork/servicedeskexpress/logs/*.log {
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 1
+}

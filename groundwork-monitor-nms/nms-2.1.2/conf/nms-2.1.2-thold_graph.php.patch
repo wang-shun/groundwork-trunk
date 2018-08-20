@@ -1,0 +1,16 @@
+*** thold_graph.php.orig	2009-11-03 17:03:34.000000000 -0800
+--- thold_graph.php	2009-11-03 16:38:44.000000000 -0800
+***************
+*** 20,25 ****
+--- 20,30 ----
+  include_once($config["include_path"] . "/top_graph_header.php");
+  include_once($config["base_path"] . "/plugins/thold/thold_functions.php");
+  
++ if ( strlen( $_SESSION['GWRK_USER']) == 0 ) {
++ 	print "<br><br><center><font color=red>You do not have permission to access this page. Please log in first</font></color>";
++         exit;
++ }
++ 
+  if (!thold_check_dependencies()) {
+  	cacti_log("THOLD: You are missing a required dependency, please install the '<a href='http://cactiusers.org/'>Settings'</a> plugin.", true, "POLLER");
+  	print "<br><br><center><font color=red>You are missing a dependency for thold, please install the '<a href='http://cactiusers.org'>Settings</a>' plugin.</font></color>";

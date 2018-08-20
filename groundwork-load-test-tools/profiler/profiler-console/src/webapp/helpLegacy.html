@@ -1,0 +1,408 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" media="screen" href="css/style.css" />
+<style>
+
+p{width:300;color: blue; text-align:justify;}
+p#cont1{width:300;color: blue; text-align:justify;;padding-left: 12px;}
+p#cont2{width:300;color: blue; text-align:justify;;padding-left: 44px;}
+p#title{text-align:justify;color: black;font-weight: bold;font-size:16px;}
+p#title1{text-align:justify;color: black;font-weight: bold;padding-left: 12px;}
+
+p#qte{text-align:justify;color: #4B0082;font-weight: bold;}
+div {width:750px;}
+
+
+DIV.headerAppdx{width:75%;BORDER-RIGHT: black 3px solid;BORDER-LEFT: black 3px solid;PADDING-RIGHT: 22px;
+BORDER-TOP: black 3px solid;PADDING-LEFT: 22px;FONT-WEIGHT: bolder;
+FONT-SIZE: x-small;PADDING-BOTTOM: 22px;MARGIN: 2px 10% 10px;
+TEXT-TRANSFORM: none;BORDER-LEFT: #87ceeb 1px slargeolid;COLOR: #191970;PADDING-TOP: 22px;
+BORDER-BOTTOM: black 3px solid;FONT-STYLE: normal;FONT-FAMILY: Verdana, Arial;
+BACKGROUND-COLOR:#8FBC8F;TEXT-ALIGN: left;FONT-VARIANT: normal;TEXT-DECORATION: none}
+</style>
+<title>Insert title here</title>
+</head>
+<body>
+
+
+<table><tr><th align="middle"><a href=""  class="ti">Foundation Profiler Tool</a></th></tr>
+
+<tr><td align="middle">
+<div class="headerH0">
+<table bgcolor="black" width="710"><tr>
+<td align="middle" style="background-color:#DC143C;color:#FFFFFF"><a href="index.html" style="font-weight:bold;text-decoration:none;color:#FFFFFF" target="_self">About</a></td>
+<td align="middle" bgcolor="#FFD700"><a href="index.jsp?cmd=simplesa" style="font-weight:bold;text-decoration:none;" target="_self">SystemAdmin</a></td>
+<td align="middle" bgcolor="#FFA500"><a href="helpSystemAdmin.html" style="font-weight:bold;text-decoration:none;" target="_self">Help SystemAdmin</a></td>
+<td align="middle" bgcolor="#FFD700"><a href="index.jsp?cmd=newconfig" style="font-weight:bold;text-decoration:none;" target="_self">Foundation 1.5</a></td>
+<td align="middle" bgcolor="#FFA500"><a href="helpLegacy.html" style="font-weight:bold;text-decoration:none;" target="_self">Help Foundation 1.5</a></td>
+<td align="middle" bgcolor="#FFD700"><a href="index.jsp?cmd=nscaext" style="font-weight:bold;text-decoration:none;" target="_self">NSCA Extension</a></td>
+<td align="middle" bgcolor="#FFA500"><a href="helpNSCAext.html" style="font-weight:bold;text-decoration:none;" target="_self">Help NSCA Extension</a></td>
+</tr>
+<table>
+<div class="headerHelp">
+<p id="title">
+Last Update: May 14, 2008
+</p>
+<span style="font-size:24px;color:black;">Content</span>
+<p style="padding-left:44px">
+<a href="#purpose">Purpose</a><br>
+<a href="#overview">Overview</a><br>
+<a href="#impl">Implementation</a><br>
+<a href="#config">Profiler Configuration</a><br>
+<a href="#exconfig">Example Configuration</a><br>
+<a href="#messages">Profiler Messages</a><br>
+<a href="#reports">Profiler Reports</a><br>
+<a href="#log">Profile Log</a><br>
+<a href="#run">Running The Profiler</a><br>
+<a href="#build">Building / Deploying The Profiler</a><br>
+<a href="#appendix">Appendix - Detailed instructions to build/run the Profiler Tool</a><br>
+</p><br>
+<p id="title">
+<a name="purpose">Purpose:</a>
+</p>
+<p>
+Create a testing harness for the Foundation framework that creates a performance baseline
+ monitoring data throughput and system latency.
+
+The profiler can be used to load test the Foundation feeder mechanism, capture metrics regarding the performance, help validate a build and/or confirm that QA acceptance thresholds are met.
+</p>
+<p id="title1">
+General:
+</p>
+
+<p>
+<p id="cont1">a. Program can be launched from any machine and therefore usable by QA.  The database parameters and the socket information will be defined in the properties files</p>
+<p id="cont1">b. DataThroughput thread should be extensible so that it could do some HTML scraping for testing the latency between database write and UI appearance.</p>
+<p id="cont1">c. Use of log4j for any information about the running tests</p>
+</p>
+
+
+<p id="title">
+<a name="overview">Overview</a>
+</p>
+<p>
+The Foundation profiler is a java application which provides the ability to simulate Foundation feeder messagesand 
+capture the time it takes to process the feeder messages.  The profiler can store all metrics to a database for 
+future reference or just output them to the <span style="font-size:12px;color:#191970;font-weight:bold">profiler.log</span> file. 
+</p>
+<p>
+At the time of this documentation, the profiler provides users the ability to simulate 4 different types of messages.
+</p>
+<p id="qte">
+1.Host Status <br>
+2.Service Status <br>
+3.Event / Log <br>
+4.Host Create
+</p>
+<p id="title">
+<a name="impl">Implementation</a>
+</p>
+<p>
+Running a Java program that reads the initial settings for the test from a property file (<b>foundation-profiling.properties</b>). It enters a loop that launches two threads passing in <span style="color:red">MonitorStatus</span>  (<span style="color:red">toggle</span> between UP/DOWN for Host and OK/CRITICAL for ServiceStatus), <span style="color:red">Count</span>, <span style="color:red">Starting time (ReportDate)</span> and then sleeps until the <span style="color:red">interval time</span> expires to relaunch the check. The two threads can be described  as following:
+</p>
+<p>
+<b>DataFeeder thread</b>: Creates a bulk (Count) <span style="color:red">ServiceStatus</span>, <span style="color:red">HostStatus</span> and <span style="color:red">Event</span> messages. The service <br>and host name are well defined:  <span style="color:red">HostName</span> will be <span style="color:red">testHost{COUNT}</span> and <span style="color:red">testService{COUNT}</span><br>
+<b>DataThroughput thread</b>: queries the GWCollageDB Database to determine when the Host and Service <br>updates are done. Same for Event inserts. Logging result into other database for graphing (Birt)<br>
+</p>
+<p id="title1">
+Detail implementation
+</p>
+<p id="title1">
+DataFeederThread<br>
+<p id="cont1">
+Opens three socket connections (4913) and sends <span style="color:red">Status/HostStatus</span> and <span style="color:red">events</span> messages as XML fragments.Closes the connections after  bulk is sent out.<br>
+</p>
+<p id="title1">
+DataThroughput thread
+</p>
+<p id="cont1">
+Direct queries into GWCollageDB using jdbc<br>
+New Foundation profiling database for storing measurements and baseline (timestamped series)<br>
+</p>
+
+
+
+<p id="title">
+<a name="config">Profiler Configuration</a>
+</p>
+<p>
+Users have the ability to configure the profiler through an XML configuration file.  The configuration defines what messages are simulated, the number of messages that are sent and how often the messages are sent.  
+</p>
+<p>
+The profiler configuration is broken down into 2 sections: 
+</p>
+<p>
+1. The <span style="color:#000080;font-weight:bold;">first section</span> defines the database connection information for the Foundation and Profiler database as well as the Foundation socket information to which the messages are posted.  
+</p>
+<p>
+2. The <span style="color:#000080;font-weight:bold;">second section</span> of the profiler configuration file defines the workloads for the profiler session.  A workload defines which messages are sent, how often the messages are sent as well as how many times the messages are sent.  Users do have the ability to define multiple workloads in a profiler configuration file.  Each workload is processed concurrently therefore sending messages and capturing metrics concurrently.  This ability will probably not be necessary in most of workloads that we define.  
+</p>
+<p>
+All messages defined for a workload is considered a <span style="font-size:medium;color:#191970;font-weight:bold">“batch”</span> of messages.  This means each workload interval the messages defined for the workload are sent.  Also, note each message defined in a workload may result in more than one message sent to Foundation.  For example, the ToggleHostStatus message has a property numHosts which specifies how many host status messages to create each batch.  If the value of numHosts is 10 then 10 Host Status messages will be sent to 10 different hosts for each workload message batch interval.
+</p>
+<p>
+One thing to understand about the <span style="font-size:medium;color:#191970;font-weight:bold">workload interval</span> is that even though the workload interval may be set to 10 seconds it does not guarantee that a new batch of messages will be sent every 10 seconds.  Since we are polling the Foundation database in order to determine when the messages have been processed, we cannot send a new batch of messages until all metrics are captured for the previous batch.  For example with the Host Status message, if we were to send a new batch of messages before the metric was captured, we may not be able to determine when the original host status message was processed b/c a subsequent message may have toggled the host status.  When the profiler is configured not to capture metrics (captureMetrics = OFF) then the workload interval is honored.
+</p>
+<p>
+The <span style="font-size:medium;color:#191970;font-weight:bold">numBatches</span> attribute of a workload defines how many messages batches will be sent.  Once this limit is reached then the workload is complete and once all workloads are complete for a session then the profiler exits.  As mentioned, a message batch is sent (if possible) at the interval defined for the workload.
+</p>
+<p>
+Each message defined for a workload has a <span style="font-size:medium;color:#191970;font-weight:bold">threshold</span> value.  This value indicates a maximum time in seconds that we expect the message batch to have been processed.  If the threshold value for a individual message batch is not met then the message batch is flagged and will be identified when the profiler has completed all its workloads.  An error message is also outputted to the <span style="font-size:medium;color:#191970;font-weight:bold">profiler.log</span> file when the message batch exceeds its expected threshold.
+</p>
+<p id="cont1">
+Note: all durations defined in the profiler configuration file are in seconds.
+</p>
+<p>
+Below is an example profiler configuration file which contains all configuration settings, available messages and all possible message configuration attributes.
+</p>
+<p id="title">
+<a name="exconfig">Example Configuration:</a>
+</p>
+<pre>
+	Capture Metrics OFF, LOG, ALL (Default) 
+	OFF – NO metrics are captured  
+	LOG – Metrics are captured and outputted to the log only 
+	ALL – Metrics are captured and outputted to both the log and db  
+
+	&lt;foundation-profiler captureMetrics="LOG">
+
+	Database to store profiling information
+	The profiler DB Connection information is not needed since we are not capturing metrics	in 
+	the database. 
+
+	&lt;profilerDB driver="com.mysql.jdbc.Driver"
+				url="jdbc:mysql://localhost/GWProfilerDB" 
+				login="collage" 
+				password="gwrk"/>
+	
+	Foundation Database to be profiled
+
+	&lt;foundationDB driver="com.mysql.jdbc.Driver"
+				url="jdbc:mysql://localhost/GWCollageDB" 
+				login="root" 
+				password=""/>
+	
+	Common message socket to post feeder messages 	     
+
+	&lt;messageSocket server="localhost" port="4913" />
+	
+	Workload Definitions 
+	Note:  We are not capturing metrics for QA Acceptance any message batches that exceed threshold values
+	will be output at the completion of the workloads 
+	All durations are defined in seconds.
+
+	&lt;workloads>
+		5.0 QA Acceptance Workload 
+		&lt;workload name="QA Acceptance - 25 Host Status, 50 Service Status, 20 Event and 5 Host Create 
+		Each Batch" 
+			numBatches="10"
+			interval="20"
+			quantity="1" 
+			distribution="even"
+			enabled="true">
+			&lt;messages>				
+				&lt;message 
+				type="org.groundwork.foundation.profiling.messages.ToggleHostStatusMessage" 
+					name="25-host-status"
+					threshold="5"
+					numHosts="25"
+				 />		
+				&lt;message 
+				type="org.groundwork.foundation.profiling.messages.ToggleServiceStatusMessage" 
+					name="50-service-status"
+					threshold="5"
+					numServices="50"
+				 />		
+				&lt;message 
+				type="org.groundwork.foundation.profiling.messages.EventMessage" 
+					name="20-event"
+					threshold="5"
+					numDevices="20"
+					consolidation="true"
+				 />					
+				&lt;message 
+				type="org.groundwork.foundation.profiling.messages.HostCreateMessage" 
+					name="5-host-create"
+					threshold="5"
+					numHosts="5"
+					version45="false"					
+				 />						  				 	
+			&lt;/messages>
+		&lt;/workload>		
+	&lt;/workloads>
+&lt;/foundation-profiler>
+</pre>
+<p id="title">
+<a name="messages">Profiler Messages</a>
+</p>
+<p id="title1">
+Toggle Host Status Message
+</p>
+<p id="title1">
+Toggle Service Status Message
+</p>
+<p id="title1">
+Event Message
+</p>
+<p id="title1">
+HostCreateMessage
+</p>
+<p id="title">
+<a name="reports">Profiler Reports</a>
+</p>
+<p id="title1">
+Profiler Session Report
+</p>
+<p id="title1">
+Profiler Session Comparison Report</p>
+<p id="title">
+<a name="log">Profile Log</a>
+</p>
+<p>
+Each profiler session outputs to the <span style="font-size:medium;color:#191970;font-weight:bold">profile.log</span> file which can be found in the same directory as the profiler.  Please note each execution of the profiler will overwrite an existing profiler.log file.  Therefore, if you need to maintain the log between executions please be sure to back it up before running the profiler again.
+</p>
+<p id="title">
+<a name="run">Running The Profiler</a>
+</p>
+<p>
+A foundation-profiler.sh script is provided to launch the profiler.  The profiler accepts the following command line arguments.  Note that all arguments are optional.
+</p>
+<p id="title1">
+Argument
+Description
+Default
+</p>
+<p id="cont1">
+-<span style="font-size:small;color:#191970;font-weight:bold">config &lt;configuration file></span>  -- Defines the location of the profiler configuration file: <span style="font-size:small;color:#191970;font-weight:bold">foundation-profiler.xml</span>
+<br>
+<span style="font-size:small;color:#191970;font-weight:bold">-session &lt;name of session></span> A string value representing the name of the session.
+</p>
+<p id="cont2">
+It recommended that a descriptive and unique name is provided for each session allowing for easy reporting and comparison.
+Session 
+</p>
+<p id="cont1">
+<span style="font-size:small;color:#191970;font-weight:bold">- &lt;Date and time of start></span>
+<span style="color:#191970;font-weight:bold">/?</span> Prints out usage instructions
+</p>
+<p id="title1">
+<a name="build">Building / Deploying The Profiler</a>
+</p>
+<p id="cont2">
+The source code for the profiler and all its resources can be found in our professional subversion repository (http://172.28.113.51/groundwork-professional/profiler)
+</p>
+<p id="cont1">
+In order to build the profiler you must have maven 1.0.2 installed.  The following is a list of goals provided in the maven script.
+
+</p>
+<p id="title1">
+Maven Goal
+Description:
+</p>
+<p id="title1">
+build
+</p>
+<p id="cont2">
+Compiles the profiler source code
+</p>
+<p id="title1">
+deploy
+</p>
+<p id="cont2">
+Creates a deploy directory, packages the profiler into a jar and copies all dependencies to this directory.  After the deploy goal is executed, everything needed for the profiler is in the deploy.
+</p>
+<p id="title1">
+database
+</p>
+<p id="cont2">
+Creates a profiler database on a mysql installation granting privileges to the collage user with the password <span style="font-size:medium;color:#191970;font-weight:bold">gwrk</span>
+</p>
+<p id="cont2">
+The project.properties file has properties identifying where the database should be created and what user credentials to use to create the database.
+</p>
+<p id="cont2">
+Please note a profiler database is not required if the user sets the profiler <span style="font-size:medium;color:#191970;font-weight:bold">captureMetrics to OFF or LOG</span>.
+</p>
+<p id="title1">
+database.clean
+</p>
+<p id="cont2">
+Wipes out all data from the profiler database identified in the project.properties file.
+</p>
+<p id="cont1">
+If you want to deploy the profile to a different machine from which it was built just copy the entire deploy directory to a directory on the destination machine.  Everything needed to run the profiler is in the deploy directory after a maven build deploy has been executed.
+</p>
+<div class="headerAppdx">
+<p style="text-align:justify;color:	#2F4F4F;font-weight: bold;font-size:22px;">
+<a name="appendix">Appendix A – Step By Step Instructions</a>
+</p>
+<p id="title">
+Profiler Build Instructions:
+</p>
+<p>
+1. Download / Install Maven 1.0.2 - http://maven.apache.org/maven-1.x/start/download.html<br>
+2. Install Eclipse 3.2.1 - http://www.eclipse.org/downloads/<br>
+3. Install subclipse (Subversion plugin for Eclipse) - http://subclipse.tigris.org/install.html<br>
+4. Within Eclipse – Open the SVN Repository Exploring Perspective<br>
+5. Choose Window->Open Perspective->Other->SVN Exploring Perspective<br>
+6. Add new svn repository, http://172.28.113.51/groundwork-professional<br>
+7. Click on this icon on SVN Repository tab and add the url above.<br>
+8. Navigate the repository tree to the profiler folder: trunk->profiler<br>
+9. Right-click on the profiler folder and choose Checkout<br>
+10. This will get a local copy of all the profiler resources<br>
+11. Be sure to have the “check out as a project in the workspace” radio button highlighted and then click “Finish” in “Checkout from SVN” dialog.<br>
+12. Open a command window and change directory to the location where the profiler was checked out<br>
+13. To build the profiler type: maven build deploy<br>
+14. Everything needed to execute the profiler is in the profiler/deploy directory after the build is complete.<br>
+</p>
+<p id="title">
+Profiler Database Create Instructions:
+</p>
+<p>
+1.Following steps 1 – 8 in “Profiler Build Instructions” section, if you have not 
+already done so<br>
+2.Make sure that the org.groundwork.profiler.database.* settings in the 
+project.properties file are set up appropriately according to where you want 
+the profiler database to reside.  The project.properties file resides in your 
+profiler directory.<br>
+3.Type the following to create the profiler database: <span style="font-size:medium;color:#191970;font-weight:bold">maven database</maven>
+</p>
+<p id="title">
+Profiler Execution Instructions:
+</p>
+<p>
+1. Make sure you have built the profiler following the directions in the 
+“Profiler Build Instructions” section <br>
+2. In order to execute the profiler it takes a configuration file as input.  
+There are two sample configuration files provided in the 
+profiler/deploy directory, <span style="font-size:medium;color:#191970;font-weight:bold">foundation-profiler.xml</span> and <span style="font-size:medium;color:#191970;font-weight:bold">qa-acceptance-workloads.xml</span>.<br>
+3. Since the <span style="font-size:medium;color:#191970;font-weight:bold">qa-acceptence-workloads.xml</span> has set <span style="font-size:medium;color:#191970;font-weight:bold">captureMetrics=LOG</span>, therefore 
+the profiler database setup is not required since metrics are not persisted to 
+the database and only logged. On the other hand, the <span style="font-size:medium;color:#191970;font-weight:bold">foundation-profiler.xml</span> is 
+persisting metrics to the database so the a profiler database must exist and its 
+location is configured in the <span style="font-size:medium;color:#191970;font-weight:bold">foundation-profiler.xml</span> file.
+</p>
+<pre>
+	&lt;profilerDB driver="com.mysql.jdbc.Driver"
+				url="jdbc:mysql://localhost/GWProfilerDB" 
+				login="collage" 
+				password="gwrk"/>
+</pre>
+<p>
+Change the above settings in the foundation-profiler.xml to match the 
+location and credentials of the profiler database.<br>
+4. Make sure the foundation-profiler.sh file is executable – chmod +x foundation-profiler.sh<br>
+5. To start a profiler session with the qa-acceptance-workloads.xml configuration and a session name of “Session 1” type the following
+</p><pre>../foundation-profiler.sh -config qa-acceptance-workloads.xml -session Session 1</pre>
+<p>6. Output for the profiler is logged to the profiler.log file in the current directory.  The profiler uses log4j to perform the logging so by editing the log4j.properties file you can change log levels and log output, etc.
+</p>
+</div>
+</div>
+</div>
+</td>
+</tr>
+</table>
+</body>
+</html>

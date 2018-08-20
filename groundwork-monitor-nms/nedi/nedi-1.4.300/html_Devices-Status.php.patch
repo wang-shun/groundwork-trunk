@@ -1,0 +1,22 @@
+--- nedi/html/Devices-Status.php.orig	2014-10-27 13:12:25.000000000 -0700
++++ nedi/html/Devices-Status.php	2015-02-24 19:09:19.294676645 -0800
+@@ -221,6 +221,10 @@
+ $wcomm		= (($isadmin and $guiauth != 'none')?$dev[26]:"***");
+ $stk		= ($dev[29] > 1)?"<img src=\"img/$dev[29].png\" title=\"Stack\">":"";
+ 
++function device_status_link($d) {
++    return "$d[1]<a href=\"Devices-Status.php?dev=".urlencode($d[2])."\">$d[2]</a> ";
++}
++
+ if($dev[13] < 10){
+ 	$query	= GenQuery('interfaces','s','*','ifidx','',array('device'),array('='),array($dv) );
+ 	$res	= DbQuery($query,$link);
+@@ -238,7 +242,7 @@
+ 		$ifi[$i[2]] = $i[6];
+ 		$ifc[$i[2]] = preg_replace_callback(
+ 					'/([A-Z]{1,2}DP:|MAC:)([\w-+\'.]+),/',
+-					function ($d){return "$d[1]<a href=\"Devices-Status.php?dev=".urlencode($d[2])."\">$d[2]</a> ";},
++					'device_status_link',
+ 					$i[28] );
+ 		$ifv[$i[2]] = $i[11];
+ 		$ifm[$i[2]] = $i[5];

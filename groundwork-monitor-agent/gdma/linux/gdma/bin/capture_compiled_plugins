@@ -1,0 +1,66 @@
+#!/bin/tcsh -ef
+
+if ( "`uname -p`" == 'x86_64' ) then
+    set LIB = lib64
+else
+    set LIB = lib
+endif
+
+set binaries =		\
+    (			\
+    check_apt		\
+    check_by_ssh	\
+    check_dhcp		\
+    check_dig		\
+    check_disk		\
+    check_dns		\
+    check_dummy		\
+    check_fping		\
+    check_game		\
+    check_hpjd		\
+    check_http		\
+    check_icmp		\
+    check_load		\
+    check_mrtg		\
+    check_mrtgtraf	\
+    check_nagios	\
+    check_nrpe		\
+    check_nt		\
+    check_ntp		\
+    check_nwstat	\
+    check_overcr	\
+    check_ping		\
+    check_procs		\
+    check_real		\
+    check_smtp		\
+    check_snmp		\
+    check_ssh		\
+    check_swap		\
+    check_tcp		\
+    check_time		\
+    check_ups		\
+    check_users		\
+    negate		\
+    urlize		\
+    )
+
+set libraries =		\
+    (			\
+    libcrypto.so	\
+    libcrypto.so.0	\
+    libcrypto.so.0.9.7	\
+    libssl.so		\
+    libssl.so.0		\
+    libssl.so.0.9.7	\
+    )
+
+mkdir -p /tmp/compiled_plugins/usr/local/groundwork/gdma/libexec
+cd /usr/local/groundwork/nagios/libexec
+cp -p --no-dereference $binaries /tmp/compiled_plugins/usr/local/groundwork/gdma/libexec
+
+mkdir -p /tmp/compiled_plugins/usr/local/groundwork/$LIB
+cd /usr/local/groundwork/$LIB
+cp -p --no-dereference $libraries /tmp/compiled_plugins/usr/local/groundwork/$LIB
+
+cd /tmp/compiled_plugins
+tar cf /tmp/compiled_plugins.tar *

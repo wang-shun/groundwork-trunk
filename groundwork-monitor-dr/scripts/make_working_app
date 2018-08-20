@@ -1,0 +1,51 @@
+#!/bin/bash -e
+
+# make_working_app
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+PATH=/bin:/usr/bin
+
+print_usage() {
+    echo "usage:  make_working_app {ready_path} {working_path}"
+}
+
+if [ $# -ne 2 ]; then
+    print_usage
+    exit 1
+fi
+
+ready_path="$1"
+working_path="$2"
+
+# Basic security precaution:  we don't allow copying outside of this tree
+# (although this checking alone doesn't protect against stray symlinks).
+fixed_base_path='/usr/local/groundwork/'
+
+if [[ ! ("$ready_path" =~ '/ready$') ]]; then
+    echo 'ERROR:  ready_path must end in "/ready"'
+    exit 1
+fi
+
+if [[ ! ("$working_path/" =~ "^$fixed_base_path") ]]; then
+    echo "ERROR:  working_path must include \"$fixed_base_path\""
+    exit 1
+fi
+
+# FIX LATER:  I hate to do a blind copy here; we're trusting that the
+# ready path was properly set up with everything we need and only that.
+# Perhaps in some future version, we will instead pass in a list of
+# particular directories and files to copy over.
+
+# FIX LATER:  This copying assumes we won't run into any read-only files,
+# so it doesn't take any trouble to modify such permissions for the duration
+# of the copy operation.  Whether we should do so or not is open to discussion.
+
+# FIX LATER:  This copying doesn't take into account any potential need to
+# remove files or directories from the working tree that do not exist in the
+# ready tree.  Whether this might make sense is open to discussion and possible
+# evolution of the design.
+
+shopt -s failglob
+cp -pr $ready_path$working_path/* $working_path

@@ -1,0 +1,39 @@
+<!-- Use this file to deploy some handlers/chains and services      -->
+<!-- Two ways to do this:                                           -->
+<!--   java org.apache.axis.client.AdminClient deploy.wsdd          -->
+<!--      after the axis server is running                          -->
+<!-- or                                                             -->
+<!--   java org.apache.axis.utils.Admin client|server deploy.wsdd   -->
+<!--      from the same directory that the Axis engine runs         -->
+
+<deployment
+    xmlns="http://xml.apache.org/axis/wsdd/"
+    xmlns:java="http://xml.apache.org/axis/wsdd/providers/java">
+
+  <!-- Services from WSRRDService WSDL service -->
+
+  <service name="wsrrd" provider="java:RPC" style="rpc" use="literal">
+  <wsdlFile>/WEB-INF/fwsrrd.wsdl</wsdlFile>
+      <parameter name="wsdlTargetNamespace" value="urn:fws"/>
+      <parameter name="wsdlServiceElement" value="WSRRDService"/>
+      <parameter name="schemaUnqualified" value="http://model.ws.foundation.groundwork.org"/>
+      <parameter name="wsdlServicePort" value="rrd"/>
+      <parameter name="className" value="org.groundwork.foundation.ws.impl.RRDSoapBindingImpl"/>
+      <parameter name="wsdlPortType" value="WSRRD"/>
+      <parameter name="typeMappingVersion" value="1.2"/>
+      <operation name="getGraph" qname="operNS:getGraph" xmlns:operNS="urn:fws" returnQName="getGraphReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wsrrd" >
+        <parameter qname="hostName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="serviceName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startDate" type="tns:long" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endDate" type="tns:long" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="applicationType" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="graphWidth" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+     
+      <parameter name="allowedMethods" value="getGraph"/>
+      <parameter name="scope" value="Session"/>
+
+      
+  </service>
+</deployment>

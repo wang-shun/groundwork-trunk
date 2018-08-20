@@ -1,0 +1,48 @@
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+    version="2.5">
+
+    <!-- PHP Servlet: backend for Apache or IIS -->
+    <listener>
+	    <listener-class>php.java.servlet.ContextLoaderListener</listener-class>
+    </listener>
+    
+
+    <servlet>
+	    <servlet-name>PhpJavaServlet</servlet-name>
+	    <servlet-class>php.java.servlet.PhpJavaServlet</servlet-class>
+
+    </servlet>
+    
+    <!-- PHP CGI servlet: when IIS or Apache are not available -->
+    <servlet>
+	    <servlet-name>PhpCGIServlet</servlet-name>
+	    <servlet-class>php.java.servlet.PhpCGIServlet</servlet-class>
+	    <init-param>
+		    <param-name>prefer_system_php_exec</param-name>
+		    <param-value>On</param-value>
+	    </init-param>
+	    <init-param>
+		    <param-name>php_include_java</param-name>
+		    <param-value>On</param-value>
+	    </init-param>
+	    <init-param>
+		    <param-name>promiscuous</param-name>
+		    <param-value>On</param-value>
+	    </init-param>
+
+    </servlet>
+    <servlet-mapping>
+	    <servlet-name>PhpJavaServlet</servlet-name>
+	    <url-pattern>*.phpjavabridge</url-pattern> 
+    </servlet-mapping>
+    <servlet-mapping>
+	    <servlet-name>PhpCGIServlet</servlet-name>
+	    <url-pattern>*.php</url-pattern>
+    </servlet-mapping>
+    <description>
+	    Welcome to PHP Servlet
+  </description>
+</web-app>
+

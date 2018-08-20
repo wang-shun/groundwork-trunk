@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<deployment xmlns="urn:jboss:bean-deployer:2.0">
+
+   <mbean code="simple.groundwork.SampleInterceptor"
+          name="portal:service=Interceptor,type=Portlet,name=IceFaces" xmbean-dd=""
+          xmbean-code="org.jboss.portal.jems.as.system.JBossServiceModelMBean">
+      <xmbean/>
+   </mbean>   
+
+
+   
+   <mbean code="org.jboss.portal.portlet.impl.invocation.JBossPortletInterceptorStackFactory"
+          name="portal:service=InterceptorStackFactory,type=Producer" xmbean-dd=""
+          xmbean-code="org.jboss.portal.jems.as.system.JBossServiceModelMBean">
+      <xmbean/>
+      <depends-list optional-attribute-name="InterceptorNames">
+         <depends-list-element>portal:service=Interceptor,type=Portlet,name=IceFaces</depends-list-element>   
+      </depends-list>
+   </mbean>
+</deployment>

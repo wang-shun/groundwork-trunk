@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
+	<bean class="org.josso.servlet.agent.GenericServletSSOAgent" name="josso-tc60-agent">
+
+		<!-- ============================================ -->
+		<!-- Genreral options -->
+		<!-- ============================================ -->
+		<property name="sessionAccessMinInterval">
+			<value>1000</value>
+		</property>
+
+		<property name="disableJaas">
+			<value>true</value>
+		</property>
+
+		<property name="isStateOnClient">
+			<value>true</value>
+		</property>
+
+		<!-- ============================================ -->
+		<!-- JOSSO Login URL (for JOSSO SP Initiated SSO) -->
+		<!-- ============================================ -->
+		<property name="gatewayLoginUrl">
+			<value>{{ protocol }}://{{ jossoservername }}/josso/signon/login.do</value>
+		</property>
+
+		<!-- ============================================ -->
+		<!-- JOSSO Login URL (for JOSSO SP Initiated SLO) -->
+		<!-- ============================================ -->
+		<property name="gatewayLogoutUrl">
+			<value>{{ protocol }}://{{ jossoservername }}/josso/signon/logout.do</value>
+		</property>
+
+		<!-- ==================================== -->
+		<!-- JOSSO back channel endpoints (SOAP) -->
+		<!-- ==================================== -->
+		<property name="gatewayServiceLocator">
+			<bean class="org.josso.gateway.WebserviceGatewayServiceLocator">
+				<!-- Uncomment to SSL transport in back channel <property name="transportSecurity">
+					<value>CONFIDENTIAL</value> </property> -->
+
+				<property name="endpoint">
+					<value>{{ jossoendpoint }}</value>
+				</property>
+
+			</bean>
+		</property>
+
+		<property name="parametersBuilders">
+			<list>
+				<bean class="org.josso.agent.http.AppIdParametersBuilder" />
+			</list>
+		</property>
+
+		<!-- <property name="automaticLoginStrategies"> <list> <bean class="org.josso.agent.http.DefaultAutomaticLoginStrategy">
+			<property name="mode"> <value>REQUIRED</value> </property> <property name="ignoredReferrers">
+			<list> Always ignore this referrers <value>http://josso-host/IDBUS/</value>
+			</list> </property> </bean> </list> </property> -->
+
+		<property name="configuration">
+			<bean class="org.josso.agent.SSOAgentConfigurationImpl">
+				<property name="ssoPartnerApps">
+					<list>
+						<!-- ================================================ -->
+						<!-- Partner application configuration: -->
+						<!-- All the groundwork/partner apps except /portal are configured here  -->
+						<!-- -->
+						<!-- id: the application id, as configured in JOSSO -->
+						<!-- Identity Provider -->
+						<!-- -->
+						<!-- vhost: must be the hostname that users see when -->
+						<!-- accessiong the applicationiCongo -->
+						<!-- application configuration: -->
+						<!-- -->
+						<!-- context: the web application context, use '/' -->
+						<!-- for applications running in the root ctx -->
+						<!-- -->
+						<!-- ================================================ -->
+						<bean class="org.josso.agent.SSOPartnerAppConfig">
+							<property name="id">
+								<value>birtviewer</value>
+							</property>
+							<property name="vhost">
+								<value>{{ servername }}</value>
+							</property>
+							<property name="context">
+								<value>/birtviewer</value>
+							</property>
+						</bean>
+						<bean class="org.josso.agent.SSOPartnerAppConfig">
+							<property name="id">
+								<value>monarch</value>
+							</property>
+							<property name="vhost">
+								<value>{{ servername }}</value>
+							</property>
+							<property name="context">
+								<value>/monarch</value>
+							</property>
+						</bean>
+						<bean class="org.josso.agent.SSOPartnerAppConfig">
+							<property name="id">
+								<value>monarch-export</value>
+							</property>
+							<property name="vhost">
+								<value>{{ servername }}</value>
+							</property>
+							<property name="context">
+								<value>/monarch-export</value>
+							</property>
+						</bean>
+						<bean class="org.josso.agent.SSOPartnerAppConfig">
+							<property name="id">
+								<value>nagios-app</value>
+							</property>
+							<property name="vhost">
+								<value>{{ servername }}</value>
+							</property>
+							<property name="context">
+								<value>/nagios-app</value>
+							</property>
+						</bean>
+						<bean class="org.josso.agent.SSOPartnerAppConfig">
+							<property name="id">
+								<value>nagvis</value>
+							</property>
+							<property name="vhost">
+								<value>{{ servername }}</value>
+							</property>
+							<property name="context">
+								<value>/nagvis</value>
+							</property>
+						</bean>
+						<bean class="org.josso.agent.SSOPartnerAppConfig">
+							<property name="id">
+								<value>nagvis_share</value>
+							</property>
+							<property name="vhost">
+								<value>{{ servername }}</value>
+							</property>
+							<property name="context">
+								<value>/nagvis_share</value>
+							</property>
+						</bean>
+						<bean class="org.josso.agent.SSOPartnerAppConfig">
+							<property name="id">
+								<value>nms-cacti</value>
+							</property>
+							<property name="vhost">
+								<value>{{ servername }}</value>
+							</property>
+							<property name="context">
+								<value>/nms-cacti</value>
+							</property>
+						</bean>
+						<bean class="org.josso.agent.SSOPartnerAppConfig">
+							<property name="id">
+								<value>nedi</value>
+							</property>
+							<property name="vhost">
+								<value>{{ servername }}</value>
+							</property>
+							<property name="context">
+								<value>/nedi</value>
+							</property>
+						</bean>
+						<bean class="org.josso.agent.SSOPartnerAppConfig">
+							<property name="id">
+								<value>nms-rstools</value>
+							</property>
+							<property name="vhost">
+								<value>{{ servername }}</value>
+							</property>
+							<property name="context">
+								<value>/nms-rstools</value>
+							</property>
+						</bean>
+						<bean class="org.josso.agent.SSOPartnerAppConfig">
+							<property name="id">
+								<value>performance</value>
+							</property>
+							<property name="vhost">
+								<value>{{ servername }}</value>
+							</property>
+							<property name="context">
+								<value>/performance</value>
+							</property>
+						</bean>
+						<bean class="org.josso.agent.SSOPartnerAppConfig">
+							<property name="id">
+								<value>profiles</value>
+							</property>
+							<property name="vhost">
+								<value>{{ servername }}</value>
+							</property>
+							<property name="context">
+								<value>/profiles</value>
+							</property>
+						</bean>
+						<bean class="org.josso.agent.SSOPartnerAppConfig">
+							<property name="id">
+								<value>reports</value>
+							</property>
+							<property name="vhost">
+								<value>{{ servername }}</value>
+							</property>
+							<property name="context">
+								<value>/reports</value>
+							</property>
+						</bean>
+						<bean class="org.josso.agent.SSOPartnerAppConfig">
+							<property name="id">
+								<value>cloudhub</value>
+							</property>
+							<property name="vhost">
+								<value>{{ servername }}</value>
+							</property>
+							<property name="context">
+								<value>/cloudhub</value>
+							</property>
+						</bean>
+						<bean class="org.josso.agent.SSOPartnerAppConfig">
+							<property name="id">
+								<value>reportserver</value>
+							</property>
+							<property name="vhost">
+								<value>{{ servername }}</value>
+							</property>
+							<property name="context">
+								<value>/reportserver</value>
+							</property>
+						</bean>
+						<bean class="org.josso.agent.SSOPartnerAppConfig">
+							<property name="id">
+								<value>grafana-app</value>
+							</property>
+							<property name="vhost">
+								<value>{{ servername }}</value>
+							</property>
+							<property name="context">
+								<value>/grafana-app</value>
+							</property>
+						</bean>
+					</list>
+				</property>
+			</bean>
+		</property>
+
+	</bean>
+</beans>

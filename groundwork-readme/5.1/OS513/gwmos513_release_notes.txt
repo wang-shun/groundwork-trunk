@@ -1,0 +1,182 @@
+GroundWork Monitor Open Source 5.1.x is free software; you can 
+redistribute it and/or modify it under the terms of the GNU General Public 
+License as published by the Free Software Foundation; either version 2, 
+or (at your option) any later version. GroundWork Monitor Open Source is 
+distributed in the hope that it will be useful, but WITHOUT ANY 
+WARRANTY; without even the implied warranty of MERCHANTABILITY 
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General 
+Public License for more details
+
+GroundWork Monitor Open Source 5.1.3 Release Notes
+
+PURPOSE
+The purpose of this document is to outline new features in GroundWork 
+Monitor Open Source 5.1.x. 
+
+DISTRIBUTION NOTES
+In addition to this Release Notes document, please read the Readme and 
+Installation Guide which accompany this release. These documents 
+contain important information regarding bug fixes, known issues, and new 
+installation and upgrading instructions.
+
+SUPPORT
+Product support is available through a GroundWork subscription 
+agreement. For more information, go to GroundWork Support at 
+http://www.groundworkopensource.com/support/options.html.
+
+CONTENTS
+SECTION 1 - WHAT'S NEW IN GROUNDWORK MONITOR OPEN SOURCE 5.1.x
+SECTION 2 - BEHAVIOR THAT HAS CHANGED IN VERSION 5.1.0
+SECTION 3 - BEHAVIOR THAT HAS CHANGED IN VERSION 5.1.3
+
+--------------------
+SECTION 1 - WHAT'S NEW IN GROUNDWORK MONITOR OPEN SOURCE 5.1.x
+--------------------
+GroundWork Monitor Open Source is designed to provide 
+centralized visibility and control over your entire IT infrastructure. It 
+monitors systems, applications, databases, and network 
+equipment. GroundWork Monitor Open Source features a flexible 
+architecture that supports custom configurations and custom 
+reporting. The system is built on a modern architecture that 
+combines the best of open source with innovative software 
+developed by GroundWork's IT management experts for 
+monitoring and managing your network availability and 
+performance. New features in this version include:
+
+New Functionality:
+- Now includes GroundWork Foundation
+A high performance IT management data abstraction layer 
+and development platform (the same one integrated into 
+GroundWork Monitor Professional). 
+The Foundation data model allows the integration of any state, 
+event, and performance data, independent of the Monitoring 
+Application that produces it.
+Uses MySQL 5.0 as the back-end database..
+
+- Performance Graphing (RRDtool integration)
+Allows you to create groups of hosts or services that you want 
+to see in performance reports. Any combination of 
+performance graphs can be customized and saved as reports 
+for repeated viewing with constantly updated data.
+With a more complete implementation of web services at the 
+data retrieval level, all screens that access data from the 
+Foundation database are more responsive
+
+- Straightforward upgrade from GWMOS 5.1.x to GWMPRO 5.1.x:
+Preserves stored monitoring data, since the persistent store is 
+now the same between both products
+Performance Improvements:
+
+- We are seeing performance increases of 2x to 5x for data 
+intensive screens.  In almost all cases the screens refresh 
+within a couple of seconds.
+
+- The improved Status Viewer allows users to quickly navigate 
+to the information of interest, with fewer clicks, and a cleaner 
+interface.
+
+- With a more complete implementation of web services at the 
+data retrieval level, all screens that access data from the 
+Foundation database are more responsive.  
+
+Scalability:
+- The product scales to 15 concurrent users, maintaining 
+acceptable performance.
+
+- Support for 500 hosts per monitoring server
+
+- Support for 500 service checks per minute (5000 service 
+checks total)
+
+- Support for 6 child servers (total of 3000 hosts, 3000 service 
+checks/minute)
+
+Enhanced Status Viewer:
+Optimized Display
+- Eliminates redundant clicks to get to pertinent information 
+
+- More efficiently structured to handle large datasets 
+
+- More efficiently retrieves data and less memory required per user 
+
+- Faster display by only retrieving visible information 
+
+Host Search on all pages:
+- Tree Navigation on all pages
+Navigate and expand tree to see status of all host groups, 
+hosts and services 
+
+- Pie charts to better visualize system state 
+
+- Dual pane TroubleView 
+Independent scrolling of hosts and services 
+Bar graph indicates overall health of hosts and services 
+Additional supported configurations:
+
+- Seamless upgrade from GroundWork Monitor Open Source 
+5.1.x to GroundWork Monitor Professional 5.1.x
+With version 5.1.x, the persistent data store is the same 
+between the two products providing a seamless upgrade from 
+Open Source to Professional.
+
+- Support for SSL
+Our new Configuration Guide documents how to set-up SSL 
+with GroundWork Monitor Open Source
+
+- Support for LDAP
+Our new Configuration Guide documents how to integrate 
+LDAP with GroundWork Monitor Open Source
+
+--------------------
+SECTION 2 - BEHAVIOR THAT HAS CHANGED IN VERSION 5.1.0
+--------------------
+- Logic used to determine Pending status for services
+In GroundWork Monitor Open Source 5.0 there was an 
+inconsistency between how Nagios and GroundWork Monitor 
+determined which services are "pending".  The logic that 
+Nagios uses (and GroundWork has adopted for version 5.1.0):
+For either passive or active checks, look at the following fields 
+in the status.log:
+If both the "has been checked" and "last checked" field are "0", 
+then the service should be shown as "pending"
+If either the "has been checked" field is "1", or "last checked" 
+is non-zero, then use the "current status" field to determine the 
+service's status.
+
+- Pending status in TroubleView
+In the 5.0 version of the product, services that were in a 
+pending state were shown in TroubleView.  With release 5.1.0, 
+that is no longer the case.  This change was made because 
+many of our customers have passive checks that may remain 
+in a pending state for long periods of time, and consequently 
+these services are not considered to be in trouble.
+
+- FilterView has been removed from Status Viewer
+With the Dashboard feature added in version 5.0, the 
+functionality that FilterView provided can more easily be 
+satisfied through dashboards.  With the enhanced Status 
+Viewer, the FilterView has been removed.
+
+- Default polling time changed from 5 minutes to 10 minutes
+The best practices recommendations from our Professional 
+Services group is to actively poll the hosts and services on a 
+10 minute interval, so the default polling time has been 
+updated accordingly in the default settings of the product.
+
+--------------------
+SECTION 3 - BEHAVIOR THAT HAS CHANGED IN VERSION 5.1.3
+--------------------
+-  TroubleView suppresses display of services on hosts that
+are down
+To avoid crowding the display and allow faster location of
+problem hosts and services, the behavior of the TroubleView
+has changed. Services in a non OK and non-pending state will
+not be shown in the Troubled Services section of the display
+if the hosts to which they are associated are down. Note
+that this may result in the bar graph for Troubled Services
+showing red and/or yellow for services in critical or
+warning states, and yet none of these services may be
+listed. This is by design.
+
+Release Notes: 071907a	
+GroundWork Open Source, Inc.

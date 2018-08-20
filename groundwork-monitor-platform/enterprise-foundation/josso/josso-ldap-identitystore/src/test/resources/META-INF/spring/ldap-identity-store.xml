@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<s:beans xmlns:s="http://www.springframework.org/schema/beans"
+		 xmlns="urn:org:josso:ldap:identitystore" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="
+		 http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+         urn:org:josso:ldap:identitystore http://repository.josso.org/org/josso/josso-ldap-identitystore/1.8.8/josso-ldap-identitystore-1.8.8.xsd">
+	<ldap-bind-store id="josso-ldap-store" initialContextFactory="com.sun.jndi.ldap.LdapCtxFactory"
+					 providerUrl="ldap://172.28.113.33" securityPrincipal="cn=d_ldapauth,cn=Users,dc=demo,dc=com"
+					 securityCredential="d_ldapauth" securityAuthentication="simple"
+					 ldapSearchScope="SUBTREE" usersCtxDN="CN=Users,dc=demo,dc=com"
+					 principalUidAttributeID="sAMAccountName" uidAttributeID="member"
+					 rolesCtxDN="OU=GWRoles,dc=demo,dc=com" roleAttributeID="sAMAccountName"
+					 credentialQueryString="uid=sAMAccountName" userPropertiesQueryString="givenName=firstname,sn=lastname,userPrincipalName=mail" />
+</s:beans>

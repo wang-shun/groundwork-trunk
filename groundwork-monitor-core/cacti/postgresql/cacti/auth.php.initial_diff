@@ -1,0 +1,46 @@
+*** cacti-plugin-arch-v2.8/files-0.8.7g/include/auth.php	Sat Jun  5 10:49:58 2010
+--- cacti/htdocs/include/auth.php	Fri Oct  1 14:44:51 2010
+***************
+*** 30,35 ****
+--- 30,36 ----
+  	exit;
+  }
+  
++ 
+  if (read_config_option("auth_method") != 0) {
+  	/* handle alternate authentication realms */
+  	api_plugin_hook_function('auth_alternate_realms');
+***************
+*** 50,55 ****
+--- 51,81 ----
+  		}
+  	}
+  
++ 
++ 
++ 
++ 
++ /* START PATCH AUTH{ */
++ /* We make it single sign-on for groundwork */
++         $remote_user = $_SERVER['REMOTE_USER'];
++         $_SESSION['GWRK_USER'] = $remote_user;
++ 
++ 	$_SESSION["sess_user_id"] =     db_fetch_cell("select id from user_auth where username='" . $remote_user . "'");
++         if (empty($_SESSION["sess_user_id"])) {
++                 $password = md5($remote_user);
++                 db_execute("insert into user_auth values('','" . $remote_user . "','" . $password . "','0','" . $remote_user . "','','on','on','on','on','1','1','1','1','1','on')");
++                 $_SESSION["sess_user_id"] =     db_fetch_cell("select id from user_auth where username='" . $remote_user . "'");
++                 for ( $counter = 7; $counter <= 8; $counter += 1) {
++                         db_execute("replace into user_auth_realm (user_id,realm_id) values(" . $_SESSION["sess_user_id"] . "," . $counter . ")");
++                 }
++ 
++         }
++ 
++ /* }AUTH END PATCH */
++ 
++ 
++ 
++ 
+  	/* if we are a guest user in a non-guest area, wipe credentials */
+  	if (!empty($_SESSION["sess_user_id"])) {
+  		if ((!isset($guest_account)) && (db_fetch_cell("select id from user_auth where username='" . read_config_option("guest_user") . "'") == $_SESSION["sess_user_id"])) {

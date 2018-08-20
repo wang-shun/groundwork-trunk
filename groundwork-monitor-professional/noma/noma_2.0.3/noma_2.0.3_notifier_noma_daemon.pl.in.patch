@@ -1,0 +1,405 @@
+--- noma_2.0.3/notifier/noma_daemon.pl.in.orig	2012-06-11 06:58:58.000000000 -0700
++++ noma_2.0.3/notifier/noma_daemon.pl.in	2017-08-09 19:07:36.043435780 -0700
+@@ -99,11 +99,13 @@
+ use array_hash;
+ use contacts;
+ use database;
++use downtime;
+ use time_frames;
+ use debug;
+ use datetime;
+ 
+ use Data::Dumper;
++$Data::Dumper::Sortkeys = 1;
+ # use threads ('yield', 'stack_size' => 16*4096);
+ use threads;
+ use Thread::Queue;
+@@ -188,7 +190,7 @@
+ my $loop_until_ack  = 0;
+ my $sleep           = 0;
+ my $keep_on_looping = 1;
+-my $ignore        = 0;
++our $ignore         = 0;
+ 
+ my $log_count = 0;
+ my @triesPerID;
+@@ -207,6 +209,8 @@
+ my $pidfile = $conf->{path}->{pidfile};
+ $ignore = $conf->{escalator}{internalEscalation}
+     if (defined($conf->{escalator}{internalEscalation}));
++my $nap_time = $conf->{notifier}->{nap_time};
++$nap_time = 1 if not defined $nap_time;
+ my $sleep_time = $conf->{notifier}->{sleep_time};
+ 
+ 
+@@ -370,7 +374,7 @@
+             my %cmdh = parseCommand($cmd);
+             if (!%cmdh)
+             {
+-                debug("Ignoring invalid command $cmd", 2);
++                debug("Ignoring invalid command $cmd", 1);
+                 next;
+             }
+             next if ( !defined $cmdh{host} or $cmdh{host} eq '');
+@@ -380,6 +384,19 @@
+             # hosts and services in lower case
+             #$cmdh{host} = lc($cmdh{host});
+             #$cmdh{service} = lc($cmdh{service}) if ( $cmdh{check_type} eq 's' );
++
++##############################################################################
++            # CHECK IF HOST / SERVICE IN DOWNTIME
++##############################################################################
++
++            if ( getInDowntime( $cmdh{host}, $cmdh{service} ) ) {
++                debug( "Suppress Notification because " . $cmdh{host} . ( $cmdh{service} ne '' ? '/' . $cmdh{service} : '' ) . " is having Downtime", 1 );
++                next;
++            }
++            else {
++                debug( "No Downtime for " . $cmdh{host} . ( $cmdh{service} ne '' ? '/' . $cmdh{service} : '' ), 1 );
++            }
++
+ ##############################################################################
+             # GENERATE LIST OF CONTACTS TO NOTIFY
+ ##############################################################################
+@@ -402,8 +419,11 @@
+                 $query .= ' where ' . $stati_host{$cmdh{status}} . '=\'1\'';
+             } elsif ( $cmdh{notification_type} eq 'PROBLEM' || $cmdh{notification_type} eq 'RECOVERY')
+             {
+-                $query .= ' where (' . $stati_service{$cmdh{status}} . ' & 1) = 1';
+-                $query .= ' OR (' . $stati_service{$cmdh{status}} . ' & ' .$stati_previous{$last_state} .') = ' .$stati_previous{$last_state};
++                ## Outer enclosing parenthesization is critical here because these clauses will be
++                ## followed by an AND clause for checking that the selected rule is active, and that
++                ## additional clause is supposed to apply uniformly across all of the ORed clauses here.
++                $query .= ' where ( (' . $stati_service{$cmdh{status}} . ' & 1) = 1';
++                $query .= ' OR (' . $stati_service{$cmdh{status}} . ' & ' .$stati_previous{$last_state} .') = ' .$stati_previous{$last_state} . ' )';
+             } else
+             {
+                 $query .= ' where (' . $stati_service{$cmdh{status}} . ' & 1) = 1';
+@@ -487,8 +507,55 @@
+                     # notification returned 0
+                     if ($cmdh{status} eq 'OK' || $cmdh{status} eq 'UP')
+                     {
+-                        debug('Received recovery for a problem we never saw - will try to match against notification no. 1', 2);
+-                        $notificationCounter = 1;
++                        ## The original code here reset $notificationCounter to 1 in an attempt to match
++                        ## some notificaton rule, to try to get the recovery notification out to somebody.
++
++                        # debug('Received recovery for a problem we never saw - will try to match against notification no. 1', 2);
++                        # $notificationCounter = 1;
++
++                        # But in fact, that reasoning and the correction are specious.  There are really
++                        # only three possible ways we can get to this point:
++                        #
++                        # (1) We somehow missed a previous alert for the non-UP/OK state for which this is a
++                        #     recovery.
++                        #
++                        # (2) We did receive the previous alert for the non-UP/OK state for which this is a
++                        #     recovery, and we processed it enough to send out some notification, but somehow
++                        #     the database has been cleaned out since then and we no longer remember that fact.
++                        #
++                        # (3) We did receive a previous alert for the non-UP/OK state for which this is a
++                        #     recovery, but there was no notification rule that said we should send out a
++                        #     notification for that state.
++                        #
++                        # It's that third case that reveals the previous logic here as bogus.  For instance,
++                        # you can have a notification rule that only fires for OK and CRITICAL alerts, but
++                        # not for WARNING states.  If you get only a series of WARNING alerts followed by a
++                        # final OK alert, everything prior was properly processed (no notifications went out).
++                        # But in this case, you DO NOT want a recovery notice to go out, since nothing was
++                        # complained about.  That would just be needlessly verbose and confusing.  In this
++                        # case, the debug message in the original code here ("a problem we never saw") is not
++                        # actually correct.
++                        #
++                        # So the situation is, if case (1) or (2) holds, there's really nothing much we should
++                        # be doing; it's too late now.  So no correction is called for in those cases.  And if
++                        # case (3) holds, we most definitely don't want to send out a recovery notification,
++                        # because it would just be a continuing annoyance with the setup described.  That very
++                        # real possibility, not involving any prior system failure or unexpected cleanup, has
++                        # to be allowed for and operate correctly.
++                        #
++                        # Consequently, we have disabled the original logic in this branch.  However, this
++                        # code change does not completely prevent the user from receiving notifications
++                        # in this situation.  If that is really what is desired, it can be enabled on a
++                        # per-notification-rule basis by specifying the special value 0 as one of the "Notify
++                        # after # number of notifications" numbers in the rule configuration.  It's best to
++                        # do that using a separate digit, not as part of a range.  That will effectively
++                        # re-enable the generation of a notification for the situation covered by this branch.
++                        #
++                        # That all said, for debugging purposes we won't be completely silent here.  We
++                        # simply change the debug message to accurately describe the situation (ignoring the
++                        # exceptional/unlikely possibility of case (2)).
++                        #
++                        debug('Received recovery for a problem we either never saw or previously ignored.', 2);
+                     }
+                     elsif ($cmdh{notification_type} eq 'ACKNOWLEDGEMENT' || $cmdh{notification_type} eq 'CUSTOM')
+                     {
+@@ -520,14 +587,12 @@
+                         my @id_arr;
+                         push @id_arr, $ruleid;
+                         # - this is a local check
+-                        if (counterExceededMax(\@id_arr, $notificationCounter))
+-                        {
+-                            debug('No more alerts possible, rolling over the counter', 2);
+-                            $notificationCounter = 1;
+-                        }
++                        my $rolloverCounter = counterExceededMax( \@id_arr, $notificationCounter );
++                        debug( "No more alerts are possible for rule $ruleid; rolling over the counter", 2 ) if $rolloverCounter;
+ 
+                         # get contact data
+-                        @contactsArr = (@contactsArr, getContacts(\@id_arr, $notificationCounter, $cmdh{status}, $cmdh{notification_type}, $cmdh{external_id}));
++                        push @contactsArr,
++                          getContacts( \@id_arr, $rolloverCounter || $notificationCounter, $cmdh{status}, $cmdh{notification_type}, $cmdh{external_id}, $rolloverCounter );
+                     }
+                 }
+             }
+@@ -558,11 +623,10 @@
+                     {
+                         debug("rule $esc_rule is faked - checking for overflow", 3);
+                         # $notificationCounter = resetEscalationCounter($cmdh{host}, $cmdh{service}, $esc_rule)
+-                        my $oflo = counterExceededMax(\@esc_arr, $notificationCounter);
+-                        $notificationCounter = $oflo
+-                            if ($oflo > 0);
++                        my $rolloverCounter = counterExceededMax(\@esc_arr, $notificationCounter);
+ 
+-                        @contactsArr = (@contactsArr, getContacts(\@esc_arr, $notificationCounter, $cmdh{status}, $cmdh{notification_type}, $cmdh{external_id}));
++                        push @contactsArr,
++                          getContacts( \@esc_arr, $rolloverCounter || $notificationCounter, $cmdh{status}, $cmdh{notification_type}, $cmdh{external_id}, $rolloverCounter );
+                     }
+ 
+                 }
+@@ -577,7 +641,7 @@
+ #                         $output
+ #                     );
+                     debug("adding contacts to array", 2);
+-                    @contactsArr = (@contactsArr, getContacts(\@esc_arr, 1, $cmdh{status}, $cmdh{notification_type}, $cmdh{external_id}));
++                    push @contactsArr, getContacts( \@esc_arr, 1, $cmdh{status}, $cmdh{notification_type}, $cmdh{external_id}, 0 );
+                 }
+ 
+             }
+@@ -640,9 +704,10 @@
+                 # DD/MM/YYYY or DD.MM.YYYY for most of the World
+                 # until this is implemented we just use what we were given
+ 		        # TODO do not queue here -> this is the job of the bundler thread
++			# (this prepareNotification() call is missing the the initial $incident_id parameter, anyway)
+                 #$queue{$cmd}->enqueue(prepareNotification($user, $method, $cmd, $dest, $from, $id, $datetime, $check_type, $status,
+                 #        $notification_type, $host, $host_alias, $host_address, $service, $output));
+-                if (suppressionIsActive($cmd, $conf->{$cmd}->{suppression}))
++                if (suppressionIsActive($cmd, $conf->{methods}->{$cmd}->{suppression}))
+                 {
+                     updateLog($id, ' was suppressed');
+                 } else {
+@@ -807,8 +872,9 @@
+ 
+     # remove any orphans from the tmp_command table
+     deleteOrphanCommands();
+-    # sleep for a bit
+-    select( undef, undef, undef, $sleep_time );
++    # sleep for a bit; but if we just processed a command, then only nap briefly so
++    # we can cycle back right away to quickly drain the queue of incoming commands
++    select( undef, undef, undef, $cmd ? $nap_time : $sleep_time );
+     # sleep 1;
+ 
+ } while (1);
+@@ -831,10 +897,21 @@
+     my $sql;
+     my @dbResult;
+ 
+-    # If using the Nagios internal macros XXXNOTIFICATIONID, then be aware that
+-    # the ID may not be globally unique.
+-    # use $TIMET$$HOSTNOTIFICATIONID$, $TIMET$$SERVICENOTIFICATIONID$ or similar
+-    # - alternatively leave the field blank
++    # It's a bad idea to use the Nagios internal macros XXXNOTIFICATIONID for the
++    # alert_via_noma.pl -u option, because they increment on every single alert instead
++    # of remaining stable across consecutive non-UP/OK alerts.  The latter property
++    # is needed in order to drive the incoming-alert-counting logic within NoMa.  Use
++    # $HOSTPROBLEMID$ and $SERVICEPROBLEMID$ instead, or the more-robust forms:
++    #
++    #     -u "$$(( $HOSTPROBLEMID$ ? $HOSTPROBLEMID$ : $LASTHOSTPROBLEMID$ ))"
++    #     -u "$$(( $SERVICEPROBLEMID$ ? $SERVICEPROBLEMID$ : $LASTSERVICEPROBLEMID$ ))"
++    #
++    # where the doubled dollar sign is needed to escape Nagios' own interpretation of the
++    # dollar-sign, allowing the shell to interpret the arithmetic conditional expression.
++    # Leaving the field blank (an empty alert_via_noma.pl -u option) is not appropriate
++    # because then NoMa will generate a completely unique ID for every incoming alert,
++    # and again, that will not clock the alert-counting logic within NoMa for consecutive
++    # non-UP/OK states on the same host or service.
+ 
+     # TODO convert datetime if necessary
+     
+@@ -849,6 +926,18 @@
+                 $cmdh{authors},         $cmdh{comments},         $cmdh{output}
+         ) = split( ';', $cmd,16);
+ 
++		## FIX MINOR:  STILL TO DO:  Fix Noma properly (all throughout) so that it
++		## can deal with all non-Nagios event types that GroundWork can generate
++		## (like the ones we test for here, that we're just squashing down to the
++		## ones that it does currently support, as a kind of quick fix).
++
++		if ( $cmdh{status} eq "SCHEDULED DOWN" )       { $cmdh{status} = "DOWN";     debug( "Noma Changing SCHEDULED DOWN to DOWN",           2 ); }
++		if ( $cmdh{status} eq "UNSCHEDULED DOWN" )     { $cmdh{status} = "DOWN";     debug( "Noma Changing UNSCHEDULED DOWN to DOWN",         2 ); }
++		if ( $cmdh{status} eq "SUSPENDED" )            { $cmdh{status} = "DOWN";     debug( "Noma Changing SUSPENDED to DOWN",                2 ); }
++		if ( $cmdh{status} eq "MAINTENANCE" )          { $cmdh{status} = "UNKNOWN";  debug( "Noma Changing MAINTENANCE to DOWN",              2 ); }
++		if ( $cmdh{status} eq "PENDING" )              { $cmdh{status} = "UNKNOWN";  debug( "Noma Changing PENDING to UNKNOWN",               2 ); }
++		if ( $cmdh{status} eq "UNSCHEDULED CRITICAL" ) { $cmdh{status} = "CRITICAL"; debug( "Noma Changing UNSCHEDULED CRITICAL to CRITICAL", 2 ); }
++		if ( $cmdh{status} eq "SCHEDULED CRITICAL" )   { $cmdh{status} = "CRITICAL"; debug( "Noma Changing SCHEDULED CRITICAL to CRITICAL",   2 ); }
+ 
+ 		# sanity checks
+ 		if ( $cmdh{check_type} eq 'h' )
+@@ -886,6 +975,25 @@
+ 
+     if ( $cmd =~ /^notification;/i)
+     {
++	## FIX MAJOR:  The adjustments of $cmdh{output} here are ugly hacks.  This code ought to be
++	## using $dbh->quote() throughout, for ALL fields, in ALL queries that use string literals,
++	## instead of attempting to quote strings manually here and in other queries.  Either that, or
++	## query parameters should be passed to prepared queries that are specified with ?-character
++	## placeholders for such parameters.  The only reason we're not doing such things is because the
++	## whole NoMa code infrastructure is not currently equipped to make $dbh available when it's
++	## needed for such work.  Handling the one $cmdh{output} parameter here just deals with the
++	## single parameter which is most likely to cause a problem, as a crude temporary workaround.
++	##
++	## All three supported databases (sqlite3, mysql, and postgresql) support doubled single-quote
++	## characters as meaning one single-quote character within a single-quoted string.
++	$cmdh{output} =~ s/'/''/g;
++	if ($conf->{db}->{type} eq 'mysql') {
++	    ## MySQL also supports backslash escapes in strings.  But we don't want to risk interpretation
++	    ## of backslash escapes, so we turn them here into literal characters by doubling them.
++	    ## Once we move to the use of $dbh->quote(), this transform must be revisited to ensure that
++	    ## it is still effectively performed.
++	    $cmdh{output} =~ s/\\/\\\\/g;
++	}
+ 	$sql = sprintf('insert into tmp_commands (operation, external_id, recipients, host, host_alias, host_address, hostgroups, service, servicegroups, check_type, status, stime, notification_type, authors, comments, output) values (\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\', \'%s\')',
+                 $cmdh{operation},       $cmdh{external_id},	$cmdh{recipients},
+ 		$cmdh{host},            $cmdh{host_alias},      $cmdh{host_address},    $cmdh{hostgroups},
+@@ -905,11 +1013,24 @@
+             debug("Queue $i has ".$queue{$i}->pending." pending jobs", 1);
+         }
+ 
+-        $sql = 'select count(*) as count from tmp_active';
+-        @dbResult = queryDB($sql, 1);
+-        debug("There are ".$dbResult[0]{count}." active escalations", 3);
++        # In some databases, running a full-table count is a rather expensive operation.
++        # So there's no reason to do so unless we're actually going to print the result.
++        if ( $debug >= 3 ) {
++            $sql = 'select count(*) as count from tmp_active';
++            @dbResult = queryDB($sql, 1);
++            debug("There are ".$dbResult[0]{count}." active escalations", 3);
++        }
+ 
+-        $sql = 'select count(*) as count from notification_logs where timestamp>date_sub(now(), interval 1 hour)';
++	if ($conf->{db}->{type} eq 'mysql') {
++	    $sql = 'select count(*) as count from notification_logs where timestamp > date_sub(now(), interval 1 hour)';
++	} elsif ($conf->{db}->{type} eq 'sqlite3') {
++	    $sql = "select count(*) as count from notification_logs where timestamp > datetime('now' , '-1 hour')";
++	} elsif ($conf->{db}->{type} eq 'postgresql') {
++	    $sql = "select count(*) as count from notification_logs where timestamp > now() - interval '1 hour'";
++	} else {
++	    debug( "Your configuration specifies an unsupported \"db\" database type; exiting!", 1);
++	    exit;
++	}
+         @dbResult = queryDB($sql, 1);
+         debug($dbResult[0]{count}." notifications were sent in the last hour", 1);
+ 
+@@ -1001,17 +1122,20 @@
+ 	my $start = time();
+ 
+ 	my $cmd = $conf->{command}->{$short_cmd};
+-	# error if script is missing
+-    my $error = undef;
+-	unless ( -x $cmd )
+-	{
+-	    $error .= ' Missing or unexecutable script: ' . $cmd;
+-	}
++	my $error = undef;
+ 
+ 	# error if something is missing
+-	unless ( defined($cmd) )
++	if ( defined($cmd) )
++	{
++	    # error if script is missing
++	    unless ( -x $cmd )
++	    {
++		$error .= ' Missing or unexecutable script: ' . $cmd;
++	    }
++	}
++	else
+ 	{
+-	    $error .= ' Missing command for notification belonging to: ' . $user;
++	    $error .= ' Missing ' . ( defined($short_cmd) ? $short_cmd : 'undefined-type' ) . ' command for notification belonging to: ' . $user;
+ 	}
+ 	unless ( defined($dest) )
+ 	{
+@@ -1051,8 +1175,8 @@
+ 	my $query = sprintf('SELECT \'%s\' AS user,\'%s\' AS method,\'%s\' AS notify_cmd, \'%s\' AS time_string,\'%s\' AS notify_id,\'%s\' AS dest, \'%s\' AS from_user, \'%s\' AS rule, id,(stime+\'%s\') AS stime FROM tmp_commands WHERE external_id = \'%s\'',
+ 		$user, $method, $short_cmd, $datetime, $id, $dest, $sender, $rule, $delay, $incident_id);
+ 	my %dbResult = queryDB($query);
+-	
+-	my $query2 = sprintf('INSERT INTO tmp_active (user, method, notify_cmd, time_string, notify_id, dest, from_user, rule, command_id, stime) VALUES (\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\')',
++	if (%dbResult) {
++	    my $query2 = sprintf('INSERT INTO tmp_active ('.quoteIdentifier('user').', method, notify_cmd, time_string, notify_id, dest, from_user, rule, command_id, stime) VALUES (\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\')',
+ 		$dbResult{0}{user},
+ 		$dbResult{0}{method},
+ 		$dbResult{0}{notify_cmd},
+@@ -1063,10 +1187,16 @@
+                 $dbResult{0}{rule},
+                 $dbResult{0}{id},
+                 $dbResult{0}{stime}
+-	);
+-
++	    );
+     	
+-	updateDB($query2);
++	    updateDB($query2);
++	}
++	else {
++	    ## The original code was expecting a result to always appear, because it never checked
++	    ## %dbResult before attempting to use it.  So we log here if that doesn't happen.
++	    debug("NOTICE:  Query failed to yield any results:", 1);
++	    debug("    $query", 1);
++	}
+ 
+ 	# return("$id;$start;1;$param");
+ 	return 1;
+@@ -1174,7 +1304,7 @@
+     my $svc;
+     my $contact;
+ 
+-    my $query = "select host,service,user from notification_logs where incident_id=$id";
++    my $query = "select host,service,".quoteIdentifier('user')." from notification_logs where incident_id=$id";
+     my %dbResult = queryDB($query);
+ 
+     $host = $dbResult{0}->{host};
+@@ -1182,9 +1312,9 @@
+     $contact = $dbResult{0}->{user};
+     if ($svc eq '')
+     {
+-        $ackstr = "[".time()."] ACKNOWLEDGE_HOST_PROBLEM;$host;1;1;0;NoMa;Acknowledged by $contact\n";
++        $ackstr = "[".time()."] ACKNOWLEDGE_HOST_PROBLEM;$host;1;0;0;NoMa;Acknowledged by $contact\n";
+     } else {
+-        $ackstr = "[".time()."] ACKNOWLEDGE_SVC_PROBLEM;$host;$svc;1;1;0;NoMa;Acknowledged by $contact\n";
++        $ackstr = "[".time()."] ACKNOWLEDGE_SVC_PROBLEM;$host;$svc;1;0;0;NoMa;Acknowledged by $contact\n";
+     }
+ 
+     if (!sysopen(PIPE, $file, O_WRONLY | O_APPEND | O_NONBLOCK))
+@@ -1269,7 +1399,7 @@
+ {
+     # we don't use MySQL UUID() to generate IDs
+     # because this won't work in offline mode
+-    return (time().int( rand(99999) ));
++    return sprintf( "%d%05d", time(), int( rand(99999) ) );
+ }
+ 
+ 
+@@ -1349,7 +1479,11 @@
+     }
+ 
+     my $query = sprintf(
+-'insert into notification_logs (unique_id, incident_id, notification_rule, timestamp,counter,check_type,check_result,notification_type,host,service,method,last_method,user,result)
++	'insert into notification_logs (unique_id, incident_id, notification_rule, '
++	  . quoteIdentifier('timestamp')
++	  . ',counter,check_type,check_result,notification_type,host,service,method,last_method,'
++	  . quoteIdentifier('user')
++	  . ',result)
+ 			values (\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\')',
+         $cur_id,
+ 	$incident_id,

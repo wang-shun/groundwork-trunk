@@ -1,0 +1,74 @@
+#!/bin/bash -e
+
+# Script to install or uninstall an upgrade to Nagios 4.2.4 on top of
+# GWMEE 7.1.1 or earlier.
+
+# Copyright (c) 2017 GroundWork, Inc. (www.gwos.com).  All rights reserved.
+# Use of this software is subject to commercial license terms.
+
+PATCH_TARBALL=/tmp/groundwork-nagios-4.2.4-upgrade-files.tar.gz
+GROUNDWORK_BASE=/usr/local/groundwork
+NAGIOS_BASE=$GROUNDWORK_BASE/nagios
+SAVE_SUFFIX=pre-nagios-4.2.4
+
+if [ "`id -u`" -ne 0 -a "`id -un`" != nagios ]; then
+    echo "ERROR:  You must be root to install this patch."
+    exit 1
+fi
+
+if [ "`/bin/ps --no-headers -C .nagios.bin | wc -l`" != 0 ]; then
+    echo "ERROR:  You cannot install this patch while Nagios is running."
+    echo "        Try this first:"
+    echo "        service groundwork stop nagios"
+    exit 1
+fi
+
+if [ "$1" = "install" ]; then
+    if [ -f $PATCH_TARBALL ]; then
+	if [ "`$NAGIOS_BASE/bin/nagios --version | egrep '^Nagios'`" = 'Nagios Core 4.2.4' ]; then
+	    echo "ERROR:  You cannot install this patch, because it is already installed."
+	    exit 1
+	else
+	    cd $GROUNDWORK_BASE
+	    mv common/lib/libbronx.so              common/lib/libbronx.so.$SAVE_SUFFIX
+	    mv core/monarch/lib/MonarchForms.pm    core/monarch/lib/MonarchForms.pm.$SAVE_SUFFIX
+	    mv core/monarch/lib/MonarchStorProc.pm core/monarch/lib/MonarchStorProc.pm.$SAVE_SUFFIX
+	    cd $NAGIOS_BASE
+	    mv bin     bin.$SAVE_SUFFIX
+	    mv sbin   sbin.$SAVE_SUFFIX
+	    mv share share.$SAVE_SUFFIX
+	    tar xfz $PATCH_TARBALL -C /
+	    cp -p bin.$SAVE_SUFFIX/convertcfg bin
+	    cp -p bin.$SAVE_SUFFIX/nagios     bin
+	    cp -p bin.$SAVE_SUFFIX/nagiostats bin
+	    echo "Nagios 4.2.4 patch installation is complete."
+	fi
+    else
+	echo "ERROR:  The patch tarball is not present here:"
+	echo "        $PATCH_TARBALL"
+	echo "        It must be present before you can install it."
+	exit 1
+    fi
+elif [ "$1" = "uninstall" ]; then
+    if [ -d $NAGIOS_BASE/bin.$SAVE_SUFFIX -a -d $NAGIOS_BASE/sbin.$SAVE_SUFFIX -a -d $NAGIOS_BASE/share.$SAVE_SUFFIX ]; then
+	cd $GROUNDWORK_BASE
+	mv common/lib/libbronx.so.$SAVE_SUFFIX              common/lib/libbronx.so
+	mv core/monarch/lib/MonarchForms.pm.$SAVE_SUFFIX    core/monarch/lib/MonarchForms.pm
+	mv core/monarch/lib/MonarchStorProc.pm.$SAVE_SUFFIX core/monarch/lib/MonarchStorProc.pm
+	cd $NAGIOS_BASE
+	rm -rf bin
+	rm -rf sbin
+	rm -rf share
+	mv   bin.$SAVE_SUFFIX bin
+	mv  sbin.$SAVE_SUFFIX sbin
+	mv share.$SAVE_SUFFIX share
+	echo "Nagios 4.2.4 patch removal is complete."
+    else
+        echo "ERROR:  You cannot uninstall this patch, because it is not fully installed."
+	exit 1
+    fi
+else
+    echo "usage:  nagios424patch install"
+    echo "        nagios424patch uninstall"
+    exit 1
+fi

@@ -1,0 +1,47 @@
+#!/bin/sh
+#
+# chkconfig: 2345 44 56 
+# description: GroundWork Distributed Monitoring Agent
+#
+# Version to support operation under HP-UX.
+#
+
+RETVAL=0
+
+start_gdma() {
+    /opt/groundwork/ctlscript.sh start "$2"
+    RETVAL=$?
+}
+
+stop_gdma() {
+    /opt/groundwork/ctlscript.sh stop "$2"
+    RETVAL=$?
+}
+
+restart_gdma() {
+    /opt/groundwork/ctlscript.sh restart "$2"
+    RETVAL=$?
+}
+
+case "$1" in
+    start_msg)
+	echo "Starting the GDMA subsystem"
+	;;
+    start)
+	start_gdma "$@"
+	;;
+    stop_msg)
+	echo "Stopping the GDMA subsystem"
+	;;
+    stop)
+	stop_gdma "$@"
+	;;
+    restart)
+	restart_gdma "$@"
+	;;
+    *)
+	/opt/groundwork/ctlscript.sh "$@"
+	RETVAL=$?
+	;;
+esac
+exit $RETVAL

@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.groundwork</groupId>
+        <artifactId>gw-platform-pom</artifactId>
+        <version>7.2.2-SNAPSHOT</version>
+    </parent>
+
+    <groupId>org.groundwork</groupId>
+    <artifactId>gw-agents-pom</artifactId>
+    <packaging>pom</packaging>
+    <version>2.5-SNAPSHOT</version>
+    <name>Groundwork Agents POM</name>
+    <description>Groundwork Agents Projects POM</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <skipTests>true</skipTests>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>groundwork-releases</id>
+            <url>http://geneva/nexus/content/repositories/releases</url>
+        </repository>
+        <repository>
+            <id>cloudera-releases</id>
+            <url>https://repository.cloudera.com/content/repositories/releases/</url>
+        </repository>
+
+    </repositories>
+    <scm>
+        <connection>scm:svn:http://geneva/groundwork-professional/trunk/monitor-platform/agents</connection>
+        <developerConnection>scm:svn:http://geneva/groundwork-professional/trunk/monitor-platform/agents</developerConnection>
+        <url>http://geneva/groundwork-professional/trunk/monitor-platform/agents</url>
+    </scm>
+
+    <profiles>
+        <profile>
+            <id>agents-all</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <modules>
+                <module>agents-common</module>
+                <module>cloudhub-jmx-support</module>
+                <module>cloudhub-jmx-ws-admin-client</module>
+                <module>cloudhub-jmx-servlet</module>
+                <module>cloudhub-josso</module>
+                <module>cloudhub</module>
+                <module>JDMA</module>
+                <module>solarwinds-bridge</module>
+                <module>docker-devops</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>cloudhub-release</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <modules>
+                <module>agents-common</module>
+                <module>cloudhub-jmx-support</module>
+                <module>cloudhub-jmx-ws-admin-client</module>
+                <module>cloudhub-josso</module>
+                <module>cloudhub</module>
+                <module>solarwinds-bridge</module>
+                <module>docker-devops</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>tomcat</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <modules>
+                <module>cloudhub-jmx-support</module>
+                <module>cloudhub</module>
+            </modules>
+        </profile>
+    </profiles>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Monitor Agents -->
+            <dependency>
+                <groupId>org.groundwork</groupId>
+                <artifactId>agents-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.groundwork</groupId>
+                <artifactId>gw-cloudhub-josso</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.groundwork</groupId>
+                <artifactId>cloudhub-jmx-support</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.groundwork</groupId>
+                <artifactId>cloudhub-jmx-ws-admin-client</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- Cloudhub Specific Dependencies -->
+            <dependency>
+                <groupId>com.vmware</groupId>
+                <artifactId>vim25-JAXWS</artifactId>
+                <!--<version>6002561048</version>-->
+                <!--<version>6023634981</version>-->
+                <version>6.5.0.4571253</version>
+            </dependency>
+            <dependency>
+                <groupId>com.doublecloud</groupId>
+                <artifactId>vijava</artifactId>
+                <version>5.5</version>
+            </dependency>
+            <dependency>
+                <groupId>org.opendaylight</groupId>
+                <artifactId>opendaylight</artifactId>
+                <version>1.0</version>
+            </dependency>
+            <dependency>
+                <groupId>com.jayway.jsonpath</groupId>
+                <artifactId>json-path</artifactId>
+                <version>1.1.0</version>
+            </dependency>
+            <dependency>
+                <groupId>com.netapp.manage</groupId>
+                <artifactId>manageontap</artifactId>
+                <version>5.3</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.derby</groupId>
+                <artifactId>derby</artifactId>
+                <version>10.10.1.1</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.mybatis</groupId>
+                <artifactId>mybatis</artifactId>
+                <version>3.2.5</version>
+            </dependency>
+
+            <!-- These dependencies differ from monitor-platform -->
+            <dependency>
+                <groupId>commons-collections</groupId>
+                <artifactId>commons-collections</artifactId>
+                <version>3.2.1</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-lang</groupId>
+                <artifactId>commons-lang</artifactId>
+                <version>2.6</version>
+            </dependency>
+
+            <!-- JOSSO Servlet Dependencies -->
+            <dependency>
+                <groupId>org.josso</groupId>
+                <artifactId>josso-servlet-agent</artifactId>
+                <version>1.8.9-gwpatch-${groundwork.version}</version>
+            </dependency>
+
+            <!-- Cloudhub JMX -->
+            <dependency>
+	            <groupId>javax.management.j2ee</groupId>
+	            <artifactId>management-api</artifactId>
+	            <version>1.1-rev-1</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ibm.ws.admin</groupId>
+                <artifactId>admin-client</artifactId>
+                <version>7.0.0</version>
+            </dependency>
+
+            <!-- Review: upgrade to newer or replace with standards -->
+            <dependency>
+                <groupId>com.sun.xml.ws</groupId>
+                <artifactId>jaxws-tools</artifactId>
+                <version>2.2.6-4</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sun.xml.ws</groupId>
+                <artifactId>jaxws-rt</artifactId>
+                <version>2.1.7</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.jvnet</groupId>
+                        <artifactId>mimepull</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>com.sun.xml.messaging.saaj</groupId>
+                <artifactId>saaj-impl</artifactId>
+                <version>1.3.16</version>
+            </dependency>
+            <dependency>
+                <groupId>javax.xml.ws</groupId>
+                <artifactId>jaxws-api</artifactId>
+                <version>2.0</version>
+            </dependency>
+            <dependency>
+                <groupId>wsdl4j</groupId>
+                <artifactId>wsdl4j</artifactId>
+                <version>1.6.2</version>
+            </dependency>
+            <dependency>
+                <groupId>javax.validation</groupId>
+                <artifactId>validation-api</artifactId>
+                <version>1.1.0.Final</version>
+            </dependency>
+            <dependency>
+                <groupId>org.hibernate</groupId>
+                <artifactId>hibernate-validator</artifactId>
+                <version>4.3.1.Final</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <skipTests>${skipTests}</skipTests>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+  <modules>
+     <module>solarwinds-bridge</module>
+     <module>docker-devops</module>
+  </modules>
+</project>

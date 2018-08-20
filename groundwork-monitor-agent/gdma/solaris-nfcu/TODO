@@ -1,0 +1,148 @@
+Still to do for the GDMA code and builds:
+(*) bring back the use of the subversion build number in our package version,
+    or default to the date and time if the "svn" command is not available on
+    the build platform
+(*) perhaps create a request script. to ask the installer for a uid/gid for
+    the gdma user/group
+(*) perhaps add a postinstall script to call home to the central server, to
+    test to make sure the communication channel is working properly, and
+    perhaps to start up the gdma daemon automatically rather than require the
+    administrator to do so
+(*) look up whatever other variables you might want to specify in the pkginfo
+    file
+(*) get the rpath stuff worked out in the plugins compilation, on every
+    platform
+(*) check distribution rights for the /opt and /usr libraries we're providing
+    in the /opt/groundwork/lib/ directory, to see if it's okay for us to
+    distribute these files
+(*) establish some kind of archive of created packages for various versions
+    and customers
+(*) add pre-install scripting to add a gdma:gdma user/group, looking first
+    to see if they already exist (perhaps in NIS orLDAP), and only creating
+    them if not.  The home directory for the gdma user has to be
+    /opt/groundwork/home/gdma so we find the SSH keys appropriately.  Without
+    that bit of information, they might try to make it /export/home/gdma or
+    somesuch.
+(*) add some notation in the package for other files we expect might be
+    generated during operation, so they don't interfere with package removal?
+(*) look for other Solaris package options that we ought to be supporting,
+    that didn't make it into this first release
+(*) add a README that explains how to generate the key packages for a new
+    customer, on all the platforms that customer might want to operate on
+(*) write a short install document, to be given to the customer
+(*) in the install document, explain what is necessary on the customer side,
+    to set up the gdma:gdma user/group and any other preparation beforehand,
+    and to start the demon after installation
+(*) in the install document, explain how the id_dsa.pub pub file must be
+    incorporated into a file on the central GW Monitor server
+(*) fix the issues with the /opt/groundwork/lib/* files currently contained
+    in the packages, either by static linking or by documenting the exact
+    packages that are also needed; set up the plugin builds to use rpaths so
+    it is not necessary to set LD_LIBRARY_PATH to run the plugins; document
+    where to find the individual packages from Sun (starting from
+    http://www.sun.com/software/solaris/freeware/)
+(*) test what happens if you try to install one of these packages when you
+    already have it installed -- either exactly the same version, or a later
+    version -- do we properly handle an upgrade, by shutting down beforehand
+    and starting up afterward?
+(*) maybe modify the get_config.pl script to not try to grab the
+    configuration via scp if it sees some local flag, such as a
+    DO_NOT_UPDATE file being present in the config directory
+(*) make sure my pgrep/pkill stuff in the init script works as planned
+(*) The id_dsa.pub file ends with "gherteg@inti" or "gherteg@hestia",
+    which is to say the build user and machine.  I wonder if this is really
+    going to work.  Maybe we need to build as a gdma user, and maybe we
+    need to build on a machine named the same as the customer machine?  Or
+    maybe we need to add more options to the key-generation command?  Or
+    maybe we just need to edit this line and replace that text?
+(*) port the entire package stuff to Solaris 5.6, including whatever we
+    need to do for ssl and crypt libraries
+(*) consider implementing a Service Management Facility mechanism for
+    starting our daemon, instead of using the older init-script method,
+    on Solaris 10 and later
+(*) test the installation of these packages, and in particular the
+    installation of the setuid programs
+
+(*) This is not a complaint, just an observation.  It looks as though the
+    timekeeping by counting seconds in the gdma_check.pl loses about a second
+    per iteration, meaning that in the course of a day at a 5 minute interval
+    we'd retard the rrd bucket by about 1 (288 seconds).  I don't think it will
+    hurt us but I thought it was interesting.  If it did matter (say to someone
+    like Dan at Giant Eagle) I think we could keep track of the modulus of the
+    interval and always kick off the actual reporting on the same second?
+
+    The timekeeping described is driven by the fact that we use "sleep" to
+    pause between iterations.  "sleep" only sleeps in whole seconds
+    (approximately), and thus we do some rounding when we figure out how much
+    time to wait until the next iteration.
+
+    Improving this would take one of three paths:
+
+    (1) Stay with relative timing (sleep relative to how long it just took you
+	to execute the current cycle, to maintain an approximately consistent
+	overall period).  We would need to ensure that the Perl Time::HiRes
+	package is installed on the distributed machines, and we would need to
+	change the "sleep" calls to use "select" instead, as we did with the
+	fping_process.pl script recently.  This allows sleep periods to be
+	expressed as fractional seconds.  Even with this change, there is still
+	some residual jitter that might accumulate over time.
+
+    (2) Sleep a constant period between the end of one iteration and the start
+	of the next iteration.  This has the advantage that, if sending results
+	gets slow because the server is backed up, the clients will all see
+	gentle back-pressure that will slow down the rate at which they send
+	additional data and thus allow the server to catch up without continued
+	constant-rate loading.
+
+    (3) Base the sleep times on absolute timing (time until some fixed multiple
+	of the cycle times since the process was started, or until some fixed
+	phase of those cycle times with respect to wall-clock time, to better
+	fit expectations of RRD graphing time sample locations).  This requires
+	a slight bit of change to the logic.  There would still be some slight
+	jitter around the "correct" value unless we also had Time::HiRes and
+	fractional-second sleeps implemented, though those things cannot
+	guarantee no jitter, they would just significantly reduce its
+	magnitude.  But this approach would achieve long-term regularity of the
+	cycle times.
+
+    One opinion:  I vote for absolute timing. This allows for future
+    flexibility if we want to create an intelligent method for the server to
+    re-apportion check execution time to balance load on the server.
+
+    But:  Absolute vs. relative doesn't really affect anything except the
+    accuracy of the cycle positioning and its possible slow precession with
+    respect to wall clock time.  What we would need on the client to support
+    server-selectable control of the data stream timing would be a means of
+    putting the cycle time into the config file rather than having it hardcoded
+    (currently at 5 minutes) in the script.  Hmmm, that seems to be already
+    available, as the Loop_Count parameter in the config file.
+
+    Absolute timing is easist to understand, but constant-sleep-period timing
+    potentially allows a measure of back-pressure when the server gets busy.
+    If we extend the code in this area, I think we need to allow the site to
+    select the policy they want, rather than making a single fixed choice
+    ourselves.
+
+    BUT:  It does affect everything.  It is critically important for predicting
+    load.  Otherwise, you can sit around tuning the server until the cows come
+    home, and you'll still get burst traffic and danger of unknown edge
+    conditions.
+
+    If the longest period of time in which all sample frequencies occur is,
+    say, a 10 minute period, then an intelligent system apportions the start
+    time for each of the hosts (and services, in some systems) to distribute
+    the load across that period, taking into account the sample frequency
+    requirements of each service or host.
+
+    So, one service collects at 0 minutes, then next at 0 minutes 1 second,
+    etc.
+
+    I know this calculation very well, as I've done it under two situations,
+    and it is a way to *guarantee* the load at all times upon the server.
+
+    Without absolute timing, it's impossible to guarantee the load. Sometimes
+    you'll have no load, sometimes you'll have a ton of load.
+
+    Then we would need a Loop_Offset or Loop_Phase parameter in the config file
+    to support this.
+    

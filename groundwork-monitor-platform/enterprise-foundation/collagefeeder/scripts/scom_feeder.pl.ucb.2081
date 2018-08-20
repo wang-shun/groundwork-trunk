@@ -1,0 +1,2222 @@
+#!/usr/local/groundwork/perl/bin/perl
+# SCOM feeder - integrates SCOM with GroundWork 
+#
+# Copyright 2015 GroundWork OpenSource
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# Revision History
+#        Dominic Nicholas 3/15 - 2.0.0 - Initial revised version for GW 7.0.2
+#        Dominic Nicholas 3/15 - 2.0.1 - Some code clean-up; help improved
+#        Dominic Nicholas 4/15 - 2.0.2 - cleanup() : removed app type removal
+#        Dominic Nicholas 5/15 - 2.0.3 - updates to correctly update Since date/times and use associated Feeder.pm v0313
+#                                      - timezone of event data now correctly set to utc (-0000) instead of %z in build_2012_event()
+#        Dominic Nicholas 5/15 - 2.0.4 - refactoring of main loop and some error handling for resiliency to GW services being down; 
+#        			       - fixed up cleanup() for long host lists
+#        			       - added beginnings of perf data hooks  - at least will provide record 
+#        Dominic Nicholas 5/15 - 2.0.5 - added missing close() to perf data file write block of metrics push
+#        Dominic Nicholas 5/21 - 2.0.6 - build_2012_event() : if host_down_criteria, but resolutionstate=255, the host is marked as UP
+#        Dominic Nicholas 5/21 - 2.0.6 - post_events_and_notifications() : host/services new to collage now create events and notifications on first add
+#        Dominic Nicholas 7/10 - 2.0.7 - added -use_save_table option, and hostname_constraint_filters and servicename_constraint_filters added
+#        Dominic Nicholas 7/17 - 2.0.8 - temporary change until fully migrated to 710 Feeder.pm and so not to interfere with unpatched 702 cacti feeder,
+#                                        the location of Feeder.pm needs to be put in its own /u/l/g/SCOM/GW/ directory
+#        Dominic Nicholas 10/19 - 2.0.8.1 - mod to let RAPID do reauth's if token has expired vs refreshing at high frequency which 
+#        				 doesn't work currently with auth token cache releasing tokens in a timely fashion.
+#        				 Lower casing of hostnames.
+#
+# TO-DO
+# - Full updates system and test tweaks systems - if required in the field then add it
+# - Add option to report on save table by category or move them back into events table etc 
+#   - need field input on what versions are of interest before doing this.
+# - Generalize build event routine and associated logic to support different versions 
+#   - need field input on what versions are of interest before doing this.
+
+use 5.0;
+use warnings;
+use strict;
+use version; 
+my $VERSION = qv('2.0.8.1'); 
+use lib '/usr/local/groundwork/SCOM'; use GW::Feeder qv('0.3.1.4'); # 2.0.8
+use GW::RAPID qv('0.5.3');
+use JSON;
+use Data::Dumper; $Data::Dumper::Indent = 2; $Data::Dumper::Sortkeys = 1;
+use Log::Log4perl qw(get_logger);
+use Getopt::Long;
+use Time::HiRes;
+use POSIX qw(strftime);
+use Time::Local;
+use Sys::Hostname;
+use TypedConfig qw(); # leave qw() on to address minor bug in TypedConfig.pm
+use DBI;
+use File::Basename;
+use HTTP::Date qw(str2time); # for converting ISO 8601 timestamps from the scom events to epoch time
+
+my $feeder_name = "scom_feeder"; # Feeder name var - will key various things off this
+my $config_file = '/usr/local/groundwork/config/scom_feeder.conf'; # Config file for this feeder
+Log::Log4perl::init('/usr/local/groundwork/config/scom_feeder.log4perl.conf'); # log4perl configuration file initialization
+my $logger = get_logger("GW.$feeder_name"); # logger object
+my ( $dbh, $feeder, $tests_config ) = undef; # various globals
+my ( $help, $show_version, $once, $clean, $show, %showstats, $limit, $use_save_table ) = undef; # CLI option vars
+
+# SCOM specifics
+my %supported_scom_versions = ( "SCOM_2012_v0" => undef ); # supported version checking
+my $scom_events_table = 'scom_events'; # db table for to-be-processed events
+my $scom_save_table   = 'scom_save'; # db table for saved events
+my ( $purge_marker ) = '__purge__'; # built event field for purge reason
+my $printed_hdr = 0; # for show mode
+
+# =================================================================================
+main();
+# =================================================================================
+
+# ------------------------------------------------------------------------------------------------------------
+END {
+
+    exit if $show; # don't wait around if show mode - no rest api was in play
+
+    # To be kind to the server and always disconnect our session, we attempt to force a shutdown
+    # of the REST API before global destruction sets in and makes it impossible to log out,
+    # regardless of how we got to the end of the program.
+    terminate_rest_api();
+
+    # We generally run this daemon under control of supervise, which will immediately attempt to
+    # restart the process when it dies.  In order to prevent a tight loop of failure and restart,
+    # we delay process exit a short while no matter how we're going down.
+    sleep(5) ;
+}
+
+# ---------------------------------------------------------------------------------
+sub main
+{
+    my ( $start_time, $cycle_count, $total_cycle_time_taken, $try, $max_retries );
+    my ( $total_events, $total_events_processed, $aged_out_events_count, $resolved_events_count, $maintenance_events_count, $events_other_count );
+    my $started_at = localtime;
+
+    # read and process cli opts
+    initialize_options(); 
+
+    # check for other feeders running - there can only be one
+    if ( not $show ) {  # allow multiple to run if -show mode is in use tho
+        $logger->logexit("Another $feeder_name is running - quitting") if ( perl_script_process_count( basename($0) ) > 1 ) ; 
+    }
+
+    # log app start
+    $logger->info("======== $feeder_name started at $started_at =======");
+
+    # Set options up for new feeder
+    my %feeder_options = (
+
+        # The log4perl logger
+        logger => $logger, 
+
+        # Feeder specific options to retrieve and type-check.
+        # Access standard or specific properties with $feeder->{properties}->{propertname}, eg $feeder->{properties}->{cycle_time}
+        feeder_specific_properties => { 
+                                       #always_send_full_updates => 'boolean', # unimplemented for now
+                                        constrain_to_hostgroups => 'hash',
+                                        custom_hostname_mapping_rules => 'hash',
+                                        dbhost => 'scalar',
+                                        dbtype => 'scalar',
+                                        dbname => 'scalar',
+                                        dbpass => 'scalar',
+                                        dbport => 'number',
+                                        dbuser => 'scalar',
+                                        default_hostgroups => 'hash',
+                                       #full_update_frequency => 'number', # unimplemented for now
+                                        host_bundle_size => 'number',
+                                        host_down_criteria => 'hash',
+                                        hostgroup_bundle_size => 'number',
+                                        hostname_exclusion_filters => 'hash',
+                                        hostname_constraint_filters => 'hash',
+                                        hostname_hostgroup_mappings => 'hash',
+                                        process_resolved_events => 'boolean',
+                                        process_in_maintenance => 'boolean',
+                                        save_to_db => 'hash',
+                                        service_bundle_size => 'number',
+                                        servicename_constraint_filters => 'hash',
+                                        servicename_exclusion_filters => 'hash',
+                                        servicename_hostgroup_mappings => 'hash',
+                                       #system_indicator_file => 'scalar',
+                                        system_indicator_check_frequency => 'number',
+                                       #test_tweaks_file => 'scalar',
+                                      }
+
+    );
+
+    # Moved inside of main cycle loop for more resiliency
+    #   # Create a new feeder object
+    #   $feeder = GW::Feeder->new( $feeder_name, $config_file, \%feeder_options ) ;
+    #   # Bail if feeder failed to instantiate
+    #   $logger->logexit("Couldn't create feeder object - quitting") if not $feeder;
+    #   # validate feeder-specific options  
+    #   validate_feeder_specific_options(); 
+    #   # set up interrupt handlers
+    #   $feeder->initialize_interrupt_handlers();
+    #   # If -clean, do cleanup and exit
+    #   cleanup() if defined $clean;
+    #   # Initialize a feeder hostgroup, virtual feeder host , feeder health service, and any other feeder specific services as defined in <feeder_services> conf hash
+    #   if ( not $feeder->initialize_health_objects( $started_at ) ) { 
+    #       $logger->logexit("Initializing feeder health objects");
+    #   }
+    #   # Bail out if processing is disabled
+    #   if ( not $feeder->{enable_processing} ) {
+    #       $feeder->terminate_feeder("ERROR The feeder is currently disabled. To enable it, set enable_processing to yes. Sleeping forever.", -1); 
+    #   }
+
+
+    # 2.0.8.1 - moved this outside of the main cycle loop
+    # Create a new feeder object per cycle to avoid any potential REST expiration/disconnection issues with long cycle times
+    #undef $feeder if defined $feeder; # First destroy feeder if defined  
+    $try = 1; $max_retries = 3;
+    while ( not ( $feeder = GW::Feeder->new( $feeder_name, $config_file, \%feeder_options ) ) and $try <= $max_retries ) {
+        $logger->error("Couldn't create feeder object - try $try/$max_retries - waiting 30 sec before trying again...");
+        sleep 30;
+        $try++;
+    }
+    # If failed to create a new feeder after retrying, quit for now and let supervise restart this.
+    if ( $try > $max_retries ) {
+        $logger->error("Couldn't create feeder object. Quitting.");
+        #next CYCLE;
+        terminate_rest_api();
+        exit;
+    }
+	
+
+    # Process incoming scom events in a never ending cycle
+    $cycle_count = 1;
+    CYCLE: while ( 1 )
+    {
+
+	# 2.0.8.1 moved this up and outside of the main cycle loop
+      ### Create a new feeder object per cycle to avoid any potential REST expiration/disconnection issues with long cycle times
+      ##undef $feeder if defined $feeder; # First destroy feeder if defined  
+      ##$try = 1; $max_retries = 3;
+      ##while ( not ( $feeder = GW::Feeder->new( $feeder_name, $config_file, \%feeder_options ) ) and $try <= $max_retries ) {
+      ##    $logger->error("Couldn't create feeder object - try $try/$max_retries - waiting 30 sec before trying again...");
+      ##    sleep 30;
+      ##    $try++;
+      ##}
+      ### If failed to create a new feeder endpoint after retrying, skip the endpoint for now.
+      ### Before moving on to the next endpoint, append the queried data onto this endpoint's retry cache.
+      ##if ( $try > $max_retries ) {
+      ##    $logger->error("Couldn't create feeder object.");
+      ##    next CYCLE;
+      ##}
+
+	    # $logger->info("REST API TOKEN =  $feeder->{rest_api}->{token}"); # TBD remove this later after testing
+
+        # validate feeder-specific options
+        if ( not validate_feeder_specific_options() ) {
+            $logger->error("Invalid feeder options detected - no processing will be done."); 
+            sleep 5;
+            next CYCLE;
+        }
+            
+        # set up interrupt handlers
+        $feeder->initialize_interrupt_handlers();
+
+        # If -clean, do cleanup and exit
+        cleanup() if defined $clean;
+
+        # Is feeder disabled ?
+        if ( not $feeder->{enable_processing} ) {
+            ## FIX MAJOR:  If disabled, sleep for a much longer time period, like nearly forever, so as not to keep cycling.
+            $logger->info("Processing is currently disabled. To enable it, set enable_processing = yes in $config_file.");
+            #sleep $feeder->{properties}->{system_indicator_check_frequency};    
+            sleep 10;
+            next CYCLE;
+        }
+
+        # Establish a connection to the scom database
+        if ( not initialize_scom_database_connection() ) { 
+            $feeder->error("Unable to initialize database connection.");
+            sleep 10;
+            next CYCLE;
+        }
+
+        # Wait until there's something to do ie scom events in the scom_events table
+        while ( not scom_events_count() ) {
+            $logger->info("Waiting for $feeder->{system_indicator_check_frequency} seconds before checking for something to do..."); # TBD rename this prop etc
+            sleep $feeder->{system_indicator_check_frequency};
+        }
+
+        # Initialize a feeder hostgroup, etc
+       if ( not $feeder->initialize_health_objects( $started_at ) ) {
+           $logger->error("Initializing feeder health objects");
+           next CYCLE;
+       }
+        
+        $start_time = Time::HiRes::time() ; 
+        if ( $show ) {
+            $logger->info( "-------- Show-mode creating $show ... --------" ); 
+        }
+        else {
+            $logger->info( "-------- Starting cycle $cycle_count --------" ); 
+        }
+
+        # Try to read tests file each cycle so can test dynamically
+        # read_test_tweaks_file();  # not implemented in this feeder for now
+
+        # Do a quick scom db connection test and if connected go process scom events
+        if ( db_connection_ok() ) {
+            if ( not process_scom_events(    $cycle_count, 
+                                            \$total_events,             # count of all possible events that were retrieved for processing
+                                            \$total_events_processed,   # count of successfully processed events
+                                            \$aged_out_events_count,    # count of events unprocessed due to aging out
+                                            \$resolved_events_count,    # count of events unprocessed due to being resolved
+                                            \$maintenance_events_count, # count of events unprocessed due to being in maintenance mode
+                                            \$events_other_count,       # count of events unprocessed due to other issues
+                                        ) ) {
+                $feeder->report_feeder_error("Failed to processed scom events - waiting for a little before continuing to next cycle"); 
+                sleep 30;
+                next CYCLE;
+            }
+        }
+        else {
+            # Try to reinitialize the db connection and wait for next cycle
+            # This case is a bit tricky to test - better than nothing for now TBD improve.
+            # report_feeder_error may fail but worth a try.
+            $feeder->report_feeder_error( "DATABASE ERROR - database connection not ok - attempting to re-initializing it.") ;  
+            if ( not initialize_scom_database_connection() ) {
+                $feeder->report_feeder_error("DATABASE ERROR Failed to initialize database connection - nothing will be processed. Sleeping 30 seconds before continuing." ); 
+                sleep 30;
+                # Don't increment cycle count since nothing was really processed, and don't want to skip it based on full_update_frequency mechanism
+                next CYCLE;
+            }
+        }
+
+        # converts audit into events in foundation, and empties it
+        $feeder->flush_audit() ;  # this will produce its own errors if necessary
+
+        # Update feeder stats services
+        $total_cycle_time_taken = sprintf "%0.2f", Time::HiRes::time() - $start_time ;
+        update_feeder_stats( $cycle_count, 
+                             $total_cycle_time_taken,
+                             $total_events,             # count of all possible events that were retrieved for processing
+                             $total_events_processed,   # count of successfully processed events
+                             $aged_out_events_count,    # count of events unprocessed due to aging out
+                             $resolved_events_count,    # count of events unprocessed due to being resolved
+                             $maintenance_events_count, # count of events unprocessed due to being in maintenance mode
+                             $events_other_count,       # count of events unprocessed due to other issues
+                           ) if not $show;
+
+        if ( $once ) {
+            $logger->info( "Run-once option supplied - exiting" );
+            $feeder->terminate_feeder("Feeder shut down", undef, 'OK'); # want to update feeder health host/service in a friendly way
+        };
+    
+        if ( $show ) {
+            $logger->info( "Show mode option supplied - look in file '$show' for results - exiting" );
+            terminate_rest_api();
+            exit;
+        };
+
+        $cycle_count++;
+    }
+
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub process_scom_events
+{
+    # Gets all scom events from scom events table, in order of the TimeOfLastEvent.
+    # Each event is then : built, processed, purged.
+
+    my ( $cycle_iteration,              # cycle iteration number
+         $ref_total_events,             # count of all possible events that were retrieved for processing
+         $ref_total_events_processed,   # count of successfully processed events
+         $ref_aged_out_events_count,    # count of events unprocessed due to aging out
+         $ref_resolved_events_count,    # count of events unprocessed due to being resolved
+         $ref_maintenance_events_count, # count of events unprocessed due to being in maintenance mode
+         $ref_events_other_count,       # count of events unprocessed due to other issues
+       ) = @_;
+
+    my ( $scom_event, %built_scom_event, @raw_scom_events, $built_scom_event, $alertid, $scom_table_id );
+    my ( @constrained, $status_code ) ;
+
+    # Initialize the metrics
+    ${$ref_total_events_processed} = ${$ref_aged_out_events_count} = ${$ref_resolved_events_count} = ${$ref_maintenance_events_count} = ${$ref_events_other_count} = 0;
+
+    # Bring all scom events into memory for processing. 
+    # The original approach was a loop getting the oldest scom event id (very db expensive cos it was an order by statement), 
+    # getting the event with that id, processing it, purging it.  This was extremely slow for large data sets. 
+    # Bringing it all into memory is mem expensive but fast and systems typically have lots of mem.
+    if ( not get_all_scom_events( \@raw_scom_events ) ) { 
+        $feeder->report_feeder_error("An error occurred getting data from the scom events table");
+        return 0;
+    }
+
+    # Total # of events that could be processed - for metrics
+    ${$ref_total_events} = scalar @raw_scom_events;
+    
+    $logger->debug( "Building SCOM events");  
+	EVENT : foreach $scom_event ( @raw_scom_events ) {
+
+        # these are used in reporting to log various info
+        $alertid       = $scom_event->{alertid}; # the uuid of the event- seems to be possibly uniq across all SCOM events - not 100% sure yet
+        $scom_table_id = $scom_event->{id};      # the scom_save table row index
+	
+	    $logger->debug("Processing scom table id $scom_table_id, SCOM event id $alertid") if not $show;
+	
+        # Skip event if it's too old
+        if ( time() - HTTP::Date::str2time( $scom_event->{timeoflastevent} ) >= $feeder->{properties}->{event_max_age} ) { 
+			$logger->warn("Event $alertid (scom table id $scom_table_id) was too old to be processed - aging it out"); 
+            $scom_event->{$purge_marker} = 'aged_out'; 
+            ${$ref_aged_out_events_count}++;
+        }
+            
+        # skip event if closed apparently
+		elsif ( $scom_event->{resolutionstate} == 255 and not $feeder->{process_resolved_events} ) {  
+			$logger->warn("Processing of closed event $alertid (scom table id $scom_table_id)  will be skipped"); 
+            $scom_event->{$purge_marker} = 'resolved'; 
+            ${$ref_resolved_events_count}++;
+		}
+
+        # skip event if the presumably monitored object is in maint. mode
+     	elsif ( $scom_event->{monitoringobjectinmaintenancemode} eq "True" and not $feeder->{process_in_maintenance} ) {
+            $logger->warn("Processing of maintenance mode event $alertid (scom table id $scom_table_id) will be skipped");  
+			$scom_event->{$purge_marker} = 'maintenance';
+            ${$ref_maintenance_events_count}++;
+        }
+             
+        # check event is from a version of SCOM that is supported
+        elsif ( not exists $supported_scom_versions{ $scom_event->{connectorversion} } ) { 
+            $logger->warn("Processing of unsupported SCOM connector version '$scom_event->{connectorversion}' $alertid (scom table id $scom_table_id)");
+			$scom_event->{$purge_marker} = 'other:unsupported SCOM connector version "' . $scom_event->{connectorversion} . '"' ; 
+            ${$ref_events_other_count}++;
+        }
+
+        # process the scom event if its of a recognized and handled version
+        # TBD generalize this some TBD requires input from field as to what versions even exist that need supporting
+        elsif ( $scom_event->{connectorversion} eq 'SCOM_2012_v0' ) {
+
+            # build the event
+            if ( not build_2012_event( $scom_event, \%built_scom_event) ) {
+                $logger->error("Failed to built scom event (scom table id $scom_table_id)");
+		$scom_event->{$purge_marker} = 'other:failed to build'; 
+                ${$ref_events_other_count}++;
+            }
+
+            # process the built event
+            else {
+
+                # If constraining hostsgroups are defined in the conf, then only process this event if it's in one of the Foundation hostgroups specified
+                if ( defined $feeder->{constrain_to_hostgroups} and scalar keys %{$feeder->{constrain_to_hostgroups}}  > 0 ) {
+                    push @constrained, { %built_scom_event };
+                    if ( not constrain_to_hostgroups( \@constrained )  ) {
+                       # an error occurred at the API level in getting hostgroup info - so don't try to process the event 
+                       $logger->error("Failed to perform constraint checks for built scom event $alertid (scom table id $scom_table_id)"); 
+                       @constrained = ();
+                    }
+                    # If event hostgroup matched one hostgroup in the constrained hostgroup set, then process it, otherwise the event was not in a contraint hostgroup
+                    if ( not scalar @constrained ) { 
+                        my $constrained_hostgroups = join ",", keys %{$feeder->{properties}->{constrain_to_hostgroups}} ; # make a list of the hostgroups
+                        $scom_event->{$purge_marker} = "other:unconstrained - event not in hostgroup(s) ($constrained_hostgroups)";
+                        $logger->debug( "Event $scom_event->{alertid} with hostname '$built_scom_event{Host}' is not in any constrained hostgroups ($constrained_hostgroups)"); 
+                        %built_scom_event = (); # delete the built event as an indicator to not process it later in this routine
+                        ${$ref_events_other_count}++; # required for metrics
+                    }
+                }
+
+                # If host/service constraint filters are defined, and the host or service does not match any of them, then don't process it
+                if ( filtered_by_constraint_regex( \%built_scom_event ) ) { 
+                    $logger->debug("Filtered by constraint regex scom event $alertid (scom table id $scom_table_id)"); 
+                    %built_scom_event  = (); # delete the built event as an indicator to not process it later
+                    $scom_event->{$purge_marker} = 'other:filtered by constraint regex'; # required for purging
+                    ${$ref_events_other_count}++; # required for metrics
+                }
+
+                # If host or service matches an exclusion filter regex, don't process it
+                if ( filtered_by_exclusion_regex( \%built_scom_event ) ) { 
+                    $logger->debug("Filtered by exclusion regex scom event $alertid (scom table id $scom_table_id)"); 
+                    %built_scom_event  = (); # delete the built event as an indicator to not process it later
+                    $scom_event->{$purge_marker} = 'other:filtered by exclusion regex'; # required for purging
+                    ${$ref_events_other_count}++; # required for metrics
+                }
+                
+                # process the built event (if constraining was on and there was no match,or, the event was filtered by regex, the built event will be empty)
+                if ( %built_scom_event ) { 
+
+                    if ( $show ) { 
+                        print_event( \%built_scom_event ) ;
+                        next EVENT;     
+                    }
+
+                    if ( not process_built_event( \%built_scom_event, \$status_code ) ) { 
+                        $logger->error("Failed to process built scom event $alertid (scom table id $scom_table_id), status code $status_code detected");  # 2.0.8.1 added stat code to output
+			# See if there was a feeder connection error, return to caller, otherwise store the event in save table.
+			# Don't want to move it if gwservices is simply down.
+			if ( $status_code eq '500' ) { 
+				$logger->error("REST endpoint connection error detected (status 500) detected - ending processing of events for now");
+				return 0;
+			}
+			$scom_event->{$purge_marker} = 'other:failed to process'; 
+                        ${$ref_events_other_count}++;
+                    }
+                    else {
+                        $scom_event->{$purge_marker} = 'processed'; # Mark event as processed - can purge ok (either delete or save)
+                        ${$ref_total_events_processed}++;
+                    }
+
+                }
+            }
+        }
+        #elsif ( $scom_event->{connectorversion} eq 'some_other_supported_version' ) { ... } # This needs generalizing and this giant if statement refactoring
+        else {
+            # this shouldn't happen
+            $logger->error("Invalid scom event version for event $alertid (scom table id $scom_table_id) - skipping processing of it");
+			$scom_event->{$purge_marker} = 'other:invalid scom version';
+            ${$ref_events_other_count}++;
+        }
+
+        # Got this far, so purge the processed event
+        # Purge event. In experimentation, purging took about 1% of total processing time.
+        if ( not $show ) {
+            if ( not purge_event( $scom_event ) ) {
+                print "ERROR purging event\n"; # if this happens, might want to flag that so that up at the main cycle level, sleep for a bit else endless tight loop
+                next EVENT;
+            }
+        }
+
+    } # End loop on processing raw events
+
+    # print processing stats to show file
+    print_event( undef, 1 ) if $show;
+
+    return 1;
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub process_built_event
+{
+    # Process a built scom event.
+    # SCOM events differ to cacti events at least in that each event could have a different host state for the same host
+    # so a per-event approach is required for SCOM events processing, vs the more efficient approach used for cacti
+    # where the device state is fixed for a given processing cycle.
+    # This routine does this with the built event :
+    #    
+    #    get host state from foundation for this event
+    #    upsert host with new state
+    #    upsert host into hostgroup(s)
+    #    get service state from foundation for this event
+    #    upsert service with new state and message
+    #    if the host and/or service state has changed, post events and notifications
+    # 
+    # Returns 1 if ok, 0 otherwise, and if returning 0, will return status code from api call errors if appropriate, or undef if not set
+
+    my ( $built_scom_event, $ref_status_code ) = @_;
+    my ( %hosts_states, $status_code );
+
+    $status_code = '';
+
+    # If show mode is enabled, just print out how event built event looks - useful for testing
+    print_event( $built_scom_event ) if defined $show ;
+                    
+    # if the incoming scom event is empty - just flag that and return failure
+    if ( not scalar keys %{$built_scom_event} or not $built_scom_event ) { 
+        $logger->warn( "Empty event - nothing to process"); 
+        return 0;
+    }
+        
+    # Host - get Foundation state of host - adds FoundationHostState to event
+    if ( not get_foundation_host_state( $built_scom_event , \$status_code ) ) { 
+	${$ref_status_code} = $status_code;
+        $logger->error( "Error getting foundation host state" );
+        return 0;
+    }
+
+
+    # Upserts the host into Foundation, including the host's state
+    if ( not upsert_foundation_host( $built_scom_event, \$status_code ) ) {
+	# TBD Feeder modules need to return http status from api call on error  - $status_code will just be '' for now
+	${$ref_status_code} = $status_code;  
+        $logger->error( "Error upserting host $built_scom_event->{Host}" );
+        return 0;
+    }
+
+    # Add the host to a hostgroup        
+    if ( not upsert_foundation_hostgroups_with_scom_host( $built_scom_event, \$status_code ) ) {  
+	# TBD Feeder modules need to return http status from api call on error  - $status_code will just be '' for now
+	${$ref_status_code} = $status_code;
+        $logger->error( "Error upserting hostgroups" ) ;
+        return 0; 
+    }
+
+    # Get the service state as it is now in foundation - adds FoundationServiceState to the event
+    if ( not get_foundation_service_state( $built_scom_event, \$status_code ) ) { 
+	${$ref_status_code} = $status_code;
+        $logger->error( "Error getting foundation service state" ) ;
+        return 0;
+    }
+
+    # Upsert the service into foundation
+    if ( not upsert_foundation_service( $built_scom_event, \$status_code ) ) {
+	# TBD Feeder modules need to return http status from api call on error  - $status_code will just be '' for now
+	${$ref_status_code} = $status_code;
+        $logger->error( "Error upserting service" ) ;
+        return 0;
+    }
+
+    # Post events and notifications
+    # Re-using the existing post_events_and_notifications() routine but for just one event and one host ...
+    # TBD skipping for now because for cacti feeder we always send full updates anyway - ie this function is of limited use and not worth adding in here
+    # If necessary, reduce the set of cacti host and service events to only those which are having a state change.
+    # Only do this filtering if a) always_send_full_updates = false, and b) we're on a full_update_frequency cycle, and c) its not the very first cycle
+    #if ( not $feeder->{always_send_full_updates} and ( $cycle_iteration % $feeder->{full_update_frequency} != 0 ) and ( $cycle_iteration != 1 )  ) {
+    #    filter_out_non_state_changed_cacti_hosts_and_services( \@cacti_events, \%hosts_states );
+    #    # Again, record the new event set size as the size that was processed (even if there are errors, the were 'processed')
+    #    ${$ref_total_events_processed} = $#cacti_events + 1; 
+    #}
+
+    %hosts_states = ( 
+        $built_scom_event->{Host} => { 
+            'HostState' => $built_scom_event->{HostState}, 
+            'FoundationHostState' => $built_scom_event->{FoundationHostState} 
+        } 
+    ) ;
+
+    if ( not post_events_and_notifications( [ $built_scom_event ] , \%hosts_states, $built_scom_event, \$status_code ) ) {
+	# TBD Feeder modules need to return http status from api call on error  - $status_code will just be '' for now
+	${$ref_status_code} = $status_code;
+        $logger->error( "Error posting events and notifications");
+        return 0; 
+    }
+
+    return 1;
+
+}
+
+
+# ----------------------------------------------------------------------------------------------------------------
+sub post_events_and_notifications
+{
+    # Looks for state changes for hosts and services.
+    # Posts notifications if state change detected and post_notifications is true.
+    # Posts events if state change detected and options permit
+    #
+    # Takes as arguments :
+    # - a ref to an array of event hashes, 
+    # - a ref to a hash of host states (for a list of hosts)
+    # - a ref to a single scom event (for time props etc), from which the other args were constructed
+    #       (could construct them in here, but trying to use this function without changing it)
+    #
+    # returns 1 if ok, 0 otherwise
+    # NOTES
+    # - the ReportDate and FirstInsertDate from the built event are used for both host and service reportDate and firstInsertDate props
+    #   until have example of host-down type's of events.
+
+    my ( $ref_array_of_scom_events , $ref_hash_of_host_states, $scom_event_ref ) = @_;
+    my ( $scom_event, $scom_host, @host_notifications, @service_notifications, $notificationType, $noma_status ) ;
+    my ( @host_events, @service_events, $event_severity, $status );
+
+    if ( not $feeder->{post_notifications} and not $feeder->{post_events} ) {
+        $logger->debug("post_notifications and post_events are both disabled - no posting of events or notifications will be done");
+        return 1;
+    }
+
+    # Search for HOST state changes.
+    # Construct arrays for both host notification and event objects.
+    # HostState can be one of these values : UNREACHABLE, UNSCHEDULED DOWN, UP
+    foreach $scom_host ( keys %{$ref_hash_of_host_states} ) {
+
+        ## hosts not yet in foundation means FoundationHostState not set, and means don't send events or notifications
+        #if ( ( defined $ref_hash_of_host_states->{$scom_host}{FoundationHostState}) and ( $ref_hash_of_host_states->{$scom_host}{HostState} ne $ref_hash_of_host_states->{$scom_host}{FoundationHostState} )  ) {
+        # V 2.0.6 - actually do send events and notifications if it's not in foundation yet.  Set FoundationHostState to '' ie not undef, so it gets processed in the next block
+        $ref_hash_of_host_states->{$scom_host}{FoundationHostState} = '' if not defined $ref_hash_of_host_states->{$scom_host}{FoundationHostState} ;
+
+        if ( ( defined $ref_hash_of_host_states->{$scom_host}{FoundationHostState}) and ( $ref_hash_of_host_states->{$scom_host}{HostState} ne $ref_hash_of_host_states->{$scom_host}{FoundationHostState} )  ) {
+
+            # For events and notifications ....
+            if ( $ref_hash_of_host_states->{$scom_host}{HostState} ne 'UP' ) { # ie UNREACHABLE, UNSCHEDULED DOWN, UP
+                $notificationType = "PROBLEM";
+                $event_severity = "SERIOUS";
+            }
+            else 
+            {
+                $notificationType = "RECOVERY";
+                $event_severity = "OK";
+            };
+
+            # For notifications ...
+            $noma_status = $ref_hash_of_host_states->{$scom_host}{HostState};
+            $noma_status =~ s/UNSCHEDULED//g; # NoMa will quietly ignore UNSCHEDULED DOWN - only accepts UP, DOWN, UNREACHABLE
+            $noma_status =~ s/\s+//g; # NoMa will quietly ignore ' UP' - pretty dumb about whitespace 
+            push @host_notifications, {
+	                                    'hostName'            => $scom_host,
+	                                    'hostState'           => $noma_status,
+	                                    'notificationType'    => $notificationType,
+	                                    'hostOutput'          => "$scom_host is $ref_hash_of_host_states->{$scom_host}{HostState}", 
+                                      };
+
+            # For host events .... 
+            push @host_events, {
+                                   'host'              => $scom_host,
+                                   'device'            => $scom_host,
+                                   'monitorStatus'     => $ref_hash_of_host_states->{$scom_host}{HostState},
+                                   'appType'           => $feeder->{app_type},
+                                   'severity'          => $event_severity,
+                                   'textMessage'       => "$scom_host is $ref_hash_of_host_states->{$scom_host}{HostState}",
+                                   'reportDate'        => $scom_event_ref->{HostReportDate},
+                                   'firstInsertDate'   => $scom_event_ref->{HostFirstInsertDate},
+                               }
+        }
+    }
+
+    # Search for SERVICE state changes and post events for them
+    foreach $scom_event ( @{$ref_array_of_scom_events} ) { 
+        # events for hosts not yet in foundation means FoundationHostState not set, and means don't send events or notifications
+        # V 2.0.6 - actually do send events and notifications if it's not in foundation yet.  Set FoundationServiceState to '' ie not undef, so it gets processed in the next block
+        $scom_event->{FoundationServiceState} = '' if not defined $scom_event->{FoundationServiceState} ;
+        
+        if ( ( defined $scom_event->{FoundationServiceState} ) and ( $scom_event->{ServiceState} ne $scom_event->{FoundationServiceState} ) ) {
+
+
+            # For notifications and events ...
+            if ( $scom_event->{ServiceState} ne 'OK' ) { # ie OK, UNSCHEDULED CRITICAL (or WARNING, UNKNOWN from test tweaking)
+                $notificationType = "PROBLEM";
+                $event_severity = "SERIOUS";
+            }
+            else 
+            {
+                $notificationType = "RECOVERY";
+                $event_severity = "OK";
+            };
+
+            # For service notifications ...
+            $noma_status = $scom_event->{ServiceState} ;
+            $noma_status =~ s/UNSCHEDULED//g; # NoMa will quietly ignore UNSCHEDULED CRITICAL - only accepts OK, WARNING, CRITICAL and UNKNOWN 
+            $noma_status =~ s/\s+//g; # NoMa will quietly ignore ' CRITICAL' - pretty dumb about whitespace 
+            push @service_notifications,  {
+                                            'hostName'            => $scom_event->{Host},
+                                            'serviceDescription'  => $scom_event->{ServiceDescription},
+                                            'serviceState'        => $noma_status,
+                                            'notificationType'    => $notificationType,
+                                            'serviceOutput'       => $scom_event->{LastPluginOutput},
+                                          };
+
+            # For service events ...
+            push @service_events, {
+                                   'host'              => $scom_event->{Host},
+                                   'device'            => $scom_event->{Host},
+                                   'service'           => $scom_event->{ServiceDescription},
+                                   'monitorStatus'     => $scom_event->{ServiceState},
+                                   'appType'           => $feeder->{app_type},
+                                   'severity'          => $event_severity,
+                                   'textMessage'       => $scom_event->{LastPluginOutput},
+                                   'reportDate'        => $scom_event_ref->{ServiceReportDate},
+                                   'firstInsertDate'   => $scom_event_ref->{ServiceFirstInsertDate},
+                               };
+
+            # Add a handy link from the event's service name to the SCOM system.
+            # Currently this fails the api - need correct property name if one.
+            # Also not even sure it makes sense to include the urls at all since they are from a different context altogether
+            #if ( defined $scom_event_ref->{WebConsoleUrl} ) { 
+            #    push @service_events, {
+            #                        'properties'        => { 'WebConsoleURL' => $scom_event_ref->{WebConsoleUrl} }, 
+            #    };
+            #}
+
+        }
+
+    }
+
+    $status = 1; # assume all operations will be ok and disprove ... rename this var :)
+
+    # Send notifications ...
+    if ( $feeder->{post_notifications} ) {
+        # Send any host notifications
+        if ( @host_notifications ) {
+            $logger->debug( "Posting host notifications" );
+            if ( not $feeder->feeder_post_notifications( 'host', \@host_notifications ) ) {
+                $logger->error("Error creating host notifications.");
+                $status = 0; # don't bail just yet - try and do as much as possible
+            }
+        }
+        # Send any service notifications
+        if ( @service_notifications ) {
+            $logger->debug( "Posting service notifications" );
+            if ( not $feeder->feeder_post_notifications( 'service', \@service_notifications ) ) {
+                $logger->error("Error creating service notifications.");
+                $status = 0; # don't bail just yet - try and do as much as possible
+            }
+        }
+    }
+
+    # Post events ...
+    if ( $feeder->{post_events} and $feeder->{update_hosts_statuses} ) {
+        # Post any host events.
+        # Only post host events if update_hosts_statuses is set. Otherwise, the sv host status graphs will reflect up/down states, 
+        # but the actual host status will not change when update_hosts_statuses = false
+        if ( @host_events ) {
+            $logger->debug( "Posting host events" );
+            if ( not $feeder->feeder_post_events( 'host', \@host_events ) ) {
+                $logger->error("Error posting host events.");
+                $status = 0; # don't bail just yet - try and do as much as possible
+            }
+        }
+    }
+    # Post any service events
+    if ( $feeder->{post_events} and @service_events ) {
+        $logger->debug( "Posting service events" );
+        if ( not $feeder->feeder_post_events( 'service', \@service_events ) ) {
+            $logger->error("Error posting service events.");
+            $status = 0; # don't bail just yet - try and do as much as possible
+        }
+    }
+    
+    return $status;
+
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub constrain_to_hostgroups # stock from cacti feeder hence the cacti vars
+{
+    # Takes a ref to an array of scom event hashes, 
+    # figures out unique set of hosts,
+    # figures out which Foundation hostgroups these hosts are in,
+    # then removes those events which have hostgroups matching the constrain_to_hostgroup array members
+    # returns 1 on success, 0 on failure 
+
+    my ( $ref_array_of_events ) = @_;
+
+    my ( $event, %hosts, $event_hostgroup, $cacti_event );
+
+    # Figure out unique set of hostnames across all cacti events
+    # assumes a cacti event always has a Host element
+    foreach $cacti_event ( @{ $ref_array_of_events } ) {
+        if ( not defined $hosts{ $cacti_event->{Host} } ) { 
+            $hosts{ $cacti_event->{Host} } = undef;
+        }
+    }
+
+    # If no hostgroups are defined for constraining, or an error occurred getting hostgroups, just return
+    # If feeder_get_hostgroups fails to get hostgroups via the REST API, then it returns 0
+    if ( not $feeder->feeder_get_hostgroups( \%hosts ) ) {
+        $logger->trace("No constraining to hostgroups will be done.");
+        return 0;
+    }
+    else {
+        $logger->trace("Constraining to hostgroups.");
+    }
+
+    # Now have a %hosts hash that looks like this :
+    # {
+    #    host1 => { hg1 =>1, hg2 => 1, hg3 => 1 }, # in hg1, hg2 and hg3
+    #    host2 => { hg1 =>1, hg4 => 1 }, 
+    #    host3 => undef ; # in no hostgroups
+    #    ...
+    # }
+
+    # If the event Host is NOT a member of a hostgroup being constrained to, delete it.
+    # TBD might be better to label it as constrained, and then later can decide whether to delete it or not ?
+    my $index=0; my $constrained_events = 0; my @constrained_events = ();
+    foreach $event ( @{ $ref_array_of_events } ) {
+        # cycle through the list of hostgroups that this event's Host belongs to
+        foreach $event_hostgroup ( keys %{ $hosts{ $event->{Host} } } ) {
+            # If the event hostgroup matches one its constrained to, add it to a result list
+            # ( Why not splice the cacti events array ? Splicing out elements of the array whilst its being referenced in this event loop - bad :] )
+            if ( defined $feeder->{constrain_to_hostgroups}{$event_hostgroup} ) { 
+                $constrained_events++;
+                $logger->debug("Hostgroup-constrained event : hostgroup '$event_hostgroup', host '$event->{Host}', service '$event->{ServiceDescription}'"); 
+                push @constrained_events, $event;
+                last; # only add this event once to the results
+            }
+        }
+        $index ++;
+    }
+
+    #$logger->info( "Constraining to host groups : events constrained down to $constrained_events events out of a possible total $index events");
+
+    @{$ref_array_of_events} = @constrained_events;
+
+    return 1;
+
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub filter_out_non_state_changed_cacti_hosts_and_services # not currently in use but left if for later re-use
+{
+    # Takes a ref to an array of cacti event hashes, and a reference to a hash for host states.
+    # Reduces both to just those that are experiencing a state change.
+    # No return other than updating the data structures by ref.
+    
+    my ( $ref_array_of_cacti_events, $ref_hash_of_host_states ) = @_;
+    my ( @new_events, %new_hosts_states, $host, $cacti_event );
+
+    # Filter out hosts which didn't have state change
+    foreach $host ( sort keys %{$ref_hash_of_host_states}  ) {
+        # In the case of a host not yet existing in Foundation, FoundationHostState will not be defined here.
+        # ie only those hosts which are in Foundation and which have had a state change get into the filtered hosts list
+        if ( ( defined $ref_hash_of_host_states->{$host}{FoundationHostState} ) and 
+             ( "$ref_hash_of_host_states->{$host}{CactiHostState}" ne "$ref_hash_of_host_states->{$host}{FoundationHostState}" ) )  { 
+            $new_hosts_states{$host} =  $ref_hash_of_host_states->{$host} ;  
+        }
+    }
+        
+    # Update the hosts states results
+    %{$ref_hash_of_host_states} = %new_hosts_states;
+
+    # Filter out events which didn't have state change
+    foreach $cacti_event ( @{ $ref_array_of_cacti_events } ) {
+        # Cacti events should always have CactiServiceState set. 
+        # If the corresponding service is not in Foundation, then FoundationServiceState won't be set. In that case, do allow it through so it gets 
+        # added asap rather than waiting for the next full update cycle.
+
+        # If both defined and not equal - thats a state change
+        if ( ( defined $cacti_event->{FoundationServiceState} ) and ( "$cacti_event->{CactiServiceState}" ne "$cacti_event->{FoundationServiceState}" ) ) {
+            push @new_events, $cacti_event;
+        }
+
+        # New service needs adding so let it through
+        if ( not defined $cacti_event->{FoundationServiceState} ) {
+            push @new_events, $cacti_event;
+        }
+
+    }
+    
+    @{$ref_array_of_cacti_events} = @new_events;
+
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub system_test_tweaks # not currently in use but left in for future re-use
+{
+    # Takes a ref to an array of cacti event hashes, and a reference to a hash for host states.
+    # Tweaks those events as per instructions in the testdefs config.
+    # This results in a reduced or altered set of cacti events and/or host states.
+    # TBD add counters for more info at the end of tweaking?
+    # returns 1 on success with modified events set, 0 otherwise (and no mods to the cacti event set)
+
+    my ( $ref_array_of_cacti_events, $ref_hash_of_host_states ) = @_;
+    my ( $cacti_event, $host );
+    my ( %testdefs, @new_events, %new_hosts_states, %hosts_to_delete, $new_event );
+    my %allowed_host_states = ( "UP"=>1, "UNKNOWN"=>1, "UNSCHEDULED DOWN"=>1 );
+    my %allowed_service_states = ( "OK"=>1, "WARNING"=>1, "UNKNOWN"=>1, "UNSCHEDULED CRITICAL"=>1 );
+
+    # This section tweaks cacti hosts' CactiHostState's.
+    %testdefs = %$tests_config; # dereference it else checking it will actually populate it unclear why tho
+
+    $logger->debug("Processing cacti system test tweaks configuration $feeder->{test_tweaks_file}");
+
+    # Identify which hosts need deleting
+    foreach $host ( sort keys %{$ref_hash_of_host_states}  ) {
+        # Repetition of host blocks will be disallowed for clarity
+        if ( ref ( $tests_config->{$host} ) eq 'ARRAY' ) {
+            $logger->error( "TWEAKING ERROR in $feeder->{test_tweaks_file} - host $host had a block repeated - please consolidate. No test tweaking will be done.");
+            return 0;
+        }
+        if ( exists $testdefs{ $host } { 'delete' } ) {
+            $hosts_to_delete{$host} = 1;
+            $logger->info( "Marking host '$host' for delete");
+        }
+        else {
+            # this hash stores hosts that are marked for delete
+            $new_hosts_states{$host} =  $ref_hash_of_host_states->{$host} ;  
+
+            # tweak cacti hosts' CactiHostState's
+            if ( $testdefs{ $host }{ hoststate } ) {
+                $logger->info( "Tweaking host '$host' state from '$ref_hash_of_host_states->{$host}->{CactiHostState}' to '$testdefs{ $host }{ hoststate }'");
+                #$ref_hash_of_host_states->{$host}->{CactiHostState} = $testdefs{ $host }{ hoststate };
+                if ( not exists $allowed_host_states{ $testdefs{ $host }{ hoststate }} ) { 
+                    $logger->error( "TWEAKING ERROR in $feeder->{test_tweaks_file} - host state '$testdefs{ $host }{ hoststate }' invalid for host $host - should be one of :" . 
+                            join( ",", keys %allowed_host_states )  . 
+                            ". No test tweaking will be done." );
+                    return 0;
+                }
+                $new_hosts_states{$host}{CactiHostState} = $testdefs{ $host }{ hoststate };
+            }
+        }
+    }
+
+    # update host states for rest of this sub and the rest of the feeder to use
+    %{$ref_hash_of_host_states} = %new_hosts_states;
+
+    # This section tweaks cacti event's CactiServiceState's
+    my $skipcount = 0;
+    foreach $cacti_event ( @{ $ref_array_of_cacti_events } ) {
+
+        # skip event if host marked for delete ...
+        if ( exists $hosts_to_delete{ $cacti_event->{Host} } ) {  # if host marked for delete, next
+            $logger->debug("Skipping event since host $cacti_event->{Host} was marked for delete");
+            $skipcount++;
+            next;
+        }
+        # tweak services if applicable
+        if ( exists $testdefs{ $cacti_event->{Host} }{ $cacti_event->{ServiceDescription}}  ) {
+            # skip event if service marked for delete ...
+            if ( $testdefs{ $cacti_event->{Host} }{ $cacti_event->{ServiceDescription}} eq 'delete') {   
+                $logger->debug("Skipping event since service $cacti_event->{ServiceDescription} was marked for delete");
+                $skipcount++;
+                next;
+            }
+            # just set the service state 
+            else {
+                $logger->debug("Tweaking service '$cacti_event->{ServiceDescription}' state from '$cacti_event->{CactiServiceState}' to '$testdefs{ $cacti_event->{Host} }{ $cacti_event->{ServiceDescription} }'");
+                $new_event = $cacti_event;
+                if ( not exists $allowed_service_states{ $testdefs{ $cacti_event->{Host} }{ $cacti_event->{ServiceDescription} } } ) {
+                    $logger->error( "TWEAKING ERROR in $feeder->{test_tweaks_file} - service state '$testdefs{ $cacti_event->{Host} }{ $cacti_event->{ServiceDescription} }' invalid - should be one of : " . 
+                            join( ",", keys %allowed_service_states )  . 
+                            ". No test tweaking will be done." );
+                    return 0;
+               }
+                $new_event->{CactiServiceState} = $testdefs{ $cacti_event->{Host} }{ $cacti_event->{ServiceDescription} };
+            }
+        }
+        else {
+            #print "Host / Service combo $cacti_event->{Host} / $cacti_event->{ServiceDescription} doesn't exist in incoming cacti events - skipping\n";
+            # TMI ?
+        }
+        
+        # build the new events array
+        push @new_events, $cacti_event;
+
+    }
+    $logger->info("Tweaking : $skipcount events have been removed essentially") if $skipcount > 0;
+
+    @{$ref_array_of_cacti_events} = @new_events; # pass the newly build events back 
+
+    return 1;
+
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub get_foundation_host_state
+{
+    # takes a built scom event
+    # if the event's host exists in foundation, then it adds a FoundationHostState property to the built event
+    # otherwise it doesn't.
+    # returns 1 on ok, 0 failure
+
+    my ( $built_scom_event, $status_code_ref ) = @_;
+    my ( %outcome, %results ) ;
+
+    $logger->debug("Getting host state for $built_scom_event->{Host}");
+    #if ( not $feeder->{rest_api}->get_hosts( \@hosts_bundle, {}, \%outcome, \%results ) ) {
+    if ( not $feeder->{rest_api}->get_hosts( [ $built_scom_event->{Host} ] , {}, \%outcome, \%results ) ) {
+        # report an error but continue on rather than returning - ie try to do as much as possible
+	# If an error occurs because GW services went down, then \%outcome response code = 500 
+	# If an error occurs because the host being looked for doesn't exist, then \%outcome response code = 404 - this is ok
+        if ( defined $outcome{response_code} and $outcome{response_code} ne '404' ) {
+            #$logger->error("Error getting host states : " . Dumper \%outcome, \%results); 
+            $logger->error("Error getting host states : API HTTP status code = $outcome{response_code}");
+	    ${$status_code_ref} = $outcome{response_code};
+            return 0;
+        }
+
+    }
+    if ( defined $results{ $built_scom_event->{Host} }{monitorStatus} ) {
+        $built_scom_event->{FoundationHostState} = $results{ $built_scom_event->{Host} }{monitorStatus} ;
+    }
+    # else don't add FoundationHostState
+    return 1;
+
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub get_foundation_service_state
+{
+    # Takes a built event and and figures out Foundation state for it's service
+    # Result is stored back into the event object 
+
+    my ( $event, $status_code_ref ) = @_;
+    my ( @hosts_bundle, %outcome, %results, %hosts_and_services );
+
+    $logger->debug( "Getting and setting Foundation service states");
+
+    push @hosts_bundle, $event->{Host};
+    if ( not $feeder->{rest_api}->get_services( [], { hostname => \@hosts_bundle, format => 'host,service' }, \%outcome, \%results ) ) {
+        if ( defined $outcome{response_code} and $outcome{response_code} ne '404' ) {
+            $logger->error( "Error getting Foundation service states - no Foundation service states will be set for this bundle of hosts : @hosts_bundle" );
+	    ${$status_code_ref} = $outcome{response_code};
+            return 0;
+        }
+        else {
+            # else just carry on - its ok to get a 404 in the case service not existing yet
+        }
+    }
+
+    if ( defined $results{$event->{Host}}{$event->{ServiceDescription}}{monitorStatus} ) { 
+        $event->{FoundationServiceState} =  $results{$event->{Host}}{$event->{ServiceDescription}}{monitorStatus} ;
+    }
+
+    return 1;
+
+}
+
+
+# ----------------------------------------------------------------------------------------------------------------
+sub upsert_foundation_host
+{
+    # Takes one built scom event with HostState prop and 
+    # upserts the host in Foundation with that state
+    my ( $built_event ) = @_;
+    my ( %host_options, @hosts ) ;
+
+    %host_options = ();
+
+    # print "UFH : built event = " . Dumper $built_event;
+
+    $logger->debug("Upserting hosts");
+
+    # Build an array of options that the feeder rest api can consume
+    # However, don't pass in description, properties, agentId, appType or anything else that 
+    # will overwrite things should the host already exist. Instead, let feeder_upsert_hosts add those if necessary.
+    push @hosts,  {
+                      # This should be the smallest set of properties required for updating an existing host
+                     'hostName'       => $built_event->{Host},
+                     'monitorStatus'  => $built_event->{HostState},
+                     'lastCheckTime'  => $built_event->{HostReportDate}, # this is needed to ensure events have correct time stamps => correct host state histograms in sv
+                     #'properties'     => {  'LastStateChange' => $built_event->{HostReportDate} },  # For the Up since ... 
+    };
+
+    # feeder_upsert_hosts does bundling 
+    if ( not $feeder->feeder_upsert_hosts( \@hosts, \%host_options ) ) { 
+        $logger->error("FOUNDATION HOSTS UPSERT ERROR could not upsert hosts" );
+        return 0; 
+    }
+
+    return 1;
+
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub upsert_foundation_hostgroups_with_scom_host
+{
+    # takes a built scom event
+    # assigns it's host to a hostgroup
+    # which host group it goes in might possibly depend later on some logic based on the service name
+    # returns 1 on success, 0 otherwise
+
+    my ( $built_event ) = @_;
+
+    my ( @hostgroups, @hosts, %hostgroup_options ) ;
+
+    # Need to create this in @hostgroups for feeder_upsert_hostgroups()
+    #   [
+    #     {
+    #       'hosts' => [
+    #                    {
+    #                      'hostName' => 'host1'
+    #                    }
+    #                  ],
+    #       'name' => 'hg1'
+    #     },
+    #     {
+    #       'hosts' => [
+    #                    {
+    #                      'hostName' => 'host1'
+    #                    }
+    #                  ],
+    #       'name' => 'hg2'
+    #     }
+    #   ];
+
+    push @hosts, { "hostName" => $built_event->{Host} };
+
+    foreach my $hg ( keys %{$built_event->{HostGroup}} ) {
+        push @hostgroups, {
+                        # Just enough properties to update hostgroup membership
+                        "name"        => $hg,
+                        #"hosts"       => [ @hosts ] , 
+                        "hosts"       => [ { "hostName" => $built_event->{Host} } ] , 
+        } ;
+    }
+
+    if ( not $feeder->feeder_upsert_hostgroups( \@hostgroups, \%hostgroup_options ) ) {
+        $logger->error("FOUNDATION HOSTGROUPS UPSERT ERROR could not upsert hostgroups" );
+        return 0;
+    }
+
+    return 1;
+
+
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub upsert_foundation_hostgroups_with_scom_hosts # NB _hosts - not used in scom feeder
+{
+    # takes a ref to an array of built scom objects
+    # adds each one to it's hostgroup
+    # which host group it goes in might possibly depend later on some logic based on the service name
+    # returns 1 on success, 0 otherwise
+
+    my ( $build_scom_events_ref ) = @_;
+
+    my ( $built_event, @hostgroups, @hosts, %hostgroup_options ) ;
+
+    foreach $built_event ( @{$build_scom_events_ref} ) {
+
+        print "Assign $built_event->{Host} to hg $built_event->{HostGroup}\n";
+        # For now, the hostgroup for this event's host is just what was built in build_2012_event
+        # Add the fancy logic in build_2012_event() to make it different.
+
+        push @hosts, { "hostName" => $built_event->{Host} };
+        push @hostgroups, {
+                            # Just enough properties to update hostgroup membership
+                            "name"        => $built_event->{HostGroup},
+                            "hosts"       => [ @hosts ] , 
+                          } ;
+
+        if ( not $feeder->feeder_upsert_hostgroups( \@hostgroups, \%hostgroup_options ) ) {
+            $logger->error("FOUNDATION HOSTGROUPS UPSERT ERROR could not upsert hostgroups" );
+            return 0;
+        }
+    
+    }
+    return 1;
+
+
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub upsert_foundation_service
+{
+    # Takes a built event and upserts its services in Foundation
+    # Returns 1 on success, 0 otherwise 
+
+    my ( $event ) = @_;
+    my ( @services, %service_options );
+
+    %service_options = ( );
+
+    # Build the required api fields.
+    # However, don't pass in anything that will overwrite things should the host:service already exist. 
+    # Instead, let feeder_upsert_services add those if necessary.
+    push @services, { 
+                        # This is the minimum set of properties to achive an update of the service
+                        'description'          => $event->{ServiceDescription},   # the name of the service
+                        'hostName'             => $event->{Host},                 # the host name
+                        'monitorStatus'        => $event->{ServiceState},    # the service status
+                        'properties'           => { "LastPluginOutput" => $event->{LastPluginOutput} }, # the service status message
+                        'lastCheckTime'        => $event->{ServiceReportDate},
+                       #'lastStateChange'      => $event->{ServiceReportDate}, # for the <state> since ... sv message
+    };
+
+    if ( not $feeder->feeder_upsert_services( \@services, \%service_options ) ) {
+        $logger->error("FOUNDATION SERVICES UPSERT ERROR could not upsert SCOM services in Foundation" );
+        return 0;
+    }
+
+    return 1;
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub initialize_scom_database_connection
+{
+    # Set up scom database handle
+    # returns 1 on success, 0 otherwise
+
+    my ( $dsn );
+
+    $logger->debug("Initializing connection to database");
+    # TBD needs to be able to handle case of reconnecting - eg what happens if connect, then restart psql , then read with original handle  ?
+    if ( $feeder->{dbtype} eq 'postgresql' ) {
+        $dsn = "DBI:Pg:dbname=$feeder->{dbname};host=$feeder->{dbhost};port=$feeder->{dbport}";
+    }
+    elsif ( $feeder->{dbtype} eq 'mysql' ) {
+        $dsn = "DBI:mysql:database=$feeder->{dbname};host=$feeder->{dbhost};port=$feeder->{dbport}";
+    }
+    else {
+        # unrecognized db type error
+        $logger->error("DATABASE ERROR Invalid database type - should be postgresql or mysql.");
+        return 0;  
+    }
+
+    $dbh = DBI->connect( $dsn, $feeder->{dbuser}, $feeder->{dbpass}, { 'AutoCommit' => 1 } ); 
+    if ( ! $dbh ) {
+        $logger->error ("DATABASE ERROR Cannot connect to database '$feeder->{dbname}'. Error: '$DBI::errstr'");
+        return 0;
+    }
+
+    return 1;
+
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub db_connection_ok
+{
+    # Checks to see if a db connection is up using the ping() method.
+    # TBD Works with psql but needs testing against mysql
+
+    return 0 if not defined $dbh;
+    return $dbh->ping();
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub update_feeder_stats
+{
+    # Logs feeder stats and updates services with metrics too
+    my ( $cycle_number,, 
+         $total_cycle_time_taken,
+         $total_events,             # count of all possible events that were retrieved for processing
+         $total_events_processed,   # count of successfully processed events
+         $aged_out_events_count,    # count of events unprocessed due to aging out
+         $resolved_events_count,    # count of events unprocessed due to being resolved
+         $maintenance_events_count, # count of events unprocessed due to being in maintenance mode
+         $events_other_count,       # count of events unprocessed due to other issues
+      ) = @_;
+
+    my ( $cycle_elapsed_time_msg, $events_processed_msg, $events_processed_service_status ) ;
+    my ( $cycle_end_queue_size, $cycle_end_queue_size_status, $cycle_end_queue_size_msg );
+
+    $cycle_elapsed_time_msg = "Cycle $cycle_number elapsed processing time : $total_cycle_time_taken seconds";
+
+    $total_events               = 0 if not defined $total_events;
+    $total_events_processed     = 0 if not defined $total_events_processed;
+    $aged_out_events_count      = 0 if not defined $aged_out_events_count;
+    $resolved_events_count      = 0 if not defined $resolved_events_count;
+    $maintenance_events_count   = 0 if not defined $maintenance_events_count;
+    $events_other_count         = 0 if not defined $events_other_count;
+
+    $events_processed_service_status = 'OK';
+    $events_processed_msg   = "$total_events_processed events processed out of a total possible $total_events events. ";
+    if ( $total_events_processed != $total_events ) { 
+        $events_processed_msg .= "Unprocessed events: $aged_out_events_count aged out; $resolved_events_count resolved; $maintenance_events_count maintenance; $events_other_count other causes. ";
+        $events_processed_service_status = 'WARNING';
+    }
+
+    $events_processed_msg .= sprintf "Processed events / second : %0.4f", $total_events_processed / $total_cycle_time_taken;   
+
+    $cycle_end_queue_size = scom_events_count();
+    $cycle_end_queue_size_status = 'OK' ; # TBD threshold this later
+    $cycle_end_queue_size_msg = "Count of records in $scom_events_table table : $cycle_end_queue_size";
+
+    $logger->debug("Updating feeder statistics");
+
+    # Log metrics
+    $logger->info( "$cycle_elapsed_time_msg") if defined $feeder->{cycle_timings};
+    $logger->info( "$events_processed_msg");
+
+    my $now = strftime( '%Y-%m-%dT%H:%M:%S', localtime );
+    my $tz  = strftime("%z", localtime );
+
+    # Update services with metrics
+    if ( not $feeder->feeder_upsert_services(    [ 
+                                                    {
+                                                        'description'          => 'cycle_elapsed_time',
+                                                        'hostName'             => $feeder->{properties}->{health_hostname}, 
+                                                        'monitorStatus'        => 'OK', 
+                                                        'properties'           => { "LastPluginOutput" => $cycle_elapsed_time_msg },
+                                                        #'lastCheckTime'        => "$now$tz", 'lastStateChange'      => "$now$tz",
+                                                    },
+                                                    {
+                                                        'description'          => 'events_processed',
+                                                        'hostName'             => $feeder->{properties}->{health_hostname}, 
+                                                        'monitorStatus'        => $events_processed_service_status,
+                                                        'properties'           => { "LastPluginOutput" => $events_processed_msg },
+                                                        # 'lastCheckTime'        => "$now$tz", 'lastStateChange'      => "$now$tz",
+                                                    },
+                                                    {
+                                                        'description'          => 'cycle_end_queue_size',
+                                                        'hostName'             => $feeder->{properties}->{health_hostname}, 
+                                                        'monitorStatus'        => $cycle_end_queue_size_status,
+                                                        'properties'           => { "LastPluginOutput" => $cycle_end_queue_size_msg },
+                                                        # 'lastCheckTime'        => "$now$tz", 'lastStateChange'      => "$now$tz",
+                                                    },
+        
+                                                    # Maybe add something like this in future
+                                                    #{
+                                                    #    'description'          => 'feeder_objects',
+                                                    #    'hostName'             => $feeder->{properties}->{health_hostname}, 
+                                                    #    'monitorStatus'        => 'OK', 
+                                                    #    'properties'           => { "LastPluginOutput" => "h/hg/s created: 1/2/3,  h/hg/s/ deleted : 4/5/6" }
+                                                    #},
+                                                 
+                                                ], {}  )  ) { # Author's favourite line of code ;->
+        $logger->error("Error updating feeder statistical services");
+    }
+
+    # update perf data for the health too here 
+    # TBD Lots more to do to clean this block up but does something for now.
+    # eg line :	
+    #  1431708253	localhost	tcp_gw_listener	TCP OK - 0.000 second response time on port 4913	time=0.000427s;5.000000;9.000000;0.000000;10.000000
+    my $perfdir = '/usr/local/groundwork/foundation/feeder/scom_perf'; if ( not -d $perfdir ) { mkdir $perfdir ;}
+    my $perf_file = "$perfdir/scom-perfdata.dat";
+
+    if ( -d $perfdir ) {
+    	if ( open PERF, ">> $perf_file" ) {
+		# 'label'=value[UOM];[warn];[crit];[min];[max]
+		print PERF time() . "\t$feeder->{properties}->{health_hostname}\tcycle_end_queue_size\t$cycle_end_queue_size_msg\tqueue=$cycle_end_queue_size;0;0;0;0\n";
+		close PERF;
+        }
+    }
+
+
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub initialize_options
+{
+    # Command line options processing and help.
+    # TBD finish help string
+
+    my $helpstring = "
+Groundwork SCOM feeder - version $VERSION
+GroundWork Feeder module version $GW::Feeder::VERSION
+
+Overview
+
+    Description
+        The SCOM feeder provides a bridge to Microsoft's System Center Operations Manager (SCOM).
+        A GroundWork runbook installed in SCOM creates xml files for the SCOM event.
+        A GroundWork Winows service - the SCOM reaper - feeds these xml event into a SCOM database
+        on the GroundWork server.
+        This SCOM feeder program processes events in the GroundWork SCOM database, by mapping
+        GroundWork objects such as hosts and services and their states, to data with SCOM events.
+        
+        By default, the SCOM feeder is disabled. See configuration section for details.
+        The SCOM feeder runs daemonized and is controlled via the GroundWork supervise subsystem.
+        The log file is defined in /usr/local/groundwork/config/scom_feeder.log4perl.conf and
+        is by default /usr/local/groundwork/foundation/container/logs/scom_feeder.log.
+
+        The SCOM feeder is not a true feeder like the Cacti feeder, because it does not do a
+        full synchronization of SCOM to GroundWork ie it only adds hosts, services, etc, or
+        only updates states on the objects it creates, but doesn't remove GroundWork objects.
+
+    Algorithm Description
+        
+        The feeder follows this algorithm :
+
+            - Get all events from the GroundWork SCOM events database, **ordered by TimeOfLastEvent**
+            - 'Build' each event - the building events refers to the mapping of SCOM event data 
+               to GroundWork objects in the GroundWork data model
+            - Process each built event where hosts and services and their states are added to GroundWork
+              and GroundWork events and notifications are generated if necessary
+            - Purge the processed event from the GroundWork SCOM database
+
+    General Configuration
+
+        Configuration of how this feeder operates is done via $config_file.
+        This configuration contains documentation on each configuration setting.
+
+Options
+        -clean       - removes foundation objects that this feeder (uuid) created, and exits
+        -help        - show this help
+        -limit N     - only process the first N scom events found in scom database scom_events table, then exit
+        -once        - don't run deamonized, just run one cycle and exit
+        -show <file> - dump built objects to a tsv file - no processing will be done of events other than printing them
+        -used_saved_table - use with -show - shows how saved events would be processed
+        -version     - show version info
+
+Author
+    GroundWork 2015
+
+";
+
+    $SIG{__WARN__} = undef; # disable warnings to log4perl temporarily
+    GetOptions(
+                'clean'            => \$clean,
+                'help'             => \$help,
+                'limit=i'          => \$limit,
+                'once'             => \$once,
+                'show=s'           => \$show,
+                'use_save_table'   => \$use_save_table,
+                'version'          => \$show_version,
+              ) or die "$helpstring\n";
+
+    if ( defined $help ) { print $helpstring; exit; }
+    if ( defined $show_version ) { print "$0 version $VERSION, Feeder module version $GW::Feeder::VERSION\n"; exit; }
+
+    # First try to remove the old results tsv
+    if ( defined $show ) { 
+        unlink $show ;
+        if (  -e $show ) { 
+            print "Could not delete $show - quitting\n";
+            exit;
+        }
+    } 
+
+    # if -show is on and -used_saved_table given too, then switch the scom_events table to be scom_save 
+    if ( $show and $use_save_table ) { 
+        $scom_events_table = $scom_save_table;
+    }
+
+    $SIG{__WARN__} = sub { $logger->warn( "WARN  @_" );  }; # revert- warnings to log4perl
+}
+
+# ---------------------------------------------------------------------------------
+sub read_test_tweaks_file # not currently used - left in for future re-use
+{
+    # Reads the test_tweaks_file config into a hash 
+
+    if ( ( not -e $feeder->{test_tweaks_file} ) or ( not -r $feeder->{test_tweaks_file} ) ) {
+        $logger->debug("System test tweaks config file '$feeder->{test_tweaks_file}' doesn't exist or isn't readable. No testing will be done.");
+        return;
+    }
+         
+    eval { $tests_config = TypedConfig->new ( $feeder->{test_tweaks_file} ); };
+    if ($@) {
+        chomp $@;
+        $@ =~ s/^ERROR:\s+//i;
+        $logger->error("Cannot read tests config file $feeder->{test_tweaks_file} ($@) - continuing without tests");
+    };
+}
+
+# ---------------------------------------------------------------------------------
+sub validate_feeder_specific_options
+{
+    # Logic for validation of feeder-specific options
+    # TBD improve this
+
+    if ( not defined $feeder->{default_hostgroups} or not scalar keys %{ $feeder->{default_hostgroups} } ) {
+        $feeder->error("No default hostgroups given - check the default_hostgroups hash property is present and non empty.");
+	return 0;
+    }
+    return 1;
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub scom_events_count
+{
+    my $query = "SELECT COUNT(*) FROM $scom_events_table;";
+    my $sqlQuery  = $dbh->prepare($query) or die "Can't prepare $query: $dbh->errstr\n"; # TBD don't die
+    my $rv = $sqlQuery->execute() or die "can't execute the query: $sqlQuery->errstr"; # TBD don't die
+    my @row= $sqlQuery->fetchrow_array();
+    return $row[0];
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub purge_event
+{
+    # Deletes an event from the scom events table, optionally saving it first in the save table
+    # Whether the event is saved is determined by the config option for the purge marker..
+    # These valid purge markers that associate with the <save_to_db> options are :
+    #  - processed 
+    #  - aged_out 
+    #  - resolved 
+    #  - maintenance
+    #  - other[:description]
+    # returns 1 success, 0 otherwise
+
+    my ( $scom_event ) = @_;
+    my ( $save, $query, $sqlQuery, $rv ) ;
+    my $purge_state = $scom_event->{$purge_marker};
+
+    # In the case of the purge state being 'other:reason' - strip off :reason so the lookup works later
+    $purge_state =~ s/:.*$//g if $purge_state =~ /^other/; 
+
+    # Take the event's purge marker value
+    if ( not defined $scom_event->{$purge_marker} ) {
+        $logger->error( "Event $scom_event->{alertid} (scom table id $scom_event->{id}) has no purge marker set - no purge or save will be done");
+        return 0;
+    }
+
+    # If the option to save this type of purge state is 'yes' in the config, then save the event
+    elsif ( $feeder->{properties}->{save_to_db}->{ $purge_state } )  {
+        $save = 1;
+    }
+    # otherwise it'll just be deleted from scom_events
+    else { 
+        $save = 0;
+    }
+    
+    # If not saving, just delete the event from the scom_events table
+    if ( not $save ) {
+        $query = "DELETE FROM $scom_events_table WHERE id = $scom_event->{id};";
+        $sqlQuery = $dbh->prepare($query) or do { $logger->error( "Can't prepare $query: " . $dbh->errstr); return 0; } ;
+        $sqlQuery->execute() or do { $logger->error( "Can't execute the query: " . $sqlQuery->errstr ) ; return 0; };
+    }
+
+    # Otherwise, saving so : save, add the save reason, delete 
+    else { 
+        # Copy the event from the scom_events table to the scom_save table
+        $query = "INSERT INTO $scom_save_table SELECT * FROM $scom_events_table WHERE id = $scom_event->{id};";
+        $sqlQuery = $dbh->prepare($query) or do { $logger->error( "Can't prepare $query: " . $dbh->errstr); return 0; } ;
+        $sqlQuery->execute() or do { $logger->error( "Can't execute the query: " . $sqlQuery->errstr ) ; return 0; };
+
+        # Add the reason for saving to the saved event
+        $query = "UPDATE $scom_save_table SET savereason = '$scom_event->{$purge_marker}' WHERE id = $scom_event->{id};";
+        $sqlQuery = $dbh->prepare($query) or do { $logger->error( "Can't prepare $query: " . $dbh->errstr); return 0;} ;
+        $sqlQuery->execute() or do { $logger->error( "Can't execute the query: " . $sqlQuery->errstr ) ; return 0; };
+
+        # Remove the event from the scom_events table
+        $query = "DELETE FROM $scom_events_table WHERE id = $scom_event->{id};";
+        $sqlQuery = $dbh->prepare($query) or do { $logger->error( "Can't prepare $query: " . $dbh->errstr); return 0;} ;
+        $sqlQuery->execute() or do { $logger->error( "Can't execute the query: " . $sqlQuery->errstr ) ; return 0; };
+    }
+
+    return 1;
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub get_all_scom_events
+{
+    # Gets all rows from scom events table, ordered by TimeOfLastEvent
+    # and populates an array of row hashes
+    # returns 1 on success, 0 failure
+
+    my ( $scom_events_ref ) = @_;
+    my ( $query, $sqlQuery, $rowcount );
+
+    $logger->debug( "Getting all SCOM events from $scom_events_table"); 
+
+    # pre-purge just in case
+    @{$scom_events_ref} = ();
+
+    # construct and run the query
+    $query = "SELECT * FROM $scom_events_table ORDER BY timeoflastevent"; # note the ordering
+    $sqlQuery  = $dbh->prepare($query) or do { $logger->error("Can't prepare $query: " . $dbh->errstr); return 0; };
+    $sqlQuery->execute() or do { $logger->error("Can't execute the query: " . $sqlQuery->errstr); return 0; };
+
+    # build the data structure
+    $rowcount = 0;
+    ROW: while ( my $row = $sqlQuery->fetchrow_hashref() ) {
+        $rowcount++;
+        if ( defined $limit and $rowcount > $limit ) { 
+            $logger->info("!!! Limiting intake of events to $limit !!!");
+            last ROW;
+        }
+        push @{$scom_events_ref}, $row;
+
+    };
+    
+    # TBD add some validation that expected fields exist here.
+    # this is low priority since this would only change if the runbook xml output format changed
+    # my %expected_xml_tags = ( ) ;
+    # check tags exist and no more than them.
+
+    return 1;
+}
+# ----------------------------------------------------------------------------------------------------------------
+sub build_2012_event
+{
+    # Takes a raw xml event data structure, and 'builds' it into something Feeder api and ultimately REST api can use
+    # Returns 1 on success with a populated built scom event data structure, 
+    # Returns 0 otherwise and a default populated structure of less than useful data that shouldn't be used
+
+    my ( $scom_event, $built_scom_event ) = @_;
+    my ( $criteria, $host_down, $down_field, $hostname_field_value, $hostname_custom_mapped ) ;
+
+    # The structure of a built scom event ...
+    %{$built_scom_event} = (
+        'AlertId'=>'alertid_undefined', # useful to have this for debugging and logging
+	    'Host' => 'host_undefined', # the host name
+	    'HostGroup' => 'hostgroup_undefined', # the hostgroup(s)
+	    'ServiceDescription' => 'servicedescription_undefined', # the service name
+	    'ServiceState' => 'UNKNOWN', # this is a translated-to-GW SCOM event state 
+	    'HostState' => 'UP', # state of host - may decide to do something with this but for now they all get set to UP 
+	    'HostMessage' => 'SCOM host objects are assumed to be UP (default)',  # host message
+	    'LastPluginOutput' => 'lastpluginoutput_undefined', # the service message
+	    'HostFirstInsertDate' => '2000-01-01 00:00:00', # various time fields for events
+	    'HostReportDate' => '2000-01-01 00:00:00',# various time fields for events
+	    'ServiceFirstInsertDate' => '2000-01-01 00:00:00',# various time fields for events
+	    'ServiceReportDate' => '2000-01-01 00:00:00',# various time fields for events
+	    'Severity' => 'UNKNOWN', # service state
+        'WebConsoleUrl' => undef, 
+       # Unused but left in for reference
+	   #'Category' => 'category_undefined', 
+	   #'httplink' => 'httplink_undefined',
+       #'id'=>'id_undefined', 
+	   #'LastCheckTime' => '2000-01-01 00:00:00',
+	   #'LastInsertDate' => '2000-01-01 00:00:00',
+	   #'MonitorServerName' => 'localhost', 
+	   #'Priority' => 'priority_undefined', 
+	   #'ScheduledDowntimeDepth' => '0', 
+	   #'StateType' => 'HARD', 
+	   #'SubComponent' => 'subcomponent_undefined', # only required for 4913 xml api 
+	   #'TextMessage' => 'textmessage_undefined', # use LastPluginOutput instead
+	);
+
+    # Possibly useful in future but not now
+    # $built_scom_event->{id} = $scom_event->{id} ;
+
+    # This is used in logging info during processing and purging. It seems all scom events have these.
+    if ( $scom_event->{alertid} ) { 
+        $built_scom_event->{AlertId} = $scom_event->{alertid}
+    }
+    else {
+        $logger->error("Event was missing an AlertId - (scom table id $scom_event->{id})");
+        return 0;
+    } 
+
+    # first append uuid to some fields - this could be useful for tracking down issues later if processing fails
+    $built_scom_event->{Host} .= "_$scom_event->{alertid}";
+    $built_scom_event->{ServiceDescription} .= "_$scom_event->{alertid}";
+
+    # Try to derive GW hostname name from event
+    # -----------------------------------------
+
+    # If remap rules are provided, try to use one of them
+    if ( defined $feeder->{properties}->{custom_hostname_mapping_rules} and scalar keys %{ $feeder->{properties}->{custom_hostname_mapping_rules} } ) {
+
+        REMAPRULE: foreach my $remap_rule ( sort keys %{$feeder->{properties}->{custom_hostname_mapping_rules}} ) {
+
+            $hostname_custom_mapped = 1; # assume success will occur in remapping
+            # go through all of the mapping fields - if they all match, then note that $hostname_custom_mapped=1
+            MAP: foreach my $map ( sort keys %{$feeder->{properties}->{custom_hostname_mapping_rules}->{$remap_rule}} ) {
+                next if $map =~ /^_/ ; # skip the special fields that say how to extract the hostname itself
+                if ( $scom_event->{ lc $map } !~ m/$feeder->{properties}->{custom_hostname_mapping_rules}->{$remap_rule}->{$map}/ ) {
+                    $hostname_custom_mapped = 0;
+                    last MAP;
+                }
+            }
+
+            if ( $hostname_custom_mapped ) {
+
+                # Try to extract the host name now from the event
+                $hostname_field_value = $scom_event->{  lc $feeder->{properties}->{custom_hostname_mapping_rules}->{$remap_rule}->{_hostname_field} } ;
+                if ( $hostname_field_value ) { 
+                    $hostname_field_value =~ s/$feeder->{properties}->{custom_hostname_mapping_rules}->{$remap_rule}->{_hostname_location}/$1/g;
+                    if ( $hostname_field_value ) { 
+                        # Adjust this event's hostname to be the name of the down host
+                        $logger->debug("Hostname remapping : event alert id $built_scom_event->{AlertId} - name '$built_scom_event->{Host}' remapped to '$hostname_field_value'");
+                        $built_scom_event->{Host} = $hostname_field_value;
+                    }
+                    else {
+                        $logger->error("Could not remap hostname from $scom_event->{alertid} (scom table id $scom_event->{id})");
+                        return 0;
+                    }
+                }
+                else {
+                    $logger->error("Could not derive remap from $scom_event->{alertid} (scom table id $scom_event->{id})");
+                    return 0;
+                }
+
+                # one of the remap rules was applied so don't process any more of them
+                last REMAPRULE; 
+            }
+        }
+    }
+    
+    # If the custom hostname mapping rules didn't set the hostname, drop back to the 'usual' method
+    if ( not $hostname_custom_mapped ) {
+
+        if ( $scom_event->{monitoringobjectpath} ) {
+	        $built_scom_event->{Host} = $scom_event->{monitoringobjectpath};
+	    }
+	    elsif ( $scom_event->{monitoringobjectdisplayname} ) {
+		    $built_scom_event->{Host} = $scom_event->{monitoringobjectdisplayname} ; 
+	    }
+        else {
+            $logger->error("Could not derive a host name from event $scom_event->{alertid} (scom table id $scom_event->{id})");
+            return 0;
+        }
+    }
+
+
+    # Try to derive GW hostname state from event
+    # ------------------------------------------
+    # The criteria for determining if a host is regarded as down is defined in the <host_down_criteria> config sub-hashes.
+    # Each sub hash is a criteria that contains raw event xml fields and associated regex's. 
+    # Each critera is checked against for a match. Within that criteria, 
+    # all things need to match in order for the host to be regarded as down.
+    if ( defined $feeder->{properties}->{host_down_criteria} and scalar keys %{ $feeder->{properties}->{host_down_criteria} } ) {
+
+        DOWNCRITERIA: foreach $criteria ( sort keys %{$feeder->{properties}->{host_down_criteria}} ) {
+
+            # assume the host is down, and disprove - ie if any of the regex's don't match, then host is not down
+            $host_down = 1;
+    
+            DOWNFIELD: foreach $down_field ( keys %{ $feeder->{properties}->{host_down_criteria}->{$criteria} }  ) {
+                next if $down_field =~ /^_/ ; # skip the special fields that say how to extract the hostname itself
+                # If the value in the event's field doesn't match the regex in the down criteria, then host is not down
+                if ( $scom_event->{ lc $down_field } !~ m/$feeder->{properties}->{host_down_criteria}->{$criteria}->{$down_field}/ ) {
+                    $host_down = 0; # not down
+                    last DOWNFIELD; # stop checking fields
+                }
+            }
+
+            # Try to get the hostname out of the event, and mark the host as down.
+            # NOTE This is experimental because haven't tried it with many down-type events yet. Mar 19 2015
+            if ( $host_down ) {
+    
+                # Mark the host state as down if host was determined to be down
+                $built_scom_event->{HostState} = 'UNSCHEDULED DOWN' ;
+    
+                # Try to extract the host name now from the event
+                $hostname_field_value = $scom_event->{  lc $feeder->{properties}->{host_down_criteria}->{$criteria}->{_hostname_field} } ;
+                if ( $hostname_field_value ) { 
+                    $hostname_field_value =~ s/$feeder->{properties}->{host_down_criteria}->{$criteria}->{_hostname_location}/$1/g;
+                    if ( $hostname_field_value ) { 
+                        # Adjust this event's hostname to be the name of the down host
+                        $built_scom_event->{Host} = $hostname_field_value;
+                    }
+                    else {
+                        $logger->error("Could not derive hostname (in DOWN state) from $scom_event->{alertid} (scom table id $scom_event->{id})");
+                        return 0;
+                    }
+                }
+                else {
+                    $logger->error("Could not derive hostname (in DOWN state) from $scom_event->{alertid} (scom table id $scom_event->{id})");
+                    return 0;
+                }
+
+                # V 2.0.6
+                # SCOM works by generating an event for a problem, but then updates it's resolution state for when it is ok again. So in this case, 
+                # if the host down criteria was met, but the resolution state = 255, then that indicates that the issue was cleared ie the host is up again.
+                $logger->debug( "HOST $built_scom_event->{Host} determined to be $built_scom_event->{HostState} - host-down criteria:'$criteria'");
+                if ( $scom_event->{resolutionstate} == 255) { 
+                    $built_scom_event->{HostState} = 'UP' ;
+                    $logger->debug( "HOST $built_scom_event->{Host} determined to be $built_scom_event->{HostState} - host-down criteria:'$criteria', resolution state = 255");
+                }
+
+                # one of the criteria matched and so don't check any others
+                last DOWNCRITERIA; 
+            }
+        }
+    }
+
+    # 2.0.8.1 - moved this cleanup bit to here since the Host can be set in the hoststate code block above too. cleanup also lc's the name now too.
+    # Sometimes a hostname is a url with /'s - that will fail the API. Possibly other things later on too will need cleaning up.
+    $built_scom_event->{Host} = cleanup_hostname( $built_scom_event->{Host} );
+
+
+    # Try to derive GW service name
+    # -----------------------------
+    if ( $scom_event->{monitoringclassname} ) {
+	    $built_scom_event->{ServiceDescription} = $scom_event->{monitoringclassname} ; # Might need groundworkify'ing
+	}
+	elsif ( $scom_event->{name} ) {
+		$built_scom_event->{ServiceDescription} = $scom_event->{name} ; # Might need groundworkify'ing
+    }
+    else {
+        $logger->error("Could not derive a service name from event $scom_event->{alertid} (scom table id $scom_event->{id})");
+        return 0;
+	}
+
+    # Try to derive the service state
+    # -------------------------------
+    # NOTE that setting 'ServiceState' - this is the GW service state - so later don't try to derive it again
+    # Map of lowercase SCOM event service states, and their mapped GW service states
+    my %gw_service_statuses = (
+        'critical'    => 'UNSCHEDULED CRITICAL',
+        'warning'     => 'WARNING',
+        'information' => 'OK',
+    );
+    # If the scom even has 'severity' defined, and, there's a mapping for it in the gw state map, use it.
+    if ( defined $scom_event->{severity} and exists $gw_service_statuses{ lc $scom_event->{severity} } ) {
+        $built_scom_event->{ServiceState} =  $gw_service_statuses{ lc $scom_event->{severity} };
+    }
+    # Otherwise leave it as unknown
+    else {
+        $built_scom_event->{ServiceState} = 'UNKNOWN';
+    };
+    # However, set closed events to OK
+    if ( $scom_event->{resolutionstate} == 255) { # scom 'closed'
+	    $built_scom_event->{ServiceState} = $built_scom_event->{Severity} = "OK"
+	}
+
+    # Try to derive the service message
+    # ---------------------------------
+    if ( $scom_event->{description} ) { 
+        $built_scom_event->{LastPluginOutput} = $scom_event->{description} ;
+        $built_scom_event->{LastPluginOutput} =~ s/(\n|\r)/ /g; # convert newlines/cr-lf's to spaces
+    };
+
+    # Try to derive the hostgroup(s) that this host will go into
+    # -------------------------------------------------------
+    my ( $hgs, $k, %newhg, $newk, $hgk, $macro ) ;
+    # If have some servicenames->hostgroup mappings defined, process them
+    if ( defined $feeder->{properties}->{servicename_hostgroup_mappings} and scalar keys %{ $feeder->{properties}->{servicename_hostgroup_mappings} } ) {
+        foreach $k ( keys %{$feeder->{properties}->{servicename_hostgroup_mappings}} ) { 
+            if ( $built_scom_event->{ServiceDescription} =~ m/$k/ ) { 
+                $hgs->{ $feeder->{properties}->{servicename_hostgroup_mappings}->{$k}  } = undef;
+            }      
+        }
+    }
+    # If have some hostnames->hostgroup mappings defined, process them
+    if ( defined $feeder->{properties}->{hostname_hostgroup_mappings} and scalar keys %{ $feeder->{properties}->{hostname_hostgroup_mappings} } ) {
+        foreach $k ( keys %{$feeder->{properties}->{hostname_hostgroup_mappings}} ) { 
+            if ( $built_scom_event->{Host} =~ m/$k/ ) { 
+                $hgs->{ $feeder->{properties}->{hostname_hostgroup_mappings}->{$k}  } = undef;
+            }      
+        }
+    }
+    # If host groups were resolved via regexes, use them
+    if ( $hgs ) { 
+        $built_scom_event->{HostGroup} = $hgs;
+    }
+    # Otherwise use the default hostgroups
+    else {
+        $built_scom_event->{HostGroup} = $feeder->{properties}->{default_hostgroups};
+    }
+    # Do any macro subs of entries in the HostGroup hash
+    foreach $hgk ( keys %{$built_scom_event->{HostGroup}} ) { 
+        $newk = $hgk;
+        foreach $macro qw( category computerdomain managementgroupname managementserver) {
+            $newk =~ s/{$macro}/$scom_event->{$macro}/g;   
+        }
+        $newhg{$newk} = undef;
+    }
+    $built_scom_event->{HostGroup} = { %newhg };
+
+    # Event related times
+    # TBD Need to figure out how best to use these in rest of feeder processing
+    #
+    # The event has these times :
+    #   - TimeAdded        		   the time this event was created in SCOM for the first time
+    #   - TimeOfLastEvent  		   the time this event was last updated in SCOM
+    #   - TimeResolutionStateLastModified  the time the 'resolution state' was modified
+    #
+    # GW events have these time properties
+    #   - firstInsertDate   First time this event was updated    
+    #   - lastInsertDate    Last time this event was updated     
+    #   - reportDate        The date this event was reported
+    #
+    # Mapping:
+    #   - firstInsertDate => TimeOfLastEvent (ie don't try to make GW insert date match scom insert date 
+    #                                         because no idea yet if that will make a whole lot of sense)
+    #   - lastInsertDate  => unset for now unless start trying to make GW match dates to SCOM
+    #   - reportDate      => TimeOfLastEvent
+    # 
+    # Build event:
+    #   - HostFirstInsertDate for now is same as ServiceFirstInsertDate (likewise for ReportDate)
+    #     until have some examples of host-state-specific scom events (if there is such a thing)
+    #   - No timezone info seems to be available in the raw event, but GW event's require it - so at least adding localtime's tz 
+
+    # If timeoflastevent was set, use that, otherwise if timeadded, use that (that logic is from original version)
+    # Verison 2.0.3 notes
+    # - since times from SCOM are UTC, enter them into GW using UTC -0000 tz, not local tz
+    # - Status Viewer and GW app will render in local time 
+    # - TBD verify format of time is ok, else status viewer can get confused
+    # This could change more in the future - eg if this host/service doesn't exist, use the dateadded, else use the timeoflastevent? Feedback required.
+    if ( $scom_event->{timeoflastevent} ) {
+        $built_scom_event->{HostFirstInsertDate} = $built_scom_event->{ServiceFirstInsertDate} = $scom_event->{timeoflastevent} . '-0000' ; # strftime("%z", localtime );
+        $built_scom_event->{HostReportDate}      = $built_scom_event->{ServiceReportDate}      = $scom_event->{timeoflastevent} . '-0000' ; # strftime("%z", localtime );
+    }
+    elsif ( $scom_event->{timeadded} ) { 
+        $built_scom_event->{HostFirstInsertDate} = $built_scom_event->{ServiceFirstInsertDate} = $scom_event->{timeadded} . '-0000' ; # strftime("%z", localtime );
+        $built_scom_event->{HostReportDate}      = $built_scom_event->{ServiceReportDate}      = $scom_event->{timeadded} . '-0000' ; # strftime("%z", localtime );
+    }
+    else {
+        $logger->error("Could not derive time related fields from event $scom_event->{alertid} (scom table id $scom_event->{id})");
+        return 0;
+    }
+
+    # This might make more sense for host first insert date... ??? But until know what TimeAdded means in the event, leaving it to timeoflastevent if that was set
+    #if ( $scom_event->{timeadded} ) {
+    #    $built_scom_event->{HostFirstInsertDate} = $scom_event->{timeadded} . strftime("%z", localtime) ;
+    #}
+ 
+    # Removing this for now TBD check REST API to see if can use this
+    # this would be great to use but collage barfs on urls in 6.7
+    if ( $scom_event->{webconsoleurl} ) {
+        $built_scom_event->{WebConsoleUrl} = $scom_event->{webconsoleurl};
+    }
+
+    return 1; 
+
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub cleanup_hostname
+{
+    # tries to clean up a hostname so that it will get through the GW REST API successfully without too much
+    # loss of information or translation.
+    # 2.0.8.1 - also lc the hostname
+    my ( $hostname ) = @_;
+    if ( $hostname =~ m{\/} ) { 
+        $hostname =~ s#/#%2F#g; # meh - apache might not like it but it gets through for now
+    }
+    $hostname = lc $hostname; # 2.0.8.1
+    return $hostname;
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub groundworkify 
+{
+    # Takes a scom object string (eg a service name, a service message etc)
+    # and makes it safe for GW consumption
+
+    my ( $string ) = @_;
+
+    # TBD for now this just returns identity - lets see if run into issues with new REST API
+    return $string;
+
+    if ( ! $string) {
+        $string="unknown_scom_object";
+    }
+    else {
+        $string =~ s/\s/-/g; # space -> -
+        $string =~ s/\.//g;  # remove periods
+        $string =~ s/\t/ /g; # tab -> space
+    };
+
+    return $string;
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub cleanup
+{
+    # cleanup attempts to remove any objects that this feeder created :
+    # - hosts (will also do services and events due to db relational structure, and devices apparently too)
+    # - hostgroups
+    # - app types
+
+    my ( $guid, %outcome, %results, @results, $query, $count, %hosts_to_delete, %delete_hosts_options  ) ;
+
+    print "\nAre you sure you want to continue ? Enter 'yes' to clean up... " ; my $go = <STDIN>; chomp $go;
+    if ( $go ne 'yes' ) { 
+        $logger->error( "Cleanup aborted!");
+        $feeder = undef; print "Done.\n"; exit;
+    }
+
+    # Get the guid / agentid for this feeder 
+    $guid = $feeder->{guid};
+
+    # HOSTS (and therefore services and events too) : get a list of hosts and then try to delete them
+    $feeder->{rest_api}->get_hosts( [], { query => "agentId = '$guid'" }, \%outcome, \%results );
+    $count = scalar keys %results;
+
+    if ( $count ) {
+        #if ( not $feeder->{rest_api}->delete_hosts( [ keys %results ] , {} , \%outcome, \@results ) ) {
+        #    print "No hosts deleted (delete_hosts failed?)\n";
+	#	print Dumper \%outcome, \@results;
+        #       }
+        #       else {
+        #           print "$count hosts deleted\n";
+        #       }
+
+	# Use Feeder::feeder_delete_hosts instead!
+	%delete_hosts_options = ();
+    	foreach ( keys %results ) { $hosts_to_delete{$_} = 1; }  
+	if  ( not $feeder->feeder_delete_hosts( \%hosts_to_delete, \%delete_hosts_options ) ) { 
+		print "Failed to delete hosts\n";
+	}
+	else { 
+		print "$count hosts deleted\n";
+	}
+    }
+    else {
+        print "No hosts deleted\n";
+    }
+
+    # HOSTGROUPS : get a list of hostgroups and then try to delete them
+    $feeder->{rest_api}->get_hostgroups( [], { query => "agentId ='$guid'" }, \%outcome, \%results );
+    $count = scalar keys %results;
+    if ( $count ) {
+        if ( not $feeder->{rest_api}->delete_hostgroups( [ keys %results ] , {} , \%outcome, \@results ) ) {
+            print "No hostgroups deleted (delete_hostgroups failed?)\n";
+        }
+        else {
+            print "$count hostgroups deleted\n";
+        }
+    }
+    else {
+        print "No hostgroups deleted\n";
+    }
+    
+    # APP TYPES : get a list of events and then try to delete them
+    # Removed for now - removing the app type and then re-adding it seems to cause stack traces in status viewer.
+    # Its minor to leave the app type alone this point.
+   #if ( not $feeder->{rest_api}->delete_application_types( [ $feeder->{app_type} ] , {}, \%outcome, \@results ) ) {
+   #    print "No application type '$feeder->{app_type}' deleted\n";
+   #}
+   #else { 
+   #    print "Application type '$feeder->{app_type}' deleted\n";
+   #}
+ 
+    # flush auditing for removed hosts (TBD - need to add Feeder::feeder_delete_hostgroups() too) 
+    $feeder->flush_audit() ;  # this will produce its own errors if necessary
+    
+    terminate_rest_api();
+    print "Done.\n"; exit;
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub filtered_by_constraint_regex
+{
+    # Looks at hostname_constraint_filters and servicename_constraint_filters filter regexs to see 
+    # if the event should be excluded from processing. Host takes priority. 
+    # This logic allows for either of the host or services filters to be undefined completely. 
+    # Here is the logic table for all of the combos :
+    #
+    # case  host regexes defined    service regexes defined host match  service match   filter event ?  return logic
+    #
+    # 1     no                      no                      -           -                no             0
+    # 2     no                      yes                     -           no               yes            ! service match
+    # 3     no                      yes                     -           yes              no             ! service match
+    # 4     yes                     no                      no          -                yes            ! host match
+    # 5     yes                     no                      yes         -                no             ! host match
+    # 6     yes                     yes                     no          no               yes            ! ( host match and service match )
+    # 7     yes                     yes                     no          yes              yes            ! ( host match and service match )
+    # 8     yes                     yes                     yes         no               yes            ! ( host match and service match )
+    # 9     yes                     yes                     yes         yes              no             ! ( host match and service match )
+    # 
+    #
+    # Args
+    #   ref to built scom event
+    # Returns
+    #   1 - the built scom event did not match any of the constraint filters
+    #   0 - the built scom event matched at least one of the constraint filters, or, no constraint filters were given
+    # if it matches a regex and the event needs filtering ie not processing, 0 otherwise
+
+    my ( $event ) = @_;
+    my ( $regex, $hostname_constraint_filters_defined, $servicename_constraint_filters_defined, $host_matched, $service_matched ) ;
+
+    $hostname_constraint_filters_defined = $servicename_constraint_filters_defined = $host_matched = $service_matched = 0;
+
+    # see if the event should be excluded if hostname did not match any regex's
+    if ( defined $feeder->{properties}->{hostname_constraint_filters} and scalar keys %{ $feeder->{properties}->{hostname_constraint_filters} } ) {
+        $hostname_constraint_filters_defined = 1;
+        HNCREGEX: foreach $regex ( keys %{$feeder->{properties}->{hostname_constraint_filters}} ) { 
+            if ( $event->{Host} =~ m/$regex/ ) { 
+                $host_matched = 1;
+                last HNCREGEX;
+            }      
+        }
+    }
+
+    # see if the event should be excluded if servicename did not match any regex's
+    if ( defined $feeder->{properties}->{servicename_constraint_filters} and scalar keys %{ $feeder->{properties}->{servicename_constraint_filters} } ) {
+        $servicename_constraint_filters_defined = 1;
+        SNCREGEX: foreach $regex ( keys %{$feeder->{properties}->{servicename_constraint_filters}} ) { 
+            if ( $event->{ServiceDescription} =~ m/$regex/ ) { 
+                $service_matched = 1;
+                last SNCREGEX;
+            }      
+        }
+    }
+
+    # return logic
+    # case 1: if neither of filters were defined, just return 0 - ie don't filter the event
+    if    ( not $hostname_constraint_filters_defined and not $servicename_constraint_filters_defined  ) {
+        return 0;
+    }
+
+    # cases 2 and 3
+    elsif ( not $hostname_constraint_filters_defined and     $servicename_constraint_filters_defined  ) {
+        return (not $service_matched );
+    }
+
+    # cases 4 and 5
+    elsif (     $hostname_constraint_filters_defined and not $servicename_constraint_filters_defined  ) {
+        return not $host_matched ;
+    }
+
+    # cases 6,7,8 and 9
+    else { 
+        return not ( $host_matched and $service_matched ) ;
+    }
+    
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub filtered_by_exclusion_regex
+{
+    # looks at hostname_exclusion_filters and servicename_exclusion_filters filter regexs to see 
+    # if the event should be excluded from processing. 
+    # Returns 1 if it matches a regex and the event needs filtering ie not processing, 0 otherwise
+    my ( $event ) = @_;
+
+    my ( $regex );
+
+    #$logger->trace( "----------------- $event->{ServiceDescription}" );
+
+    # see if the event should be excluded based on a hostname regex match 
+    if ( defined $feeder->{properties}->{hostname_exclusion_filters} and scalar keys %{ $feeder->{properties}->{hostname_exclusion_filters} } ) {
+        foreach $regex ( keys %{$feeder->{properties}->{hostname_exclusion_filters}} ) { 
+            #print "Compare $event->{Host} against /$regex/\n";
+            if ( $event->{Host} =~ m/$regex/ ) { 
+                return 1;
+            }      
+        }
+    }
+
+    # see if the event should be excluded based on a servicename regex match 
+    if ( defined $feeder->{properties}->{servicename_exclusion_filters} and scalar keys %{ $feeder->{properties}->{servicename_exclusion_filters} } ) {
+        foreach $regex ( keys %{$feeder->{properties}->{servicename_exclusion_filters}} ) { 
+            #print "Compare $event->{ServiceDescription} against /$regex/\n";
+            if ( $event->{ServiceDescription} =~ m/$regex/ ) { 
+                return 1;
+            }      
+        }
+    }
+
+    return 0;
+}
+
+# ----------------------------------------------------------------------------------------------------------------
+sub print_event
+{
+    # Prints out a built event
+    my ( $event, $dumpstats ) = @_;
+    my @fields = (
+	                'Host',
+	                'ServiceDescription' ,
+	                'LastPluginOutput' ,
+	                'ServiceState' ,
+	                'HostState' ,
+	                'HostGroup' ,
+	                'HostMessage' ,
+	                'HostFirstInsertDate' ,
+	                'HostReportDate' ,
+	                'ServiceFirstInsertDate' ,
+	                'ServiceReportDate' ,
+	                'Severity' ,
+                    'AlertId',
+                   #'WebConsoleUrl' ,
+	            );
+
+    open(EVENTS, ">> $show") or die "Error opening events.tsv : $!\n";
+
+    if ( not defined $dumpstats ) {
+        if ( not $printed_hdr ) { 
+            print EVENTS join "\t", @fields;
+            $printed_hdr = 1;
+        }
+        foreach my $field ( @fields ) {
+            if ( $field eq 'HostGroup' ) {
+                print EVENTS join ';;', ( sort keys %{$event->{$field}} ) ;
+                print EVENTS "\t";
+            }
+            else {
+                print EVENTS "$event->{$field}\t";
+            }
+        }
+        print EVENTS "\n";
+
+        # stats
+        if ( exists $showstats{services}{ $event->{ServiceDescription} } ) { 
+            $showstats{services}{ $event->{ServiceDescription} } += 1 ; } 
+        else { 
+             $showstats{services}{ $event->{ServiceDescription} } += 1;
+        }
+
+        if ( exists $showstats{hosts}{ $event->{Host} } ) {
+             $showstats{hosts}{ $event->{Host} } = 1 ; 
+        }
+        else {
+            $showstats{hosts}{ $event->{Host} } += 1;
+        }
+    
+    }
+    else {
+        print EVENTS "\n\n";
+        print EVENTS "Services stats\n";
+        print EVENTS "Service name\tOccurences\n";
+        foreach my $name (sort { $showstats{services}{$b} <=> $showstats{services}{$a} } keys %{$showstats{services}} ) {
+           print EVENTS "$name\t$showstats{services}{$name}\n";
+        }
+        print EVENTS "\n\n";
+        print EVENTS "Host stats\n";
+        print EVENTS "Host name\tOccurences\n";
+        foreach my $name (sort { $showstats{hosts}{$b} <=> $showstats{hosts}{$a} } keys %{$showstats{hosts}} ) {
+           print EVENTS "$name\t$showstats{hosts}{$name}\n";
+        }
+    }
+
+    close EVENTS;
+
+}
+
+# -------------------------------------------------------------
+sub terminate_rest_api 
+{
+    ## Release our handle to the REST API (if we used it), to force the REST API to call its destructor.
+    ## This will attempt to log out before Perl's global destruction pass wipes out resources needed for
+    ## logout to work properly.
+    $feeder->{rest_api} = undef;
+}
+
+
+
+__END__

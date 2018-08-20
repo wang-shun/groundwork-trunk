@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2013  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License
+    as published by the Free Software Foundation.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.groundwork</groupId>
+        <artifactId>gw-platform-pom</artifactId>
+        <version>7.2.2-SNAPSHOT</version>
+    </parent>
+
+    <properties>
+        <!-- Database Properties Default Values: these values can be overriden in your $HOME/.m2/settings.xml -->
+        <com.groundwork.collage.production.database.url>
+            jdbc:postgresql://localhost:5432/gwcollagedb?prepareThreshold=1
+        </com.groundwork.collage.production.database.url>
+        <com.groundwork.collage.production.database.driver>org.postgresql.Driver
+        </com.groundwork.collage.production.database.driver>
+        <com.groundwork.collage.production.database.user>collage</com.groundwork.collage.production.database.user>
+        <com.groundwork.collage.production.database.password>gwrk</com.groundwork.collage.production.database.password>
+
+        <!--  String substitution by token -->
+        <DATABASE_URL>${com.groundwork.collage.production.database.url}</DATABASE_URL>
+        <DATABASE_DRIVER>${com.groundwork.collage.production.database.driver}</DATABASE_DRIVER>
+        <DATABASE_USER>${com.groundwork.collage.production.database.user}</DATABASE_USER>
+        <DATABASE_PASSWORD>${com.groundwork.collage.production.database.password}</DATABASE_PASSWORD>
+    </properties>
+
+    <groupId>org.groundwork</groupId>
+    <artifactId>gw-config</artifactId>
+    <version>7.2.2-SNAPSHOT</version>
+    <name>Groundwork Configuration Properties</name>
+    <description>Configuration Properties for Groundwork Enterprise Portal</description>
+    <packaging>jar</packaging>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.icefaces</groupId>
+            <artifactId>icefaces-push-server</artifactId>
+            <classifier>EE</classifier>
+            <type>war</type>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                        <groupId>org.icefaces</groupId>
+                                        <artifactId>icefaces-push-server</artifactId>
+                                        <classifier>EE</classifier>
+                                        <type>war</type>
+                                        <outputDirectory>${project.build.directory}/</outputDirectory>&gt;
+                                        <overWrite>true</overWrite>
+                                        <!--<destFileName>org.groundwork.report.birt.data.oda.ws_3.0.jar</destFileName>-->
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,123 @@
+<accordion [closeOthers]="true">
+  <accordion-group>
+    <div accordion-heading>
+      Hypervisor (<span class="text-danger">5</span> metrics, <span class="text-warning">0</span> active, <span class="text-info">0</span> synthetic)
+    </div>
+    <my-table></my-table>
+    <br />
+    <button pButton type="button" (click)="lgModal.show()" label="Add Synthetic Metric"></button>
+  </accordion-group>
+  <accordion-group>
+    <div accordion-heading>
+      Storage (<span class="text-danger">5</span> metrics, <span class="text-warning">0</span> active, <span class="text-info">0</span> synthetic)
+    </div>    
+    <my-table></my-table>
+    <br />
+    <button pButton type="button" (click)="lgModal.show()" label="Add Synthetic Metric"></button>
+  </accordion-group>
+  <accordion-group>
+    <div accordion-heading>
+      Network (<span class="text-danger">5</span> metrics, <span class="text-warning">0</span> active, <span class="text-info">0</span> synthetic)
+    </div>
+    <my-table></my-table>
+    <br />
+    <button pButton type="button" (click)="lgModal.show()" label="Add Synthetic Metric"></button>
+  </accordion-group>
+</accordion>
+
+<div bsModal #lgModal="bs-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title pull-left">Add a New Synthetic Metric</h4>
+        <button type="button" class="close pull-right" (click)="lgModal.hide()" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+
+<form class="form-horizontal">
+  <div class="form-group">
+    <label for="inputEmail3" class="col-sm-3 control-label">Metric Name</label>
+    <div class="col-sm-9">
+      <input type="text" class="form-control" id="inputEmail3" placeholder="Metric Name">
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="inputEmail3" class="col-sm-3 control-label">Metric Format String</label>
+    <div class="col-sm-9">
+      <input type="text" class="form-control" id="inputEmail3" placeholder="Format String">
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="inputEmail3" class="col-sm-3 control-label">Metric Expression</label>
+    <div class="col-sm-9">
+      <input type="text" class="form-control" id="inputEmail3" placeholder="Expression">
+    </div>
+  </div>
+</form>
+<hr />
+<div class="row">
+  <div class="col-sm-7">
+    <button type="submit" class="btn btn-default">Evaluate</button>
+
+<br /><br />
+<form class="form-horizontal">
+  <p><b>Metric Value:</b></p>
+  <div class="form-group">
+    <label for="inputEmail3" class="col-sm-3 control-label">my.synth.metric</label>
+    <div class="col-sm-4">
+      <input type="text" class="form-control" id="inputEmail3" readonly>
+    </div>
+  </div>
+  <br />
+  <p><b>Input Metric Values:</b></p>
+  <div class="form-group">
+    <label for="inputEmail3" class="col-sm-3 control-label">foo.bar.metric</label>
+    <div class="col-sm-4">
+      <input type="text" class="form-control" id="inputEmail3" readonly>
+    </div>
+    <div class="col-sm-4">
+      <input type="text" class="form-control" id="inputEmail3" placeholder="Override">
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="inputEmail3" class="col-sm-3 control-label">bar.foo.metric</label>
+    <div class="col-sm-4">
+      <input type="text" class="form-control" id="inputEmail3" readonly>
+    </div>
+    <div class="col-sm-4">
+      <input type="text" class="form-control" id="inputEmail3" placeholder="Override">
+    </div>
+  </div>
+</form>
+
+  </div>
+  <div class="col-sm-5">
+    <p>Test values from:</p>
+
+<div class="radio">
+  <label>
+    <input type="radio" name="optionsRadios" id="optionsRadios1" value="option1" checked>
+    Specific domain:&nbsp;&nbsp;<input type="text" id="inputEmail3" placeholder="Domain">
+  </label>
+</div>
+<div class="radio">
+  <label>
+    <input type="radio" name="optionsRadios" id="optionsRadios2" value="option2">
+    Warning Threshold
+  </label>
+</div>
+<div class="radio margin-top5">
+  <label>
+    <input type="radio" name="optionsRadios" id="optionsRadios3" value="option3">
+    Critical Threshold
+  </label>
+</div>
+  </div>
+</div>
+
+      </div>
+    </div>
+  </div>
+</div>

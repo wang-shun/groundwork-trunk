@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans-2.0.dtd">
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+-->
+<beans>
+    <bean id="bizServicesTarget" class="com.groundwork.collage.biz.BizServicesImpl" >
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+        <constructor-arg><ref bean="org.groundwork.foundation.dao.FoundationDAO"/></constructor-arg>
+        <constructor-arg><ref bean="com.groundwork.collage.CollageAdmin"/></constructor-arg>
+        <constructor-arg><ref bean="org.groundwork.foundation.bs.hostidentity.HostIdentityService"/></constructor-arg>
+        <constructor-arg><ref bean="org.groundwork.foundation.bs.host.HostService"/></constructor-arg>
+        <constructor-arg><ref bean="org.groundwork.foundation.bs.device.DeviceService"/></constructor-arg>
+        <constructor-arg><ref bean="org.groundwork.foundation.bs.status.StatusService"/></constructor-arg>
+        <constructor-arg><ref bean="org.groundwork.foundation.bs.hostgroup.HostGroupService"/></constructor-arg>
+        <constructor-arg><ref bean="org.groundwork.foundation.bs.logmessage.LogMessageService"/></constructor-arg>
+        <constructor-arg><ref bean="org.groundwork.foundation.bs.category.CategoryService"/></constructor-arg>
+        <constructor-arg><ref bean="org.groundwork.foundation.bs.metadata.MetadataService"/></constructor-arg>
+
+    </bean>
+
+    <bean id="com.groundwork.collage.biz.BizServices" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+        <property name="transactionManager">
+            <ref bean="hibernateTransactionManager"/>
+        </property>
+        <property name="target">
+            <ref bean="bizServicesTarget"/>
+        </property>
+        <property name="transactionAttributes">
+            <props>
+                <prop key="create*">PROPAGATION_REQUIRED</prop>
+                <prop key="set*">PROPAGATION_REQUIRED</prop>
+                <prop key="clear*">PROPAGATION_REQUIRED</prop>
+                <prop key="*">PROPAGATION_SUPPORTS</prop>
+            </props>
+        </property>
+    </bean>
+
+    <bean id="RTMMServicesTarget" class="com.groundwork.collage.biz.RTMMServicesImpl" >
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="com.groundwork.collage.biz.RTMMServices" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+        <property name="transactionManager">
+            <ref bean="hibernateTransactionManager"/>
+        </property>
+        <property name="target">
+            <ref bean="RTMMServicesTarget"/>
+        </property>
+        <property name="transactionAttributes">
+            <props>
+                <prop key="*">PROPAGATION_SUPPORTS</prop>
+            </props>
+        </property>
+    </bean>
+
+    <bean id="SuggestionsServiceTarget" class="com.groundwork.collage.biz.SuggestionsServiceImpl" init-method="initialize" destroy-method="terminate">
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+        <constructor-arg><ref bean="org.groundwork.foundation.dao.FoundationDAO"/></constructor-arg>
+        <constructor-arg><ref bean="org.groundwork.foundation.bs.metadata.MetadataService"/></constructor-arg>
+    </bean>
+
+    <bean id="com.groundwork.collage.biz.SuggestionsService" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+        <property name="transactionManager">
+            <ref bean="hibernateTransactionManager"/>
+        </property>
+        <property name="target">
+            <ref bean="SuggestionsServiceTarget"/>
+        </property>
+        <property name="transactionAttributes">
+            <props>
+                <prop key="*">PROPAGATION_SUPPORTS</prop>
+            </props>
+        </property>
+    </bean>
+</beans>

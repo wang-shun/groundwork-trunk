@@ -1,0 +1,40 @@
+The full situation goes way beyond that, however.  In the case
+of GroundWork Monitor, I long ago promised that there was one
+outstanding issue I had seen in early testing that I would document
+later on.  I then got busy and never did so.  I am doing so now.
+
+In the early testing, to the best of my recollection, certain
+Fuel actions unrelated to the GroundWork Monitor node could cause
+the entire deployed node to be effectively destroyed.  When this
+happened, it was breathtaking in its scope and unexpectedness.
+This might or might not have been back before our lab setup was
+upgraded from MOS 7 to MOS 8; I don't recall now.  But in any case,
+this is the sort of thing that would get one summarily fired for
+having recommended MOS.  By the time a GroundWork Monitor node is
+fully configured for infrastructure monitoring, there will have
+been tens to hundreds of man-hours invested in that setup, and
+the business which provides this support will have come to depend
+on it as a business-critical part of their production systems.
+To have system software just casually destroy such an investment
+as an unexpected side-effect of some other action is completely
+unacceptable.  I have worked with organizations that would
+immediately walk you out the door if you ever did anything like
+"sudo rm -rf /".  This behavior of MOS is very much akin to that.
+
+MOS MUST HAVE A WAY TO LOCK DOWN A SPECIFIC NODE AGAINST ANY
+DELETION, AUTOMATIC OR MANUAL.  This is utterly vital, and should
+figure prominently in your planning for the next MOS release.
+
+Beyond GroundWork Monitor itself, with respect to "migrating" running
+plugin services from one Compute node to another, if that is some
+standard way of operating, you need to link somewhere in the Test
+Plan template where it is that one can find documentation on such an
+expectation, and what kind of callback hooks are available for the
+plugin to be aware of such a migration.  If that were even possible
+with GroundWork Monitor (which I'll get into below), the GroundWork
+software would need to reconfigure itself with whatever new node name
+and IP address it has acquired by moving from one node to another.
+In the case of GroundWork Monitor, the fact is, many other machines
+being monitored may point back to the GroundWork server so they know
+exactly where to send their locally-acquired monitoring results.
+So there would be a massive distributed-update problem to deal with.

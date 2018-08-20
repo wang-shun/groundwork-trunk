@@ -1,0 +1,195 @@
+<?xml version="1.0"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Inc. info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-->
+<!DOCTYPE hibernate-mapping PUBLIC
+    "-//Hibernate/Hibernate Mapping DTD 2.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd" >
+    
+<hibernate-mapping default-lazy="false" >
+<!-- 
+    Created by the Middlegen Hibernate plugin 2.1
+
+    http://boss.bekk.no/boss/middlegen/
+    http://www.hibernate.org/
+-->
+
+<class 
+    name="com.groundwork.collage.model.impl.ServiceStatus" 
+    table="ServiceStatus"
+>
+
+    <id
+        name="serviceStatusId"
+        type="java.lang.Integer"
+        column="ServiceStatusID"
+    >
+        <generator class="native">
+            <param name="sequence">servicestatus_servicestatusid_seq</param>
+         </generator>
+    </id>
+
+    <property
+        name="serviceDescription"
+        type="java.lang.String"
+        column="ServiceDescription"
+        length="254"
+        not-null="true"
+    />
+
+ 	<many-to-one
+		name="monitorStatus"
+		class="com.groundwork.collage.model.impl.MonitorStatus"
+		not-null="false"
+		cascade="none"
+	>
+		<column name="MonitorStatusID" />
+	</many-to-one>      
+
+    <property
+        name="lastCheckTime"
+        type="java.util.Date"
+        column="LastCheckTime"
+        not-null="false"
+        length="19"
+    />
+
+    <property
+        name="nextCheckTime"
+        type="java.util.Date"
+        column="NextCheckTime"
+        not-null="false"
+        length="19"
+    />
+
+    <property
+        name="lastStateChange"
+        type="java.util.Date"
+        column="LastStateChange"
+        not-null="false"
+        length="19"
+    />
+
+    <property
+            name="agentId"
+            type="java.lang.String"
+            column="agentid"
+            length="128"
+            not-null="false"
+            />
+
+
+    <many-to-one
+		name="lastHardState"
+		class="com.groundwork.collage.model.impl.MonitorStatus"
+		not-null="false"
+		cascade="none"
+	>
+		<column name="LastHardStateID" />
+	</many-to-one>   
+
+ 	<many-to-one
+		name="checkType"
+		class="com.groundwork.collage.model.impl.CheckType"
+		not-null="false"
+		cascade="none"
+	>
+		<column name="CheckTypeID" />
+	</many-to-one>   
+	
+ 	<many-to-one
+		name="stateType"
+		class="com.groundwork.collage.model.impl.StateType"
+		not-null="false"
+		cascade="none"
+	>
+		<column name="StateTypeID" />
+	</many-to-one>   
+
+    <property
+        name="domain"
+        type="java.lang.String"
+        column="Domain"
+        length="254"
+    />
+    
+    <property
+        name="metricType"
+        type="java.lang.String"
+        column="MetricType"
+        length="254"
+    />
+
+    <property
+        name="applicationHostName"
+        type="java.lang.String"
+        column="ApplicationHostName"
+        length="254"
+    />
+
+	<many-to-one
+		name="applicationType"
+		class="com.groundwork.collage.model.impl.ApplicationType"
+		not-null="true"
+		cascade="none"
+	>
+		<column name="ApplicationTypeID" />
+	</many-to-one>   
+	
+    <!-- 
+        bi-directional association to the Host on which this Service resides 
+    -->
+    <many-to-one
+        name="host"
+        class="com.groundwork.collage.model.impl.Host"
+        not-null="true"
+        cascade="save-update"
+    >
+        <column name="HostID" />
+    </many-to-one>
+
+	<set
+		name="comments"
+		lazy="true"
+		inverse="true"
+		cascade="all,delete-orphan"
+	>
+		<key>
+			<column name="servicestatusid"/>
+		</key>
+		<one-to-many class="com.groundwork.collage.model.impl.Comment"/>
+	</set>
+
+    <!--
+      uni-directional association to the values of the PropertyValues associated
+      with this ServiceStatus
+    -->    
+    <set
+        name="propertyValues"
+        lazy="extra"
+        inverse="true"
+        cascade="all,delete-orphan"
+    >
+        <key>
+            <column name="ServiceStatusID" />
+        </key>
+        <one-to-many 
+            class="com.groundwork.collage.model.impl.ServiceStatusPropertyValue"
+        />
+    </set>      
+</class>
+</hibernate-mapping>

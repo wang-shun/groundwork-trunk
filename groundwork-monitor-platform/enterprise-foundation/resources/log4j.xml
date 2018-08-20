@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+    <!--
+        =====================================================================
+    -->
+    <!--
+    -->
+    <!--
+        Log4j Configuration
+    -->
+    <!--
+    -->
+    <!--
+        =====================================================================
+    -->
+
+<!-- $Id$ -->
+    <!--
+        | For more configuration infromation and examples see the
+        Jakarta Log4j | website: http://jakarta.apache.org/log4j
+    -->
+<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/"
+    debug="false">
+
+    <!-- Groundwork Framework/J2EE Container -->
+    <appender name="FILE"
+        class="org.apache.log4j.RollingFileAppender">
+        <errorHandler class="org.apache.log4j.helpers.OnlyOnceErrorHandler" />
+        <param name="File" value="@LOG_DIR@/framework.log" />
+        <param name="Append" value="@LOG_APPEND@" />
+        <param name="MaxFileSize" value="5000KB" />
+        <param name="MaxBackupIndex" value="5" />
+        <layout class="org.apache.log4j.PatternLayout">
+            <!-- The default pattern: Date Priority [Category] Message\n -->
+            <param name="ConversionPattern" value="%d %-5p [%c] %m%n" />
+        </layout>
+    </appender>
+
+    <!-- Console (stdout) -->
+    <appender name="CONSOLE" class="org.apache.log4j.ConsoleAppender">
+        <errorHandler class="org.apache.log4j.helpers.OnlyOnceErrorHandler" />
+        <param name="Target" value="System.out" />
+        <param name="Threshold" value="INFO" />
+        <layout class="org.apache.log4j.PatternLayout">
+            <!-- The default pattern: Date Priority [Category] Message\n -->
+            <param name="ConversionPattern" value="%d{ABSOLUTE} %-5p [%c{1}] %m%n" />
+        </layout>
+    </appender>
+
+    <!-- Collage log -->
+    <appender name="CollageAppender"
+        class="org.apache.log4j.RollingFileAppender">
+        <errorHandler class="org.apache.log4j.helpers.OnlyOnceErrorHandler" />
+        <param name="File" value="@LOG_DIR@/collage.log" />
+        <param name="Append" value="@LOG_APPEND@" />
+        <param name="MaxFileSize" value="5000KB" />
+        <param name="MaxBackupIndex" value="5" />
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern" value="%d{HH:mm:ss,SSS} [%-5p] %c - %m%n" />
+        </layout>
+    </appender>
+
+    <!-- Foundation Webapp log -->
+    <appender name="FoundationAppender"
+        class="org.apache.log4j.RollingFileAppender">
+        <errorHandler class="org.apache.log4j.helpers.OnlyOnceErrorHandler" />
+        <param name="File" value="@LOG_DIR@/foundation-webapp.log" />
+        <param name="Append" value="@LOG_APPEND@" />
+        <param name="MaxFileSize" value="5000KB" />
+        <param name="MaxBackupIndex" value="5" />
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern" value="%d{HH:mm:ss,SSS} [%-5p] %c - %m%n" />
+        </layout>
+    </appender>
+
+    <!-- Report log -->
+    <appender name="ReportAppender" class="org.apache.log4j.RollingFileAppender">
+        <param name="File" value="@LOG_DIR@/report.log" />
+        <param name="Append" value="@LOG_APPEND@" />
+        <param name="MaxFileSize" value="5000KB" />
+        <param name="MaxBackupIndex" value="5" />
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern" value="%d{HH:mm:ss,SSS} [%-5p] %c - %m%n" />
+        </layout>
+    </appender>
+
+    <!-- Event Console log -->
+    <appender name="EventConsoleAppender"
+        class="org.apache.log4j.RollingFileAppender">
+        <errorHandler class="org.apache.log4j.helpers.OnlyOnceErrorHandler" />
+        <param name="File" value="@LOG_DIR@/console.log" />
+        <param name="Append" value="@LOG_APPEND@" />
+        <param name="MaxFileSize" value="5000KB" />
+        <param name="MaxBackupIndex" value="5" />
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern" value="%d{HH:mm:ss,SSS} [%-5p] %c - %m%n" />
+        </layout>
+    </appender>
+    
+    <!-- Status Viewer log -->
+    <appender name="StatusViewerAppender"
+        class="org.apache.log4j.RollingFileAppender">
+        <errorHandler class="org.apache.log4j.helpers.OnlyOnceErrorHandler" />
+        <param name="File" value="@LOG_DIR@/statusviewer.log" />
+        <param name="Append" value="@LOG_APPEND@" />
+        <param name="MaxFileSize" value="5000KB" />
+        <param name="MaxBackupIndex" value="5" />
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern" value="%d{HH:mm:ss,SSS} [%-5p] %c - %m%n" />
+        </layout>
+    </appender>
+
+    <!-- ================ -->
+    <!-- Limit categories -->
+    <!-- ================ -->
+
+    <!-- Quartz scheduler -->
+    <category name="org.quartz">
+        <priority value="ERROR" />
+    </category>
+
+    <!-- JBoss AS -->
+    <category name="org.jboss">
+        <priority value="ERROR" />
+    </category>
+    
+     <!-- The following 2 JBoss categories are the markers to identify the server restarts -->
+    <category name="org.jboss.system.server">
+        <priority value="INFO" />
+    </category>
+    
+    <category name="org.jboss.ejb3.EJB3Deployer">
+        <priority value="INFO" />
+    </category>
+    
+    <category name="com.groundwork.agents.vema">
+        <priority value="WARN" />
+    </category>
+
+    <!-- Collage -->
+    <category name="com.groundwork.collage">
+        <appender-ref ref="CollageAppender" />
+    </category>
+    
+    <!-- Foundation -->
+    <category name="org.itgroundwork.foundation">
+        <appender-ref ref="FoundationAppender" />
+    </category>
+    
+    <!-- Reporting -->
+    <category name="org.groundwork.foundation.reportserver">
+        <appender-ref ref="ReportAppender" />
+    </category>
+    
+    <!-- Event Console -->
+    <category name="com.groundworkopensource.webapp.console">
+        <appender-ref ref="EventConsoleAppender" />
+    </category>
+
+    <!-- StatusViewer -->
+    <category name="com.groundworkopensource.portal.statusviewer">
+        <appender-ref ref="StatusViewerAppender" />
+    </category>
+    
+    <!-- VEMA -->
+    <category name="com.groundwork.agents.vema">
+        <appender-ref ref="CONSOLE" />
+    </category>
+    
+    <!--  Listener debugging -->
+    <!--
+        <category name="com.groundwork.feeder.service.ProcessFeederData">
+            <priority value="INFO" />
+        </category>
+        
+        <category name="com.groundwork.feeder.service.SocketListener">
+            <priority value="INFO" />
+        </category>
+    -->
+    
+    <!--  Foundation message process debugging -->
+    <!--
+        <category name="com.groundwork.feeder.service.FoundationMessageQueue">
+            <priority value="INFO" />
+        </category>
+    -->   
+
+    <!-- Monarch messages -->
+        <category name="org.apache.catalina.core.ContainerBase" >
+            <priority value="INFO" />
+        </category>
+
+    <!-- Root category -->
+    <root>
+        <priority value="ERROR" />
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="ReportAppender" />
+        <appender-ref ref="FILE" />
+    </root>
+</log4j:configuration>

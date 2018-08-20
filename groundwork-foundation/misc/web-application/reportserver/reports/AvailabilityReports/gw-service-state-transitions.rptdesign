@@ -1,0 +1,4694 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<report xmlns="http://www.eclipse.org/birt/2005/design" version="3.2.21" id="1">
+    <property name="comments">Collage - The ultimate data integration framework.
+	Copyright (C) 2004-2007  GroundWork Open Source Solutions info@groundworkopensource.com
+
+     This program is free software; you can redistribute it and/or modify
+     it under the terms of version 2 of the GNU General Public License
+     as published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program; if not, write to the Free Software
+     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</property>
+    <property name="createdBy">Eclipse BIRT Designer Version 2.5.2.v20100208 Build &lt;2.5.2.v20100210-0630></property>
+    <property name="units">in</property>
+    <method name="initialize"><![CDATA[importPackage(Packages.java.util.*);
+
+/* To hold durations of each of monitor status */
+if (reportContext.getPersistentGlobalVariable("globalDurationList") == null)
+{
+	reportContext.setPersistentGlobalVariable("globalDurationList",  new java.util.ArrayList());
+}
+
+/* To hold monitor status */
+if (reportContext.getPersistentGlobalVariable("globalStatusList") == null)
+{
+	reportContext.setPersistentGlobalVariable("globalStatusList",  new java.util.ArrayList());
+}
+
+/* To hold from monitor status */
+if (reportContext.getPersistentGlobalVariable("globalFromStatusList") == null)
+{
+	reportContext.setPersistentGlobalVariable("globalFromStatusList",  new java.util.ArrayList());
+}
+
+/* To hold transition dates for each of the transitions */
+if (reportContext.getPersistentGlobalVariable("globalTransitionDates") == null)
+{
+	reportContext.setPersistentGlobalVariable("globalTransitionDates",  new java.util.ArrayList());
+}
+
+/* To hold current monitor status of the host, in case there are no transitions */
+if (reportContext.getPersistentGlobalVariable("currentHostState") == null)
+{
+	reportContext.setPersistentGlobalVariable("currentHostState",  new java.util.ArrayList());
+}
+
+/* 
+ * Calculate the Y-axis Scale - days / hours and
+ * The step size i.e Y-axis Scale Step and 
+ * the min and max values for Y-axis according to the difference 
+ * start and end date entered by the user.
+ */
+if (reportContext.getPersistentGlobalVariable("YAxisScale") == null)
+{
+	/* The start and end dates are accepted as strings, convert them to java Date object. */
+	
+	df = new Packages.java.text.SimpleDateFormat("MM/dd/yyyy");
+	startDate = df.parse(params["startDate"].value);
+
+	df = new Packages.java.text.SimpleDateFormat("MM/dd/yyyy");
+	endDate = df.parse(params["endDate"].value);
+		
+		
+	endDate.setHours(23);
+	endDate.setMinutes(59);
+	
+	calStartDate = Packages.java.util.Calendar.getInstance();
+	calEndDate = Packages.java.util.Calendar.getInstance();
+	calStartDate.setTime(startDate);
+	calEndDate.setTime(endDate);
+		
+	/* Calculate the difference between the two times in hours */
+	
+    starttimeInMillis = calStartDate.getTimeInMillis();
+    endtimeInMillis = calEndDate.getTimeInMillis();
+    diff = endtimeInMillis - starttimeInMillis;
+    dateDiffInHour  = diff / (60 * 60 * 1000);
+    
+	/* If within 7 days, set scale as hours else days. */
+    if (dateDiffInHour < 168) {
+    
+    	totalHours = dateDiffInHour;
+        reportContext.setPersistentGlobalVariable("YAxisScale",  "Hours");
+    	reportContext.setPersistentGlobalVariable("YAxisScaleStep",  (totalHours / 8).toString());
+    	reportContext.setPersistentGlobalVariable("YAxisScaleMax",  totalHours.toString());
+    	    	
+    } else {
+    
+        totalDays = dateDiffInHour / 24;
+        reportContext.setPersistentGlobalVariable("YAxisScale",  "Days");
+    	reportContext.setPersistentGlobalVariable("YAxisScaleStep",  (totalDays / 8).toString());
+    	reportContext.setPersistentGlobalVariable("YAxisScaleMax",  totalDays.toString());
+    	        
+    }
+     
+}
+
+if (reportContext.getPersistentGlobalVariable("startDate") == null)
+{
+	reportContext.setPersistentGlobalVariable("startDate",  params["startDate"].value);
+}
+
+if (reportContext.getPersistentGlobalVariable("endDate") == null)
+{
+	reportContext.setPersistentGlobalVariable("endDate",  params["endDate"].value);
+}
+
+
+]]></method>
+    <property name="theme">GW_styles.defaultTheme</property>
+    <property name="layoutPreference">auto layout</property>
+    <list-property name="libraries">
+        <structure>
+            <property name="fileName">../GW_styles.rptlibrary</property>
+            <property name="namespace">GW_styles</property>
+        </structure>
+    </list-property>
+    <parameters>
+        <cascading-parameter-group name="NewCascadingParameterGroup" id="10002">
+            <property name="dataSet">HostChooser</property>
+            <property name="dataSetMode">multiple</property>
+            <parameters>
+                <scalar-parameter name="hostName" id="10003">
+                    <text-property name="promptText">Select Host</text-property>
+                    <property name="valueType">dynamic</property>
+                    <property name="isRequired">true</property>
+                    <property name="dataSetName">HostChooser</property>
+                    <expression name="valueExpr">row["hostname"]</expression>
+                    <expression name="labelExpr">row["hostname"]</expression>
+                    <property name="dataType">string</property>
+                    <property name="distinct">true</property>
+                    <simple-property-list name="defaultValue">
+                        <value type="constant"></value>
+                    </simple-property-list>
+                    <property name="paramType">simple</property>
+                    <property name="concealValue">false</property>
+                    <property name="controlType">list-box</property>
+                    <property name="mustMatch">true</property>
+                    <property name="fixedOrder">true</property>
+                    <structure name="format">
+                        <property name="category">Unformatted</property>
+                    </structure>
+                </scalar-parameter>
+                <scalar-parameter name="serviceName" id="10004">
+                    <text-property name="promptText">Select Host Service</text-property>
+                    <property name="valueType">dynamic</property>
+                    <property name="isRequired">true</property>
+                    <property name="dataSetName">serviceChooser</property>
+                    <expression name="valueExpr">row["servicedescription"]</expression>
+                    <expression name="labelExpr">row["servicedescription"]</expression>
+                    <property name="dataType">string</property>
+                    <property name="distinct">true</property>
+                    <simple-property-list name="defaultValue">
+                        <value type="constant"></value>
+                    </simple-property-list>
+                    <property name="paramType">simple</property>
+                    <property name="controlType">list-box</property>
+                    <property name="mustMatch">true</property>
+                    <property name="fixedOrder">true</property>
+                    <structure name="format">
+                        <property name="category">Unformatted</property>
+                    </structure>
+                </scalar-parameter>
+            </parameters>
+        </cascading-parameter-group>
+        <scalar-parameter name="startDate" id="10009">
+            <text-property name="helpText">Enter start date in the form, MM/DD/YYYY</text-property>
+            <method name="validate"><![CDATA[try {
+	df = new Packages.java.text.SimpleDateFormat("MM/dd/yyyy");
+	df.setLenient(false);
+	startDate = df.parse(params["startDate"].value);
+	true;
+}catch(e){
+	false;
+}
+
+
+]]></method>
+            <text-property name="promptText">Start Date of Report (MM/DD/YYYY)</text-property>
+            <property name="valueType">static</property>
+            <property name="dataType">string</property>
+            <property name="distinct">true</property>
+            <simple-property-list name="defaultValue">
+                <value type="constant">01/01/2010</value>
+            </simple-property-list>
+            <property name="paramType">simple</property>
+            <property name="controlType">text-box</property>
+            <structure name="format">
+                <property name="category">Unformatted</property>
+            </structure>
+        </scalar-parameter>
+        <scalar-parameter name="endDate" id="10010">
+            <text-property name="helpText">Enter end date in the form, MM/DD/YYYY</text-property>
+            <method name="validate"><![CDATA[try {
+	df = new Packages.java.text.SimpleDateFormat("MM/dd/yyyy");
+	df.setLenient(false);
+	endDate = df.parse(params["endDate"].value);
+	today = new Packages.java.util.Date();
+	
+	/* If end date > today, set end date as today's date. */
+	today1 = df.format(today);
+	result = endDate.compareTo(today);
+	
+	if (result > 0) {
+		params["endDate"].value = today1.toString();
+	} 
+	
+	/* If start date > end date, fail validation. */
+	startDate = df.parse(params["startDate"].value);
+	result = startDate.compareTo(endDate);
+	
+	if (result > 0) {
+		ret_val = false;
+	} else {
+		ret_val = true;
+	}
+	
+	ret_val;
+	
+	}catch(e){
+	false;
+}]]></method>
+            <text-property name="promptText">Upper Date Range (MM/DD/YYYY)</text-property>
+            <property name="valueType">static</property>
+            <property name="dataType">string</property>
+            <property name="distinct">true</property>
+            <simple-property-list name="defaultValue">
+                <value type="constant">12/31/2010</value>
+            </simple-property-list>
+            <property name="paramType">simple</property>
+            <property name="controlType">text-box</property>
+            <structure name="format">
+                <property name="category">Unformatted</property>
+            </structure>
+        </scalar-parameter>
+    </parameters>
+    <data-sources>
+        <oda-data-source extensionID="org.eclipse.datatools.enablement.oda.ws" name="hostservice" id="39">
+            <list-property name="privateDriverProperties">
+                <ex-property>
+                    <name>driverClassPath</name>
+                </ex-property>
+            </list-property>
+            <property name="soapEndPoint">http://localhost:8080/foundation-webapp/services/wshost</property>
+            <property name="wsdlURI">http://localhost:8080/foundation-webapp/services/wshost?wsdl</property>
+        </oda-data-source>
+        <oda-data-source extensionID="org.eclipse.datatools.enablement.oda.ws" name="serviceservice" id="40">
+            <list-property name="privateDriverProperties">
+                <ex-property>
+                    <name>driverClassPath</name>
+                </ex-property>
+            </list-property>
+            <property name="soapEndPoint">http://localhost:8080/foundation-webapp/services/wsservice</property>
+            <property name="wsdlURI">http://localhost:8080/foundation-webapp/services/wsservice?wsdl</property>
+        </oda-data-source>
+        <oda-data-source extensionID="org.eclipse.datatools.enablement.oda.ws" name="eventservice" id="41">
+            <list-property name="privateDriverProperties">
+                <ex-property>
+                    <name>driverClassPath</name>
+                </ex-property>
+            </list-property>
+            <property name="soapEndPoint">http://localhost:8080/foundation-webapp/services/wsevent</property>
+            <property name="wsdlURI">http://localhost:8080/foundation-webapp/services/wsevent?wsdl</property>
+        </oda-data-source>
+        <oda-data-source extensionID="org.eclipse.birt.report.data.oda.jdbc" name="Data Source" id="7">
+            <list-property name="privateDriverProperties">
+                <ex-property>
+                    <name>contentBidiFormatStr</name>
+                    <value>ILYNN</value>
+                </ex-property>
+                <ex-property>
+                    <name>metadataBidiFormatStr</name>
+                    <value>ILYNN</value>
+                </ex-property>
+            </list-property>
+           <property name="odaDriverClass">org.postgresql.Driver</property>
+            <property name="odaURL">jdbc:postgresql://localhost:5432/gwcollagedb?prepareThreshold=1</property>
+            <property name="odaUser">collage</property>
+            <encrypted-property name="odaPassword" encryptionID="base64">Z3dyaw==</encrypted-property>
+        </oda-data-source>
+    </data-sources>
+    <data-sets>
+        <oda-data-set extensionID="org.eclipse.datatools.enablement.oda.ws.dataSet" name="service-state-transitions" id="10013">
+            <list-property name="computedColumns">
+                <structure>
+                    <property name="name">DecimalToId</property>
+                    <expression name="expression">row["MonitorStatusID"]+0.0</expression>
+                    <property name="dataType">decimal</property>
+                </structure>
+                <structure>
+                    <property name="name">ToTransition_Date</property>
+                    <expression name="expression">row["ToTransitionDate"]</expression>
+                    <property name="dataType">date-time</property>
+                </structure>
+            </list-property>
+            <list-property name="parameters">
+                <structure>
+                    <property name="name">hostName</property>
+                    <property name="paramName">hostName</property>
+                    <property name="nativeName">hostName</property>
+                    <property name="dataType">string</property>
+                    <property name="nativeDataType">1</property>
+                    <property name="position">1</property>
+                    <expression name="defaultValue">''</expression>
+                    <property name="isOptional">false</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+                <structure>
+                    <property name="name">serviceName</property>
+                    <property name="paramName">serviceName</property>
+                    <property name="nativeName">serviceName</property>
+                    <property name="dataType">string</property>
+                    <property name="nativeDataType">1</property>
+                    <property name="position">2</property>
+                    <expression name="defaultValue">''</expression>
+                    <property name="isOptional">false</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+                <structure>
+                    <property name="name">startDate</property>
+                    <property name="nativeName">startDate</property>
+                    <property name="dataType">string</property>
+                    <property name="nativeDataType">1</property>
+                    <property name="position">3</property>
+                    <expression name="defaultValue" type="javascript">var date = BirtStr.concat(params["startDate"].value, " 00:00:00");&#13;
+date;</expression>
+                    <property name="isOptional">false</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+                <structure>
+                    <property name="name">endDate</property>
+                    <property name="nativeName">endDate</property>
+                    <property name="dataType">string</property>
+                    <property name="nativeDataType">1</property>
+                    <property name="position">4</property>
+                    <expression name="defaultValue" type="javascript">var date = BirtStr.concat(params["endDate"].value, " 23:55:00");&#13;
+date;</expression>
+                    <property name="isOptional">false</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+            </list-property>
+            <structure name="cachedMetaData">
+                <list-property name="resultSet">
+                    <structure>
+                        <property name="position">1</property>
+                        <property name="name">EndTransitionDate</property>
+                        <property name="dataType">date-time</property>
+                    </structure>
+                    <structure>
+                        <property name="position">2</property>
+                        <property name="name">Name</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">3</property>
+                        <property name="name">DurationInState</property>
+                        <property name="dataType">integer</property>
+                    </structure>
+                    <structure>
+                        <property name="position">4</property>
+                        <property name="name">ToTransitionDate</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">5</property>
+                        <property name="name">MonitorStatusID</property>
+                        <property name="dataType">integer</property>
+                    </structure>
+                    <structure>
+                        <property name="position">6</property>
+                        <property name="name">ServiceName</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">7</property>
+                        <property name="name">FromStatus</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">8</property>
+                        <property name="name">DecimalToId</property>
+                        <property name="dataType">decimal</property>
+                    </structure>
+                    <structure>
+                        <property name="position">9</property>
+                        <property name="name">ToTransition_Date</property>
+                        <property name="dataType">date-time</property>
+                    </structure>
+                </list-property>
+            </structure>
+            <method name="onFetch"><![CDATA[importPackage(Packages.java.util);
+importPackage(Packages.java.text);
+
+/* 
+ * Web-service returns time in milliseconds.
+ * If Y-Axis Scale is hours convert time to hours
+ * else convert it to no. of days.
+ */
+if (YAxisScale.equals("Hours")) {
+	var duration = (row["DurationInState"] / (60 * 60 * 1000));
+}
+else if (YAxisScale.equals("Days")) {
+	var duration = (row["DurationInState"] / (60 * 60 * 1000 * 24));
+}
+globalDurationList.add(duration);
+
+/* Add the monitor status to global array list. */
+var status = row["Name"];
+globalStatusList.add(status);
+
+/* If we get from status for any transition, capture it and add to From Status */
+var fromstatus = row["FromStatus"];
+if (fromstatus != null) {
+	globalFromStatusList.add(fromstatus);
+}
+
+/* The transition date is returned in GMT, convert to local time &amp; add */
+date = row["ToTransition_Date"];
+
+utcMiliseconds = date.getTime();
+calendar = new GregorianCalendar();
+calendar.setTimeInMillis(utcMiliseconds);
+localTime = new Date(utcMiliseconds + calendar.get(Calendar.ZONE_OFFSET) + calendar.get(Calendar.DST_OFFSET));
+
+globalTransitionDates.add(localTime);
+]]></method>
+            <property name="dataSource">eventservice</property>
+            <list-property name="resultSet">
+                <structure>
+                    <property name="position">1</property>
+                    <property name="name">EndTransitionDate</property>
+                    <property name="nativeName">EndTransitionDate</property>
+                    <property name="dataType">date-time</property>
+                    <property name="nativeDataType">93</property>
+                </structure>
+                <structure>
+                    <property name="position">2</property>
+                    <property name="name">Name</property>
+                    <property name="nativeName">Name</property>
+                    <property name="dataType">string</property>
+                    <property name="nativeDataType">12</property>
+                </structure>
+                <structure>
+                    <property name="position">3</property>
+                    <property name="name">DurationInState</property>
+                    <property name="nativeName">DurationInState</property>
+                    <property name="dataType">integer</property>
+                    <property name="nativeDataType">4</property>
+                </structure>
+                <structure>
+                    <property name="position">4</property>
+                    <property name="name">ToTransitionDate</property>
+                    <property name="nativeName">ToTransitionDate</property>
+                    <property name="dataType">string</property>
+                    <property name="nativeDataType">12</property>
+                </structure>
+                <structure>
+                    <property name="position">5</property>
+                    <property name="name">MonitorStatusID</property>
+                    <property name="nativeName">MonitorStatusID</property>
+                    <property name="dataType">integer</property>
+                    <property name="nativeDataType">4</property>
+                </structure>
+                <structure>
+                    <property name="position">6</property>
+                    <property name="name">ServiceName</property>
+                    <property name="nativeName">ServiceName</property>
+                    <property name="dataType">string</property>
+                    <property name="nativeDataType">12</property>
+                </structure>
+                <structure>
+                    <property name="position">7</property>
+                    <property name="name">FromStatus</property>
+                    <property name="nativeName">FromStatus</property>
+                    <property name="dataType">string</property>
+                    <property name="nativeDataType">12</property>
+                </structure>
+            </list-property>
+            <xml-property name="queryText"><![CDATA[<?xml version="1.0"?>
+<SOAP-ENV:Envelope
+xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
+xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<SOAP-ENV:Body>
+		<m:getServiceStateTransitions xmlns:m="urn:fws">
+			<hostName xsi:type="xsd:string">&amp;?hostName?&amp;</hostName>
+			<serviceName xsi:type="xsd:string">&amp;?serviceName?&amp;</serviceName>
+			<startDate xsi:type="xsd:string">&amp;?startDate?&amp;</startDate>
+			<endDate xsi:type="xsd:string">&amp;?endDate?&amp;</endDate>
+		</m:getServiceStateTransitions>
+	</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>]]></xml-property>
+            <xml-property name="designerValues"><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<model:DesignValues xmlns:design="http://www.eclipse.org/datatools/connectivity/oda/design" xmlns:model="http://www.eclipse.org/birt/report/model/adapter/odaModel">
+  <Version>1.0</Version>
+  <design:DataSetParameters>
+    <design:parameterDefinitions>
+      <design:inOutMode>In</design:inOutMode>
+      <design:attributes>
+        <design:name>hostName</design:name>
+        <design:position>1</design:position>
+        <design:nativeDataTypeCode>1</design:nativeDataTypeCode>
+        <design:precision>-1</design:precision>
+        <design:scale>-1</design:scale>
+        <design:nullability>Unknown</design:nullability>
+      </design:attributes>
+      <design:inputAttributes>
+        <design:elementAttributes>
+          <design:defaultValues>
+            <design:values></design:values>
+          </design:defaultValues>
+        </design:elementAttributes>
+      </design:inputAttributes>
+    </design:parameterDefinitions>
+    <design:parameterDefinitions>
+      <design:inOutMode>In</design:inOutMode>
+      <design:attributes>
+        <design:name>serviceName</design:name>
+        <design:position>2</design:position>
+        <design:nativeDataTypeCode>1</design:nativeDataTypeCode>
+        <design:precision>-1</design:precision>
+        <design:scale>-1</design:scale>
+        <design:nullability>Unknown</design:nullability>
+      </design:attributes>
+      <design:inputAttributes>
+        <design:elementAttributes>
+          <design:defaultValues>
+            <design:values></design:values>
+          </design:defaultValues>
+        </design:elementAttributes>
+      </design:inputAttributes>
+    </design:parameterDefinitions>
+    <design:parameterDefinitions>
+      <design:inOutMode>In</design:inOutMode>
+      <design:attributes>
+        <design:name>startDate</design:name>
+        <design:position>3</design:position>
+        <design:nativeDataTypeCode>1</design:nativeDataTypeCode>
+        <design:precision>-1</design:precision>
+        <design:scale>-1</design:scale>
+        <design:nullability>Unknown</design:nullability>
+      </design:attributes>
+      <design:inputAttributes>
+        <design:elementAttributes>
+          <design:defaultValues>
+            <design:values>JS_EXPR</design:values>
+          </design:defaultValues>
+        </design:elementAttributes>
+      </design:inputAttributes>
+    </design:parameterDefinitions>
+    <design:parameterDefinitions>
+      <design:inOutMode>In</design:inOutMode>
+      <design:attributes>
+        <design:name>endDate</design:name>
+        <design:position>4</design:position>
+        <design:nativeDataTypeCode>1</design:nativeDataTypeCode>
+        <design:precision>-1</design:precision>
+        <design:scale>-1</design:scale>
+        <design:nullability>Unknown</design:nullability>
+      </design:attributes>
+      <design:inputAttributes>
+        <design:elementAttributes>
+          <design:defaultValues>
+            <design:values>JS_EXPR</design:values>
+          </design:defaultValues>
+        </design:elementAttributes>
+      </design:inputAttributes>
+    </design:parameterDefinitions>
+  </design:DataSetParameters>
+  <design:ResultSets derivedMetaData="true">
+    <design:resultSetDefinitions>
+      <design:resultSetColumns>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:name>HostName</design:name>
+            <design:position>1</design:position>
+            <design:nativeDataTypeCode>12</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>HostName</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:name>xsi:nil</design:name>
+            <design:position>2</design:position>
+            <design:nativeDataTypeCode>12</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>xsi:nil</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:name>AttributeID</design:name>
+            <design:position>3</design:position>
+            <design:nativeDataTypeCode>12</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>AttributeID</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:name>Name</design:name>
+            <design:position>4</design:position>
+            <design:nativeDataTypeCode>12</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>Name</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:name>Description</design:name>
+            <design:position>5</design:position>
+            <design:nativeDataTypeCode>12</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>Description</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:name>MonitorStatusID</design:name>
+            <design:position>6</design:position>
+            <design:nativeDataTypeCode>12</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>MonitorStatusID</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:name>xsi:nil_1</design:name>
+            <design:position>7</design:position>
+            <design:nativeDataTypeCode>12</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>xsi:nil_1</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:name>AttributeID_1</design:name>
+            <design:position>8</design:position>
+            <design:nativeDataTypeCode>12</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>AttributeID_1</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:name>Name_1</design:name>
+            <design:position>9</design:position>
+            <design:nativeDataTypeCode>12</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>Name_1</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:name>Description_1</design:name>
+            <design:position>10</design:position>
+            <design:nativeDataTypeCode>12</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>Description_1</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:name>MonitorStatusID_1</design:name>
+            <design:position>11</design:position>
+            <design:nativeDataTypeCode>12</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>MonitorStatusID_1</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:name>ToTransitionDate</design:name>
+            <design:position>12</design:position>
+            <design:nativeDataTypeCode>93</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>ToTransitionDate</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:name>EndTransitionDate</design:name>
+            <design:position>13</design:position>
+            <design:nativeDataTypeCode>93</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>EndTransitionDate</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:name>DurationInState</design:name>
+            <design:position>14</design:position>
+            <design:nativeDataTypeCode>2</design:nativeDataTypeCode>
+            <design:precision>-1</design:precision>
+            <design:scale>-1</design:scale>
+            <design:nullability>Unknown</design:nullability>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>DurationInState</design:label>
+            <design:formattingHints/>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+      </design:resultSetColumns>
+    </design:resultSetDefinitions>
+  </design:ResultSets>
+</model:DesignValues>]]></xml-property>
+            <list-property name="privateDriverProperties">
+                <ex-property>
+                    <name>xmlQueryText</name>
+                    <value>table0#-TNAME-#table0#:#[//StateTransition]#:#{EndTransitionDate;TIMESTAMP;//EndTransitionDate},{Name;STRING;/ToStatus/Name},{DurationInState;INT;//DurationInState},{ToTransitionDate;STRING;//ToTransitionDate},{MonitorStatusID;INT;ToStatus/MonitorStatusID},{ServiceName;STRING;/ServiceDescription},{FromStatus;STRING;/FromStatus/Name}#:#&lt;"SOAP-ENC","http:%%schemas.xmlsoap.org%soap%encoding%";"m","urn:fws";"xsi","http:%%www.w3.org%2001%XMLSchema-instance";"xsd","http:%%www.w3.org%2001%XMLSchema";"SOAP-ENV","http:%%schemas.xmlsoap.org%soap%envelope%"></value>
+                </ex-property>
+                <ex-property>
+                    <name>operationTrace</name>
+                    <value>WSEventService$-$wsevent$-$getServiceStateTransitions</value>
+                </ex-property>
+                <ex-property>
+                    <name>xmlFileURI</name>
+                </ex-property>
+                <ex-property>
+                    <name>xsdFileURI</name>
+                </ex-property>
+            </list-property>
+        </oda-data-set>
+        <joint-data-set name="JoinedDataSet" id="10130">
+            <list-property name="computedColumns">
+                <structure>
+                    <property name="name">Name</property>
+                    <expression name="expression">row["ServiceDescription"]</expression>
+                    <property name="dataType">string</property>
+                </structure>
+            </list-property>
+            <list-property name="columnHints">
+                <structure>
+                    <property name="columnName">service-state-transitions::MonitorStatusID</property>
+                    <property name="alias">MonitorStatusID</property>
+                    <text-property name="displayName">service-state-transitions::MonitorStatusID</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">service-state-transitions::DecimalToId</property>
+                    <property name="alias">DecimalToId</property>
+                    <text-property name="displayName">service-state-transitions::DecimalToId</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">service-state-transitions::ServiceName</property>
+                    <property name="alias">service-state-transitions::ServiceName</property>
+                    <text-property name="displayName">service-state-transitions::ServiceName</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">service-state-transitions::ToTransitionDate</property>
+                    <property name="alias">ToTransitionDate</property>
+                    <text-property name="displayName">service-state-transitions::ToTransitionDate</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">service-data::MonitorStatus</property>
+                    <property name="alias">MonitorStatus</property>
+                    <text-property name="displayName">service-data::MonitorStatus</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">service-data::Name</property>
+                    <property name="alias">service-data::Name</property>
+                    <text-property name="displayName">service-data::Name</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">service-state-transitions::Name</property>
+                    <property name="alias">service-state-transitions::Name</property>
+                    <text-property name="displayName">service-state-transitions::Name</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">service-state-transitions::DurationInState</property>
+                    <property name="alias">DurationInState</property>
+                    <text-property name="displayName">service-state-transitions::DurationInState</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">service-data::ServiceName</property>
+                    <property name="alias">service-data::ServiceName</property>
+                    <text-property name="displayName">service-data::ServiceName</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">service-state-transitions::EndTransitionDate</property>
+                    <property name="alias">EndTransitionDate</property>
+                    <text-property name="displayName">service-state-transitions::EndTransitionDate</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">service-state-transitions::ToTransition_Date</property>
+                    <property name="alias">ToTransition_Date</property>
+                    <text-property name="displayName">service-state-transitions::ToTransition_Date</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">service-state-transitions::FromStatus</property>
+                    <property name="alias">FromStatus</property>
+                    <text-property name="displayName">service-state-transitions::FromStatus</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">service-data::ServiceDescription</property>
+                    <property name="alias">ServiceDescription</property>
+                    <text-property name="displayName">service-data::ServiceDescription</text-property>
+                </structure>
+            </list-property>
+            <list-property name="parameters">
+                <structure>
+                    <property name="name">service-data::param_2</property>
+                    <property name="dataType">string</property>
+                    <property name="position">1</property>
+                    <property name="isOptional">false</property>
+                    <property name="allowNull">false</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+                <structure>
+                    <property name="name">service-data::param_1</property>
+                    <property name="dataType">string</property>
+                    <property name="position">2</property>
+                    <property name="isOptional">false</property>
+                    <property name="allowNull">false</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+                <structure>
+                    <property name="name">service-state-transitions::hostName</property>
+                    <property name="dataType">string</property>
+                    <property name="position">3</property>
+                    <expression name="defaultValue">''</expression>
+                    <property name="isOptional">false</property>
+                    <property name="allowNull">false</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+                <structure>
+                    <property name="name">service-state-transitions::serviceName</property>
+                    <property name="dataType">string</property>
+                    <property name="position">4</property>
+                    <expression name="defaultValue">''</expression>
+                    <property name="isOptional">false</property>
+                    <property name="allowNull">false</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+                <structure>
+                    <property name="name">service-state-transitions::startDate</property>
+                    <property name="dataType">string</property>
+                    <property name="position">5</property>
+                    <expression name="defaultValue">var date = BirtStr.concat(params["startDate"].value, " 00:00:00");&#13;
+date;</expression>
+                    <property name="isOptional">false</property>
+                    <property name="allowNull">false</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+                <structure>
+                    <property name="name">service-state-transitions::endDate</property>
+                    <property name="dataType">string</property>
+                    <property name="position">6</property>
+                    <expression name="defaultValue">var date = BirtStr.concat(params["endDate"].value, " 23:55:00");&#13;
+date;</expression>
+                    <property name="isOptional">false</property>
+                    <property name="allowNull">false</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+            </list-property>
+            <structure name="cachedMetaData">
+                <list-property name="resultSet">
+                    <structure>
+                        <property name="position">1</property>
+                        <property name="name">ServiceDescription</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">2</property>
+                        <property name="name">service-data::Name</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">3</property>
+                        <property name="name">MonitorStatus</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">4</property>
+                        <property name="name">service-data::ServiceName</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">5</property>
+                        <property name="name">EndTransitionDate</property>
+                        <property name="dataType">date-time</property>
+                    </structure>
+                    <structure>
+                        <property name="position">6</property>
+                        <property name="name">service-state-transitions::Name</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">7</property>
+                        <property name="name">DurationInState</property>
+                        <property name="dataType">integer</property>
+                    </structure>
+                    <structure>
+                        <property name="position">8</property>
+                        <property name="name">ToTransitionDate</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">9</property>
+                        <property name="name">MonitorStatusID</property>
+                        <property name="dataType">integer</property>
+                    </structure>
+                    <structure>
+                        <property name="position">10</property>
+                        <property name="name">service-state-transitions::ServiceName</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">11</property>
+                        <property name="name">FromStatus</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">12</property>
+                        <property name="name">DecimalToId</property>
+                        <property name="dataType">decimal</property>
+                    </structure>
+                    <structure>
+                        <property name="position">13</property>
+                        <property name="name">ToTransition_Date</property>
+                        <property name="dataType">date-time</property>
+                    </structure>
+                    <structure>
+                        <property name="position">14</property>
+                        <property name="name">Name</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                </list-property>
+            </structure>
+            <simple-property-list name="dataSets">
+                <value>service-data</value>
+                <value>service-state-transitions</value>
+            </simple-property-list>
+            <list-property name="joinConditions">
+                <structure>
+                    <property name="joinType">left-out</property>
+                    <property name="joinOperator">eq</property>
+                    <property name="leftDataSet">service-data</property>
+                    <property name="rightDataSet">service-state-transitions</property>
+                    <expression name="leftExpression">dataSetRow["ServiceName"]</expression>
+                    <expression name="rightExpression">dataSetRow["ServiceName"]</expression>
+                </structure>
+            </list-property>
+        </joint-data-set>
+        <oda-data-set extensionID="org.eclipse.birt.report.data.oda.jdbc.JdbcSelectDataSet" name="HostChooser" id="9">
+            <property name="eventHandlerClass">com.groundwork.report.birt.eventhandler.HostByHostGroupDataSetEventHandler</property>
+            <structure name="cachedMetaData"/>
+            <property name="dataSource">Data Source</property>
+            <xml-property name="queryText"><![CDATA[select distinct HostName from Host [,HostGroup,HostGroupCollection where Host.HostID = HostGroupCollection.HostID and HostGroup.HostGroupID = HostGroupCollection.HostGroupID and HostGroup.Name IN (<list>)] order by HostName;]]></xml-property>
+        </oda-data-set>
+        <oda-data-set extensionID="org.eclipse.birt.report.data.oda.jdbc.JdbcSelectDataSet" name="serviceChooser" id="10137">
+            <list-property name="parameters">
+                <structure>
+                    <property name="name">param_1</property>
+                    <property name="paramName">hostName</property>
+                    <property name="dataType">string</property>
+                    <property name="position">1</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+            </list-property>
+            <structure name="cachedMetaData">
+                <list-property name="resultSet">
+                    <structure>
+                        <property name="position">1</property>
+                        <property name="name">ServiceDescription</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                </list-property>
+            </structure>
+            <property name="dataSource">Data Source</property>
+            <list-property name="resultSet">
+                <structure>
+                    <property name="position">1</property>
+                    <property name="name">ServiceDescription</property>
+                    <property name="nativeName">ServiceDescription</property>
+                    <property name="dataType">string</property>
+                </structure>
+            </list-property>
+            <xml-property name="queryText"><![CDATA[select ServiceStatus.ServiceDescription from ServiceStatus, Host
+where Host.HostID=ServiceStatus.HostID and Host.HostName=?;]]></xml-property>
+        </oda-data-set>
+        <oda-data-set extensionID="org.eclipse.birt.report.data.oda.jdbc.JdbcSelectDataSet" name="service-data" id="10138">
+            <list-property name="computedColumns">
+                <structure>
+                    <property name="name">MonitorStatus</property>
+                    <expression name="expression">row["Name"]</expression>
+                    <property name="dataType">string</property>
+                </structure>
+                <structure>
+                    <property name="name">ServiceName</property>
+                    <expression name="expression">row["ServiceDescription"]</expression>
+                    <property name="dataType">string</property>
+                </structure>
+            </list-property>
+            <list-property name="columnHints">
+                <structure>
+                    <property name="columnName">ServiceDescription</property>
+                    <property name="alias">ServiceDescription</property>
+                </structure>
+                <structure>
+                    <property name="columnName">Name</property>
+                    <property name="alias">Name</property>
+                </structure>
+            </list-property>
+            <list-property name="parameters">
+                <structure>
+                    <property name="name">param_2</property>
+                    <property name="paramName">serviceName</property>
+                    <property name="dataType">string</property>
+                    <property name="position">1</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+                <structure>
+                    <property name="name">param_1</property>
+                    <property name="paramName">hostName</property>
+                    <property name="dataType">string</property>
+                    <property name="position">2</property>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+            </list-property>
+            <structure name="cachedMetaData">
+                <list-property name="resultSet">
+                    <structure>
+                        <property name="position">1</property>
+                        <property name="name">ServiceDescription</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">2</property>
+                        <property name="name">Name</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">3</property>
+                        <property name="name">MonitorStatus</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">4</property>
+                        <property name="name">ServiceName</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                </list-property>
+            </structure>
+            <method name="onFetch"><![CDATA[/* 
+ * If there are no transitions for a given host,
+ * we draw chart based on current state of the host.
+ *  Store the monitor status of the host.
+ */
+var monitorStatus = row["MonitorStatus"];
+currentHostState.add(monitorStatus);]]></method>
+            <property name="dataSource">Data Source</property>
+            <list-property name="resultSet">
+                <structure>
+                    <property name="position">1</property>
+                    <property name="name">ServiceDescription</property>
+                    <property name="nativeName">ServiceDescription</property>
+                    <property name="dataType">string</property>
+                </structure>
+                <structure>
+                    <property name="position">2</property>
+                    <property name="name">Name</property>
+                    <property name="nativeName">Name</property>
+                    <property name="dataType">string</property>
+                </structure>
+            </list-property>
+            <xml-property name="queryText"><![CDATA[select ServiceStatus.ServiceDescription,MonitorStatus.Name from MonitorStatus, ServiceStatus, Host
+where ServiceStatus.MonitorStatusID=MonitorStatus.MonitorStatusID and ServiceStatus.ServiceDescription = ? 
+and ServiceStatus.HostID=Host.HostID
+and Host.HostName=?;]]></xml-property>
+        </oda-data-set>
+    </data-sets>
+    <page-setup>
+        <simple-master-page name="GWMaster" id="1853" extends="GW_styles.GWMaster">
+            <overridden-values>
+                <ref-entry baseId="1400" name="NewGrid" id="1400"/>
+                <ref-entry baseId="1401" id="1401"/>
+                <ref-entry baseId="1402" id="1402"/>
+                <ref-entry baseId="1403" id="1403"/>
+                <ref-entry baseId="1449" name="NewImage1" id="1449"/>
+                <ref-entry baseId="1486" name="NewGrid1" id="1486"/>
+                <ref-entry baseId="1487" id="1487"/>
+                <ref-entry baseId="1488" id="1488"/>
+                <ref-entry baseId="1489" id="1489"/>
+                <ref-entry baseId="1492" name="NewGrid3" id="1492"/>
+                <ref-entry baseId="1493" id="1493"/>
+                <ref-entry baseId="1494" id="1494"/>
+                <ref-entry baseId="1495" id="1495"/>
+                <ref-entry baseId="1496" id="1496"/>
+                <ref-entry baseId="1497" id="1497"/>
+                <ref-entry baseId="1498" id="1498"/>
+                <ref-entry baseId="1418" name="NewText" id="1418"/>
+                <ref-entry baseId="1499" id="1499"/>
+                <ref-entry baseId="1490" id="1490"/>
+                <ref-entry baseId="1491" id="1491"/>
+                <ref-entry baseId="1468" name="NewGrid2" id="1468"/>
+                <ref-entry baseId="1469" id="1469"/>
+                <ref-entry baseId="1470" id="1470"/>
+                <ref-entry baseId="1519" id="1519"/>
+                <ref-entry baseId="1475" id="1475"/>
+                <ref-entry baseId="1476" id="1476"/>
+                <ref-entry baseId="1477" id="1477"/>
+                <ref-entry baseId="1484" name="NewImage2" id="1484"/>
+                <ref-entry baseId="1478" id="1478"/>
+                <ref-entry baseId="1560" name="NewGrid41" id="1560"/>
+                <ref-entry baseId="1563" id="1563"/>
+                <ref-entry baseId="1565" id="1565"/>
+                <ref-entry baseId="1570" id="1570"/>
+                <ref-entry baseId="1574" name="NewTextData" id="1574"/>
+                <ref-entry baseId="1518" id="1518"/>
+                <ref-entry baseId="1534" name="NewGrid4" id="1534"/>
+                <ref-entry baseId="1546" id="1546"/>
+                <ref-entry baseId="1535" id="1535"/>
+                <ref-entry baseId="1536" id="1536"/>
+                <ref-entry baseId="1537" id="1537"/>
+                <ref-entry baseId="1538" id="1538"/>
+                <ref-entry baseId="1545" id="1545"/>
+                <ref-entry baseId="1547" name="NewText2" id="1547"/>
+                <ref-entry baseId="1539" id="1539"/>
+                <ref-entry baseId="1540" name="NewAutoText" id="1540"/>
+                <ref-entry baseId="1541" id="1541"/>
+                <ref-entry baseId="1542" name="NewText1" id="1542"/>
+                <ref-entry baseId="1543" id="1543"/>
+                <ref-entry baseId="1544" name="NewAutoText1" id="1544"/>
+                <ref-entry baseId="1483" id="1483"/>
+                <ref-entry baseId="1556" name="NewGrid7" id="1556"/>
+                <ref-entry baseId="1557" id="1557"/>
+                <ref-entry baseId="1558" id="1558"/>
+                <ref-entry baseId="1559" id="1559"/>
+                <ref-entry baseId="1386" name="NewLabel" id="1386"/>
+            </overridden-values>
+        </simple-master-page>
+    </page-setup>
+    <body>
+        <grid id="161">
+            <property name="width">100%</property>
+            <column id="162"/>
+            <row id="163">
+                <property name="fontFamily">"SansSerif"</property>
+                <cell id="164">
+                    <label id="8">
+                        <property name="style">ReportTitle</property>
+                        <property name="fontWeight">bold</property>
+                        <property name="textAlign">left</property>
+                        <text-property name="text">GroundWork Service State Transitions Report</text-property>
+                    </label>
+                </cell>
+            </row>
+            <row id="1250">
+                <property name="fontFamily">"SansSerif"</property>
+                <cell id="1251">
+                    <property name="textAlign">left</property>
+                    <label id="1161">
+                        <property name="style">SectionTitle</property>
+                        <text-property name="text">Service State Transitions For</text-property>
+                    </label>
+                </cell>
+            </row>
+            <row id="1252">
+                <property name="height">0.6875in</property>
+                <property name="fontFamily">"SansSerif"</property>
+                <cell id="1253">
+                    <property name="textAlign">left</property>
+                    <grid id="1263">
+                        <property name="height">0.5625in</property>
+                        <property name="width">5.916666666666667in</property>
+                        <column id="1264">
+                            <property name="width">1.4471544715in</property>
+                        </column>
+                        <column id="1265">
+                            <property name="width">1.5772357724in</property>
+                        </column>
+                        <column id="1266">
+                            <property name="width">0.918699187in</property>
+                        </column>
+                        <column id="1267">
+                            <property name="width">1.9895833333333333in</property>
+                        </column>
+                        <row id="1268">
+                            <property name="height">0.28125in</property>
+                            <cell id="1269">
+                                <label id="667">
+                                    <property name="style">ReportParameterName</property>
+                                    <property name="fontWeight">bold</property>
+                                    <property name="textAlign">left</property>
+                                    <text-property name="text">Host:</text-property>
+                                </label>
+                            </cell>
+                            <cell id="1270">
+                                <text id="1274">
+                                    <property name="style">ReportParameterValue</property>
+                                    <property name="fontFamily">"SansSerif"</property>
+                                    <property name="fontSize">10pt</property>
+                                    <property name="textAlign">left</property>
+                                    <property name="contentType">html</property>
+                                    <text-property name="content"><![CDATA[<VALUE-OF>params["hostName"]</VALUE-OF>]]></text-property>
+                                </text>
+                            </cell>
+                            <cell id="1271">
+                                <label id="10145">
+                                    <property name="style">ReportParameterName</property>
+                                    <text-property name="text">Service:</text-property>
+                                </label>
+                            </cell>
+                            <cell id="1272">
+                                <text id="10147">
+                                    <property name="style">ReportParameterValue</property>
+                                    <property name="fontFamily">"SansSerif"</property>
+                                    <property name="fontSize">10pt</property>
+                                    <property name="textAlign">left</property>
+                                    <property name="contentType">html</property>
+                                    <text-property name="content"><![CDATA[<VALUE-OF>params["serviceName"]</VALUE-OF>]]></text-property>
+                                </text>
+                            </cell>
+                        </row>
+                        <row id="10140">
+                            <property name="height">0.28125in</property>
+                            <cell id="10141">
+                                <label id="1273">
+                                    <property name="style">ReportParameterName</property>
+                                    <property name="fontWeight">bold</property>
+                                    <property name="textAlign">left</property>
+                                    <text-property name="text">Date Range:</text-property>
+                                </label>
+                            </cell>
+                            <cell id="10142">
+                                <text id="867">
+                                    <property name="style">ReportParameterValue</property>
+                                    <property name="fontFamily">"SansSerif"</property>
+                                    <property name="fontSize">10pt</property>
+                                    <property name="textAlign">left</property>
+                                    <property name="contentType">html</property>
+                                    <text-property name="content"><![CDATA[  <VALUE-OF>params["startDate"]</VALUE-OF> - <VALUE-OF>params["endDate"]</VALUE-OF>]]></text-property>
+                                </text>
+                            </cell>
+                            <cell id="10143"/>
+                            <cell id="10144"/>
+                        </row>
+                    </grid>
+                </cell>
+            </row>
+            <row id="1295">
+                <property name="fontFamily">"SansSerif"</property>
+                <cell id="1296">
+                    <property name="textAlign">center</property>
+                    <label id="1299">
+                        <property name="style">SectionTitle</property>
+                        <property name="textAlign">left</property>
+                        <text-property name="text">Service State Transitions</text-property>
+                    </label>
+                </cell>
+            </row>
+            <row id="1297">
+                <property name="fontFamily">"SansSerif"</property>
+                <cell id="1298">
+                    <property name="textAlign">left</property>
+                    <extended-item extensionName="Chart" name="NewChart" id="1511">
+                        <xml-property name="xmlRepresentation"><![CDATA[<model:ChartWithAxes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:attribute="http://www.birt.eclipse.org/ChartModelAttribute" xmlns:data="http://www.birt.eclipse.org/ChartModelData" xmlns:layout="http://www.birt.eclipse.org/ChartModelLayout" xmlns:model="http://www.birt.eclipse.org/ChartModel" xmlns:type="http://www.birt.eclipse.org/ChartModelType">
+  <Version>2.5.1</Version>
+  <Type>Bar Chart</Type>
+  <SubType>Stacked</SubType>
+  <Description>
+    <Value></Value>
+    <Font>
+      <Alignment/>
+    </Font>
+  </Description>
+  <Block>
+    <Children xsi:type="layout:TitleBlock">
+      <Bounds>
+        <Left>0.0</Left>
+        <Top>0.0</Top>
+        <Width>0.0</Width>
+        <Height>0.0</Height>
+      </Bounds>
+      <Insets>
+        <Top>3.0</Top>
+        <Left>3.0</Left>
+        <Bottom>3.0</Bottom>
+        <Right>3.0</Right>
+      </Insets>
+      <Row>-1</Row>
+      <Column>-1</Column>
+      <Rowspan>-1</Rowspan>
+      <Columnspan>-1</Columnspan>
+      <Outline>
+        <Style>Solid</Style>
+        <Thickness>1</Thickness>
+        <Color>
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>0</Green>
+          <Blue>0</Blue>
+        </Color>
+        <Visible>false</Visible>
+      </Outline>
+      <Visible>false</Visible>
+      <Label>
+        <Caption>
+          <Value>Bar Chart Title</Value>
+          <Font>
+            <Size>16.0</Size>
+            <Bold>true</Bold>
+            <Alignment>
+              <horizontalAlignment>Center</horizontalAlignment>
+              <verticalAlignment>Center</verticalAlignment>
+            </Alignment>
+          </Font>
+        </Caption>
+        <Background xsi:type="attribute:ColorDefinition">
+          <Transparency>0</Transparency>
+          <Red>255</Red>
+          <Green>255</Green>
+          <Blue>255</Blue>
+        </Background>
+        <Outline>
+          <Style>Solid</Style>
+          <Thickness>1</Thickness>
+          <Color>
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>0</Green>
+            <Blue>0</Blue>
+          </Color>
+        </Outline>
+        <Insets>
+          <Top>0.0</Top>
+          <Left>2.0</Left>
+          <Bottom>0.0</Bottom>
+          <Right>3.0</Right>
+        </Insets>
+        <Visible>true</Visible>
+      </Label>
+    </Children>
+    <Children xsi:type="layout:Plot">
+      <Bounds>
+        <Left>0.0</Left>
+        <Top>0.0</Top>
+        <Width>0.0</Width>
+        <Height>0.0</Height>
+      </Bounds>
+      <Insets>
+        <Top>3.0</Top>
+        <Left>3.0</Left>
+        <Bottom>3.0</Bottom>
+        <Right>3.0</Right>
+      </Insets>
+      <Row>-1</Row>
+      <Column>-1</Column>
+      <Rowspan>-1</Rowspan>
+      <Columnspan>-1</Columnspan>
+      <Outline>
+        <Style>Solid</Style>
+        <Thickness>1</Thickness>
+        <Color>
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>0</Green>
+          <Blue>0</Blue>
+        </Color>
+        <Visible>false</Visible>
+      </Outline>
+      <Visible>true</Visible>
+      <HorizontalSpacing>5</HorizontalSpacing>
+      <VerticalSpacing>5</VerticalSpacing>
+      <ClientArea>
+        <Outline>
+          <Style>Solid</Style>
+          <Thickness>0</Thickness>
+          <Color>
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>0</Green>
+            <Blue>0</Blue>
+          </Color>
+          <Visible>false</Visible>
+        </Outline>
+        <Insets>
+          <Top>0.0</Top>
+          <Left>0.0</Left>
+          <Bottom>0.0</Bottom>
+          <Right>0.0</Right>
+        </Insets>
+      </ClientArea>
+    </Children>
+    <Children xsi:type="layout:Legend">
+      <Bounds>
+        <Left>0.0</Left>
+        <Top>0.0</Top>
+        <Width>0.0</Width>
+        <Height>0.0</Height>
+      </Bounds>
+      <Insets>
+        <Top>3.0</Top>
+        <Left>3.0</Left>
+        <Bottom>3.0</Bottom>
+        <Right>3.0</Right>
+      </Insets>
+      <Row>-1</Row>
+      <Column>-1</Column>
+      <Rowspan>-1</Rowspan>
+      <Columnspan>-1</Columnspan>
+      <Outline>
+        <Style>Solid</Style>
+        <Thickness>1</Thickness>
+        <Color>
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>0</Green>
+          <Blue>0</Blue>
+        </Color>
+        <Visible>false</Visible>
+      </Outline>
+      <Visible>false</Visible>
+      <ClientArea>
+        <Outline>
+          <Style>Solid</Style>
+          <Thickness>0</Thickness>
+          <Color>
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>0</Green>
+            <Blue>0</Blue>
+          </Color>
+          <Visible>false</Visible>
+        </Outline>
+        <Insets>
+          <Top>2.0</Top>
+          <Left>2.0</Left>
+          <Bottom>2.0</Bottom>
+          <Right>2.0</Right>
+        </Insets>
+      </ClientArea>
+      <Text>
+        <Value></Value>
+        <Font>
+          <Alignment/>
+        </Font>
+      </Text>
+      <Orientation>Vertical</Orientation>
+      <Direction>Top_Bottom</Direction>
+      <Separator>
+        <Style>Solid</Style>
+        <Thickness>1</Thickness>
+        <Color>
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>0</Green>
+          <Blue>0</Blue>
+        </Color>
+        <Visible>false</Visible>
+      </Separator>
+      <Position>Right</Position>
+      <ItemType>Series</ItemType>
+      <Title>
+        <Caption>
+          <Value></Value>
+          <Font>
+            <Alignment/>
+          </Font>
+        </Caption>
+        <Background xsi:type="attribute:ColorDefinition">
+          <Transparency>0</Transparency>
+          <Red>255</Red>
+          <Green>255</Green>
+          <Blue>255</Blue>
+        </Background>
+        <Outline>
+          <Style>Solid</Style>
+          <Thickness>1</Thickness>
+          <Color>
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>0</Green>
+            <Blue>0</Blue>
+          </Color>
+          <Visible>false</Visible>
+        </Outline>
+        <Insets>
+          <Top>0.0</Top>
+          <Left>2.0</Left>
+          <Bottom>0.0</Bottom>
+          <Right>3.0</Right>
+        </Insets>
+        <Visible>true</Visible>
+      </Title>
+      <TitlePosition>Above</TitlePosition>
+      <ShowValue>false</ShowValue>
+    </Children>
+    <Bounds>
+      <Left>0.0</Left>
+      <Top>0.0</Top>
+      <Width>427.6363636363636</Width>
+      <Height>252.0</Height>
+    </Bounds>
+    <Insets>
+      <Top>3.0</Top>
+      <Left>3.0</Left>
+      <Bottom>3.0</Bottom>
+      <Right>3.0</Right>
+    </Insets>
+    <Row>-1</Row>
+    <Column>-1</Column>
+    <Rowspan>-1</Rowspan>
+    <Columnspan>-1</Columnspan>
+    <Outline>
+      <Style>Solid</Style>
+      <Thickness>1</Thickness>
+      <Color>
+        <Transparency>255</Transparency>
+        <Red>0</Red>
+        <Green>0</Green>
+        <Blue>0</Blue>
+      </Color>
+      <Visible>false</Visible>
+    </Outline>
+    <Visible>true</Visible>
+  </Block>
+  <Dimension>Two_Dimensional</Dimension>
+  <Script>/**&#xD;
+ * Called before generation of chart model to GeneratedChartState.&#xD;
+ * &#xD;
+ * @param chart&#xD;
+ *            Chart&#xD;
+ * @param icsc&#xD;
+ *            IChartScriptContext&#xD;
+ */&#xD;
+&#xD;
+function beforeGeneration( chart, icsc )&#xD;
+{&#xD;
+&#xD;
+importPackage(Packages.java.util);&#xD;
+importPackage(Packages.java.lang);&#xD;
+importPackage(Packages.org.eclipse.birt.chart.model);&#xD;
+importPackage(Packages.org.eclipse.birt.chart.model.attribute);&#xD;
+importPackage(Packages.org.eclipse.birt.chart.model.attribute.impl);&#xD;
+importPackage(Packages.org.eclipse.birt.chart.model.component);&#xD;
+importPackage(Packages.org.eclipse.birt.chart.model.data);&#xD;
+importPackage(Packages.org.eclipse.birt.chart.model.data.impl);&#xD;
+importPackage(Packages.org.eclipse.birt.chart.model.type);&#xD;
+importPackage(Packages.org.eclipse.birt.chart.model.type.impl);&#xD;
+importPackage(Packages.org.eclipse.birt.chart.model.layout);&#xD;
+importPackage(Packages.org.eclipse.birt.chart.model.layout.impl);&#xD;
+importPackage(Packages.org.eclipse.birt.chart.model.attribute);&#xD;
+importPackage(Packages.org.eclipse.birt.chart.model.attribute.impl);&#xD;
+importPackage(Packages.org.eclipse.birt.report.engine.api.script);&#xD;
+importPackage(Packages.org.eclipse.birt.report.engine.api.script.eventadapter);&#xD;
+importPackage(Packages.org.eclipse.birt.report.engine.api.script.instance);&#xD;
+importPackage(Packages.org.eclipse.birt.report.model.api);&#xD;
+importPackage(Packages.org.eclipse.birt.report.model.api.extension);&#xD;
+&#xD;
+importPackage(Packages.org.eclipse.birt.chart.model.component.impl); &#xD;
+importPackage(Packages.org.eclipse.birt.chart.model.data.impl); &#xD;
+importPackage(Packages.org.eclipse.birt.chart.model.attribute); &#xD;
+importPackage(Packages.org.eclipse.birt.chart.model.attribute.impl); &#xD;
+		&#xD;
+		var i = 0;&#xD;
+		var nds;&#xD;
+		var monitorStatus;&#xD;
+		var dateDiff;&#xD;
+			&#xD;
+			&#xD;
+		/* Fetch all the global variables. */&#xD;
+		var globalDurationList = icsc.getExternalContext().getScriptable().getPersistentGlobalVariable(&quot;globalDurationList&quot;);&#xD;
+		var globalStatusList = icsc.getExternalContext().getScriptable().getPersistentGlobalVariable(&quot;globalStatusList&quot;);&#xD;
+		var globalFromStatusList = icsc.getExternalContext().getScriptable().getPersistentGlobalVariable(&quot;globalFromStatusList&quot;);&#xD;
+		var globalTransitionDates = icsc.getExternalContext().getScriptable().getPersistentGlobalVariable(&quot;globalTransitionDates&quot;);&#xD;
+		var YAxisScaleMax = icsc.getExternalContext().getScriptable().getPersistentGlobalVariable(&quot;YAxisScaleMax&quot;);&#xD;
+		var YAxisScale = icsc.getExternalContext().getScriptable().getPersistentGlobalVariable(&quot;YAxisScale&quot;);&#xD;
+		var YAxisScaleStep = icsc.getExternalContext().getScriptable().getPersistentGlobalVariable(&quot;YAxisScaleStep&quot;);	&#xD;
+		var startDate = icsc.getExternalContext().getScriptable().getPersistentGlobalVariable(&quot;startDate&quot;);&#xD;
+		var endDate = icsc.getExternalContext().getScriptable().getPersistentGlobalVariable(&quot;endDate&quot;);&#xD;
+&#xD;
+&#xD;
+		/* Set X-axis title as ServiceName and Y-axis to duration according to the scale. */&#xD;
+		xAxis = chart.getAxes().get(0);&#xD;
+		xAxis.getTitle( ).getCaption( ).setValue( &quot;&quot; );&#xD;
+		&#xD;
+		yAxis = xAxis.getAssociatedAxes().get(0);&#xD;
+		yAxis.getSeriesDefinitions().clear();&#xD;
+		yAxis.getTitle( ).getCaption( ).setValue( &quot;Duration (&quot; +  YAxisScale + &quot;)&quot;);&#xD;
+		&#xD;
+		/* &#xD;
+		 * We display the bar starting from the first transition date,&#xD;
+		 * hence Calculate the difference between start date and First transition date&#xD;
+		 * and start the bar from there.&#xD;
+		 */&#xD;
+		if (globalTransitionDates.size() > 0) {&#xD;
+		&#xD;
+			df = new Packages.java.text.SimpleDateFormat(&quot;MM/dd/yyyy&quot;);&#xD;
+			mystartDate = df.parse(startDate);&#xD;
+&#xD;
+			calStartDate = Packages.java.util.Calendar.getInstance();&#xD;
+			calStartDate.setTime(mystartDate);&#xD;
+			&#xD;
+		&#xD;
+			/* Calculate the difference between the two times in hours */&#xD;
+    		starttimeInMillis = calStartDate.getTimeInMillis();&#xD;
+    		firstTransitionInMillis = globalTransitionDates.get(0).getTime();&#xD;
+    		diff = firstTransitionInMillis - starttimeInMillis;&#xD;
+    		dateDiff  = diff / (60 * 60 * 1000);&#xD;
+    		&#xD;
+    		 if (YAxisScale.equals(&quot;Days&quot;)) {&#xD;
+    		 	dateDiff = dateDiff / 24;&#xD;
+    		 }&#xD;
+    	&#xD;
+		}&#xD;
+		/*&#xD;
+		 * If there is some previous monitor state information available,&#xD;
+		 * then from start date to first transition draw a series &#xD;
+		 * corresponding to the state.&#xD;
+		 */&#xD;
+		if (globalFromStatusList.size() > 0) {&#xD;
+		&#xD;
+			ns = BarSeriesImpl.create();&#xD;
+			sdNew = SeriesDefinitionImpl.create();&#xD;
+						&#xD;
+			nds = NumberDataSetImpl.create(dateDiff);&#xD;
+			&#xD;
+			monitorStatus = globalFromStatusList.get(0);&#xD;
+			&#xD;
+			ns.setDataSet(nds);&#xD;
+			ns.setStacked( true );&#xD;
+			var fill;			&#xD;
+			&#xD;
+			var actionValue;&#xD;
+			&#xD;
+			/*&#xD;
+			if (monitorStatus == &quot;UP&quot;)&#xD;
+			{&#xD;
+				fill = ColorDefinitionImpl.create(0, 255, 0); // Light-Green			&#xD;
+			}&#xD;
+			else if (monitorStatus == &quot;UNSCHEDULED DOWN&quot;)&#xD;
+			{&#xD;
+				fill = ColorDefinitionImpl.create(255, 0, 0); // Red		&#xD;
+			}&#xD;
+			else if (monitorStatus == &quot;DOWN&quot;)&#xD;
+			{&#xD;
+				fill = ColorDefinitionImpl.create(255, 0, 0); // Dark-Red&#xD;
+			}&#xD;
+			else if (monitorStatus == &quot;UNREACHABLE&quot;)&#xD;
+			{&#xD;
+				fill = ColorDefinitionImpl.create(128, 128, 128); // Gray&#xD;
+			}&#xD;
+			else if (monitorStatus == &quot;SCHEDULED DOWN&quot;)&#xD;
+			{&#xD;
+				fill = ColorDefinitionImpl.create(255, 165, 0); // Orange&#xD;
+			}	&#xD;
+			else if (monitorStatus == &quot;PENDING&quot;)&#xD;
+			{&#xD;
+				fill = ColorDefinitionImpl.create(0,150,255);&#xD;
+			}else {&#xD;
+				fill = ColorDefinitionImpl.create(255,0,255);&#xD;
+			}	&#xD;
+		*/	&#xD;
+			&#xD;
+			if (monitorStatus==&quot;OK&quot;) {&#xD;
+				fill = ColorDefinitionImpl.create(0, 255, 0); // Light-Green&#xD;
+			} else if (monitorStatus==&quot;UNSCHEDULED CRITICAL&quot; || monitorStatus==&quot;CRITICAL&quot;){&#xD;
+				fill = ColorDefinitionImpl.create(255, 0, 0); // Red&#xD;
+			} else if (monitorStatus==&quot;UNKNOWN&quot;) {&#xD;
+				fill = ColorDefinitionImpl.create(128, 128, 128); // Gray&#xD;
+			} else if (monitorStatus==&quot;SCHEDULED CRITICAL&quot;) {&#xD;
+				fill = ColorDefinitionImpl.create(255, 165, 0); // Orange&#xD;
+			} else if (monitorStatus==&quot;PENDING&quot;) {&#xD;
+				fill = ColorDefinitionImpl.create(0, 150, 255);&#xD;
+			} else if (monitorStatus==&quot;WARNING&quot;) {&#xD;
+				fill = ColorDefinitionImpl.create(255, 255, 0);&#xD;
+			} else {&#xD;
+				fill = ColorDefinitionImpl.create(255, 0, 255);&#xD;
+			}&#xD;
+			&#xD;
+			///&#xD;
+			palette	= PaletteImpl.create(fill);&#xD;
+			sdNew.setSeriesPalette(palette);	&#xD;
+			dateDiff = 0;&#xD;
+			sdNew.getSeries().add( ns );&#xD;
+			yAxis.getSeriesDefinitions().add( sdNew );&#xD;
+			&#xD;
+		}&#xD;
+		&#xD;
+		/*&#xD;
+		 * If there are no transitions for a given host in a given period,&#xD;
+		 * Assume it is in the current state since start date.&#xD;
+		 * Draw a bar corresponding to current state from start date till today.&#xD;
+		 */&#xD;
+		if (globalDurationList.size() == 0 || globalDurationList == null) {&#xD;
+		&#xD;
+			var MonitorStatus = icsc.getExternalContext().getScriptable().getPersistentGlobalVariable(&quot;currentHostState&quot;).get(0);&#xD;
+			&#xD;
+			df = new Packages.java.text.SimpleDateFormat(&quot;MM/dd/yyyy&quot;);&#xD;
+			mystartDate = df.parse(startDate);&#xD;
+&#xD;
+			calStartDate = Packages.java.util.Calendar.getInstance();&#xD;
+			calStartDate.setTime(mystartDate);&#xD;
+		&#xD;
+			// Calculate the difference between the two times in hours &#xD;
+    		starttimeInMillis = calStartDate.getTimeInMillis();&#xD;
+    		    		&#xD;
+    		todayDate = Packages.java.util.Calendar.getInstance();&#xD;
+			TodayInMillis = todayDate.getTimeInMillis();&#xD;
+    		&#xD;
+    		diff = TodayInMillis - starttimeInMillis;&#xD;
+    		stateDuration  = diff / (60 * 60 * 1000);&#xD;
+    		&#xD;
+    		 if (YAxisScale.equals(&quot;Days&quot;)) {&#xD;
+    		 	stateDuration = stateDuration / 24;&#xD;
+    		 }&#xD;
+    		dateDiff = 0;&#xD;
+    		globalDurationList.add(stateDuration);&#xD;
+			globalStatusList.add(MonitorStatus);&#xD;
+		}&#xD;
+		/*&#xD;
+		 * For each transition add a series corresponding to it's duration&#xD;
+		 * and color of the series according to monitor status.&#xD;
+		 */&#xD;
+		for (i = 0; i &lt; globalDurationList.size(); i++) &#xD;
+		{&#xD;
+			ns = BarSeriesImpl.create();&#xD;
+			sdNew = SeriesDefinitionImpl.create();&#xD;
+						&#xD;
+			nds = NumberDataSetImpl.create(globalDurationList.get(i));&#xD;
+			&#xD;
+			monitorStatus = globalStatusList.get(i);&#xD;
+			&#xD;
+			ns.setDataSet(nds);&#xD;
+			ns.setStacked( true );&#xD;
+						&#xD;
+			var fill;&#xD;
+			var actionValue;&#xD;
+			/* if (monitorStatus == &quot;UP&quot;)&#xD;
+			{&#xD;
+				fill = ColorDefinitionImpl.create(0, 255, 0); // Light-Green&#xD;
+			}&#xD;
+			else if (monitorStatus == &quot;UNSCHEDULED DOWN&quot;)&#xD;
+			{&#xD;
+				fill = ColorDefinitionImpl.create(255, 0, 0); // Red&#xD;
+			}&#xD;
+			else if (monitorStatus == &quot;DOWN&quot;)&#xD;
+			{&#xD;
+				fill = ColorDefinitionImpl.create(255, 0, 0); // Dark-Red&#xD;
+				&#xD;
+			}&#xD;
+			else if (monitorStatus == &quot;UNREACHABLE&quot;)&#xD;
+			{&#xD;
+				fill = ColorDefinitionImpl.create(128, 128, 128); // Gray&#xD;
+			}&#xD;
+			else if (monitorStatus == &quot;SCHEDULED DOWN&quot;)&#xD;
+			{&#xD;
+				fill = ColorDefinitionImpl.create(255, 165, 0); // Orange&#xD;
+			}	&#xD;
+			else if (monitorStatus == &quot;PENDING&quot;)&#xD;
+			{&#xD;
+				fill = ColorDefinitionImpl.create(0,150,255);&#xD;
+			}&#xD;
+			else {&#xD;
+				fill = ColorDefinitionImpl.create(255,0,255);&#xD;
+			}		&#xD;
+			*/&#xD;
+			&#xD;
+			if (monitorStatus==&quot;OK&quot;) {&#xD;
+				fill = ColorDefinitionImpl.create(0, 255, 0); // Light-Green&#xD;
+			} else if (monitorStatus==&quot;UNSCHEDULED CRITICAL&quot; || monitorStatus==&quot;CRITICAL&quot;){&#xD;
+				fill = ColorDefinitionImpl.create(255, 0, 0); // Red&#xD;
+			} else if (monitorStatus==&quot;UNKNOWN&quot;) {&#xD;
+				fill = ColorDefinitionImpl.create(128, 128, 128); // Gray&#xD;
+			} else if (monitorStatus==&quot;SCHEDULED CRITICAL&quot;) {&#xD;
+				fill = ColorDefinitionImpl.create(255, 165, 0); // Orange&#xD;
+			} else if (monitorStatus==&quot;PENDING&quot;) {&#xD;
+				fill = ColorDefinitionImpl.create(0, 150, 255);&#xD;
+			} else if (monitorStatus==&quot;WARNING&quot;) {&#xD;
+				fill = ColorDefinitionImpl.create(255, 255, 0);&#xD;
+			} else {&#xD;
+				fill = ColorDefinitionImpl.create(255, 0, 255);&#xD;
+			}&#xD;
+				&#xD;
+			palette	= PaletteImpl.create(fill);&#xD;
+			sdNew.setSeriesPalette(palette);&#xD;
+			sdNew.getSeries().add( ns );&#xD;
+			yAxis.getSeriesDefinitions().add( sdNew );&#xD;
+			&#xD;
+		}&#xD;
+			&#xD;
+		/*&#xD;
+		 * Calculate the difference between start date and end date in milliseconds&#xD;
+		 * so that we can get the step dates in milliseconds and marker date values from it.&#xD;
+		 */&#xD;
+		df = new Packages.java.text.SimpleDateFormat(&quot;MM/dd/yyyy&quot;);&#xD;
+		startDate = df.parse(startDate);&#xD;
+		endDate = df.parse(endDate);&#xD;
+		endDate.setHours(23);&#xD;
+		endDate.setMinutes(59);&#xD;
+				&#xD;
+		calStartDate = Packages.java.util.Calendar.getInstance();&#xD;
+		calEndDate = Packages.java.util.Calendar.getInstance();&#xD;
+		calStartDate.setTime(startDate);&#xD;
+		calEndDate.setTime(endDate);&#xD;
+		&#xD;
+		starttimeInMillis = calStartDate.getTimeInMillis();&#xD;
+    	endtimeInMillis = calEndDate.getTimeInMillis();&#xD;
+    	diff = endtimeInMillis - starttimeInMillis;&#xD;
+    	stepInMilliSeconds = diff / 8;&#xD;
+    	  	    	&#xD;
+    	var markerDateValue = starttimeInMillis;&#xD;
+       	var markerStep = new Packages.java.lang.Double(-dateDiff);&#xD;
+    	&#xD;
+    	/*&#xD;
+    	 * Divide the graph into equal intervals of 8.&#xD;
+    	 * for each step draw marker line with it's corresponding date.&#xD;
+    	 */&#xD;
+    	for (i = 0; i &lt; 8; i++) {&#xD;
+    		&#xD;
+    		&#xD;
+    		markerStep = new Packages.java.lang.Double(markerStep).doubleValue() + new Packages.java.lang.Double(YAxisScaleStep).doubleValue();&#xD;
+    		markerDateValue = markerDateValue + new Packages.java.lang.Double(stepInMilliSeconds).longValue();&#xD;
+    	    	   		&#xD;
+    		dateToDisplay = Packages.java.util.Date(markerDateValue);&#xD;
+    		    		&#xD;
+    		if (YAxisScale.equals(&quot;Hours&quot;)) {&#xD;
+    		&#xD;
+    			df = Packages.java.text.SimpleDateFormat(&quot;MM-dd-yy hh:mm a&quot;);&#xD;
+    			dateToDisplayString = df.format(dateToDisplay);&#xD;
+    			    		&#xD;
+    		} else if (YAxisScale.equals(&quot;Days&quot;)) {&#xD;
+    		&#xD;
+    			df = Packages.java.text.SimpleDateFormat(&quot;MM-dd-yy hh a&quot;);&#xD;
+    			dateToDisplayString = df.format(dateToDisplay);&#xD;
+    			   		&#xD;
+    		}&#xD;
+    		&#xD;
+    		marker = MarkerLineImpl.create(yAxis, NumberDataElementImpl.create(markerStep));&#xD;
+			marker.getLabel().getCaption().setValue(dateToDisplayString);&#xD;
+			marker.getLabel().getCaption().getFont().setSize(7);&#xD;
+			marker.getLineAttributes().getColor().set(128, 128, 128);&#xD;
+			marker.setLabelAnchor(Anchor.SOUTH_EAST_LITERAL);&#xD;
+			&#xD;
+    	}&#xD;
+    	&#xD;
+    	/* Set the min, max and the step values for Y-axis. */&#xD;
+		min = NumberDataElementImpl.create((new Packages.java.lang.Double(-dateDiff)));&#xD;
+		max = NumberDataElementImpl.create((new Packages.java.lang.Double(YAxisScaleMax - dateDiff))); &#xD;
+		yAxis.getScale().setMin(min); &#xD;
+		yAxis.getScale().setMax(max); &#xD;
+		yAxis.getScale().setStep((new Packages.java.lang.Double(YAxisScaleStep))); &#xD;
+&#xD;
+}&#xD;
+&#xD;
+&#xD;
+</Script>
+  <Units>Points</Units>
+  <SeriesThickness>10.0</SeriesThickness>
+  <ExtendedProperties>
+    <Name>enable.area.alt</Name>
+    <Value>false</Value>
+  </ExtendedProperties>
+  <SampleData>
+    <BaseSampleData>
+      <DataSetRepresentation>'A','B','C','D','E'</DataSetRepresentation>
+    </BaseSampleData>
+    <OrthogonalSampleData>
+      <DataSetRepresentation>6,4,12,8,10</DataSetRepresentation>
+      <SeriesDefinitionIndex>0</SeriesDefinitionIndex>
+    </OrthogonalSampleData>
+  </SampleData>
+  <Interactivity>
+    <LegendBehavior>None</LegendBehavior>
+  </Interactivity>
+  <EmptyMessage>
+    <Caption>
+      <Value></Value>
+      <Font>
+        <Alignment/>
+      </Font>
+    </Caption>
+    <Background xsi:type="attribute:ColorDefinition">
+      <Transparency>0</Transparency>
+      <Red>255</Red>
+      <Green>255</Green>
+      <Blue>255</Blue>
+    </Background>
+    <Outline>
+      <Style>Solid</Style>
+      <Thickness>1</Thickness>
+      <Color>
+        <Transparency>255</Transparency>
+        <Red>0</Red>
+        <Green>0</Green>
+        <Blue>0</Blue>
+      </Color>
+    </Outline>
+    <Insets>
+      <Top>0.0</Top>
+      <Left>2.0</Left>
+      <Bottom>0.0</Bottom>
+      <Right>3.0</Right>
+    </Insets>
+    <Visible>false</Visible>
+  </EmptyMessage>
+  <Axes>
+    <Type>Text</Type>
+    <Title>
+      <Caption>
+        <Value></Value>
+        <Font>
+          <Size>14.0</Size>
+          <Bold>true</Bold>
+          <Alignment>
+            <horizontalAlignment>Center</horizontalAlignment>
+            <verticalAlignment>Center</verticalAlignment>
+          </Alignment>
+          <Rotation>90.0</Rotation>
+        </Font>
+      </Caption>
+      <Background xsi:type="attribute:ColorDefinition">
+        <Transparency>0</Transparency>
+        <Red>255</Red>
+        <Green>255</Green>
+        <Blue>255</Blue>
+      </Background>
+      <Outline>
+        <Style>Solid</Style>
+        <Thickness>1</Thickness>
+        <Color>
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>0</Green>
+          <Blue>0</Blue>
+        </Color>
+      </Outline>
+      <Insets>
+        <Top>0.0</Top>
+        <Left>2.0</Left>
+        <Bottom>0.0</Bottom>
+        <Right>3.0</Right>
+      </Insets>
+      <Visible>true</Visible>
+    </Title>
+    <TitlePosition>Below</TitlePosition>
+    <AssociatedAxes>
+      <Type>Linear</Type>
+      <Title>
+        <Caption>
+          <Value></Value>
+          <Font>
+            <Size>14.0</Size>
+            <Bold>true</Bold>
+            <Alignment>
+              <horizontalAlignment>Center</horizontalAlignment>
+              <verticalAlignment>Center</verticalAlignment>
+            </Alignment>
+            <Rotation>0.0</Rotation>
+          </Font>
+        </Caption>
+        <Background xsi:type="attribute:ColorDefinition">
+          <Transparency>0</Transparency>
+          <Red>255</Red>
+          <Green>255</Green>
+          <Blue>255</Blue>
+        </Background>
+        <Outline>
+          <Style>Solid</Style>
+          <Thickness>1</Thickness>
+          <Color>
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>0</Green>
+            <Blue>0</Blue>
+          </Color>
+          <Visible>false</Visible>
+        </Outline>
+        <Insets>
+          <Top>0.0</Top>
+          <Left>2.0</Left>
+          <Bottom>0.0</Bottom>
+          <Right>3.0</Right>
+        </Insets>
+        <Visible>true</Visible>
+      </Title>
+      <TitlePosition>Left</TitlePosition>
+      <SeriesDefinitions>
+        <Query>
+          <Definition></Definition>
+        </Query>
+        <SeriesPalette>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>80</Red>
+            <Green>166</Green>
+            <Blue>218</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>242</Red>
+            <Green>88</Green>
+            <Blue>106</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>232</Red>
+            <Green>172</Green>
+            <Blue>57</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>128</Red>
+            <Green>255</Green>
+            <Blue>128</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>64</Red>
+            <Green>128</Green>
+            <Blue>128</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>128</Red>
+            <Green>128</Green>
+            <Blue>192</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>170</Red>
+            <Green>85</Green>
+            <Blue>85</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>128</Red>
+            <Green>128</Green>
+            <Blue>0</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>192</Red>
+            <Green>192</Green>
+            <Blue>192</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>128</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>128</Red>
+            <Green>192</Green>
+            <Blue>128</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>7</Red>
+            <Green>146</Green>
+            <Blue>94</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>128</Green>
+            <Blue>255</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>255</Red>
+            <Green>128</Green>
+            <Blue>192</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>255</Red>
+            <Green>128</Green>
+            <Blue>128</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>128</Green>
+            <Blue>192</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>128</Red>
+            <Green>128</Green>
+            <Blue>192</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>255</Red>
+            <Green>0</Green>
+            <Blue>255</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>128</Red>
+            <Green>64</Green>
+            <Blue>64</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>255</Red>
+            <Green>128</Green>
+            <Blue>64</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>80</Red>
+            <Green>240</Green>
+            <Blue>120</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>64</Green>
+            <Blue>128</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>128</Red>
+            <Green>0</Green>
+            <Blue>64</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>255</Red>
+            <Green>0</Green>
+            <Blue>128</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>128</Red>
+            <Green>128</Green>
+            <Blue>64</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>128</Red>
+            <Green>128</Green>
+            <Blue>128</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>255</Red>
+            <Green>128</Green>
+            <Blue>255</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>64</Green>
+            <Blue>0</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>0</Green>
+            <Blue>0</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Entries>
+          <Entries xsi:type="attribute:ColorDefinition">
+            <Transparency>255</Transparency>
+            <Red>255</Red>
+            <Green>128</Green>
+            <Blue>0</Blue>
+          </Entries>
+        </SeriesPalette>
+        <Series xsi:type="type:BarSeries">
+          <Visible>true</Visible>
+          <Label>
+            <Caption>
+              <Value></Value>
+              <Font>
+                <Alignment/>
+              </Font>
+            </Caption>
+            <Background xsi:type="attribute:ColorDefinition">
+              <Transparency>0</Transparency>
+              <Red>255</Red>
+              <Green>255</Green>
+              <Blue>255</Blue>
+            </Background>
+            <Outline>
+              <Style>Solid</Style>
+              <Thickness>1</Thickness>
+              <Color>
+                <Transparency>255</Transparency>
+                <Red>0</Red>
+                <Green>0</Green>
+                <Blue>0</Blue>
+              </Color>
+              <Visible>false</Visible>
+            </Outline>
+            <Insets>
+              <Top>0.0</Top>
+              <Left>2.0</Left>
+              <Bottom>0.0</Bottom>
+              <Right>3.0</Right>
+            </Insets>
+            <Visible>false</Visible>
+          </Label>
+          <DataDefinition>
+            <Definition>row[&quot;DurationInState&quot;]</Definition>
+            <Grouping>
+              <GroupType>Text</GroupType>
+              <AggregateExpression>Sum</AggregateExpression>
+            </Grouping>
+          </DataDefinition>
+          <SeriesIdentifier></SeriesIdentifier>
+          <DataPoint>
+            <Components>
+              <Type>Orthogonal_Value</Type>
+            </Components>
+            <Separator>, </Separator>
+          </DataPoint>
+          <LabelPosition>Inside</LabelPosition>
+          <Stacked>true</Stacked>
+          <Riser>Rectangle</Riser>
+        </Series>
+        <Grouping>
+          <Enabled>false</Enabled>
+          <GroupingInterval>2.0</GroupingInterval>
+          <GroupType>Text</GroupType>
+          <AggregateExpression>Sum</AggregateExpression>
+        </Grouping>
+        <Sorting>Ascending</Sorting>
+      </SeriesDefinitions>
+      <Orientation>Vertical</Orientation>
+      <LineAttributes>
+        <Style>Solid</Style>
+        <Thickness>1</Thickness>
+        <Visible>true</Visible>
+      </LineAttributes>
+      <Label>
+        <Caption>
+          <Value></Value>
+          <Font>
+            <Alignment/>
+          </Font>
+        </Caption>
+        <Background xsi:type="attribute:ColorDefinition">
+          <Transparency>0</Transparency>
+          <Red>255</Red>
+          <Green>255</Green>
+          <Blue>255</Blue>
+        </Background>
+        <Outline>
+          <Style>Solid</Style>
+          <Thickness>1</Thickness>
+          <Color>
+            <Transparency>255</Transparency>
+            <Red>0</Red>
+            <Green>0</Green>
+            <Blue>0</Blue>
+          </Color>
+          <Visible>false</Visible>
+        </Outline>
+        <Insets>
+          <Top>0.0</Top>
+          <Left>30.0</Left>
+          <Bottom>0.0</Bottom>
+          <Right>10.0</Right>
+        </Insets>
+        <Visible>false</Visible>
+      </Label>
+      <LabelPosition>Left</LabelPosition>
+      <MajorGrid>
+        <LineAttributes>
+          <Style>Solid</Style>
+          <Thickness>1</Thickness>
+          <Color>
+            <Transparency>255</Transparency>
+            <Red>196</Red>
+            <Green>196</Green>
+            <Blue>196</Blue>
+          </Color>
+          <Visible>false</Visible>
+        </LineAttributes>
+        <TickStyle>Right</TickStyle>
+        <TickAttributes>
+          <Style>Solid</Style>
+          <Thickness>1</Thickness>
+          <Color>
+            <Transparency>255</Transparency>
+            <Red>196</Red>
+            <Green>196</Green>
+            <Blue>196</Blue>
+          </Color>
+          <Visible>false</Visible>
+        </TickAttributes>
+      </MajorGrid>
+      <MinorGrid>
+        <LineAttributes>
+          <Style>Solid</Style>
+          <Thickness>1</Thickness>
+          <Color>
+            <Transparency>255</Transparency>
+            <Red>225</Red>
+            <Green>225</Green>
+            <Blue>225</Blue>
+          </Color>
+          <Visible>false</Visible>
+        </LineAttributes>
+        <TickStyle>Left</TickStyle>
+        <TickAttributes>
+          <Style>Solid</Style>
+          <Thickness>1</Thickness>
+          <Color>
+            <Transparency>255</Transparency>
+            <Red>225</Red>
+            <Green>225</Green>
+            <Blue>225</Blue>
+          </Color>
+          <Visible>false</Visible>
+        </TickAttributes>
+      </MinorGrid>
+      <Scale>
+        <Min xsi:type="data:NumberDataElement">
+          <Value>0.0</Value>
+        </Min>
+        <MinorGridsPerUnit>5</MinorGridsPerUnit>
+        <ShowOutside>false</ShowOutside>
+        <AutoExpand>true</AutoExpand>
+      </Scale>
+      <Origin>
+        <Type>Min</Type>
+        <Value xsi:type="data:NumberDataElement">
+          <Value>0.0</Value>
+        </Value>
+      </Origin>
+      <PrimaryAxis>true</PrimaryAxis>
+      <Percent>false</Percent>
+    </AssociatedAxes>
+    <SeriesDefinitions>
+      <Query>
+        <Definition></Definition>
+      </Query>
+      <SeriesPalette>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>80</Red>
+          <Green>166</Green>
+          <Blue>218</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>242</Red>
+          <Green>88</Green>
+          <Blue>106</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>232</Red>
+          <Green>172</Green>
+          <Blue>57</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>128</Red>
+          <Green>255</Green>
+          <Blue>128</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>64</Red>
+          <Green>128</Green>
+          <Blue>128</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>128</Red>
+          <Green>128</Green>
+          <Blue>192</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>170</Red>
+          <Green>85</Green>
+          <Blue>85</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>128</Red>
+          <Green>128</Green>
+          <Blue>0</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>192</Red>
+          <Green>192</Green>
+          <Blue>192</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>255</Red>
+          <Green>255</Green>
+          <Blue>128</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>128</Red>
+          <Green>192</Green>
+          <Blue>128</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>7</Red>
+          <Green>146</Green>
+          <Blue>94</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>128</Green>
+          <Blue>255</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>255</Red>
+          <Green>128</Green>
+          <Blue>192</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>255</Green>
+          <Blue>255</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>255</Red>
+          <Green>128</Green>
+          <Blue>128</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>128</Green>
+          <Blue>192</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>128</Red>
+          <Green>128</Green>
+          <Blue>192</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>255</Red>
+          <Green>0</Green>
+          <Blue>255</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>128</Red>
+          <Green>64</Green>
+          <Blue>64</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>255</Red>
+          <Green>128</Green>
+          <Blue>64</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>80</Red>
+          <Green>240</Green>
+          <Blue>120</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>64</Green>
+          <Blue>128</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>128</Red>
+          <Green>0</Green>
+          <Blue>64</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>255</Red>
+          <Green>0</Green>
+          <Blue>128</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>128</Red>
+          <Green>128</Green>
+          <Blue>64</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>128</Red>
+          <Green>128</Green>
+          <Blue>128</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>255</Red>
+          <Green>128</Green>
+          <Blue>255</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>64</Green>
+          <Blue>0</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>0</Green>
+          <Blue>0</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>255</Red>
+          <Green>255</Green>
+          <Blue>255</Blue>
+        </Entries>
+        <Entries xsi:type="attribute:ColorDefinition">
+          <Transparency>255</Transparency>
+          <Red>255</Red>
+          <Green>128</Green>
+          <Blue>0</Blue>
+        </Entries>
+      </SeriesPalette>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;service-data::ServiceName&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Series>
+        <Visible>true</Visible>
+        <Label>
+          <Caption>
+            <Value></Value>
+            <Font>
+              <Alignment/>
+            </Font>
+          </Caption>
+          <Background xsi:type="attribute:ColorDefinition">
+            <Transparency>0</Transparency>
+            <Red>255</Red>
+            <Green>255</Green>
+            <Blue>255</Blue>
+          </Background>
+          <Outline>
+            <Style>Solid</Style>
+            <Thickness>1</Thickness>
+            <Color>
+              <Transparency>255</Transparency>
+              <Red>0</Red>
+              <Green>0</Green>
+              <Blue>0</Blue>
+            </Color>
+            <Visible>false</Visible>
+          </Outline>
+          <Insets>
+            <Top>0.0</Top>
+            <Left>2.0</Left>
+            <Bottom>0.0</Bottom>
+            <Right>3.0</Right>
+          </Insets>
+          <Visible>false</Visible>
+        </Label>
+        <DataDefinition>
+          <Definition>row[&quot;ToTransitionDate&quot;]</Definition>
+        </DataDefinition>
+        <SeriesIdentifier></SeriesIdentifier>
+        <DataPoint>
+          <Components>
+            <Type>Orthogonal_Value</Type>
+          </Components>
+          <Separator>, </Separator>
+        </DataPoint>
+        <LabelPosition>Outside</LabelPosition>
+        <Stacked>false</Stacked>
+      </Series>
+      <Grouping>
+        <Enabled>true</Enabled>
+        <GroupingInterval>2.0</GroupingInterval>
+        <GroupType>Text</GroupType>
+        <AggregateExpression>Sum</AggregateExpression>
+      </Grouping>
+    </SeriesDefinitions>
+    <Orientation>Horizontal</Orientation>
+    <LineAttributes>
+      <Style>Solid</Style>
+      <Thickness>1</Thickness>
+      <Visible>true</Visible>
+    </LineAttributes>
+    <Label>
+      <Caption>
+        <Value></Value>
+        <Font>
+          <Alignment/>
+          <Rotation>90.0</Rotation>
+        </Font>
+      </Caption>
+      <Background xsi:type="attribute:ColorDefinition">
+        <Transparency>0</Transparency>
+        <Red>255</Red>
+        <Green>255</Green>
+        <Blue>255</Blue>
+      </Background>
+      <Outline>
+        <Style>Solid</Style>
+        <Thickness>1</Thickness>
+        <Color>
+          <Transparency>255</Transparency>
+          <Red>0</Red>
+          <Green>0</Green>
+          <Blue>0</Blue>
+        </Color>
+      </Outline>
+      <Insets>
+        <Top>0.0</Top>
+        <Left>2.0</Left>
+        <Bottom>0.0</Bottom>
+        <Right>3.0</Right>
+      </Insets>
+      <Visible>false</Visible>
+    </Label>
+    <LabelPosition>Below</LabelPosition>
+    <Staggered>false</Staggered>
+    <MajorGrid>
+      <LineAttributes>
+        <Style>Solid</Style>
+        <Thickness>1</Thickness>
+        <Color>
+          <Transparency>255</Transparency>
+          <Red>196</Red>
+          <Green>196</Green>
+          <Blue>196</Blue>
+        </Color>
+        <Visible>false</Visible>
+      </LineAttributes>
+      <TickStyle>Across</TickStyle>
+      <TickAttributes>
+        <Style>Solid</Style>
+        <Thickness>1</Thickness>
+        <Color>
+          <Transparency>255</Transparency>
+          <Red>196</Red>
+          <Green>196</Green>
+          <Blue>196</Blue>
+        </Color>
+        <Visible>true</Visible>
+      </TickAttributes>
+    </MajorGrid>
+    <MinorGrid>
+      <LineAttributes>
+        <Style>Solid</Style>
+        <Thickness>1</Thickness>
+        <Color>
+          <Transparency>255</Transparency>
+          <Red>225</Red>
+          <Green>225</Green>
+          <Blue>225</Blue>
+        </Color>
+        <Visible>false</Visible>
+      </LineAttributes>
+      <TickStyle>Across</TickStyle>
+      <TickAttributes>
+        <Style>Solid</Style>
+        <Thickness>1</Thickness>
+        <Color>
+          <Transparency>255</Transparency>
+          <Red>225</Red>
+          <Green>225</Green>
+          <Blue>225</Blue>
+        </Color>
+        <Visible>false</Visible>
+      </TickAttributes>
+    </MinorGrid>
+    <Scale>
+      <MinorGridsPerUnit>5</MinorGridsPerUnit>
+    </Scale>
+    <Origin>
+      <Type>Min</Type>
+      <Value xsi:type="data:NumberDataElement">
+        <Value>0.0</Value>
+      </Value>
+    </Origin>
+    <PrimaryAxis>true</PrimaryAxis>
+    <CategoryAxis>true</CategoryAxis>
+    <Percent>false</Percent>
+  </Axes>
+  <Orientation>Horizontal</Orientation>
+  <UnitSpacing>85.0</UnitSpacing>
+  <Rotation/>
+</model:ChartWithAxes>
+]]></xml-property>
+                        <property name="outputFormat">SVG</property>
+                        <property name="inheritColumns">false</property>
+                        <property name="textTransform">none</property>
+                        <property name="dataSet">JoinedDataSet</property>
+                        <property name="height">3.5in</property>
+                        <property name="width">5.9393939393939394in</property>
+                        <list-property name="boundDataColumns">
+                            <structure>
+                                <property name="name">MonitorStatus</property>
+                                <expression name="expression" type="javascript">dataSetRow["MonitorStatus"]</expression>
+                                <property name="dataType">string</property>
+                            </structure>
+                            <structure>
+                                <property name="name">service-data::ServiceName</property>
+                                <expression name="expression" type="javascript">dataSetRow["service-data::ServiceName"]</expression>
+                                <property name="dataType">string</property>
+                            </structure>
+                            <structure>
+                                <property name="name">EndTransitionDate</property>
+                                <expression name="expression" type="javascript">dataSetRow["EndTransitionDate"]</expression>
+                                <property name="dataType">date-time</property>
+                            </structure>
+                            <structure>
+                                <property name="name">Name</property>
+                                <expression name="expression" type="javascript">dataSetRow["Name"]</expression>
+                                <property name="dataType">string</property>
+                            </structure>
+                            <structure>
+                                <property name="name">DurationInState</property>
+                                <expression name="expression" type="javascript">dataSetRow["DurationInState"]</expression>
+                                <property name="dataType">integer</property>
+                            </structure>
+                            <structure>
+                                <property name="name">ToTransitionDate</property>
+                                <expression name="expression" type="javascript">dataSetRow["ToTransitionDate"]</expression>
+                                <property name="dataType">string</property>
+                            </structure>
+                            <structure>
+                                <property name="name">MonitorStatusID</property>
+                                <expression name="expression" type="javascript">dataSetRow["MonitorStatusID"]</expression>
+                                <property name="dataType">integer</property>
+                            </structure>
+                            <structure>
+                                <property name="name">service-state-transitions::ServiceName</property>
+                                <expression name="expression" type="javascript">dataSetRow["service-state-transitions::ServiceName"]</expression>
+                                <property name="dataType">string</property>
+                            </structure>
+                            <structure>
+                                <property name="name">DecimalToId</property>
+                                <expression name="expression" type="javascript">dataSetRow["DecimalToId"]</expression>
+                                <property name="dataType">decimal</property>
+                            </structure>
+                            <structure>
+                                <property name="name">ToTransition_Date</property>
+                                <expression name="expression" type="javascript">dataSetRow["ToTransition_Date"]</expression>
+                                <property name="dataType">date-time</property>
+                            </structure>
+                        </list-property>
+                    </extended-item>
+                </cell>
+            </row>
+            <row id="1512">
+                <property name="fontFamily">"SansSerif"</property>
+                <cell id="1513">
+                    <property name="textAlign">left</property>
+                </cell>
+            </row>
+        </grid>
+        <table id="10014">
+            <property name="pageBreakAfter">always</property>
+            <property name="pageBreakBefore">always</property>
+            <property name="width">100%</property>
+            <property name="dataSet">service-state-transitions</property>
+            <list-property name="boundDataColumns">
+                <structure>
+                    <property name="name">EndTransitionDate</property>
+                    <expression name="expression">dataSetRow["EndTransitionDate"]</expression>
+                    <property name="dataType">date-time</property>
+                </structure>
+                <structure>
+                    <property name="name">Name</property>
+                    <expression name="expression">dataSetRow["Name"]</expression>
+                    <property name="dataType">string</property>
+                </structure>
+                <structure>
+                    <property name="name">DurationInState</property>
+                    <expression name="expression">var duration = dataSetRow["DurationInState"];
+var days = 0;
+var hours = 0;
+var minutes = 0;
+var seconds = 0;
+
+days = parseInt(duration / 86400000);
+duration = duration - (days * 86400000);
+
+hours = parseInt(duration  / 3600000);
+duration = duration - (hours * 3600000);
+
+minutes = parseInt(duration  / 60000);
+seconds = (duration - (minutes * 60000)) / 1000.0;
+
+days + "d, " + hours + "h, " + minutes + "m, " + seconds.toFixed(0) + "s"</expression>
+                    <property name="dataType">string</property>
+                </structure>
+                <structure>
+                    <property name="name">ToTransitionDate</property>
+                    <expression name="expression">dataSetRow["ToTransitionDate"]</expression>
+                    <property name="dataType">date-time</property>
+                </structure>
+                <structure>
+                    <property name="name">MonitorStatusID</property>
+                    <expression name="expression">dataSetRow["MonitorStatusID"]</expression>
+                    <property name="dataType">integer</property>
+                </structure>
+                <structure>
+                    <property name="name">DecimalToId</property>
+                    <expression name="expression">dataSetRow["DecimalToId"]</expression>
+                    <property name="dataType">decimal</property>
+                </structure>
+                <structure>
+                    <property name="name">ToTransition_Date</property>
+                    <text-property name="displayName">ToTransition_Date</text-property>
+                    <expression name="expression" type="javascript">dataSetRow["ToTransition_Date"]</expression>
+                    <property name="dataType">date-time</property>
+                </structure>
+            </list-property>
+            <column id="10030"/>
+            <column id="10031"/>
+            <column id="10032"/>
+            <column id="10033"/>
+            <header>
+                <row id="10015">
+                    <property name="style">DataTableHeading</property>
+                    <cell id="10016">
+                        <property name="pageBreakAfter">always</property>
+                        <label id="10045">
+                            <text-property name="text">Transition Date</text-property>
+                        </label>
+                    </cell>
+                    <cell id="10017">
+                        <property name="pageBreakAfter">always</property>
+                        <label id="10051">
+                            <text-property name="text">Time</text-property>
+                        </label>
+                    </cell>
+                    <cell id="10018">
+                        <property name="pageBreakAfter">always</property>
+                        <label id="10049">
+                            <text-property name="text">State</text-property>
+                        </label>
+                    </cell>
+                    <cell id="10019">
+                        <property name="pageBreakAfter">always</property>
+                        <label id="10053">
+                            <text-property name="text">StateDuration</text-property>
+                        </label>
+                    </cell>
+                </row>
+            </header>
+            <group id="10034">
+                <property name="groupName">NewTableGroup1</property>
+                <property name="interval">day</property>
+                <property name="intervalRange">1.0</property>
+                <property name="sortDirection">asc</property>
+                <expression name="keyExpr">row["ToTransitionDate"]</expression>
+                <structure name="toc">
+                    <expression name="expressionValue">row["ToTransitionDate"].getDate() + "-" + (row["ToTransitionDate"].getMonth() + 1) + "-" + (row["ToTransitionDate"].getYear() + 1900)</expression>
+                </structure>
+                <property name="repeatHeader">true</property>
+                <property name="hideDetail">false</property>
+                <property name="pageBreakAfter">auto</property>
+                <property name="pageBreakBefore">auto</property>
+                <property name="pageBreakInside">auto</property>
+                <header>
+                    <row id="10035">
+                        <cell id="10036">
+                            <property name="pageBreakAfter">always</property>
+                            <data id="10046">
+                                <property name="style">DataTableCells</property>
+                                <structure name="dateTimeFormat">
+                                    <property name="category">Long Date</property>
+                                    <property name="pattern">Long Date</property>
+                                </structure>
+                                <property name="resultSetColumn">ToTransitionDate</property>
+                            </data>
+                        </cell>
+                        <cell id="10037">
+                            <property name="pageBreakAfter">always</property>
+                        </cell>
+                        <cell id="10038">
+                            <property name="pageBreakAfter">always</property>
+                        </cell>
+                        <cell id="10039">
+                            <property name="pageBreakAfter">always</property>
+                        </cell>
+                    </row>
+                </header>
+            </group>
+            <detail>
+                <row id="10020">
+                    <cell id="10021">
+                        <property name="pageBreakAfter">always</property>
+                    </cell>
+                    <cell id="10022">
+                        <property name="pageBreakAfter">always</property>
+                        <text id="10136">
+                            <property name="fontFamily">"Arial"</property>
+                            <property name="fontSize">8pt</property>
+                            <property name="contentType">html</property>
+                            <text-property name="content"><![CDATA[<VALUE-OF>
+importPackage(Packages.java.util);
+importPackage(Packages.java.text);
+
+date = row["ToTransition_Date"];
+
+utcMiliseconds = date.getTime();
+calendar = new GregorianCalendar();
+calendar.setTimeInMillis(utcMiliseconds);
+localTime = new Date(utcMiliseconds + calendar.get(Calendar.ZONE_OFFSET) + calendar.get(Calendar.DST_OFFSET));
+
+sdf = new SimpleDateFormat("hh:mm:ss a");
+displayDate = sdf.format(localTime);
+displayDate.toString();
+
+</VALUE-OF>]]></text-property>
+                        </text>
+                    </cell>
+                    <cell id="10023">
+                        <property name="pageBreakAfter">always</property>
+                        <data id="10050">
+                            <property name="style">DataTableCells</property>
+                            <property name="resultSetColumn">Name</property>
+                        </data>
+                    </cell>
+                    <cell id="10024">
+                        <property name="pageBreakAfter">always</property>
+                        <data id="10054">
+                            <property name="style">DataTableCells</property>
+                            <property name="resultSetColumn">DurationInState</property>
+                        </data>
+                    </cell>
+                </row>
+            </detail>
+            <footer>
+                <row id="10025">
+                    <cell id="10026">
+                        <property name="pageBreakAfter">always</property>
+                    </cell>
+                    <cell id="10027">
+                        <property name="pageBreakAfter">always</property>
+                    </cell>
+                    <cell id="10028">
+                        <property name="pageBreakAfter">always</property>
+                    </cell>
+                    <cell id="10029">
+                        <property name="pageBreakAfter">always</property>
+                    </cell>
+                </row>
+            </footer>
+        </table>
+    </body>
+</report>

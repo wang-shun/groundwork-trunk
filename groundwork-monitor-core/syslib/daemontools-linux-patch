@@ -1,0 +1,25 @@
+diff -uNr ../daemontools.o/admin/daemontools-0.76/package/compile ./admin/daemontools-0.76/package/compile
+--- ../daemontools.o/admin/daemontools-0.76/package/compile	2001-07-12 09:49:49.000000000 -0700
++++ ./admin/daemontools-0.76/package/compile	2005-06-08 14:01:32.000000000 -0700
+@@ -1,5 +1,11 @@
+ #!/bin/sh -e
+ 
++echo "This is a patched version of D. J. Bernstein's daemontools."
++echo "The original is available from http://cr.yp.to/daemontools.html"
++echo 
++echo "The patch modifies the errors.h file to add linux support"
++echo
++
+ umask 022
+ test -d package || ( echo 'Wrong working directory.'; exit 1 )
+ test -d src || ( echo 'Wrong working directory.'; exit 1 )
+diff -uNr ../daemontools.o/admin/daemontools-0.76/src/error.h ./admin/daemontools-0.76/src/error.h
+--- ../daemontools.o/admin/daemontools-0.76/src/error.h	2001-07-12 09:49:49.000000000 -0700
++++ ./admin/daemontools-0.76/src/error.h	2005-06-08 13:59:03.000000000 -0700
+@@ -2,6 +2,7 @@
+ 
+ #ifndef ERROR_H
+ #define ERROR_H
++#include "errno.h"
+ 
+ extern int errno;

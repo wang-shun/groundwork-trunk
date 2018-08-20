@@ -1,0 +1,26 @@
+#!/bin/bash
+
+PERL=/usr/local/groundwork/perl/bin/perl
+FOUND_PROPS='/usr/local/groundwork/config/foundation.properties'
+
+if [[ ! -r $FOUND_PROPS ]]; then
+    echo "ERROR:  $FOUND_PROPS is not readable."
+    exit 1
+fi
+
+if ! egrep -q '^\s*fas.executor.interrupt\s*=' $FOUND_PROPS; then
+    # First, let's check to verify that we have the handle to identify where to insert the new line.
+    if ! egrep -q '^\s*fas.executor.queue.size\s*=' $FOUND_PROPS; then
+	echo "ERROR:  Cannot find fas.executor.queue.size in the $FOUND_PROPS file."
+	exit 1
+    else
+	echo "NOTICE:  Adding fas.executor.interrupt to foundation.properties ..."
+	if ! $PERL -pi.orig -e '$_ .= "fas.executor.interrupt = 30\n" if /^\s*fas.executor.queue.size\s*=\s*/' $FOUND_PROPS; then
+	    echo "ERROR:  Failed to add fas.executor.interrupt to the foundation.properties file."
+	    exit 1
+	fi
+    fi
+else
+    echo "NOTICE:  fas.executor.interrupt is already present in the foundation.properties file."
+fi
+

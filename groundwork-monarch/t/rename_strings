@@ -1,0 +1,147 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+# rename_strings
+#
+# This utility allows concurrent string renames within a file.
+
+# TO DO:
+# * Implement an option to perform the reverse transform using the same mappings file.
+
+sub print_usage {
+    print "usage:  rename_strings {mappings_file} {strings_file}\n";
+    print "where:  output appears in the {strings_file}.renamed file\n";
+}
+
+if ( @ARGV != 2 ) {
+    print_usage();
+    exit 1;
+}
+
+my $mappings_file = $ARGV[0];
+my $strings_file  = $ARGV[1];
+
+my @mappings = ();
+my @strings  = ();
+
+if ( not open MAPPINGS, '<', $mappings_file ) {
+    print "ERROR:  Cannot open mappings file $mappings_file ($!); aborting.";
+    exit 1;
+}
+else {
+    ## FIX MAJOR:  error checking?
+    @mappings = <MAPPINGS>;
+    close MAPPINGS;
+}
+
+if ( not open STRINGS, '<', $strings_file ) {
+    print "ERROR:  Cannot open strings file $strings_file ($!); aborting.";
+    exit 1;
+}
+else {
+    ## FIX MAJOR:  error checking?
+    @strings = <STRINGS>;
+    close STRINGS;
+}
+
+# We need to choose characters in the prefix and suffix that
+# are not any special Perl regular-expression metacharacters.
+my $marker_prefix = '<<<!!!###';
+my $marker_suffix = '###!!!>>>';
+
+my %marker_for_source = ();
+my %target_for_marker = ();
+my %marker_for_target = ();
+my %source_for_marker = ();
+my %target_for_source = ();
+my %source_for_target = ();
+my $count             = 0;
+my $marker;
+
+foreach my $line (@mappings) {
+    if ( $line =~ /^\s*(\S+)\s+(\S+)\s*$/ ) {
+	my $source = $1;
+	my $target = $2;
+	if ( exists $target_for_source{$source} ) {
+	    print "ERROR:  \"$source\" has a duplicate source mapping (it is mentioned more than once as a source string).\n";
+	    exit 1;
+	}
+	elsif ( exists $source_for_target{$target} ) {
+	    print "ERROR:  \"$target\" has a duplicate target mapping (both \"$source_for_target{$target}\" and \"$source\" map to the same string).\n";
+	    exit 1;
+	}
+	else {
+	    ++$count;
+
+	    # We use a marker that is highly unlikely to exist in the incoming file.
+	    $marker = "$marker_prefix$count$marker_suffix";
+
+	    $marker_for_source{$source} = $marker;
+	    $target_for_marker{$marker} = $target;
+	    $target_for_source{$source} = $target;
+
+	    $marker_for_target{$target} = $marker;
+	    $source_for_marker{$marker} = $source;
+	    $source_for_target{$target} = $source;
+	}
+    }
+    else {
+	print "ERROR:  \"$line\" contains an invalid mapping.\n";
+	exit 1;
+    }
+}
+
+# We want to logically check source strings to see whether sourceA is ever a substring of
+# sourceB, for all combinations of A and B.  In that case, process sourceB substitutions
+# before sourceA substitutions.  But the simplest way to ensure that this is done is to
+# always perform longer-source transforms first; that will take care of all possible
+# source-substring problems without comparing the contents of particular source-string
+# pairs.
+my @source_strings = sort { length($b) <=> length($a) } keys %marker_for_source;
+my @target_strings = sort { length($b) <=> length($a) } keys %marker_for_target;
+
+# It's possible that concatentation of substituted strings with existing text or other
+# substituted strings might result in a target line that contains copies of target strings
+# other than the ones that were substituted in.  Or the text might already include some
+# copies of target strings before any substitution starts.  There is no general means to
+# test for the possibility of such situations prior to substitution, so we do the simple
+# thing and just run the reverse transform after substitution.
+my @renamed_strings = ();
+my $line_counter    = 0;
+foreach my $line (@strings) {
+    ++$line_counter;
+
+    # Sanity check.  If we ever get this, then we need to use an even more-obscure prefix.
+    if ( $line =~ /$marker_prefix/ ) {
+	print "ERROR:  This input file contains the marker prefix (at input file line $line_counter).\n";
+	exit 1;
+    }
+
+    my $saved_line = $line;
+    foreach my $source (@source_strings) {
+	$line =~ s/\Q$source\E/$marker_for_source{$source}/g;
+    }
+    foreach my $marker ( keys %target_for_marker ) {
+	$line =~ s/\Q$marker\E/$target_for_marker{$marker}/g;
+    }
+    push @renamed_strings, $line;
+    foreach my $target (@target_strings) {
+	$line =~ s/\Q$target\E/$marker_for_target{$target}/g;
+    }
+    foreach my $marker ( keys %source_for_marker ) {
+	$line =~ s/\Q$marker\E/$source_for_marker{$marker}/g;
+    }
+    if ( $line ne $saved_line ) {
+	print "ERROR:  This transformation is not reversible (at input file line $line_counter).\n";
+	exit 1;
+    }
+}
+
+my $output_file = "$strings_file.renamed";
+if ( not open OUTPUT, '>', "$output_file" ) {
+    print "ERROR:  Cannot open output file $output_file ($!); aborting.";
+    exit 1;
+}
+else {
+    print OUTPUT @renamed_strings or die "ERROR:  Cannot write to output file $output_file ($!)\n";
+    close OUTPUT or die "ERROR:  Cannot close output file $output_file ($!)\n";
+}

@@ -1,0 +1,73 @@
+<div class="modal-header" gwp-sliding-dialog>
+    <button type="button" class="close" aria-hidden="true" ng-click="close()">&times;</button>
+    <h4 class="modal-title" ng-show="!group.id">New Group<span ng-show="group.name.length">: {{group.name}}</span></h4>
+    <h4 class="modal-title" ng-show="group.id">Group Detail: <span>{{group.name}}</span></h4>
+</div>
+<form role="form" novalidate class="form-horizontal css-form">
+    <div class="modal-body">
+        <div class="form-group">
+            <label for="group-name" class="col-sm-2 control-label">Name</label>
+            <div class="col-md-10 col-sm-10">
+                <input type="text" id="group-name" class="form-control" ng-model="group.name" gwp-autofocus gwp-no-spaces ng-disabled="group.id" maxlength="254" />
+                <span id="helpBlock" class="help-block">Enter a group name</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="group-description" class="col-sm-2 control-label">Description</label>
+            <div class="col-md-10 col-sm-10">
+                <input type="text" id="group-description" class="form-control" ng-model="group.description" ng-disabled="group.typeName !== 'SYSTEM'" maxlength="4096" />
+                <span id="helpBlock" class="help-block">Enter a group description</span>
+            </div>
+        </div>
+        <div class="form-group modal-header inner-header no-margin-bottom no-padding">
+            <div class="col-md-6 col-sm-6 no-padding-right"><h4 class="modal-title">Group Membership:</h4></div>
+            <div class="col-md-3 col-sm-3 no-padding-right" style="display:flex;flex-direction:row">
+                <input type="text" style="flex:1" ng-model="filter.host" placeholder="Type to see more hosts" ng-keyup="searchHosts()"/>
+                <button type="button" class="btn btn-default" ng-click="addAllHosts()" ng-hide="!selectedService || !hosts.length"><span style="font-size:smaller;">Add All</span></button>
+            </div>
+            <div class="col-md-3 col-sm-3" style="display:flex;flex-direction:row">
+                <input type="text" style="flex:1" ng-model="filter.service" placeholder="Type to see more services" ng-keyup="searchServices()"/>
+                <button type="button" class="btn btn-default" ng-click="addAllServices()" ng-hide="!selectedHost || !services.length"><span style="font-size:smaller;">Add All</span></button>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-md-6 col-sm-6 no-padding-right">
+                <div class="checker-title">Selected Services</div>
+                <div class="checkers-container">
+                    <ul class="checkers no-padding">
+                        <li ng-repeat="entity in group.services" ng-hide="hideEntity(entity)"><input type="checkbox" ng-value="entity.hostName+'::'+entity.description" checked="checked" ng-click="removeEntity(entity)" ng-disabled="group.typeName !== 'SYSTEM'"/>{{entity.description}}({{entity.hostName}})</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-3 no-padding-right" ng-hide="group.typeName !== 'SYSTEM'">
+                <div class="checker-title">Available Hosts</div>
+                <div class="checkers-container">
+                    <ul class="checkers no-padding">
+                        <li ng-repeat="host in hosts"><input type="checkbox" ng-value="host.name" ng-checked="host.name === selectedHost" ng-click="selectHost(host)"/>{{host.name}}</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-3" ng-hide="group.typeName !== 'SYSTEM'">
+                <div class="checker-title">Available Services</div>
+                <div class="checkers-container">
+                    <ul class="checkers no-padding">
+                        <li ng-repeat="service in services"><input type="checkbox" ng-value="service" ng-checked="service === selectedService" ng-click="selectService(service)"/>{{service}}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="form-group" ng-hide="group.typeName !== 'SYSTEM'">
+            <div class="col-md-10 col-sm-10 padding-left0">
+                <alert ng-repeat="alert in alerts" type="alert.type" close="closeAlert($index)"><strong>{{alert.msg}}</strong></alert>
+            </div>
+            <br />
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-default" ng-click="close()" ng-show="group.typeName === 'SYSTEM'">Cancel</button>
+        <button type="button" class="btn btn-default" ng-click="clear()" ng-show="group.typeName === 'SYSTEM'">Clear</button>
+        <input type="submit" class="btn btn-primary" ng-click="add()" ng-disabled="!group.name.length || !group.services.length" ng-show="group.typeName === 'SYSTEM' && !group.id" value="Add"/>
+        <input type="submit" class="btn btn-primary" ng-click="update()" ng-disabled="!group.name.length || !group.services.length" ng-show="group.typeName === 'SYSTEM' && group.id" value="Update"/>
+        <button type="button" class="btn btn-default" ng-click="close()" ng-show="group.typeName !== 'SYSTEM'">Close</button>
+    </div>
+</form>

@@ -1,0 +1,545 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.5.1.final using JasperReports Library version 6.5.1  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="enterprise_host_performance" pageWidth="842" pageHeight="595" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="2ec6c357-06bf-463b-be43-53d442aabe14">
+	<property name="template.engine" value="tabular_template"/>
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="47"/>
+	<property name="ireport.y" value="451"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="254"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="735"/>
+	<property name="ireport.jasperserver.url" value="http://terra:8080/jasperserver/"/>
+	<property name="ireport.jasperserver.user" value="jasperadmin"/>
+	<property name="ireport.jasperserver.reportUnit" value="/Reports/PerformanceReports/enterprise_host_performance"/>
+	<property name="com.jaspersoft.studio.report.description" value="Enterprise Host Performance"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="reports/StatusReports/terra-archive-gwcollagedb-da.xml"/>
+	<style name="Title" forecolor="#FFFFFF" fontName="Times New Roman" fontSize="50" isBold="false"/>
+	<style name="SubTitle" forecolor="#666666" fontName="Times New Roman" fontSize="18" isBold="false"/>
+	<style name="Column header" forecolor="#666666" fontName="Times New Roman" fontSize="14" isBold="true"/>
+	<style name="Row" mode="Transparent" fontName="Times New Roman" pdfFontName="Times-Roman">
+		<conditionalStyle>
+			<conditionExpression><![CDATA[$V{REPORT_COUNT}%2 == 0]]></conditionExpression>
+			<style mode="Opaque" backcolor="#F0EFEF"/>
+		</conditionalStyle>
+	</style>
+	<style name="Table">
+		<box>
+			<pen lineWidth="1.0" lineColor="#000000"/>
+			<topPen lineWidth="1.0" lineColor="#000000"/>
+			<leftPen lineWidth="1.0" lineColor="#000000"/>
+			<bottomPen lineWidth="1.0" lineColor="#000000"/>
+			<rightPen lineWidth="1.0" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="Table_TH" mode="Opaque" backcolor="#F0F8FF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+			<topPen lineWidth="0.5" lineColor="#000000"/>
+			<leftPen lineWidth="0.5" lineColor="#000000"/>
+			<bottomPen lineWidth="0.5" lineColor="#000000"/>
+			<rightPen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="Table_CH" mode="Opaque" backcolor="#BFE1FF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+			<topPen lineWidth="0.5" lineColor="#000000"/>
+			<leftPen lineWidth="0.5" lineColor="#000000"/>
+			<bottomPen lineWidth="0.5" lineColor="#000000"/>
+			<rightPen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="Table_TD" mode="Opaque" backcolor="#FFFFFF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+			<topPen lineWidth="0.5" lineColor="#000000"/>
+			<leftPen lineWidth="0.5" lineColor="#000000"/>
+			<bottomPen lineWidth="0.5" lineColor="#000000"/>
+			<rightPen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<subDataset name="host-service-performance-table" uuid="6d6d6efe-4a29-4590-8959-99b88fe67c83">
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="reports/PerformanceReports/galatea_archive-gwcollagedb.xml"/>
+		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+		<parameter name="HOST" class="java.lang.String"/>
+		<parameter name="PERFORMANCE_NAME" class="java.lang.String"/>
+		<parameter name="DATE_START" class="java.util.Date"/>
+		<parameter name="DATE_END" class="java.util.Date"/>
+		<queryString>
+			<![CDATA[SELECT Max(lpd.maximum) AS Maximum, 
+       Min(lpd.minimum) AS Minimum, 
+       Avg(lpd.average) AS Average, 
+       ss.servicedescription 
+FROM   performancedatalabel pdl 
+       INNER JOIN logperformancedata lpd 
+               ON lpd.performancedatalabelid = pdl.performancedatalabelid 
+       INNER JOIN servicestatus ss 
+               ON lpd.servicestatusid = ss.servicestatusid 
+       INNER JOIN host h 
+               ON ss.hostid = h.hostid 
+WHERE  pdl.performancename = $P{PERFORMANCE_NAME} 
+       AND h.hostname = $P{HOST} 
+       AND Cast(lpd.lastchecktime AS DATE) >= Cast($P{DATE_START} AS DATE) 
+       AND Cast(lpd.lastchecktime AS DATE) <= Cast($P{DATE_END} AS DATE) 
+GROUP  BY pdl.performancename, 
+          h.hostname, 
+          ss.servicedescription]]>
+		</queryString>
+		<field name="maximum" class="java.lang.Double">
+			<property name="com.jaspersoft.studio.field.label" value="maximum"/>
+		</field>
+		<field name="minimum" class="java.lang.Double">
+			<property name="com.jaspersoft.studio.field.label" value="minimum"/>
+		</field>
+		<field name="average" class="java.lang.Double">
+			<property name="com.jaspersoft.studio.field.label" value="average"/>
+		</field>
+		<field name="servicedescription" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.label" value="servicedescription"/>
+		</field>
+	</subDataset>
+	<subDataset name="host-service-performance-chart" uuid="8e4d60b2-e6a0-4926-9ffd-268d3ecbf234">
+		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="reports/StatusReports/terra-archive-gwcollagedb-da.xml"/>
+		<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="309"/>
+		<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="684"/>
+		<property name="com.jaspersoft.studio.property.dataset.dialog.DatasetDialog.sash.w1" value="800"/>
+		<property name="com.jaspersoft.studio.property.dataset.dialog.DatasetDialog.sash.w2" value="191"/>
+		<parameter name="PERFORMANCE_NAME" class="java.lang.String"/>
+		<parameter name="HOST" class="java.lang.String"/>
+		<parameter name="DATE_START" class="java.util.Date"/>
+		<parameter name="DATE_END" class="java.util.Date"/>
+		<queryString language="SQL">
+			<![CDATA[SELECT * FROM 
+(
+SELECT Cast(lpd.lastchecktime AS DATE) AS LastCheckTime,
+       'Average' AS seriesName,   
+       Avg(lpd.average)                AS seriesValue,
+       pdl.performancename,
+       h.hostname
+FROM   performancedatalabel pdl
+       INNER JOIN logperformancedata lpd
+               ON lpd.performancedatalabelid = pdl.performancedatalabelid
+       INNER JOIN servicestatus ss
+               ON lpd.servicestatusid = ss.servicestatusid
+       INNER JOIN host h
+               ON ss.hostid = h.hostid
+WHERE  pdl.performancename = $P{PERFORMANCE_NAME}
+       AND h.hostname = $P{HOST}
+       AND Cast(lpd.lastchecktime AS DATE) >= Cast($P{DATE_START} AS DATE)
+       AND Cast(lpd.lastchecktime AS DATE) <= Cast($P{DATE_END} AS DATE)
+GROUP  BY lpd.lastchecktime,
+          pdl.performancename,
+          h.hostname
+
+UNION
+
+SELECT Cast(lpd.lastchecktime AS DATE) AS LastCheckTime,
+       'Minimum' AS seriesName,   
+       Min(lpd.minimum)                AS seriesValue,
+       pdl.performancename,
+       h.hostname
+FROM   performancedatalabel pdl
+       INNER JOIN logperformancedata lpd
+               ON lpd.performancedatalabelid = pdl.performancedatalabelid
+       INNER JOIN servicestatus ss
+               ON lpd.servicestatusid = ss.servicestatusid
+       INNER JOIN host h
+               ON ss.hostid = h.hostid
+WHERE  pdl.performancename = $P{PERFORMANCE_NAME}
+       AND h.hostname = $P{HOST}
+       AND Cast(lpd.lastchecktime AS DATE) >= Cast($P{DATE_START}  AS DATE)
+       AND Cast(lpd.lastchecktime AS DATE) <= Cast($P{DATE_END}  AS DATE)
+GROUP  BY lpd.lastchecktime,
+          pdl.performancename,
+          h.hostname
+
+UNION
+
+SELECT Cast(lpd.lastchecktime AS DATE) AS LastCheckTime,
+       'Maximum' AS seriesName,   
+       Max(lpd.maximum)                AS seriesValue,
+       pdl.performancename,
+       h.hostname
+FROM   performancedatalabel pdl
+       INNER JOIN logperformancedata lpd
+               ON lpd.performancedatalabelid = pdl.performancedatalabelid
+       INNER JOIN servicestatus ss
+               ON lpd.servicestatusid = ss.servicestatusid
+       INNER JOIN host h
+               ON ss.hostid = h.hostid
+WHERE  pdl.performancename = $P{PERFORMANCE_NAME}
+       AND h.hostname = $P{HOST}
+       AND Cast(lpd.lastchecktime AS DATE) >= Cast($P{DATE_START}  AS DATE)
+       AND Cast(lpd.lastchecktime AS DATE) <= Cast($P{DATE_END}  AS DATE)
+GROUP  BY lpd.lastchecktime,
+          pdl.performancename,
+          h.hostname
+) pr 
+GROUP BY pr.LastCheckTime, seriesName, pr.seriesValue, pr.performanceName, pr.hostName]]>
+		</queryString>
+		<field name="lastchecktime" class="java.sql.Date">
+			<property name="com.jaspersoft.studio.field.label" value="lastchecktime"/>
+		</field>
+		<field name="seriesname" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.label" value="seriesname"/>
+		</field>
+		<field name="seriesvalue" class="java.lang.Double">
+			<property name="com.jaspersoft.studio.field.label" value="seriesvalue"/>
+		</field>
+		<field name="performancename" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.label" value="performancename"/>
+		</field>
+		<field name="hostname" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.label" value="hostname"/>
+		</field>
+	</subDataset>
+	<parameter name="PERFORMANCE_NAME" class="java.lang.String"/>
+	<parameter name="HOST" class="java.lang.String"/>
+	<parameter name="DATE_START" class="java.util.Date"/>
+	<parameter name="DATE_END" class="java.util.Date"/>
+	<queryString>
+		<![CDATA[SELECT * FROM 
+(
+SELECT Cast(lpd.lastchecktime AS DATE) AS LastCheckTime,
+       'series_average' AS seriesName,   
+       Avg(lpd.average)                AS seriesValue,
+       pdl.performancename,
+       h.hostname
+FROM   performancedatalabel pdl
+       INNER JOIN logperformancedata lpd
+               ON lpd.performancedatalabelid = pdl.performancedatalabelid
+       INNER JOIN servicestatus ss
+               ON lpd.servicestatusid = ss.servicestatusid
+       INNER JOIN host h
+               ON ss.hostid = h.hostid
+WHERE  pdl.performancename = $P{PERFORMANCE_NAME}
+       AND h.hostname = $P{HOST}
+       AND Cast(lpd.lastchecktime AS DATE) >= Cast($P{DATE_START} AS DATE)
+       AND Cast(lpd.lastchecktime AS DATE) <= Cast($P{DATE_END} AS DATE)
+GROUP  BY lpd.lastchecktime,
+          pdl.performancename,
+          h.hostname
+
+UNION
+
+SELECT Cast(lpd.lastchecktime AS DATE) AS LastCheckTime,
+       'series_minimum' AS seriesName,   
+       Min(lpd.minimum)                AS seriesValue,
+       pdl.performancename,
+       h.hostname
+FROM   performancedatalabel pdl
+       INNER JOIN logperformancedata lpd
+               ON lpd.performancedatalabelid = pdl.performancedatalabelid
+       INNER JOIN servicestatus ss
+               ON lpd.servicestatusid = ss.servicestatusid
+       INNER JOIN host h
+               ON ss.hostid = h.hostid
+WHERE  pdl.performancename = $P{PERFORMANCE_NAME}
+       AND h.hostname = $P{HOST}
+       AND Cast(lpd.lastchecktime AS DATE) >= Cast($P{DATE_START}  AS DATE)
+       AND Cast(lpd.lastchecktime AS DATE) <= Cast($P{DATE_END}  AS DATE)
+GROUP  BY lpd.lastchecktime,
+          pdl.performancename,
+          h.hostname
+
+UNION
+
+SELECT Cast(lpd.lastchecktime AS DATE) AS LastCheckTime,
+       'series_maximum' AS seriesName,   
+       Max(lpd.maximum)                AS seriesValue,
+       pdl.performancename,
+       h.hostname
+FROM   performancedatalabel pdl
+       INNER JOIN logperformancedata lpd
+               ON lpd.performancedatalabelid = pdl.performancedatalabelid
+       INNER JOIN servicestatus ss
+               ON lpd.servicestatusid = ss.servicestatusid
+       INNER JOIN host h
+               ON ss.hostid = h.hostid
+WHERE  pdl.performancename = $P{PERFORMANCE_NAME}
+       AND h.hostname = $P{HOST}
+       AND Cast(lpd.lastchecktime AS DATE) >= Cast($P{DATE_START}  AS DATE)
+       AND Cast(lpd.lastchecktime AS DATE) <= Cast($P{DATE_END}  AS DATE)
+GROUP  BY lpd.lastchecktime,
+          pdl.performancename,
+          h.hostname
+) pr 
+GROUP BY pr.LastCheckTime, seriesName, pr.seriesValue, pr.performanceName, pr.hostName]]>
+	</queryString>
+	<field name="lastchecktime" class="java.sql.Date">
+		<property name="com.jaspersoft.studio.field.label" value="lastchecktime"/>
+	</field>
+	<field name="seriesname" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="seriesname"/>
+	</field>
+	<field name="seriesvalue" class="java.lang.Double">
+		<property name="com.jaspersoft.studio.field.label" value="seriesvalue"/>
+	</field>
+	<field name="performancename" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="performancename"/>
+	</field>
+	<field name="hostname" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="hostname"/>
+	</field>
+	<title>
+		<band height="86" splitType="Stretch">
+			<frame>
+				<reportElement mode="Opaque" x="0" y="0" width="802" height="10" forecolor="#F78617" backcolor="#F78617" uuid="d1d0af64-4977-408f-9500-0e6b3b7a7ff0"/>
+			</frame>
+			<frame>
+				<reportElement mode="Opaque" x="0" y="68" width="802" height="10" forecolor="#626968" backcolor="#626968" uuid="5387f334-41a8-479a-aebd-aed52db458db"/>
+			</frame>
+			<image>
+				<reportElement x="8" y="14" width="794" height="50" uuid="39c11037-0790-481a-976e-04196ad677d0"/>
+				<imageExpression><![CDATA["assets/images/gwos_logo_orangegray.png"]]></imageExpression>
+			</image>
+		</band>
+	</title>
+	<pageHeader>
+		<band height="160">
+			<frame>
+				<reportElement mode="Opaque" x="0" y="43" width="802" height="40" forecolor="#F78617" backcolor="#F78617" uuid="2783f84c-b79d-4241-9588-71b84937964a"/>
+				<staticText>
+					<reportElement style="Title" x="8" y="0" width="786" height="40" uuid="9bf5cf8b-7287-4974-9066-e03046e746c4"/>
+					<textElement textAlignment="Left" verticalAlignment="Middle">
+						<font fontName="Arial" size="20" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Host Performance For]]></text>
+				</staticText>
+			</frame>
+			<staticText>
+				<reportElement style="Title" x="0" y="0" width="802" height="40" forecolor="#F77C17" uuid="2b0eb011-2187-4431-bb54-16912f381e99"/>
+				<box leftPadding="5"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="26" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Host Performance Report]]></text>
+			</staticText>
+			<textField>
+				<reportElement style="Title" x="0" y="88" width="802" height="16" forecolor="#000000" uuid="989b0763-e512-4ef4-afd1-c811a604d8de"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Host: " + $P{HOST}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement style="Title" x="0" y="128" width="802" height="16" forecolor="#000000" uuid="19d698ad-f28d-4c58-81cd-638e13be629a"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Date Range: " + new SimpleDateFormat("yyyy-MM-dd").format($P{DATE_START}) + " - " + new SimpleDateFormat("yyyy-MM-dd").format($P{DATE_END})]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement style="Title" x="0" y="108" width="802" height="16" forecolor="#000000" uuid="878b7697-597b-4968-a67d-a25713a57087"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Performance Indicator: " + $P{PERFORMANCE_NAME}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageHeader>
+	<detail>
+		<band height="250">
+			<printWhenExpression><![CDATA[$V{REPORT_COUNT} == 1]]></printWhenExpression>
+			<lineChart>
+				<chart isShowLegend="true" evaluationTime="Report">
+					<reportElement x="0" y="0" width="802" height="250" uuid="d13acf4b-5f01-48f0-94f0-8d22807f7efa"/>
+					<chartTitle/>
+					<chartSubtitle/>
+					<chartLegend position="Bottom"/>
+				</chart>
+				<categoryDataset>
+					<dataset>
+						<datasetRun subDataset="host-service-performance-chart" uuid="a7fe8627-c309-4647-9668-6d1ce33bc1cf">
+							<datasetParameter name="HOST">
+								<datasetParameterExpression><![CDATA[$P{HOST}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="PERFORMANCE_NAME">
+								<datasetParameterExpression><![CDATA[$P{PERFORMANCE_NAME}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="DATE_START">
+								<datasetParameterExpression><![CDATA[$P{DATE_START}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="DATE_END">
+								<datasetParameterExpression><![CDATA[$P{DATE_END}]]></datasetParameterExpression>
+							</datasetParameter>
+							<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+						</datasetRun>
+					</dataset>
+					<categorySeries>
+						<seriesExpression><![CDATA[$F{seriesname}]]></seriesExpression>
+						<categoryExpression><![CDATA[new SimpleDateFormat("yyyy-MM-dd").format($F{lastchecktime})]]></categoryExpression>
+						<valueExpression><![CDATA[$F{seriesvalue}]]></valueExpression>
+					</categorySeries>
+				</categoryDataset>
+				<linePlot isShowLines="true">
+					<plot labelRotation="45.0">
+						<seriesColor seriesOrder="0" color="#4C3CDE"/>
+					</plot>
+					<categoryAxisLabelExpression><![CDATA[new SimpleDateFormat("yyyy-MM-dd").format($F{lastchecktime})]]></categoryAxisLabelExpression>
+					<categoryAxisFormat labelRotation="45.0">
+						<axisFormat labelColor="#000000" tickLabelColor="#000000" axisLineColor="#000000"/>
+					</categoryAxisFormat>
+					<valueAxisFormat>
+						<axisFormat labelColor="#000000" tickLabelColor="#000000" verticalTickLabels="false" axisLineColor="#000000"/>
+					</valueAxisFormat>
+				</linePlot>
+			</lineChart>
+		</band>
+		<band height="250">
+			<printWhenExpression><![CDATA[$V{REPORT_COUNT} == 1]]></printWhenExpression>
+			<frame>
+				<reportElement x="0" y="0" width="802" height="250" uuid="05ef4f33-0aa7-4060-b76a-e5dbed0f90fe"/>
+				<componentElement>
+					<reportElement x="0" y="0" width="802" height="250" uuid="b76ff91a-a6cd-49ad-9519-f302fd9939af">
+						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.VerticalRowLayout"/>
+						<property name="com.jaspersoft.studio.table.style.table_header" value="Table_TH"/>
+						<property name="com.jaspersoft.studio.table.style.column_header" value="Table_CH"/>
+						<property name="com.jaspersoft.studio.table.style.detail" value="Table_TD"/>
+						<property name="com.jaspersoft.studio.components.autoresize.next" value="true"/>
+						<property name="com.jaspersoft.studio.components.autoresize.proportional" value="true"/>
+					</reportElement>
+					<jr:table xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd">
+						<datasetRun subDataset="host-service-performance-table" uuid="927fb035-1321-4fec-94b7-546698fda2d6">
+							<datasetParameter name="HOST">
+								<datasetParameterExpression><![CDATA[$P{HOST}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="PERFORMANCE_NAME">
+								<datasetParameterExpression><![CDATA[$P{PERFORMANCE_NAME}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="DATE_START">
+								<datasetParameterExpression><![CDATA[$P{DATE_START}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="DATE_END">
+								<datasetParameterExpression><![CDATA[$P{DATE_END}]]></datasetParameterExpression>
+							</datasetParameter>
+							<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+						</datasetRun>
+						<jr:column width="201" uuid="4a0cf5c0-f47f-4b30-b6c2-0ab28cc19cbb">
+							<jr:tableHeader style="Table_TH" height="30"/>
+							<jr:tableFooter style="Table_TH" height="30"/>
+							<jr:columnHeader style="Table_CH" height="30">
+								<staticText>
+									<reportElement x="0" y="0" width="201" height="30" uuid="6f1f9383-c358-4067-b200-1a0c8df76ed6"/>
+									<text><![CDATA[servicedescription]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:columnFooter style="Table_CH" height="30"/>
+							<jr:detailCell style="Table_TD" height="30">
+								<textField>
+									<reportElement x="0" y="0" width="201" height="30" uuid="9fb83e8c-19a7-4fd3-8746-218e1e932073"/>
+									<textFieldExpression><![CDATA[$F{servicedescription}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="201" uuid="733e92b7-cdf1-4808-a0c2-ababa3fe3195">
+							<jr:tableHeader style="Table_TH" height="30"/>
+							<jr:tableFooter style="Table_TH" height="30"/>
+							<jr:columnHeader style="Table_CH" height="30">
+								<staticText>
+									<reportElement x="0" y="0" width="201" height="30" uuid="91779450-2232-4e30-a388-e1bc25a4789c"/>
+									<text><![CDATA[maximum]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:columnFooter style="Table_CH" height="30"/>
+							<jr:detailCell style="Table_TD" height="30">
+								<textField>
+									<reportElement x="0" y="0" width="201" height="30" uuid="f667a25a-eedc-41c4-856e-c5f2199064b3"/>
+									<textFieldExpression><![CDATA[$F{maximum}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="200" uuid="4f8f63cd-6004-4686-a7be-5752b395e7cd">
+							<jr:tableHeader style="Table_TH" height="30"/>
+							<jr:tableFooter style="Table_TH" height="30"/>
+							<jr:columnHeader style="Table_CH" height="30">
+								<staticText>
+									<reportElement x="0" y="0" width="200" height="30" uuid="be99f682-f455-4b75-ab73-d36416587d48"/>
+									<text><![CDATA[minimum]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:columnFooter style="Table_CH" height="30"/>
+							<jr:detailCell style="Table_TD" height="30">
+								<textField>
+									<reportElement x="0" y="0" width="200" height="30" uuid="e880ab9c-7b22-4fa5-b192-cd158ba8fb66"/>
+									<textFieldExpression><![CDATA[$F{minimum}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="200" uuid="d89548a8-8151-4f52-8420-0a7d5b19916c">
+							<jr:tableHeader style="Table_TH" height="30"/>
+							<jr:tableFooter style="Table_TH" height="30"/>
+							<jr:columnHeader style="Table_CH" height="30">
+								<staticText>
+									<reportElement x="0" y="0" width="200" height="30" uuid="e30321a5-6656-40d7-afd0-cb8f9fc03884"/>
+									<text><![CDATA[average]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:columnFooter style="Table_CH" height="30"/>
+							<jr:detailCell style="Table_TD" height="30">
+								<textField>
+									<reportElement x="0" y="0" width="200" height="30" uuid="b50c62f0-bbb9-48f2-a020-fdf487d6ea02"/>
+									<textFieldExpression><![CDATA[$F{average}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+					</jr:table>
+				</componentElement>
+			</frame>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="64" splitType="Stretch">
+			<frame>
+				<reportElement mode="Opaque" x="0" y="48" width="802" height="16" forecolor="#FFFFFF" backcolor="#FFFFFF" uuid="dbbd7f7c-a4ef-4144-9e40-4eb80b0d4dc3"/>
+				<textField pattern="MMM d, yyyy h:mm:ss a z">
+					<reportElement style="Column header" x="24" y="0" width="232" height="16" forecolor="#000000" uuid="81eae817-c3ed-46a0-b950-81c5af3f605a"/>
+					<textElement verticalAlignment="Middle">
+						<font fontName="Arial" size="12" isBold="false"/>
+					</textElement>
+					<textFieldExpression><![CDATA["Generated On "+ new java.util.Date()]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement style="Column header" x="572" y="0" width="230" height="16" forecolor="#000000" uuid="779b4eb5-131b-4d1f-9fba-913340bd6670"/>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="12" isBold="false"/>
+					</textElement>
+					<textFieldExpression><![CDATA["Confidential"]]></textFieldExpression>
+				</textField>
+				<image>
+					<reportElement x="0" y="0" width="16" height="16" uuid="a7f268ad-e02e-4e51-aa6f-4b904bf9f783"/>
+					<imageExpression><![CDATA["assets/images/gw_icon.png"]]></imageExpression>
+				</image>
+				<textField evaluationTime="Report">
+					<reportElement x="401" y="0" width="100" height="16" uuid="bbe7eacc-86f1-4b16-9939-55564ef73ad3"/>
+					<textElement textAlignment="Left">
+						<font fontName="SansSerif" size="12"/>
+					</textElement>
+					<textFieldExpression><![CDATA[" of " + $V{PAGE_NUMBER}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="301" y="0" width="100" height="16" uuid="24c01c8b-fd5d-41e0-9637-bb5215e7fc17"/>
+					<textElement textAlignment="Right">
+						<font fontName="SansSerif" size="12"/>
+					</textElement>
+					<textFieldExpression><![CDATA["Page " + $V{PAGE_NUMBER}]]></textFieldExpression>
+				</textField>
+			</frame>
+			<textField>
+				<reportElement style="Column header" x="0" y="8" width="802" height="16" forecolor="#000000" uuid="aa031ad9-09ca-4a40-a02c-937d348bff59"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Copyright 2018 GroundWork Open Source, Inc. (GroundWork)"]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement style="Column header" x="0" y="24" width="802" height="16" forecolor="#000000" uuid="4b3f1cdd-01db-4e8a-9539-3e88d731e904"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["All rights reserved."]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageFooter>
+</jasperReport>

@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0014)about:internet -->
+  <html xmlns="http://www.w3.org/1999/xhtml">
+		<head>
+			<!-- template designed by Marco Von Ballmoos -->
+			<title>Docs For Class HostGroupDAL</title>
+			<link rel="stylesheet" href="../media/stylesheet.css" />
+			<meta http-equiv='Content-Type' content='text/html; charset=iso-8859-1'/>
+		</head>
+		<body>
+			<div class="page-body">			
+<h2 class="class-name">Class HostGroupDAL</h2>
+
+<a name="sec-description"></a>
+<div class="info-box">
+	<div class="info-box-title">Description</div>
+	<div class="nav-bar">
+					<span class="disabled">Description</span> |
+															<a href="#sec-method-summary">Methods</a> (<a href="#sec-methods">details</a>)
+						
+					</div>
+	<div class="info-box-body">
+        		<!-- ========== Info from phpDoc block ========= -->
+<p class="short-description">Provides access to HostGroups stored in the Foundation Database. shallow and deep retrieval are provided.</p>
+<p class="description"><p>Provides access to HostGroups stored in the Foundation Database.  Both shallow and deep retrieval are provided. Shallow retrieval returns data in the following format: <pre>Array
+ (
+   [Count] => 4
+   [HostGroups] => Array
+   (
+           [0] => Array
+           (
+                   [HostGroupID] => 21
+                   [Name] => Engineering
+                   [Description] =>
+                   [ApplicationTypeID] => 100
+                   [ApplicationName] => NAGIOS
+           )
+          [1] => Array
+          (
+                  [HostGroupID] => 28
+                  [Name] => google
+                  [Description] =>
+                  [ApplicationTypeID] => 100
+                  [ApplicationName] => NAGIOS
+          )
+          [2] => Array
+          (
+                  [HostGroupID] => 29
+                  [Name] => infrastructure
+                  [Description] =>
+                  [ApplicationTypeID] => 100
+                  [ApplicationName] => NAGIOS
+          )
+          [3] => Array
+          (
+                  [HostGroupID] => 22
+                  [Name] => Linux Servers
+                  [Description] =>
+                  [ApplicationTypeID] => 100
+                  [ApplicationName] => NAGIOS
+          )
+      )
+)</pre>
+ Deep retrieval returns data in the following format: <pre> Array
+(
+   [Count] => 10  <=== this is the TOTAL count of hostgroups in foundation, not how many are being retrieved.
+   [HostGroups] => Array
+   (
+           [0] => Array
+           (
+                   [HostGroupID] => 22
+                   [Name] => Linux Servers
+                   [Description] =>
+                   [ApplicationTypeID] => 100
+                   [ApplicationName] => NAGIOS
+                   [Hosts] => Array
+                   (
+                           [0] => Array
+                           (
+                                   [HostID] => 1
+                                   [Name] => localhost
+                                   [ApplicationTypeID] => 100
+                                   [Device] => Array
+                                   (
+                                           [DeviceID] => 1
+                                           [Name] => 127.0.0.1
+                                           [Identification] => 127.0.0.1
+                                   )
+                                   [MonitorStatus] => stdClass Object
+                                   (
+                                           [MonitorStatusID] => 7
+                                           [Name] => UP
+                                           [Description] => Status UP
+                                       )
+                               )
+                       )
+               )
+           [1] => Array
+           (
+                   [HostGroupID] => 23
+                   [Name] => Marketing
+                   [Description] =>
+                   [ApplicationTypeID] => 100
+                   [ApplicationName] => NAGIOS
+                   [Hosts] => Array
+                   (
+                           [0] => Array
+                           (
+                                   [HostID] => 228
+                                   [ApplicationTypeID] => 100
+                                   [Device] => Array
+                                   (
+                                           [DeviceID] => 229
+                                           [Name] => sales-linux-fs02
+                                           [Identification] => 172.28.114.200
+                                   )
+                                   [Name] => sales-linux-fs02
+                                   [MonitorStatus] => stdClass Object
+                                   (
+                                           [MonitorStatusID] => 7
+                                           [Name] => UP
+                                           [Description] => Status UP
+                                   )
+                           )
+                           [1] => Array
+                           (
+                                   [HostID] => 232
+                                   [ApplicationTypeID] => 100
+                                   [Device] => Array
+                                   (
+                                           [DeviceID] => 233
+                                           [Name] => 172.28.113.147
+                                           [Identification] => 172.28.113.147
+                                   )
+                                   [Name] => 172.28.113.147
+                                   [MonitorStatus] => stdClass Object
+                                   (
+                                           [MonitorStatusID] => 8
+                                           [Name] => PENDING
+                                           [Description] => Status PENDING
+                                   )
+                           )
+                   )
+           )
+    )
+)</pre></p></p>
+		<p class="notes">
+			Located in <a class="field" href="_HostGroupDAL_inc_php.html">/HostGroupDAL.inc.php</a> (line <span class="field">164</span>)
+		</p>
+		
+				
+		<pre></pre>
+	
+			</div>
+</div>
+
+
+
+
+	<a name="sec-method-summary"></a>
+	<div class="info-box">
+		<div class="info-box-title">Method Summary</span></div>
+		<div class="nav-bar">
+			<a href="#sec-description">Description</a> |
+												<span class="disabled">Methods</span> (<a href="#sec-methods">details</a>)
+		</div>
+		<div class="info-box-body">			
+			<div class="method-summary">
+								
+				<div class="method-definition">
+											<span class="method-result">HostGroupDAL</span>
+										<a href="#__construct" title="details" class="method-name">__construct</a>
+											(<span class="var-type">string</span>&nbsp;<span class="var-name">$foundationURL</span>)
+									</div>
+								
+				<div class="method-definition">
+											<span class="method-result">A</span>
+										<a href="#getHostGroupById" title="details" class="method-name">getHostGroupById</a>
+											(<span class="var-type">integer</span>&nbsp;<span class="var-name">$hostGroupId</span>, [<span class="var-type">boolean</span>&nbsp;<span class="var-name">$deep</span> = <span class="var-default">false</span>])
+									</div>
+								
+				<div class="method-definition">
+											<span class="method-result">a</span>
+										<a href="#getHostGroupByName" title="details" class="method-name">getHostGroupByName</a>
+											(<span class="var-type">string</span>&nbsp;<span class="var-name">$hostGroupName</span>, [<span class="var-type">boolean</span>&nbsp;<span class="var-name">$deep</span> = <span class="var-default">false</span>])
+									</div>
+								
+				<div class="method-definition">
+											<span class="method-result">a</span>
+										<a href="#getHostGroups" title="details" class="method-name">getHostGroups</a>
+											([<span class="var-type">boolean</span>&nbsp;<span class="var-name">$deep</span> = <span class="var-default">false</span>])
+									</div>
+								
+				<div class="method-definition">
+											<span class="method-result">list</span>
+										<a href="#getHostGroupsByFilter" title="details" class="method-name">getHostGroupsByFilter</a>
+											([<span class="var-type">unknown_type</span>&nbsp;<span class="var-name">$filter</span> = <span class="var-default">null</span>], [<span class="var-type">list</span>&nbsp;<span class="var-name">$sort</span> = <span class="var-default">null</span>], [<span class="var-type">integer</span>&nbsp;<span class="var-name">$firstResult</span> = <span class="var-default">-1</span>], [<span class="var-type">integer</span>&nbsp;<span class="var-name">$maxResults</span> = <span class="var-default">-1</span>], [<span class="var-type">boolean</span>&nbsp;<span class="var-name">$deep</span> = <span class="var-default">false</span>])
+									</div>
+							</div>
+		</div>
+	</div>		
+
+	
+	<a name="sec-methods"></a>
+	<div class="info-box">
+		<div class="info-box-title">Methods</div>
+		<div class="nav-bar">
+			<a href="#sec-description">Description</a> |
+																<a href="#sec-method-summary">Methods</a> (<span class="disabled">details</span>)
+						
+		</div>
+		<div class="info-box-body">
+			<A NAME='method_detail'></A>
+<a name="method__construct" id="__construct"><!-- --></a>
+<div class="evenrow">
+	
+	<div class="method-header">
+		<span class="method-title">Constructor __construct</span> (line <span class="line-number">174</span>)
+	</div> 
+	
+	<!-- ========== Info from phpDoc block ========= -->
+<p class="short-description">create an instance of the HostGroupDAL</p>
+<p class="description"><p>create an instance of the HostGroupDAL</p></p>
+	<ul class="tags">
+				<li><span class="field">access:</span> public</li>
+			</ul>
+	
+	<div class="method-signature">
+		<span class="method-result">HostGroupDAL</span>
+		<span class="method-name">
+			__construct
+		</span>
+					(<span class="var-type">string</span>&nbsp;<span class="var-name">$foundationURL</span>)
+			</div>
+	
+			<ul class="parameters">
+					<li>
+				<span class="var-type">string</span>
+				<span class="var-name">$foundationURL</span><span class="var-description">: - path to foundation MUST be provided</span>			</li>
+				</ul>
+		
+		
+	</div>
+<a name="methodgetHostGroupById" id="getHostGroupById"><!-- --></a>
+<div class="oddrow">
+	
+	<div class="method-header">
+		<span class="method-title">getHostGroupById</span> (line <span class="line-number">215</span>)
+	</div> 
+	
+	<!-- ========== Info from phpDoc block ========= -->
+<p class="short-description">gets the hostgroup corresponding to $hostGroupId. hostgroups that will include detailed host information in the response.</p>
+<p class="description"><p>gets the hostgroup corresponding to $hostGroupId.  Set $deep to true to do a deep retrieval of hostgroups that will include detailed host information in the response.</p></p>
+	<ul class="tags">
+				<li><span class="field">return:</span> hostgroup</li>
+				<li><span class="field">access:</span> public</li>
+			</ul>
+	
+	<div class="method-signature">
+		<span class="method-result">A</span>
+		<span class="method-name">
+			getHostGroupById
+		</span>
+					(<span class="var-type">integer</span>&nbsp;<span class="var-name">$hostGroupId</span>, [<span class="var-type">boolean</span>&nbsp;<span class="var-name">$deep</span> = <span class="var-default">false</span>])
+			</div>
+	
+			<ul class="parameters">
+					<li>
+				<span class="var-type">integer</span>
+				<span class="var-name">$hostGroupId</span>			</li>
+					<li>
+				<span class="var-type">boolean</span>
+				<span class="var-name">$deep</span>			</li>
+				</ul>
+		
+		
+	</div>
+<a name="methodgetHostGroupByName" id="getHostGroupByName"><!-- --></a>
+<div class="evenrow">
+	
+	<div class="method-header">
+		<span class="method-title">getHostGroupByName</span> (line <span class="line-number">238</span>)
+	</div> 
+	
+	<!-- ========== Info from phpDoc block ========= -->
+<p class="short-description">gets the hostgroup corresponding to $hostGroupName. hostgroups that will include detailed host information in the response.</p>
+<p class="description"><p>gets the hostgroup corresponding to $hostGroupName.  Set $deep to true to do a deep retrieval of hostgroups that will include detailed host information in the response.</p></p>
+	<ul class="tags">
+				<li><span class="field">return:</span> hostgroup</li>
+				<li><span class="field">access:</span> public</li>
+			</ul>
+	
+	<div class="method-signature">
+		<span class="method-result">a</span>
+		<span class="method-name">
+			getHostGroupByName
+		</span>
+					(<span class="var-type">string</span>&nbsp;<span class="var-name">$hostGroupName</span>, [<span class="var-type">boolean</span>&nbsp;<span class="var-name">$deep</span> = <span class="var-default">false</span>])
+			</div>
+	
+			<ul class="parameters">
+					<li>
+				<span class="var-type">string</span>
+				<span class="var-name">$hostGroupName</span>			</li>
+					<li>
+				<span class="var-type">boolean</span>
+				<span class="var-name">$deep</span>			</li>
+				</ul>
+		
+		
+	</div>
+<a name="methodgetHostGroups" id="getHostGroups"><!-- --></a>
+<div class="oddrow">
+	
+	<div class="method-header">
+		<span class="method-title">getHostGroups</span> (line <span class="line-number">188</span>)
+	</div> 
+	
+	<!-- ========== Info from phpDoc block ========= -->
+<p class="short-description">Gets all the HostGroups. detailed host information in the response.</p>
+<p class="description"><p>Gets all the HostGroups.  Set $deep to true to do a deep retrieval of hostgroups that will include detailed host information in the response.</p></p>
+	<ul class="tags">
+				<li><span class="field">return:</span> list of HostGroups</li>
+				<li><span class="field">access:</span> public</li>
+			</ul>
+	
+	<div class="method-signature">
+		<span class="method-result">a</span>
+		<span class="method-name">
+			getHostGroups
+		</span>
+					([<span class="var-type">boolean</span>&nbsp;<span class="var-name">$deep</span> = <span class="var-default">false</span>])
+			</div>
+	
+			<ul class="parameters">
+					<li>
+				<span class="var-type">boolean</span>
+				<span class="var-name">$deep</span>			</li>
+				</ul>
+		
+		
+	</div>
+<a name="methodgetHostGroupsByFilter" id="getHostGroupsByFilter"><!-- --></a>
+<div class="evenrow">
+	
+	<div class="method-header">
+		<span class="method-title">getHostGroupsByFilter</span> (line <span class="line-number">265</span>)
+	</div> 
+	
+	<!-- ========== Info from phpDoc block ========= -->
+<p class="short-description">gets the hostgroups according the the filter passed in, sorted according to the fields in $sort.</p>
+<p class="description"><p>gets the hostgroups according the the filter passed in, sorted according to the fields in $sort. Set $deep to true to do a deep retrieval of hostgroups that will include detailed host information in the response.  Use $firstResult and $maxResults to constrain the number of hostgroups returned.</p></p>
+	<ul class="tags">
+				<li><span class="field">return:</span> of hostgroups</li>
+				<li><span class="field">access:</span> public</li>
+			</ul>
+	
+	<div class="method-signature">
+		<span class="method-result">list</span>
+		<span class="method-name">
+			getHostGroupsByFilter
+		</span>
+					([<span class="var-type">unknown_type</span>&nbsp;<span class="var-name">$filter</span> = <span class="var-default">null</span>], [<span class="var-type">list</span>&nbsp;<span class="var-name">$sort</span> = <span class="var-default">null</span>], [<span class="var-type">integer</span>&nbsp;<span class="var-name">$firstResult</span> = <span class="var-default">-1</span>], [<span class="var-type">integer</span>&nbsp;<span class="var-name">$maxResults</span> = <span class="var-default">-1</span>], [<span class="var-type">boolean</span>&nbsp;<span class="var-name">$deep</span> = <span class="var-default">false</span>])
+			</div>
+	
+			<ul class="parameters">
+					<li>
+				<span class="var-type">unknown_type</span>
+				<span class="var-name">$filter</span>			</li>
+					<li>
+				<span class="var-type">list</span>
+				<span class="var-name">$sort</span><span class="var-description">: - a list of Foundation database fields to sort on.</span>			</li>
+					<li>
+				<span class="var-type">integer</span>
+				<span class="var-name">$firstResult</span><span class="var-description">: Number of HostGroup to start with - use for pagination</span>			</li>
+					<li>
+				<span class="var-type">integer</span>
+				<span class="var-name">$maxResults</span><span class="var-description">: Total number of hostgroups to return, starting from $firstResult.</span>			</li>
+					<li>
+				<span class="var-type">boolean</span>
+				<span class="var-name">$deep</span><span class="var-description">: - deep retrieval or not?</span>			</li>
+				</ul>
+		
+		
+	</div>
+						
+		</div>
+	</div>
+
+
+	<p class="notes" id="credit">
+		Documentation generated on Fri, 04 May 2007 16:49:44 -0700 by <a href="http://www.phpdoc.org" target="_blank">phpDocumentor 1.3.0RC3</a>
+	</p>
+	</div></body>
+</html>

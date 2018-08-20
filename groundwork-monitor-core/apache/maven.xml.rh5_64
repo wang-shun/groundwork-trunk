@@ -1,0 +1,270 @@
+<!--
+Copyright (C) 2008 GroundWork Open Source, Inc. ("GroundWork")  
+All rights reserved. This program is free software; you can redistribute it
+and/or modify it under the terms of the GNU General Public License version 2
+as published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU General Public License for 
+more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+
+<project default="allBuild"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+
+
+<goal name='allBuild'>
+    <attainGoal name='apache2' />
+    <attainGoal name='auth_tkt' />
+    <attainGoal name='php' />
+    <attainGoal name='APC' />
+</goal>
+
+  <goal name="allClean"
+        description="Clean the master project and all subprojects">
+       <delete dir="${basedir}/${com.groundwork.apache.apache2}"/>
+       <delete dir="${basedir}/${com.groundwork.apache.auth_tkt}"/>
+       <delete dir="${basedir}/${com.groundwork.apache.php}"/>
+       <delete dir="${basedir}/${com.groundwork.apache.APC}"/>
+   </goal>
+
+<!-- 
+		Build individual components of Apache
+		
+		Add a goal for any new component
+ -->
+
+  <!-- START BUILDING APC -->
+  <goal name="APC" description="Build APC and install it into /usr/local/groundwork/">
+
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/apache/${com.groundwork.apache.APC}.tar.gz" dest="${basedir}"/>
+
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.apache.APC}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.apache.APC}" executable="sh" >
+      <arg line="configure 	 --prefix=${org.groundwork.deploy.prefix} 
+				 --libdir=${org.groundwork.deploy.prefix}/${libdir}
+				 --enable-apc-mmap
+				 --with-apxs=${org.groundwork.deploy.prefix}/apache2/bin/apxs
+				 --with-php-config=${org.groundwork.deploy.prefix}/bin/php-config
+				"/>
+    </exec>
+
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.apache.APC}" executable="make" >
+      <arg line=""/>
+    </exec>
+
+    <!-- INSTALL -->
+    <exec dir="${basedir}/${com.groundwork.apache.APC}" executable="make" >
+      <arg line="install"/>
+    </exec>
+  </goal>
+  <!-- STOP BUILDING APC -->
+
+  <!-- START BUILDING APACHE-2 -->
+  <goal name="apache2" description="Build APACHE-2 HTTP SERVER and install it into /usr/local/groundwork/apache">
+
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/apache/${com.groundwork.apache.apache2}.tar.gz" dest="${basedir}"/>
+
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.apache.apache2}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+
+    <exec dir="${basedir}/${com.groundwork.apache.apache2}" executable="autoconf" >
+      <arg line="--force"/>
+    </exec>
+
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.apache.apache2}" executable="sh" >
+      <arg line="configure      --prefix=${org.groundwork.deploy.prefix}/apache2
+ 				LDFLAGS=&quot;-L${org.groundwork.deploy.prefix}/${libdir} -L/usr/lib64&quot;
+                                CPPFLAGS=-I${org.groundwork.deploy.prefix}/include
+				--with-z=${org.groundwork.deploy.prefix}	
+				--enable-ssl
+      				--enable-module=so
+                                --enable-rewrite=shared
+                                --enable-speling=shared
+                                --enable-v4-mapped
+                                --enable-exception-hook
+                                --enable-auth-dbm
+                                --enable-mime-magic
+                                --enable-proxy
+                                --enable-proxy-connect
+                                --enable-proxy-http
+      							--enable-proxy-html
+      							--with-pthread
+                                --with-jni
+                                --enable-mods-shared=all
+                                --enable-cgi
+                                --enable-logio
+                                --with-ldap
+                                --enable-ldap
+      							--with-authnz_ldap
+      	      					--enable-authnz_ldap
+      	      					--with-included-apr
+								"/>
+    </exec>
+
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.apache.apache2}" executable="make" >
+      <arg line=""/>
+    </exec>
+
+    <!-- MAKE -->
+    <j:set var="__skip_test__" value="${maven.test.skip}" />
+    <j:if test="${!__skip_test__.equals('true')}">
+    <exec dir="${basedir}/${com.groundwork.apache.apache2}" executable="make" >
+      <arg line="test"/>
+    </exec>
+    </j:if>
+    <!-- INSTALL -->
+    <exec dir="${basedir}/${com.groundwork.apache.apache2}" executable="make" >
+      <arg line="install"/>
+    </exec>
+
+    <!-- Delete all index files in htdocs and replace them with a simple forward to collage -->
+    <delete>
+        <fileset dir="${org.groundwork.deploy.prefix}/apache2/htdocs" includes="**/index.*"/>
+        </delete>
+
+  	<!-- Create groundwork subdirectory for application specific configuration -->
+  	<mkdir dir="${org.groundwork.deploy.prefix}/apache2/conf/groundwork" />
+  	
+    <!-- Copy httpd.init script-->
+    <copy file="${basedir}/httpd.init" todir="${org.groundwork.deploy.prefix}/apache2/conf/httpd.init" overwrite="true" />
+
+    <!-- Copy default index.html which is a simple forward to collage-->
+    <copy file="${basedir}/index.html" todir="${org.groundwork.deploy.prefix}/apache2/htdocs/index.html" overwrite="true" />
+
+        <!-- Copy service file into apache directory-->
+    <copy file="${basedir}/apachectl.chkconfig" tofile="${org.groundwork.deploy.prefix}/apache2/bin/apachectl" overwrite="true" />
+
+        <!-- Copy service file into apache directory-->
+        <copy file="${basedir}/envvars" todir="${org.groundwork.deploy.prefix}/apache2/bin" overwrite="true" />
+
+  </goal>
+  <!-- STOP BUILDING APACHE-2 -->
+
+
+  <!-- START BUILDING mod_auth_tkt -->
+  <goal name="auth_tkt" description="Build AUTH TKT MODULE for HTTP SERVER and install it into /usr/local/groundwork/apache2">
+
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/apache/${com.groundwork.apache.auth_tkt}.tar.gz" 
+	dest="${basedir}"/>
+
+    <!-- PERMISSION ADJUSTEMENTS -->
+    <exec dir="${basedir}/${com.groundwork.apache.auth_tkt}" executable="chmod" >
+      <arg line="-R +x ."/>
+    </exec>
+  	
+    <!-- Copy header file into apache directory. If the file is missing the build breaks! -->
+    <copy file="${basedir}/pcreposix.h" todir="${org.groundwork.deploy.prefix}/apache2/include" overwrite="true" />
+
+
+    <!-- RUN CONFIGURE -->
+    <exec dir="${basedir}/${com.groundwork.apache.auth_tkt}" executable="sh" >
+      <arg line="./configure --apxs=${org.groundwork.deploy.prefix}/apache2/bin/apxs
+      						 --apachever=2.2
+										"/>
+    </exec>
+
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.apache.auth_tkt}" executable="make" >
+      <arg line=""/>
+    </exec>
+
+    <!-- INSTALL -->
+    <exec dir="${basedir}/${com.groundwork.apache.auth_tkt}" executable="make" >
+      <arg line="install"/>
+    </exec>
+    
+  </goal>
+  <!-- STOP BUILDING mod_auth_tkt-->
+
+  <!-- START BUILDING PHP -->
+  <goal name="php" description="Build PHP and install it into /usr/local/groundwork/apache">
+
+    <!-- UNZIP/UNTAR -->
+    <untar compression="gzip" src="${org.groundwork.build.share}/apache/${com.groundwork.apache.php}.tar.gz" dest="${basedir}"/>
+	  	
+    <!-- Change permission and setup build environment -->
+    <exec dir="${basedir}/${com.groundwork.apache.php}" executable="chmod" >
+      <arg line="-R +x ./"/>
+    </exec>
+
+    <exec dir="${basedir}/${com.groundwork.apache.php}" executable="sh" >
+      <arg line="buildconf --force"/>
+    </exec>
+
+    <!-- RUN CONFIGURE -->
+  	<exec dir="${basedir}/${com.groundwork.apache.php}" executable="sh" >
+  	      <arg line="configure      --prefix=${org.groundwork.deploy.prefix}
+  	                                --with-apxs2=${org.groundwork.deploy.prefix}/apache2/bin/apxs
+  	                                --enable-force-cgi-redirect
+									--enable-libsuffix=64
+  	                                --with-mod_charset
+  	                                --enable-safe-mode
+  	                                --enable-shared
+  	                        		--with-ldap
+									--with-layout=GNU
+  	                                --enable-libxml
+  	                                --enable-spl
+  	                                --with-regex=php
+  	                                --disable-ipv6
+  	                                --enable-session
+  	                                --with-openssl
+  	                                --with-jpeg
+  	                                --with-png
+  	                                --with-zlib
+  	                                --with-gd
+  	                                --enable-calendar
+                                    --with-mysql=/var/lib/mysql
+                                    --with-mysql-sock=/var/lib/mysql
+  	                                --enable-ctype
+  	                                --with-freetype
+  	                                --enable-soap
+  	                                --enable-bcmath
+  	                                --with-snmp=/usr/local/groundwork
+  	             					--enable-ucd-snmp-hack
+									--enable-sockets
+  	                                "/>
+  	    </exec>
+
+    <!-- MAKE -->
+    <exec dir="${basedir}/${com.groundwork.apache.php}" executable="make" >
+      <arg line=""/>
+    </exec>
+
+    <!-- INSTALL -->
+    <exec dir="${basedir}/${com.groundwork.apache.php}" executable="make" >
+      <arg line="install"/>
+    </exec>
+
+    <!-- Copy the files into the correct directories -->
+    <mkdir dir="${org.groundwork.deploy.prefix}/etc"/>
+    <mkdir dir="${org.groundwork.deploy.prefix}/share/php"/>
+    <mkdir dir="${org.groundwork.deploy.prefix}/${libdir}/php/extensions" />
+
+    <copy file="${basedir}/php.ini" todir="${org.groundwork.deploy.prefix}/etc" overwrite="true"/>
+  		
+  </goal>
+	
+	
+	<!-- STOP BUILDING PHP -->
+  
+</project>

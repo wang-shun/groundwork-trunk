@@ -1,0 +1,240 @@
+#!/bin/bash
+set -e -o pipefail
+
+# Copyright (c) 2017 GroundWork, Inc. (www.gwos.com).  All rights reserved.
+# Use of this software is subject to commercial license terms.
+
+errhandler() {
+    echo >&2
+    echo "Installation encountered error on line $1.  Aborting." >&2
+    echo "Please contact GroundWork Support for assistance." >&2
+    echo >&2
+}
+
+trap 'errhandler $LINENO' ERR
+
+# Official base-release version for which this patch was developed.
+PATCH_GWVERSION="7.1.1"
+
+# Official patch name/number.
+PATCH="TB$PATCH_GWVERSION-10"
+
+# Full list of base-release versions supported by this patch, as an array.
+BASE_GWVERSIONS=( 7.1.1 )
+
+GWDIR="/usr/local/groundwork"
+PATCHESDIR="common/var/patches"
+OUTDIR="$GWDIR/$PATCHESDIR"
+LOGFILE="$OUTDIR/$PATCH.log"
+OUTFILE="$OUTDIR/$PATCH.installed"
+TB_7_1_1_9_MARKER="TB7.1.1-9.installed"
+
+echo "===== GroundWork Patch $PATCH installer ====="
+echo
+echo "This patch will modify NoMa to fix critical issues."
+echo
+echo "This patch will also modify a few other portions of your GroundWork"
+echo "installation to properly support NoMa."
+echo
+echo "Please note that this patch requires NoMa to be stopped before you"
+echo "run this script, and Foundation (gwservices) to be restarted after"
+echo "you run this script, which will result in a few minutes of downtime."
+echo
+echo -n "Ok to proceed? [y/N] "
+read -r proceed
+echo
+case "$proceed" in
+    [yY][eE][sS]|[yY])
+        ;;
+    *)
+        echo "Installation aborted."
+        exit 0
+        ;;
+esac
+
+if [[ $EUID -ne 0 ]]; then
+    echo "ERROR: This script must be run as root." >&2
+    exit 1
+fi
+
+if [ -f $OUTFILE ]; then
+    echo "ERROR: Patch $PATCH is already installed." >&2
+    echo "Please contact GroundWork Support for assistance." >&2
+    exit 1
+fi
+
+if [ -f $OUTDIR/$TB_7_1_1_9_MARKER ]; then
+    echo "$OUTDIR/$TB_7_1_1_9_MARKER found."
+    TB_7_1_1_9_BACKUPFILE="$PATCHESDIR/$TB_7_1_1_9_MARKER"
+fi
+
+OLD_IFS="$IFS"
+IFS='|'
+VERSION_PATTERN="${BASE_GWVERSIONS[*]}"
+IFS="$OLD_IFS"
+if ! grep -Exq "version= (${VERSION_PATTERN//./\.})" $GWDIR/Info.txt; then
+    echo "ERROR: GroundWork version ${VERSION_PATTERN//|/ or } required" >&2
+    exit 1
+fi
+
+#
+# Additional checks go here
+#
+
+mkdir -p $OUTDIR
+
+exec &> >(tee -a "$LOGFILE")
+
+echo "=================================================="
+echo "PATCH: $PATCH"
+echo "USER: $USER"
+echo "HOST: `hostname -f`"
+echo "INSTALL START: `date`"
+echo "--------------------------------------------------"
+
+# Script to install fixes for NoMa in GWMEE 7.1.1.
+
+GROUNDWORK_BASE=/usr/local/groundwork
+NOMA_BASE=$GROUNDWORK_BASE/noma
+BACKUP_DIRECTORY=$GROUNDWORK_BASE/gw-backup
+BACKUP_TARBALL=$BACKUP_DIRECTORY/groundwork-$PATCH-noma-backup-files.tar.gz
+PATCH_TARBALL=./groundwork-$PATCH-noma-fix-files.tar.gz
+NOMA_CONFIG_FILE=$NOMA_BASE/etc/NoMa.yaml
+NOMA_DAEMON_PATH=$NOMA_BASE/notifier/noma_daemon.pl
+PERL=$GROUNDWORK_BASE/perl/bin/perl
+FOUND_PROPS=$GROUNDWORK_BASE/config/foundation.properties
+SAVE_SUFFIX=pre-$PATCH-noma
+
+# We might have used:
+#     if [ "`/bin/ps -w -w --no-headers -o args -C .perl.bin | fgrep noma_daemon.pl | wc -l`" != 0 ]; then ...
+# for this next test, but a "ps" command only sees currently existing processes.  It is
+# possible that the NoMa service has been started but the noma_daemon.pl process is not
+# yet running, due to the intentional 30-second startup delay in its run script.  So we
+# instead ask the NoMa supervisory process whether it believes that the NoMa service is
+# running.  A tricky part is that "fgrep -c" will inappropriately set the exit code to a
+# non-zero value if it finds no matches.  Fortunately, since we are executing this command
+# within a conditional context, we don't need to append "|| true" to the command to ensure
+# that it exits with a zero exit code to sidestep the bash -e option we set above.
+#
+if [ "`$GROUNDWORK_BASE/common/bin/svstat $GROUNDWORK_BASE/core/services/notification-noma | fgrep -c up`" != 0 ]; then
+    echo "ERROR:  You cannot install this patch while NoMa is running."
+    echo "        Try this first:"
+    echo "        service groundwork stop noma"
+    exit 1
+fi
+
+if [ ! -f $PATCH_TARBALL ]; then
+    echo "ERROR:  The patch tarball is not present here:"
+    echo "        $PATCH_TARBALL"
+    echo "        It must be present before you can install it."
+    exit 1
+fi
+
+# Above, we checked our formal record of whether the patch is installed.
+# Here, we double-check some of the actual installation.
+#
+# Unfortunately, we cannot force this check, because we have already
+# provided early-release parts of this patch to certain customers who
+# were facing critical situations.  So it might be the case that some
+# of the new patch files are already in place when we get here.
+#
+if false; then
+    if fgrep -q rolloverCounter $NOMA_DAEMON_PATH ; then
+	echo "ERROR:  You cannot install this patch, because it is already at least partly installed."
+	exit 1
+    fi
+fi
+
+# Back up the old files.
+mkdir -p $BACKUP_DIRECTORY
+echo "NOTICE:  Backing up the original files, to:"
+echo "         $BACKUP_TARBALL"
+echo ""
+tar cvfz $BACKUP_TARBALL -C $GROUNDWORK_BASE	\
+    config/foundation.properties		\
+    core/databases/postgresql/noma-db.sql	\
+    core/foundation/api/perl/CollageQuery.pm	\
+    noma/doc/DOCUMENTATION.txt			\
+    noma/etc/NoMa.yaml				\
+    noma/notifier/alert_via_noma.pl		\
+    noma/notifier/lib/bundler.pm		\
+    noma/notifier/lib/contacts.pm		\
+    noma/notifier/lib/database.pm		\
+    noma/notifier/lib/escalations.pm		\
+    noma/notifier/lib/thread_procs.pm		\
+    noma/notifier/lib/time_frames.pm		\
+    noma/notifier/noma_daemon.pl		\
+    $TB_7_1_1_9_BACKUPFILE
+echo ""
+
+# Modify existing files.
+
+echo "INFO:  Modifying existing files."
+
+# Restrict permissions on the NoMa.yaml file.
+if ! chmod 600 $NOMA_CONFIG_FILE; then
+    echo "ERROR:  cannot restrict permissions on $NOMA_CONFIG_FILE"
+    exit 1
+fi
+
+if [ ! -r $FOUND_PROPS ]; then
+    echo "ERROR:  $FOUND_PROPS is not readable."
+    exit 1
+fi
+
+if egrep -q '^[[:space:]]*fas.executor.interrupt[[:space:]]*=' $FOUND_PROPS; then
+    echo "NOTICE:  fas.executor.interrupt is already present in the foundation.properties file."
+else
+    # First, let's check to verify that we have the handle to identify where to insert the new line.
+    if ! egrep -q '^[[:space:]]*fas.executor.queue.size[[:space:]]*=' $FOUND_PROPS; then
+	echo "ERROR:  Cannot find fas.executor.queue.size in the $FOUND_PROPS file."
+	exit 1
+    fi
+    echo "NOTICE:  Adding fas.executor.interrupt to foundation.properties ..."
+    # For extra convenience, we make a local backup copy of the file we are modifying
+    # here, independent of having saved it in a full tarball of all the patched files.
+    if ! $PERL -pi.$SAVE_SUFFIX -e '$_ .= "fas.executor.interrupt = 30\n" if /^\s*fas.executor.queue.size\s*=\s*/' $FOUND_PROPS; then
+	echo "ERROR:  Failed to add fas.executor.interrupt to the foundation.properties file."
+	exit 1
+    fi
+fi
+
+# Install the new files.
+
+echo "INFO:  Installing the new patch files."
+
+if ! tar xvfz $PATCH_TARBALL -C $GROUNDWORK_BASE; then
+    echo "ERROR:  Cannot install new files from the patch tarball."
+    exit 1
+fi
+
+echo 'INFO:  Converting existing files and the "noma" database.'
+
+# NOTE:  The switching of the "noma" database content to refer to internally-generated
+# unique-ID values is essentially a one-way operation.  It cannot be readily reversed at
+# some later time, because by then the database content will have substantially evolved.
+# So the uninstall process for this patch will not attempt to do so.  In that sense,
+# installation of this patch as a whole is really a one-way operation, unless one is
+# willing to clear out the several operational tables and start over from scratch with
+# new incoming alerts.
+#
+# Also, there would be no point in trying to remove the extra indexes that will be added
+# when this patch is installed, if this patch is uninstalled.  So the uninstall process
+# for this patch does not attempt to do so.
+
+/usr/local/groundwork/core/migration/postgresql/pg_migrate_noma.pl
+
+echo "NoMa patch $PATCH install is complete."
+
+echo "--------------------------------------------------"
+echo "INSTALL COMPLETE: `date`"
+
+touch $OUTFILE
+touch $OUTDIR/$TB_7_1_1_9_MARKER
+
+echo ""
+echo "You may now restart Foundation and NoMa:"
+echo ""
+echo "    service groundwork restart gwservices"
+echo "    service groundwork restart noma"
+echo ""

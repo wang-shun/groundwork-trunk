@@ -1,0 +1,36 @@
+=================================
+Notes on particular Perl packages
+=================================
+
+(*) The SOAP::Lite distribution was poorly refactored in its 0.715 release,
+    with the result that SOAP::Transport::TCP was extracted into a separate
+    package.  But while that package still references the IO::SessionData and
+    IO::SessionSet packages, they are nowhere to be found on CPAN (they used to
+    be bundled in with the SOAP::Lite distribution, before this refactoring).
+    To resolve this, I have taken the IO-SessionData-0.001.tar.gz file from
+    this URL instead of from CPAN, where it doesn't exist:
+
+	https://github.com/RsrchBoy/io-sessiondata/tree/tarballs
+
+    which is referenced from this bug report on the SOAP::Transport::TCP
+    package:
+
+	https://rt.cpan.org/Public/Bug/Display.html?id=78495
+
+    Comparing this package from an odd source to the same files from
+    the SOAP::Lite 0.714 distribution, this looks safe to use, so we are
+    proceeding on that basis.
+
+(*) The VMS::Stdio package is referenced from File::Temp (which is part
+    of ExtUtils::MakeMaker), but it is only require'd (on a VMS platform),
+    not use'd.  Since we aren't running this code under VMS, we don't have
+    the necessary header files to compile this package and include it in
+    our distribution.  So we simply suppress the RPM requirement for this
+    package, in our specfile.
+
+(*) Similarly, the VMS::Filespec package is also referenced from within
+    the ExtUtils::MakeMaker package, but only in VMS contexts, so there
+    is no danger that we will need to include this package in our builds.
+    (Compiling it demands the presence of VMS header files, so we can't
+    build it anyway.)  So as with VMS::Stdio, we simply suppress the RPM
+    requirement for this package, in our specfile.

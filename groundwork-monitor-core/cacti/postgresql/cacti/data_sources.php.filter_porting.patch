@@ -1,0 +1,50 @@
+*** cacti.orig/htdocs/data_sources.php	Fri Oct  5 02:24:47 2012
+--- cacti/htdocs/data_sources.php	Sat Nov  3 23:25:23 2012
+***************
+*** 1035,1041 ****
+  }
+  
+  function ds() {
+! 	global $colors, $ds_actions, $item_rows;
+  
+  	/* ================= input validation ================= */
+  	input_validate_input_number(get_request_var_request("ds_rows"));
+--- 1035,1041 ----
+  }
+  
+  function ds() {
+! 	global $colors, $ds_actions, $item_rows, $database_type;
+  
+  	/* ================= input validation ================= */
+  	input_validate_input_number(get_request_var_request("ds_rows"));
+***************
+*** 1234,1246 ****
+  
+  	/* form the 'where' clause for our main sql query */
+  	if (strlen(get_request_var_request("filter"))) {
+! 		$sql_where1 = "AND (data_template_data.name_cache like '%%" . get_request_var_request("filter") . "%%'" .
+! 			" OR data_template_data.local_data_id like '%%" . get_request_var_request("filter") . "%%'" .
+! 			" OR data_template.name like '%%" . get_request_var_request("filter") . "%%'" .
+! 			" OR data_input.name like '%%" . get_request_var_request("filter") . "%%')";
+  
+! 		$sql_where2 = "AND (data_template_data.name_cache like '%%" . get_request_var_request("filter") . "%%'" .
+! 			" OR data_template.name like '%%" . get_request_var_request("filter") . "%%')";
+  	}else{
+  		$sql_where1 = "";
+  		$sql_where2 = "";
+--- 1234,1248 ----
+  
+  	/* form the 'where' clause for our main sql query */
+  	if (strlen(get_request_var_request("filter"))) {
+! 		$like            = ($database_type === "postgres9") ? 'ilike'      : 'like';
+! 		$match_as_string = ($database_type === "postgres9") ? "||'' ilike" : 'like';
+! 		$sql_where1 = "AND (data_template_data.name_cache $like '%%" . get_request_var_request("filter") . "%%'" .
+! 			" OR data_template_data.local_data_id $match_as_string '%%" . get_request_var_request("filter") . "%%'" .
+! 			" OR data_template.name $like '%%" . get_request_var_request("filter") . "%%'" .
+! 			" OR data_input.name $like '%%" . get_request_var_request("filter") . "%%')";
+  
+! 		$sql_where2 = "AND (data_template_data.name_cache $like '%%" . get_request_var_request("filter") . "%%'" .
+! 			" OR data_template.name $like '%%" . get_request_var_request("filter") . "%%')";
+  	}else{
+  		$sql_where1 = "";
+  		$sql_where2 = "";

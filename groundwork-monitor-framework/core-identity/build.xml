@@ -1,0 +1,431 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ~ JBoss, a division of Red Hat                                              ~
+  ~ Copyright 2006, Red Hat Middleware, LLC, and individual                   ~
+  ~ contributors as indicated by the @authors tag. See the                    ~
+  ~ copyright.txt in the distribution for a full listing of                   ~
+  ~ individual contributors.                                                  ~
+  ~                                                                           ~
+  ~ This is free software; you can redistribute it and/or modify it           ~
+  ~ under the terms of the GNU Lesser General Public License as               ~
+  ~ published by the Free Software Foundation; either version 2.1 of          ~
+  ~ the License, or (at your option) any later version.                       ~
+  ~                                                                           ~
+  ~ This software is distributed in the hope that it will be useful,          ~
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of            ~
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU          ~
+  ~ Lesser General Public License for more details.                           ~
+  ~                                                                           ~
+  ~ You should have received a copy of the GNU Lesser General Public          ~
+  ~ License along with this software; if not, write to the Free               ~
+  ~ Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA        ~
+  ~ 02110-1301 USA, or see the FSF site: http://www.fsf.org.                  ~
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+
+<!DOCTYPE project [
+   <!ENTITY libraries  SYSTEM "../thirdparty/libraries.ent">
+<!ENTITY buildmagic SYSTEM "../tools/etc/buildfragments/buildmagic.ent">
+<!ENTITY tools      SYSTEM "../tools/etc/buildfragments/tools.ent">
+<!ENTITY modules    SYSTEM "../tools/etc/buildfragments/modules.ent">
+<!ENTITY defaults   SYSTEM "../tools/etc/buildfragments/defaults.ent">
+<!ENTITY targets    SYSTEM "../tools/etc/buildfragments/targets.ent">
+   ]>
+
+<!--+======================================================================+-->
+<!--| JBoss Portal (The OpenSource Portal) Build File                      |-->
+<!--|                                                                      |-->
+<!--| Distributable under LGPL license.                                    |-->
+<!--| See terms of license at http://www.gnu.org.                          |-->
+<!--|                                                                      |-->
+<!--| This file has been designed to work with the 'tools' module and      |-->
+<!--| Buildmagic extentions.                                               |-->
+<!--+======================================================================+-->
+
+<project default="main" name="JBoss Portal">
+
+	<!--+====================================================================+-->
+	<!--| Setup                                                              |-->
+	<!--|                                                                    |-->
+	<!--| Include the common build elements.                                 |-->
+	<!--|                                                                    |-->
+	<!--| This defines several different targets, properties and paths.      |-->
+	<!--| It also sets up the basic extention tasks amoung other things.     |-->
+	<!--+====================================================================+-->
+
+   &buildmagic;
+   &modules;
+   &defaults;
+   &tools;
+   &targets;
+
+   <!-- ================================================================== -->
+	<!-- Initialization                                                     -->
+	<!-- ================================================================== -->
+
+	<!--
+      | Initialize the build system.  Must depend on '_buildmagic:init'.
+      | Other targets should depend on 'init' or things will mysteriously fail.
+    -->
+	<import file="../testsuite/imports/server-config.xml" />
+
+	<target name="init" unless="init.disable" depends="_buildmagic:init">
+	</target>
+
+	<!--+====================================================================+-->
+	<!--| Configuration                                                      |-->
+	<!--|                                                                    |-->
+	<!--| This target is invoked by the Buildmagic initialization logic      |-->
+	<!--| and should contain module specific configuration elements.         |-->
+	<!--+====================================================================+-->
+
+	<target name="configure" unless="configure.disable">
+
+		<!-- Configure some properties -->
+		<property name="jboss-junit-configuration" value="" />
+		<property name="junit.formatter.usefile" value="true" />
+
+		<property name="test.reports" value="${module.output}/tests" />
+
+		<!-- Configure thirdparty libraries -->
+      &libraries;
+
+      <path id="library.classpath">
+			<path refid="jboss.portal/modules/common.classpath" />
+			<path refid="jboss.portal/modules/test.classpath" />
+			<path refid="jboss.portal/modules/portlet.classpath" />
+			<path refid="jboss.portal/modules/identity.classpath" />
+			<path refid="jboss.jbossxb.classpath" />
+			<path refid="apache.xerces.classpath" />
+			<path refid="jboss.cache.classpath" />
+			<path refid="freemarker.freemarker.classpath" />
+			<path refid="jbossas/core.libs.classpath" />
+			<path refid="hibernate.hibernate.classpath" />
+			<path refid="apache.log4j.classpath" />
+			<path refid="sun.servlet.classpath" />
+			<path refid="jcaptcha.jcaptcha.classpath" />
+			<path refid="jakarta.cactus.classpath" />
+			<path refid="junit.junit.classpath" />
+			<path refid="jbpm.jpdl.classpath" />
+			<path refid="glassfish.jsf.classpath" />
+			<path refid="el.el.classpath" />
+			<path refid="facelets.facelets.classpath" />
+			<path refid="portlet.portlet.classpath" />
+			<path refid="jboss/portlet.bridge.classpath" />
+			<path location="src/etc/sun-jsf/gwportal-common-3.0.320.jar" />
+			<path location="src/etc/sun-jsf/collage-api-3.0.320.jar" />
+		</path>
+
+		<!-- Configure modules -->
+		<call target="configure-modules" />
+		<path id="dependentmodule.classpath">
+			<path refid="jboss.portal-format.classpath" />
+			<path refid="jboss.portal-faces.classpath" />
+			<path refid="jboss.portal-server.classpath" />
+			<path refid="jboss.portal-registration.classpath" />
+			<path refid="jboss.portal-jems.classpath" />
+			<path refid="jboss.portal-api.classpath" />
+			<path refid="jboss.portal-theme.classpath" />
+			<path refid="jboss.portal-security.classpath" />
+			<path refid="jboss.portal-core.classpath" />
+			<path refid="jboss.portal-workflow.classpath" />
+		</path>
+
+		<!--+=======================================+-->
+		<!--| Override any default properties here. |-->
+		<!--+=======================================+-->
+
+		<!-- Configure defaults & build tools -->
+		<call target="configure-defaults" />
+		<call target="configure-tools" />
+		<call target="configure-explode" />
+
+		<!--+=======================================+-->
+		<!--| Define module specific elements here. |-->
+		<!--+=======================================+-->
+		<property name="javadoc.private" value="true" />
+		<property name="javadoc.protected" value="false" />
+
+		<taskdef name="explode" classname="org.jboss.portal.common.ant.Explode" classpathref="explode.task.classpath" />
+		<taskdef name="implode" classname="org.jboss.portal.common.ant.Implode" classpathref="explode.task.classpath" />
+
+	</target>
+
+	<target name="configure-explode">
+		<path id="explode.task.classpath">
+			<pathelement location="${project.tools}/lib/explode.jar" />
+			<path refid="apache.ant.classpath" />
+		</path>
+		<taskdef name="explode" classname="org.jboss.portal.common.ant.Explode" classpathref="explode.task.classpath" />
+	
+	</target>
+
+	<!--+====================================================================+-->
+	<!--| Compile                                                            |-->
+	<!--|                                                                    |-->
+	<!--| This target should depend on other compile-* targets for each      |-->
+	<!--| different type of compile that needs to be performed, short of     |-->
+	<!--| documentation compiles.                                            |-->
+	<!--+====================================================================+-->
+
+	<target name="compile" description="Compile all source files." depends="_default:compile-classes,
+                    _default:compile-etc,
+                    _default:compile-resources">
+		<!-- Add module specific elements here. -->
+	</target>
+
+	<!--+====================================================================+-->
+	<!--| Generate Output                                                    |-->
+	<!--|                                                                    |-->
+	<!--| Generates the target output for this module. Target output is      |-->
+	<!--| the output which is ment to be released or used by external        |-->
+	<!--| modules.                                                           |-->
+	<!--+====================================================================+-->
+
+	<target name="artifacts" description="Generate all target output." depends="compile">
+
+		<mkdir dir="${build.lib}" />
+
+		<!-- portal-core-identity-ui-lib.jar -->
+		<jar jarfile="${build.lib}/portal-core-identity-ui-lib.jar">
+			<fileset dir="${build.classes}" includes="org/jboss/portal/core/identity/ui/**" />
+			<fileset dir="${build.classes}" includes="com/groundwork/portal/identity/extendedui/**" />
+		</jar>
+
+		<!-- portal-core-identity-services-lib.jar -->
+		<jar jarfile="${build.lib}/portal-core-identity-services-lib.jar">
+			<fileset dir="${build.classes}" includes="org/jboss/portal/core/identity/services/**" />
+		</jar>
+
+		<!-- portal-identity.war -->
+		<copy todir="${build.resources}/portal-identity-war/WEB-INF/lib">
+			<fileset dir="${build.lib}" includes="portal-core-identity-ui-lib.jar" />
+			<fileset dir="${glassfish.jstl.lib}" includes="jstl.jar" />
+			<fileset dir="${facelets.facelets.lib}" includes="jsf-facelets.jar" />
+			<fileset dir="${jboss/portlet.bridge.lib}" includes="portletbridge-api.jar" />
+			<fileset dir="${jboss/portlet.bridge.lib}" includes="portletbridge-impl.jar" />
+			<fileset dir="${jboss.portal-faces.root}/lib" includes="portal-faces-lib.jar" />
+			<fileset dir="${apache.beanutils.lib}" includes="commons-beanutils.jar" />
+			<fileset dir="${apache.lang.lib}" includes="commons-lang.jar" />
+			<fileset dir="${apache.digester.lib}" includes="commons-digester.jar" />
+		</copy>
+		<copy todir="${build.resources}/portal-identity-war">
+			<fileset dir="${source.bin}/portal-identity-war" />
+		</copy>
+
+		<!-- portal-identity.sar -->
+		<copy todir="${build.resources}/portal-identity.sar">
+			<fileset dir="${build.resources}/portal-identity-sar" />
+		</copy>
+		<copy todir="${build.resources}/portal-identity.sar/lib">
+			<fileset dir="${build.lib}" includes="portal-core-identity-services-lib.jar" />
+			<fileset dir="${jboss.portal-faces.root}/lib" includes="portal-faces-loader-lib.jar" />
+			<fileset dir="${jcaptcha.jcaptcha.root}/lib" includes="jcaptcha.jar" />
+		</copy>
+
+		<copy todir="${build.resources}/portal-identity.sar/portal-identity.war">
+			<fileset dir="${build.resources}/portal-identity-war" />
+		</copy>
+	
+	<!-- Deploy josso dependencies -->
+						
+						<exec dir="${build.lib}" executable="wget">
+							<arg line="-c http://geneva/maven/commons-logging/jars/commons-logging-api-1.0.4.jar" />
+						</exec>
+						<copy file="${build.lib}/commons-logging-api-1.0.4.jar" todir="${foundation.container.home}/lib/jboss" overwrite="true" />
+
+
+
+						<exec dir="${build.lib}" executable="wget">
+							<arg line="-c http://geneva/maven/commons-modeler/jars/commons-modeler-1.1.jar" />
+						</exec>
+						<copy file="${build.lib}/commons-modeler-1.1.jar" todir="${foundation.container.home}/lib/jboss" overwrite="true" />
+
+
+						
+						<exec dir="${build.lib}" executable="wget">
+							<arg line="-c http://archives/maven/commons-lang/jars/commons-lang-2.0.jar" />
+						</exec>
+						<copy file="${build.lib}/commons-lang-2.0.jar" todir="${foundation.container.home}/lib/jboss" overwrite="true" />
+					
+
+					<exec dir="${build.lib}" executable="wget">
+						<arg line="-c http://archives/maven/springframework/jars/spring-2.0.jar" />
+					</exec>
+					<copy file="${build.lib}/spring-2.0.jar" todir="${foundation.container.home}/lib/jboss" overwrite="true" />
+
+
+					<exec dir="${build.lib}" executable="wget">
+						<arg line="-c http://archives/maven/commons-discovery/jars/commons-discovery-0.2.jar" />
+					</exec>
+					<copy file="${build.lib}/commons-discovery-0.2.jar" todir="${foundation.container.home}/lib/jboss" overwrite="true" />
+
+
+					
+
+					<exec dir="${build.lib}" executable="wget">
+						<arg line="-c http://archives/maven/aopalliance/jars/aopalliance-1.0.jar" />
+					</exec>
+					<copy file="${build.lib}/aopalliance-1.0.jar" todir="${foundation.container.home}/lib/jboss" overwrite="true" />
+
+				<exec dir="${build.lib}" executable="wget">
+					<arg line="-c http://geneva/maven/springframework/jars/xbean-spring-3.4.3.jar" />
+				</exec>
+				<copy file="${build.lib}/xbean-spring-3.4.3.jar" todir="${foundation.container.home}/lib/jboss" overwrite="true" />
+
+
+				<exec dir="${build.lib}" executable="wget">
+					<arg line="-c http://archives/maven/axis/jars/axis-1.4.jar" />
+				</exec>
+				<copy file="${build.lib}/axis-1.4.jar" todir="${foundation.container.home}/lib/jboss" overwrite="true" />
+
+
+				<exec dir="${build.lib}" executable="wget">
+					<arg line="-c http://geneva/maven/josso/jars/gw-josso-tomcat55-agent-1.8.2.jar" />
+				</exec>
+				<copy file="${build.lib}/gw-josso-tomcat55-agent-1.8.2.jar" todir="${foundation.container.home}/lib/jboss" overwrite="true" />
+
+
+				<exec dir="${build.lib}" executable="wget">
+					<arg line="-c http://geneva/maven/josso/jars/josso-jboss42-agent-1.8.2.jar" />
+				</exec>
+				<copy file="${build.lib}/josso-jboss42-agent-1.8.2.jar" todir="${foundation.container.home}/lib/jboss" overwrite="true" />
+
+
+				<exec dir="${build.lib}" executable="wget">
+					<arg line="-c http://geneva/maven/josso/jars/josso-agents-bin-1.8.2.jar" />
+				</exec>
+				<copy file="${build.lib}/josso-agents-bin-1.8.2.jar" todir="${foundation.container.home}/lib/jboss" overwrite="true" />
+
+				<exec dir="${build.lib}" executable="wget">
+					<arg line="-c http://geneva/maven/josso/jars/josso-agent-shared-1.8.2.jar" />
+				</exec>
+				<copy file="${build.lib}/josso-agent-shared-1.8.2.jar" todir="${foundation.container.home}/lib/jboss" overwrite="true" />
+
+				<exec dir="${build.lib}" executable="wget">
+					<arg line="-c http://geneva/maven/josso/war/josso-gateway-web-1.8.2.war" />
+				</exec>
+				<copy file="${build.lib}/josso-gateway-web-1.8.2.war" todir="${foundation.container.home}/webapps" overwrite="true" />
+				
+					<exec dir="${build.lib}" executable="wget">
+						<arg line="-c http://geneva/maven/com.groundworkopensource.portal/jars/portal-identity-lib.jar" />
+					</exec>
+					<copy file="${build.lib}/portal-identity-lib.jar" todir="${foundation.container.home}/lib/jboss" overwrite="true" />
+	
+					<exec dir="${build.lib}" executable="wget">
+						<arg line="-c http://geneva/maven/com.groundworkopensource.portal/jars/portal-identity-sso-lib.jar" />
+					</exec>
+					<copy file="${build.lib}/portal-identity-sso-lib.jar" todir="${foundation.container.home}/lib/jboss" overwrite="true" />
+				
+	
+	</target>
+
+	<target name="output" depends="artifacts">
+
+		<implode dir="${build.resources}/portal-identity.sar" tofile="${build.lib}/portal-identity.sar" />
+
+	</target>
+
+	<!-- ================================================================== -->
+	<!-- Cleaning                                                           -->
+	<!-- ================================================================== -->
+
+	<!-- Clean up all build output -->
+	<target name="clean" depends="_default:clean">
+		<!-- Add module specific elements here. -->
+	</target>
+
+	<!--+====================================================================+-->
+	<!--| Documents                                                          |-->
+	<!--|                                                                    |-->
+	<!--| Generate all documentation for this module.                        |-->
+	<!--+====================================================================+-->
+
+	<target name="docs" depends="_default:docs">
+		<!-- Add module specific elements here. -->
+	</target>
+
+	<!-- ================================================================== -->
+	<!-- Misc.                                                              -->
+	<!-- ================================================================== -->
+
+	<target name="main" depends="most" />
+	<target name="all" depends="_default:all" />
+	<target name="most" depends="_default:most" />
+	<target name="help" depends="_default:help" />
+
+	<!-- ================================================================== -->
+	<!-- Deployment                                                         -->
+	<!-- ================================================================== -->
+
+	<!--
+      | Deploy the application
+    -->
+
+	<target name="deploy" description="Deploy." depends="output">
+		<require file="${jboss.home}/server/${portal.deploy.dir}" />
+		<copy file="${build.lib}/portal-identity.sar" todir="${jboss.home}/server/${portal.deploy.dir}" overwrite="true" />
+
+		
+</target>
+
+<!--
+     | Undeploy the application
+   -->
+<target name="undeploy" description="Undeploy." depends="init">
+<require file="${jboss.home}/server/${portal.deploy.dir}" />
+<delete file="${jboss.home}/server/${portal.deploy.dir}/portal-identity.sar" />
+</target>
+
+<!--
+      | Tests
+    -->
+
+<target name="package-tests" depends="init, clean-tests">
+
+<jar jarfile="${build.lib}/portal-core-identity-test-lib.jar">
+	<fileset dir="${build.classes}" includes="org/jboss/portal/test/**" />
+</jar>
+
+</target>
+
+<target name="clean-tests" description="cleans the output from the package-test command">
+
+</target>
+
+<target name="tests" depends="init, package-tests" description="Runs the core-identity tests">
+<mkdir dir="${test.reports}" />
+
+<execute-tests>
+	<x-test>
+		<test todir="${test.reports}" name="org.jboss.portal.test.core.identity.metadata.ConfigurationTestCase" />
+	</x-test>
+	<x-classpath>
+		<path refid="junit.junit.classpath" />
+		<path refid="jboss.jbossxb.classpath" />
+		<path refid="jbossas/core.libs.classpath" />
+		<path refid="jboss.portal-common.classpath" />
+		<path refid="jboss.portal-portlet.classpath" />
+		<path refid="jboss.portal-identity.classpath" />
+		<path refid="jboss.portal-jems.classpath" />
+		<path refid="jboss.portal-identity.classpath" />
+		<path refid="jboss.portal-test.classpath" />
+		<path refid="oswego.concurrent.classpath" />
+		<path refid="apache.xerces.classpath" />
+		<pathelement location="${build.lib}/portal-core-identity-ui-lib.jar" />
+		<pathelement location="${build.lib}/portal-core-identity-services-lib.jar" />
+		<pathelement location="${build.lib}/portal-core-identity-test-lib.jar" />
+		<pathelement location="${build.resources}/test" />
+	</x-classpath>
+</execute-tests>
+
+</target>
+
+<!--
+         Some convenience build targets to help deployment during development
+   -->
+<target name="deploy-ha" description="Deploy." depends="output">
+<require file="${jboss.home}/server/${portal-ha.deploy.dir}" />
+<copy file="${build.lib}/portal-identity.sar" todir="${jboss.home}/server/${portal-ha.deploy.dir}" overwrite="true" />
+</target>
+
+</project>

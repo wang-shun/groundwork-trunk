@@ -1,0 +1,604 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<ice:inputHidden id="nagiosMonitoringStatStackedHiddenField"
+			value="#{nagiosStatisticsBean.hiddenField}" />
+		<!--  error message for nagiosStatiscitcsHandler - START -->
+		<ice:panelGroup rendered="#{nagiosStatisticsHandler.error}"
+			id="nagiosPortlet_panelErrorForHandler">
+			<ui:include src="/jsp/error.jspx">
+				<ui:param name="errorMessage"
+					value="#{nagiosStatisticsHandler.errorMessage}" />
+			</ui:include>
+			<ice:commandButton id="nagiosPortlet_cmdRetryNowForHandler"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{nagiosStatisticsBean.reloadPage}"></ice:commandButton>
+		</ice:panelGroup>
+		<!--  error message for nagiosStatiscitcsHandler  - END -->
+
+		<!--  error message for nagiosStatisticsBean -START -->
+		<ice:panelGroup rendered="#{nagiosStatisticsBean.error}"
+			id="nagiosPortlet_panelErrorForBean">
+			<ui:include src="/jsp/error.jspx">
+				<ui:param name="errorMessage"
+					value="#{nagiosStatisticsBean.errorMessage}" />
+			</ui:include>
+			<ice:commandButton id="nagiosPortlet_cmdRetryNowForBean"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{nagiosStatisticsBean.reloadPage}"></ice:commandButton>
+		</ice:panelGroup>
+		<!--  error message for nagiosStatisticsBean - END -->
+
+		<ice:panelGrid id="nagiosPortlet_panelMain" columns="2"
+			style="height:100%;width:100%"
+			rendered="#{!(nagiosStatisticsHandler.error || nagiosStatisticsBean.error)}"
+			columnClasses="alignVertTop">
+
+			<!-- Flap Detection -->
+			<div
+				style="padding-right: 13px; padding-bottom: 8px; padding-top: 8px; width: 230px">
+			<ice:panelGrid id="stackedNagiosPortlet_panelgridFlapDetection"
+				headerClass="#{nagiosStatisticsBean.flapDetectionStatistics.headerClass}"
+				styleClass="#{nagiosStatisticsBean.flapDetectionStatistics.styleClass}"
+				rowClasses="#{nagiosStatisticsBean.flapDetectionStatistics.rowClass}"
+				columnClasses="#{nagiosStatisticsBean.flapDetectionStatistics.columnClass}">
+				<f:facet name="header">
+					<ice:panelGroup
+						style="display: inline"
+						id="stackedNagiosPortlet_panelgrpFlapDetection">
+						<ice:column id="stackedNagiosPortlet_panelgrpFlapDetectionCol1">
+							<ice:graphicImage  title="header=[] body=[#{nagiosStatisticsBean.flapDetectionStatistics.tooltip}]"
+								url="#{nagiosStatisticsBean.flapDetectionStatistics.icon}"
+								id="stackedNagiosPortlet_imgFlapDetectionStatus"
+								style="padding-right:5px"></ice:graphicImage>
+							<ice:outputText styleClass="iceOutTxt_B" title="header=[] body=[#{nagiosStatisticsBean.flapDetectionStatistics.tooltip}]"
+								id="stackedNagiosPortlet_txtFlapDetection"
+								value="#{message['com_groundwork_portal_statusviewer_outputText_flapDetection']}"></ice:outputText>
+						</ice:column>
+					</ice:panelGroup>
+				</f:facet>
+				<!-- To be displayed if the 'Flap Detection' monitoring option is disabled -->
+
+				<ice:outputText styleClass="iceOutTxt_B txtleft"
+					value="#{message['com_groundwork_portal_statusviewer_outputText_disabled']}"
+					id="stackedNagiosPortlet_txtFlapDetectionDisabled"
+					rendered="#{nagiosStatisticsBean.flapDetectionStatistics.monitoringOptionDisabled}">
+				</ice:outputText>
+
+				<!-- To be displayed if the 'Flap Detection' monitoring option is enabled -->
+				<ice:panelGroup
+					rendered="#{nagiosStatisticsBean.flapDetectionStatistics.linkVisibleServices and !nagiosStatisticsBean.flapDetectionStatistics.monitoringOptionDisabled}"
+					styleClass="txtleft">
+					<ice:commandLink styleClass="iceCmdLnk txtbold"
+						id="stackedNagiosPortlet_linkFlapDetectionServices"
+						value="#{message['com_groundwork_portal_statusviewer_commandLink_disabledServices']} (#{nagiosStatisticsBean.flapDetectionStatistics.serviceStatisticDisabled})"
+						rendered="#{nagiosStatisticsBean.flapDetectionStatistics.linkVisibleServices and !nagiosStatisticsBean.flapDetectionStatistics.monitoringOptionDisabled}"
+						action="#{nagiosStatisticsBean.openPopup}"
+						actionListener="#{nagiosStatisticsHandler.linkClicked}">
+					</ice:commandLink>
+				</ice:panelGroup>
+				<ice:outputText styleClass="iceOutTxt_B txtleft"
+					id="stackedNagiosPortlet_txtFlapDetectionServices"
+					rendered="#{!nagiosStatisticsBean.flapDetectionStatistics.linkVisibleServices and !nagiosStatisticsBean.flapDetectionStatistics.monitoringOptionDisabled}"
+					value="#{message['com_groundwork_portal_statusviewer_outputText_allServicesEnabled']} (#{nagiosStatisticsBean.flapDetectionStatistics.serviceStatisticEnabled})">
+				</ice:outputText>
+				<!--<ice:commandLink styleClass="iceCmdLnk txtbold"
+								id="stackedNagiosPortlet_linkFlapDetectionHosts"
+								value="#{message['com_groundwork_portal_statusviewer_commandLink_disabledHosts']} (#{nagiosStatisticsBean.flapDetectionStatistics.hostStatisticDisabled})"
+								action="#{popup.openPopup}"
+								visible="#{nagiosStatisticsBean.flapDetectionStatistics.linkVisibleHosts}"
+								rendered="#{!nagiosStatisticsBean.serviceGroupContext}"
+								actionListener="#{nagiosStatisticsHandler.linkClicked}">
+							</ice:commandLink>
+							<ice:outputText styleClass="iceOutTxt_B"
+								id="stackedNagiosPortlet_txtFlapDetectionEnabledHosts"
+								rendered="#{!nagiosStatisticsBean.serviceGroupContext}"
+								visible="#{!nagiosStatisticsBean.flapDetectionStatistics.linkVisibleHosts}"
+								value="#{message['com_groundwork_portal_statusviewer_outputText_allHostsEnabled']} (#{nagiosStatisticsBean.flapDetectionStatistics.hostStatisticEnabled})">
+							</ice:outputText>-->
+
+			</ice:panelGrid></div>
+
+			<!-- Notifications -->
+			<div
+				style="padding-right: 13px; padding-bottom: 8px; padding-top: 8px; width: 230px">
+			<ice:panelGrid id="stackedNagiosPortlet_panelgridNotifications"
+				headerClass="#{nagiosStatisticsBean.notificationsStatistics.headerClass}"
+				styleClass="#{nagiosStatisticsBean.notificationsStatistics.styleClass}"
+				rowClasses="#{nagiosStatisticsBean.notificationsStatistics.rowClass}"
+				columnClasses="#{nagiosStatisticsBean.notificationsStatistics.columnClass}">
+				<f:facet name="header">
+					<ice:panelGroup
+						style="display: inline"
+						id="stackedNagiosPortlet_panelgrpNotifications">
+						<ice:column id="stackedNagiosPortlet_panelgrpNotificationsCol1">
+							<ice:graphicImage title="header=[] body=[#{nagiosStatisticsBean.notificationsStatistics.tooltip}]"
+								url="#{nagiosStatisticsBean.notificationsStatistics.icon}"
+								id="stackedNagiosPortlet_imgNotificationsStatus"
+								style="padding-right:5px"></ice:graphicImage>
+							<ice:outputText styleClass="iceOutTxt_B" title="header=[] body=[#{nagiosStatisticsBean.notificationsStatistics.tooltip}]"
+								id="stackedNagiosPortlet_txtNotifications"
+								value="#{message['com_groundwork_portal_statusviewer_outputText_notifications']}"></ice:outputText>
+						</ice:column>
+					</ice:panelGroup>
+				</f:facet>
+				<!-- To be displayed if the 'Notifications' monitoring option is disabled -->
+
+				<ice:outputText styleClass="iceOutTxt_B txtleft"
+					value="#{message['com_groundwork_portal_statusviewer_outputText_disabled']}"
+					id="stackedNagiosPortlet_txtNotificationsDisabled"
+					rendered="#{nagiosStatisticsBean.notificationsStatistics.monitoringOptionDisabled}">
+				</ice:outputText>
+
+
+				<!-- To be displayed if the 'Notifications' monitoring option is enabled -->
+				<ice:panelGroup
+					rendered="#{nagiosStatisticsBean.notificationsStatistics.linkVisibleServices and !nagiosStatisticsBean.notificationsStatistics.monitoringOptionDisabled}"
+					styleClass="txtleft">
+					<ice:commandLink styleClass="iceCmdLnk txtbold"
+						id="stackedNagiosPortlet_linkNotificationsServices"
+						value="#{message['com_groundwork_portal_statusviewer_commandLink_disabledServices']} (#{nagiosStatisticsBean.notificationsStatistics.serviceStatisticDisabled})"
+						rendered="#{nagiosStatisticsBean.notificationsStatistics.linkVisibleServices and !nagiosStatisticsBean.notificationsStatistics.monitoringOptionDisabled}"
+						action="#{nagiosStatisticsBean.openPopup}"
+						actionListener="#{nagiosStatisticsHandler.linkClicked}">
+					</ice:commandLink>
+				</ice:panelGroup>
+				<ice:outputText styleClass="iceOutTxt_B txtleft"
+					id="stackedNagiosPortlet_txtNotificationsServices"
+					rendered="#{!nagiosStatisticsBean.notificationsStatistics.linkVisibleServices and !nagiosStatisticsBean.notificationsStatistics.monitoringOptionDisabled}"
+					value="#{message['com_groundwork_portal_statusviewer_outputText_allServicesEnabled']} (#{nagiosStatisticsBean.notificationsStatistics.serviceStatisticEnabled})">
+				</ice:outputText>
+				<!--<ice:commandLink styleClass="iceCmdLnk txtbold"
+								id="stackedNagiosPortlet_linkNotificationsHosts"
+								value="#{message['com_groundwork_portal_statusviewer_commandLink_disabledHosts']} (#{nagiosStatisticsBean.notificationsStatistics.hostStatisticDisabled})"
+								action="#{popup.openPopup}"
+								visible="#{nagiosStatisticsBean.notificationsStatistics.linkVisibleHosts}"
+								rendered="#{!nagiosStatisticsBean.serviceGroupContext}"
+								actionListener="#{nagiosStatisticsHandler.linkClicked}">
+							</ice:commandLink>
+							<ice:outputText styleClass="iceOutTxt_B"
+								id="stackedNagiosPortlet_txtNotificationsHosts"
+								visible="#{!nagiosStatisticsBean.notificationsStatistics.linkVisibleHosts}"
+								rendered="#{!nagiosStatisticsBean.serviceGroupContext}"
+								value="#{message['com_groundwork_portal_statusviewer_outputText_allHostsEnabled']} (#{nagiosStatisticsBean.notificationsStatistics.hostStatisticEnabled})">
+							</ice:outputText>-->
+
+			</ice:panelGrid></div>
+
+			<!-- Event Handlers -->
+			<div
+				style="padding-right: 13px; padding-bottom: 8px; width: 230px"><ice:panelGrid
+				id="stackedNagiosPortlet_panelgridEventHandlers"
+				headerClass="#{nagiosStatisticsBean.eventHandlersStatistics.headerClass}"
+				styleClass="#{nagiosStatisticsBean.eventHandlersStatistics.styleClass}"
+				rowClasses="#{nagiosStatisticsBean.eventHandlersStatistics.rowClass}"
+				columnClasses="#{nagiosStatisticsBean.eventHandlersStatistics.columnClass}">
+				<f:facet name="header">
+					<ice:panelGroup
+						style="display: inline"
+						id="stackedNagiosPortlet_panelgrpEventHandlers">
+						<ice:column id="stackedNagiosPortlet_panelgrpEventHandlersCol1">
+							<ice:graphicImage title="header=[] body=[#{nagiosStatisticsBean.eventHandlersStatistics.tooltip}]"
+								url="#{nagiosStatisticsBean.eventHandlersStatistics.icon}"
+								id="stackedNagiosPortlet_imgEventHandlersStatus"
+								style="padding-right:5px"></ice:graphicImage>
+							<ice:outputText id="stackedNagiosPortlet_txtEventHandlers" title="header=[] body=[#{nagiosStatisticsBean.eventHandlersStatistics.tooltip}]"
+								styleClass="iceOutTxt_B"
+								value="#{message['com_groundwork_portal_statusviewer_outputText_eventHandlers']}"></ice:outputText>
+						</ice:column>
+					</ice:panelGroup>
+				</f:facet>
+				<!-- To be displayed if the 'Event Handlers' monitoring option is disabled -->
+
+				<ice:outputText styleClass="iceOutTxt_B txtleft"
+					value="#{message['com_groundwork_portal_statusviewer_outputText_disabled']}"
+					id="stackedNagiosPortlet_txtEventHandlersDisabled"
+					rendered="#{nagiosStatisticsBean.eventHandlersStatistics.monitoringOptionDisabled}">
+				</ice:outputText>
+
+				<!-- To be displayed if the 'Event Handlers' monitoring option is enabled -->
+				<ice:panelGroup
+					rendered="#{nagiosStatisticsBean.eventHandlersStatistics.linkVisibleServices and !nagiosStatisticsBean.eventHandlersStatistics.monitoringOptionDisabled}"
+					styleClass="txtleft">
+					<ice:commandLink styleClass="iceCmdLnk txtbold"
+						id="stackedNagiosPortlet_linkEventHandlersServices"
+						value="#{message['com_groundwork_portal_statusviewer_commandLink_disabledServices']} (#{nagiosStatisticsBean.eventHandlersStatistics.serviceStatisticDisabled})"
+						rendered="#{nagiosStatisticsBean.eventHandlersStatistics.linkVisibleServices and !nagiosStatisticsBean.eventHandlersStatistics.monitoringOptionDisabled}"
+						action="#{nagiosStatisticsBean.openPopup}"
+						actionListener="#{nagiosStatisticsHandler.linkClicked}">
+					</ice:commandLink>
+				</ice:panelGroup>
+				<ice:outputText styleClass="iceOutTxt_B txtleft"
+					id="stackedNagiosPortlet_txtEventHandlersServices"
+					rendered="#{!nagiosStatisticsBean.eventHandlersStatistics.linkVisibleServices and !nagiosStatisticsBean.eventHandlersStatistics.monitoringOptionDisabled}"
+					value="#{message['com_groundwork_portal_statusviewer_outputText_allServicesEnabled']} (#{nagiosStatisticsBean.eventHandlersStatistics.serviceStatisticEnabled})">
+				</ice:outputText>
+				<!--<ice:commandLink styleClass="iceCmdLnk txtbold"
+								id="stackedNagiosPortlet_linkEventHandlersHosts"
+								value="#{message['com_groundwork_portal_statusviewer_commandLink_disabledHosts']} (#{nagiosStatisticsBean.eventHandlersStatistics.hostStatisticDisabled})"
+								action="#{popup.openPopup}"
+								rendered="#{!nagiosStatisticsBean.serviceGroupContext}"
+								visible="#{nagiosStatisticsBean.eventHandlersStatistics.linkVisibleHosts}"
+								actionListener="#{nagiosStatisticsHandler.linkClicked}">
+							</ice:commandLink>
+							<ice:outputText styleClass="iceOutTxt_B"
+								id="stackedNagiosPortlet_txtEventHandlersHosts"
+								rendered="#{!nagiosStatisticsBean.serviceGroupContext}"
+								visible="#{!nagiosStatisticsBean.eventHandlersStatistics.linkVisibleHosts}"
+								value="#{message['com_groundwork_portal_statusviewer_outputText_allHostsEnabled']} (#{nagiosStatisticsBean.eventHandlersStatistics.hostStatisticEnabled})">
+							</ice:outputText>-->
+
+			</ice:panelGrid></div>
+
+			<!-- Active Checks -->
+			<div style="padding-right: 13px;; width: 230px"><ice:panelGrid
+				id="stackedNagiosPortlet_panelgridActiveChecks"
+				rowClasses="#{nagiosStatisticsBean.activeChecksStatistics.rowClass}"
+				columnClasses="#{nagiosStatisticsBean.activeChecksStatistics.columnClass}"
+				headerClass="#{nagiosStatisticsBean.activeChecksStatistics.headerClass}"
+				styleClass="#{nagiosStatisticsBean.activeChecksStatistics.styleClass}">
+				<f:facet name="header">
+					<ice:panelGroup
+						style="display: inline"
+						id="stackedNagiosPortlet_panelgrpActiveChecks">
+						<ice:column id="stackedNagiosPortlet_panelgrpActiveChecksCol1">
+							<ice:graphicImage title="header=[] body=[#{nagiosStatisticsBean.activeChecksStatistics.tooltip}]"
+								url="#{nagiosStatisticsBean.activeChecksStatistics.icon}"
+								id="stackedNagiosPortlet_imgActiveChecksStatus"
+								style="padding-right:5px"></ice:graphicImage>
+							<ice:outputText id="stackedNagiosPortlet_txtActvChks" title="header=[] body=[#{nagiosStatisticsBean.activeChecksStatistics.tooltip}]"
+								styleClass="iceOutTxt_B"
+								value="#{message['com_groundwork_portal_statusviewer_outputText_activeChecks']}"></ice:outputText>
+						</ice:column>
+					</ice:panelGroup>
+				</f:facet>
+				<!-- To be displayed if the 'Active Checks' monitoring option is disabled -->
+
+				<ice:outputText styleClass="iceOutTxt_B txtleft"
+					value="#{message['com_groundwork_portal_statusviewer_outputText_disabled']}"
+					id="stackedNagiosPortlet_txtActiveChkDisabled"
+					rendered="#{nagiosStatisticsBean.activeChecksStatistics.monitoringOptionDisabled}">
+				</ice:outputText>
+
+
+				<!-- To be displayed if the 'Active Checks' monitoring option is enabled -->
+				<ice:panelGroup
+					rendered="#{nagiosStatisticsBean.activeChecksStatistics.linkVisibleServices and !nagiosStatisticsBean.activeChecksStatistics.monitoringOptionDisabled}"
+					styleClass="txtleft">
+					<ice:commandLink styleClass="iceCmdLnk txtbold"
+						id="stackedNagiosPortlet_linkActiveChecksServices"
+						value="#{message['com_groundwork_portal_statusviewer_commandLink_disabledServices']} (#{nagiosStatisticsBean.activeChecksStatistics.serviceStatisticDisabled})"
+						rendered="#{nagiosStatisticsBean.activeChecksStatistics.linkVisibleServices and !nagiosStatisticsBean.activeChecksStatistics.monitoringOptionDisabled}"
+						action="#{nagiosStatisticsBean.openPopup}"
+						actionListener="#{nagiosStatisticsHandler.linkClicked}">
+					</ice:commandLink>
+				</ice:panelGroup>
+				<ice:outputText styleClass="iceOutTxt_B txtleft"
+					id="stackedNagiosPortlet_txtActiveChecksServices"
+					rendered="#{!nagiosStatisticsBean.activeChecksStatistics.linkVisibleServices and !nagiosStatisticsBean.activeChecksStatistics.monitoringOptionDisabled}"
+					value="#{message['com_groundwork_portal_statusviewer_outputText_allServicesEnabled']} (#{nagiosStatisticsBean.activeChecksStatistics.serviceStatisticEnabled})">
+				</ice:outputText>
+				<!--<ice:commandLink styleClass="iceCmdLnk txtbold"
+								id="stackedNagiosPortlet_linkActiveChecksHosts"
+								rendered="#{!nagiosStatisticsBean.serviceGroupContext}"
+								value="#{message['com_groundwork_portal_statusviewer_commandLink_disabledHosts']} (#{nagiosStatisticsBean.activeChecksStatistics.hostStatisticDisabled})"
+								action="#{popup.openPopup}"
+								visible="#{nagiosStatisticsBean.activeChecksStatistics.linkVisibleHosts}"
+								actionListener="#{nagiosStatisticsHandler.linkClicked}">
+							</ice:commandLink>
+							<ice:outputText styleClass="iceOutTxt_B"
+								id="stackedNagiosPortlet_txtActiveChecksHosts"
+								rendered="#{!nagiosStatisticsBean.serviceGroupContext}"
+								visible="#{!nagiosStatisticsBean.activeChecksStatistics.linkVisibleHosts}"
+								value="#{message['com_groundwork_portal_statusviewer_outputText_allHostsEnabled']} (#{nagiosStatisticsBean.activeChecksStatistics.hostStatisticEnabled})">
+							</ice:outputText>-->
+
+			</ice:panelGrid></div>
+
+
+			<!-- Passive Checks -->
+
+			<div style="padding-bottom: 8px;; width: 230px"><ice:panelGrid
+				id="stackedNagiosPortlet_panelgridPassiveChecks"
+				styleClass="#{nagiosStatisticsBean.passiveChecksStatistics.styleClass}"
+				headerClass="#{nagiosStatisticsBean.passiveChecksStatistics.headerClass}"
+				rowClasses="#{nagiosStatisticsBean.passiveChecksStatistics.rowClass}"
+				columnClasses="#{nagiosStatisticsBean.passiveChecksStatistics.columnClass}">
+				<f:facet name="header">
+					<ice:panelGroup
+						style="display: inline"
+						id="stackedNagiosPortlet_panelgrpPassiveChecks">
+						<ice:column id="stackedNagiosPortlet_panelgrpPassiveChecksCol1">
+							<ice:graphicImage title="header=[] body=[#{nagiosStatisticsBean.passiveChecksStatistics.tooltip}]"
+								url="#{nagiosStatisticsBean.passiveChecksStatistics.icon}"
+								id="stackedNagiosPortlet_imgPassiveChecksStatus"
+								style="padding-right:5px"></ice:graphicImage>
+							<ice:outputText id="stackedNagiosPortlet_txtPassiveChecks" title="header=[] body=[#{nagiosStatisticsBean.passiveChecksStatistics.tooltip}]"
+								styleClass="iceOutTxt_B"
+								value="#{message['com_groundwork_portal_statusviewer_outputText_passiveChecks']}"></ice:outputText>
+						</ice:column>
+					</ice:panelGroup>
+				</f:facet>
+				<!-- To be displayed if the 'Passive Checks' monitoring option is disabled -->
+
+				<ice:outputText styleClass="iceOutTxt_B txtleft"
+					value="#{message['com_groundwork_portal_statusviewer_outputText_disabled']}"
+					id="stackedNagiosPortlet_txtPassiveChkDisabled"
+					rendered="#{nagiosStatisticsBean.passiveChecksStatistics.monitoringOptionDisabled}">
+				</ice:outputText>
+
+
+				<!-- To be displayed if the 'Passive Checks' monitoring option is enabled -->
+				<ice:panelGroup
+					rendered="#{nagiosStatisticsBean.passiveChecksStatistics.linkVisibleServices and !nagiosStatisticsBean.passiveChecksStatistics.monitoringOptionDisabled}"
+					styleClass="txtleft">
+					<ice:commandLink styleClass="iceCmdLnk txtbold"
+						id="stackedNagiosPortlet_linkPassiveChecksServices"
+						value="#{message['com_groundwork_portal_statusviewer_commandLink_disabledServices']} (#{nagiosStatisticsBean.passiveChecksStatistics.serviceStatisticDisabled})"
+						rendered="#{nagiosStatisticsBean.passiveChecksStatistics.linkVisibleServices and !nagiosStatisticsBean.passiveChecksStatistics.monitoringOptionDisabled}"
+						action="#{nagiosStatisticsBean.openPopup}"
+						actionListener="#{nagiosStatisticsHandler.linkClicked}">
+					</ice:commandLink>
+				</ice:panelGroup>
+				<ice:outputText styleClass="iceOutTxt_B txtleft"
+					id="stackedNagiosPortlet_txtPassiveChecksServices"
+					rendered="#{!nagiosStatisticsBean.passiveChecksStatistics.linkVisibleServices and !nagiosStatisticsBean.passiveChecksStatistics.monitoringOptionDisabled}"
+					value="#{message['com_groundwork_portal_statusviewer_outputText_allServicesEnabled']} (#{nagiosStatisticsBean.passiveChecksStatistics.serviceStatisticEnabled})">
+				</ice:outputText>
+				<!--<ice:commandLink styleClass="iceCmdLnk txtbold"
+								id="stackedNagiosPortlet_linkPassiveChecksHosts"
+								value="#{message['com_groundwork_portal_statusviewer_commandLink_disabledHosts']} (#{nagiosStatisticsBean.passiveChecksStatistics.hostStatisticDisabled})"
+								action="#{popup.openPopup}"
+								rendered="#{!nagiosStatisticsBean.serviceGroupContext}"
+								visible="#{nagiosStatisticsBean.passiveChecksStatistics.linkVisibleHosts}"
+								actionListener="#{nagiosStatisticsHandler.linkClicked}">
+							</ice:commandLink>
+							<ice:outputText styleClass="iceOutTxt_B"
+								id="stackedNagiosPortlet_txtPassiveChecksHosts"
+								rendered="#{!nagiosStatisticsBean.serviceGroupContext}"
+								visible="#{!nagiosStatisticsBean.passiveChecksStatistics.linkVisibleHosts}"
+								value="#{message['com_groundwork_portal_statusviewer_outputText_allHostsEnabled']} (#{nagiosStatisticsBean.passiveChecksStatistics.hostStatisticEnabled})">
+							</ice:outputText>-->
+
+			</ice:panelGrid></div>
+
+		</ice:panelGrid>
+		<ice:panelPopup id="stackedNagiosPortlet_panelPopupDisabledList"
+			autoPosition="manual" styleClass="icePnlPopTbl" modal="true"
+			visible="#{nagiosStatisticsBean.popupVisible}"
+			style="z-index:999; top: 25%; left: 400px; height: 200px; position:fixed; background: #FFFFFF;">
+			<f:facet name="header">
+				<ice:panelGrid id="stackedNagiosPortlet_panelPopupListClose"
+					width="400px" cellpadding="0" cellspacing="0" columns="2"
+					style="text-align: left;" columnClasses="txtleft,icePnlPopHdr">
+					<ice:column id="stackedNagiosPortlet_panelPopupListCloseCol1">
+						<ice:outputText style="font-size:10px;"
+							styleClass="cust_popupHeader_font"
+							value="#{nagiosStatisticsBean.panelPopupTitle}"
+							id="stackedNagiosPortlet_txtPopuptitle"></ice:outputText>
+					</ice:column>
+					<ice:column id="stackedNagiosPortlet_panelPopupListCloseCol2">
+						<div class="cust_poupmodes"><span title="Close Window">
+						<ice:commandButton id="stackedNagiosPortlet_LinkCloseBtn"
+							type="button" image="/css/css-images/popup_modeBtn_close.gif"
+							action="#{nagiosStatisticsBean.closePopup}"
+							actionListener="#{nagiosStatisticsBean.closeWindow}" 
+							title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+							 alt="Close" /> </span></div>
+					</ice:column>
+				</ice:panelGrid>
+			</f:facet>
+
+			<f:facet name="body">
+				<ice:panelGrid
+					id="stackedNagiosPortlet_panelPopupBodyDisbledLstTotal"
+					width="100%" cellpadding="0" cellspacing="0">
+					<ice:panelGrid id="stackedNagiosPortlet_panelPopupTotal"
+						columns="1" style="width:100%">
+						<ice:column id="stackedNagiosPortlet_panelPopupTotalCol1">
+							<div class="gen_div padleft9">
+							<ice:dataPaginator
+									id="stackedNagiosPortlet_popuptotal" for="stackedNagiosPortlet_disabledListdatatable"
+									rowsCountVar="rowsCount"
+									displayedRowsCountVar="displayedRowsCount"
+									firstRowIndexVar="firstRowIndex" lastRowIndexVar="lastRowIndex"
+									pageCountVar="pageCount" pageIndexVar="pageIndex"
+									styleClass="cust_popup_pgr"
+									
+									>
+									<ice:outputFormat id="stackedNagiosPortlet_labelPopuptotal"
+										value="#{message['com_groundwork_statusviewer_total']} ={0} "
+										styleClass="iceOutTxt">
+										<f:param value=" #{rowsCount}" />
+									</ice:outputFormat>
+								</ice:dataPaginator>
+							
+						<!-- 	<ice:outputText
+								id="stackedNagiosPortlet_labelPopuptotal"
+								value="#{message['com_groundwork_statusviewer_total']}="
+								style="font-weight: bold"></ice:outputText> <ice:outputText
+								id="stackedNagiosPortlet_txtPopuptotal"
+								value="#{nagiosStatisticsBean.countofDisabledEntities}"
+								style="font-weight: bold"></ice:outputText> --></div>
+						</ice:column>
+					</ice:panelGrid>
+
+					<ice:panelGrid width="100%" cellpadding="0" cellspacing="0"
+						id="stackedNagiosPortlet_panelgridDisabledEntities">
+						<ice:dataTable id="stackedNagiosPortlet_disabledListdatatable"
+							var="disabledEntity"
+							value="#{nagiosStatisticsBean.nagiosStatisticsModelPopUpList}" rows="#{nagiosStatisticsBean.popupRowSize}"
+						sortColumn="#{nagiosStatisticsBean.nagiosStatisticsModelPopUpList.sortColumnName}"
+						sortAscending="#{nagiosStatisticsBean.nagiosStatisticsModelPopUpList.ascending}"
+							rowClasses="iceDatTblRow1_typB,iceDatTblRow2_typB table-alternate"
+							columnClasses="iceDatTblCol1_typB"
+							headerClass="iceDatTblColHdr1_typB" styleClass="iceDatTbl_typB">
+							<ice:column id="nameCol">
+								<f:facet name="header">
+									
+									<table border="0" cellspacing="0" cellpadding="0"
+										align="center">
+										<tr>
+											<td><ice:commandLink
+												id="stackedNagiosPortlet_sortColHeader" styleClass="iceOutTxt"
+												actionListener="#{nagiosStatisticsBean.nagiosStatisticsModelPopUpList.sort}">
+												<ice:outputText id="stackedNagiosPortlet_lnkHostNameHeader"
+													value="#{nagiosStatisticsBean.headerTitleName}"
+													style="font-weight:bold;"></ice:outputText>
+
+											</ice:commandLink></td>
+											<td><ice:graphicImage id="stackedNagiosPortlet_imgsort"
+												value="#{nagiosStatisticsBean.nagiosStatisticsModelPopUpList.sortImgUrl}"
+												rendered="#{nagiosStatisticsBean.nagiosStatisticsModelPopUpList !=null}"></ice:graphicImage></td>
+										</tr>
+									</table>
+								
+									
+									
+									
+								<!--  	<ice:commandSortHeader
+										id="stackedNagiosPortlet_sortColHeader" columnName="name"
+										arrow="true" actionListener="#{nagiosStatisticsBean.sort}">
+										<ice:outputText
+											value="#{nagiosStatisticsBean.headerTitleName}"
+											id="stackedNagiosPortlet_txtHeaderTitle"
+											style="text-align: center;font-weight: bold;"></ice:outputText>
+									</ice:commandSortHeader>-->
+								</f:facet>
+
+								<!-- 
+										following links look like this 
+											for Host list, 
+											host1
+											hosr2
+											..
+											for Service list:
+											service1(host_x)
+											service2(host_y)
+											..
+										-->
+								<ice:panelGrid columns="2"
+									id="stackedNagiosPortlet_panelDisabledEntityName">
+									<ice:outputLink
+										id="stackedNagiosPortlet_linkDisabledEntityName"
+										value="#{disabledEntity.subPageURL}"
+										onclick="blockNavigation();">
+										<ice:outputText id="stackedNagiosPortlet_txtShowEntity"
+											style="color: #5078AA;font-weight:normal;padding-bottom: 9px;"
+											value="#{disabledEntity.name}" />
+									</ice:outputLink>
+									<ice:outputLink
+										id="stackedNagiosPortlet_linkDisabledEntityParentHostName"
+										rendered="#{nagiosStatisticsHandler.currentPopupForServices}"
+										value="#{disabledEntity.parentPageURL}">
+										<ice:outputText id="stackedNagiosPortlet_txtShowHost"
+											style="color: #5078AA;font-weight:normal;padding-bottom: 9px;"
+											value="(#{disabledEntity.parentName})" />
+									</ice:outputLink>
+								</ice:panelGrid>
+
+								<!--<ice:outputText style="font-weight: normal;"
+											value="#{disabledEntity.name}"
+											id="stackedNagiosPortlet_txtDisabledEntityName"></ice:outputText>-->
+							</ice:column>
+
+							<ice:column styleClass="borderLeft" id="lastCheckedDateTimeCol">
+								<f:facet name="header">
+									<ice:outputText value="Last Checked Date-Time"
+										id="stackedNagiosPortlet_txtCheckedDtTimeCaption"
+										style="text-align: center;font-weight: bold;"></ice:outputText>
+								</f:facet>
+								<ice:outputText style="font-weight: normal;"
+									value="#{disabledEntity.datetime}"
+									id="stackedNagiosPortlet_txtCheckedDtTime"></ice:outputText>
+							</ice:column>
+							<ice:column styleClass="borderLeft allcenter" id="statusCol">
+								<f:facet name="header">
+									<ice:outputText id="stackedNagiosPortlet_txtStatusCaption"
+										value="Status" style="text-align: center;font-weight: bold;"></ice:outputText>
+								</f:facet>
+								<ice:graphicImage id="stackedNagiosPortlet_imgIconPath"
+									url="#{disabledEntity.iconPath}"></ice:graphicImage>
+							</ice:column>
+						</ice:dataTable>
+						<ice:dataPaginator id="disabledListPaginator"
+							for="stackedNagiosPortlet_disabledListdatatable"
+							paginator="true" fastStep="3" paginatorMaxPages="4"
+							rowsCountVar="rowsCount"
+							displayedRowsCountVar="displayedRowsCount"
+							firstRowIndexVar="firstRowIndex" lastRowIndexVar="lastRowIndex"
+							pageCountVar="pageCount" pageIndexVar="pageIndex"
+							styleClass="cust_popup_pgr"
+							renderFacetsIfSinglePage="false">
+
+							<ice:outputFormat id="stackedNagiosPortlet_OutputFmtPage"
+								style="margin-left:45%" value="{0} of {1}"
+								styleClass="standard">
+								<f:param value="#{pageIndex}" />
+								<f:param value="#{pageCount}" />
+							</ice:outputFormat>
+							<f:facet name="first">
+								<ice:graphicImage id="nagiosPortlet_imgFirstPg"
+									url="/images/arrow-first.gif" style="border:none;"
+									title="#{message['com_groundwork_portal_statusviewer_title_firstPage']}" />
+							</f:facet>
+							<f:facet name="last">
+								<ice:graphicImage id="nagiosPortlet_imgLastPg"
+									url="/images/arrow-last.gif" style="border:none;"
+									title="#{message['com_groundwork_portal_statusviewer_title_lastPage']}" />
+							</f:facet>
+							<f:facet name="previous">
+								<ice:graphicImage id="nagiosPortlet_imgPrevPg"
+									url="/images/arrow-previous.gif" style="border:none;"
+									title="#{message['com_groundwork_portal_statusviewer_title_previousPage']}" />
+							</f:facet>
+							<f:facet name="next">
+								<ice:graphicImage id="nagiosPortlet_imgNextPg"
+									url="/images/arrow-next.gif" style="border:none;"
+									title="#{message['com_groundwork_portal_statusviewer_title_nextPage']}" />
+							</f:facet>
+							<f:facet name="fastforward">
+								<ice:graphicImage id="nagiosPortlet_imgfstFrwd"
+									url="/images/arrow-ff.gif" style="border:none;"
+									title="#{message['com_groundwork_portal_statusviewer_title_fastForward']}" />
+							</f:facet>
+							<f:facet name="fastrewind">
+								<ice:graphicImage id="nagiosPortlet_imgFstRewnd"
+									url="/images/arrow-fr.gif" style="border:none;"
+									title="#{message['com_groundwork_portal_statusviewer_title_fastBackwards']}" />
+							</f:facet>
+						</ice:dataPaginator>
+
+						<ice:commandButton styleClass="gen_div_right"
+							id="stackedNagiosPortlet_btnClose"
+							action="#{nagiosStatisticsBean.closePopup}"
+							actionListener="#{nagiosStatisticsBean.closeWindow}"
+							title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+							value="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"></ice:commandButton>
+					</ice:panelGrid>
+				</ice:panelGrid>
+			</f:facet>
+		</ice:panelPopup>				
+	</ui:define>
+</ui:composition>
+		

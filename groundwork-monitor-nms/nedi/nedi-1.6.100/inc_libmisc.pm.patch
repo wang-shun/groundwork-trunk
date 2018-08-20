@@ -1,0 +1,15 @@
+--- nedi/inc/libmisc.pm.orig	2016-04-09 04:31:25.000000000 -0700
++++ nedi/inc/libmisc.pm	2016-10-09 19:07:25.143388792 -0700
+@@ -15,8 +15,10 @@
+ use warnings;
+ 
+ use RRDs;
+-use IO::Socket;
+-use Socket6;
++# Don't import duplicate routines from either Socket or Socket6,
++# since no code in the misc package references them directly.
++use IO::Socket qw(:DEFAULT !pack_sockaddr_in6 !sockaddr_in6 !unpack_sockaddr_in6);
++use Socket6    qw(:DEFAULT !pack_sockaddr_in6 !sockaddr_in6 !unpack_sockaddr_in6);
+ use Net::FTP;
+ 
+ use vars qw($netfilter $webdev $nosnmpdev $border $ignoredesc $ignoreconf $getfwd $timeout $retry $ncmd);

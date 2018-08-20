@@ -1,0 +1,617 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<!DOCTYPE faces-config PUBLIC "-//Sun Microsystems, Inc.//DTD JavaServer Faces Config 1.1//EN"
+                              "http://java.sun.com/dtd/web-facesconfig_1_1.dtd">
+<faces-config>
+	<managed-bean>
+		<description>Backing bean for Reference tree Metamodel.
+		</description>
+		<managed-bean-name>referenceTree</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.handler.ReferenceTreeMetaModel</managed-bean-class>
+		<managed-bean-scope>application</managed-bean-scope>
+	</managed-bean>
+	
+	<managed-bean>
+		<description>Backing bean for JMSTopicConnection
+		</description>
+		<managed-bean-name>jmsTopicConnection</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.common.listener.JMSTopicConnection</managed-bean-class>
+		<managed-bean-scope>application</managed-bean-scope>
+	</managed-bean>
+	
+	
+	
+	<!--
+		TODO: Verify with on-shore. This bean by putting into request scope
+		will not maintain search string per subpage.
+	-->
+	<managed-bean>
+		<description>Backing bean for search.</description>
+		<managed-bean-name>searchHandler</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.handler.NetworkSearchHandler</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	<managed-bean>
+		<description>Backing bean for Network.</description>
+		<managed-bean-name>networkTree</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.tree.NetworkTreeBean</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+		<managed-property>
+            <property-name>referenceTreeModel</property-name>
+            <value>#{referenceTree}</value>
+        </managed-property>
+	</managed-bean>
+	<managed-bean>
+		<managed-bean-name>statisticsHandler</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.handler.StatisticsHandler</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	<managed-bean>
+		<managed-bean-name>popup</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.PopupBean</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+
+	<!-- TODO: hostGroupStatisticsBean can go in APPLICATION scope. Need to check. -->
+	<managed-bean>
+		<managed-bean-name>hostGroupStatisticsBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.HostGroupStatisticsBean</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	<managed-bean>
+		<managed-bean-name>hostStatisticsBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.HostStatisticsBean</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	
+	<!-- TODO: serviceGroupStatistics can go in APPLICATION scope. Need to check. -->
+	<managed-bean>
+		<managed-bean-name>serviceGroupStatistics</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.ServiceGroupStatistics</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	<managed-bean>
+		<managed-bean-name>serviceStatisticsBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.ServiceStatisticsBean</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+
+
+	<!-- Managed beans for Filter Portlet -->
+	<!-- Filter Bean should be in Session scope to maintain filter state across sub-pages -->
+	<managed-bean>
+		<managed-bean-name>filterBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.FilterBean</managed-bean-class>
+		<managed-bean-scope>session</managed-bean-scope>
+	</managed-bean>
+	<managed-bean>
+		<managed-bean-name>filterHandler</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.handler.FilterHandler</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+
+	<!-- Managed beans for Nagios Monitoring Portlet -->
+	<managed-bean>
+		<description> Backing bean for Nagios Monitoring statistics.
+		</description>
+		<managed-bean-name>nagiosStatisticsBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.nagios.NagiosStatisticsBean</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	<managed-bean>
+		<description> Handler for Nagios Monitoring statistics.</description>
+		<managed-bean-name>nagiosStatisticsHandler</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.handler.NagiosStatisticsHandler</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+
+
+ 	
+	<!-- Managed beans for Health Portlets -->
+	<managed-bean>
+		<managed-bean-name>healthPortletsHandler</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.handler.HealthPortletsHandler</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+
+	<managed-bean>
+		<managed-bean-name>popUpSelectBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.PopUpSelectBean</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+
+
+	<!-- IPCHandler - the main class that handles IPC functionality -->
+	<managed-bean>
+		<managed-bean-name>ipcHandler</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.handler.IPCHandler</managed-bean-class>
+		<managed-bean-scope>session</managed-bean-scope>
+	</managed-bean>
+	<managed-bean>
+		<managed-bean-name>hostListHandler</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.handler.HostListHandler</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+
+	<!--
+		Managed beans for Monitoring Performance Portlet: should be in
+		application scope - as it has the same view for all users. It gets
+		refreshed based on nagios data.
+	-->
+	<managed-bean>
+		<description> Backing bean for Monitoring Performance Portlet
+		</description>
+		<managed-bean-name>monitoringPerformanceBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.MonitoringPerformanceBean</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	
+	<!-- Event portlet beans-->
+
+	<managed-bean>
+		<managed-bean-name>eventListBean</managed-bean-name>
+		<managed-bean-class>
+			com.groundworkopensource.portal.statusviewer.bean.EventListBean 
+		</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+		<managed-property>
+            <property-name>eventFilterBean</property-name>
+            <value>#{eventFilterBean}</value>
+        </managed-property>
+	</managed-bean>
+	<managed-bean>
+		<managed-bean-name>eventMenuActionBean</managed-bean-name>
+		<managed-bean-class>
+			com.groundworkopensource.portal.statusviewer.bean.EventMenuActionBean 
+		</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	<managed-bean>
+		<managed-bean-name>eventMessageSelectBean</managed-bean-name>
+		<managed-bean-class>
+			com.groundworkopensource.portal.statusviewer.bean.EventMessageSelectBean 
+		</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	<!-- TODO: for on-shore: why this bean has moved to application scope? -->
+	<managed-bean>
+		<managed-bean-name>eventActionHandler</managed-bean-name>
+		<managed-bean-class>
+			com.groundworkopensource.portal.statusviewer.handler.EventActionHandler 
+		</managed-bean-class>
+		<managed-bean-scope>application</managed-bean-scope>
+	</managed-bean>
+	<managed-bean>
+		<managed-bean-name>eventFilterBean</managed-bean-name>
+		<managed-bean-class>
+			com.groundworkopensource.portal.statusviewer.bean.EventFilterBean 
+		</managed-bean-class>
+		<managed-bean-scope>session</managed-bean-scope>
+	</managed-bean>
+	<managed-bean>
+		<managed-bean-name>eventFreezeBean</managed-bean-name>
+		<managed-bean-class>
+			com.groundworkopensource.portal.statusviewer.bean.EventFreezeBean 
+		</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+
+	<!-- Managed beans for Service List Portlet -->
+	<managed-bean>
+		<managed-bean-name>serviceListHandler</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.handler.ServiceListHandler</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	<!--
+		Managed bean for Information Portlets (Host Information and Service
+		Information)
+	-->
+	<managed-bean>
+		<managed-bean-name>informationPortletsHandler</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.handler.InformationPortletsHandler</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	
+	<!-- Managed bean for Host Availability Portlet -->	
+	<managed-bean>
+		<managed-bean-name>hostAvailabilityHandler</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.handler.HostAvailabilityHandler</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	
+	<!-- Basic Tree example bean-->
+	<application>
+		<view-handler>com.icesoft.faces.facelets.D2DFaceletViewHandler</view-handler>
+	</application>
+	
+		
+	<!-- Managed beans for Performance Measurement Portlet -->
+	<managed-bean>
+		<description> Backing bean for Performance Measurement Portlet
+		</description>
+		<managed-bean-name>PerformanceMeasurementBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.PerfMeasurementBeanEE</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>		
+	</managed-bean>
+	
+	<!-- Managed bean for Actions Portlet -->
+	<managed-bean>
+		<managed-bean-name>actionBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.action.ActionBean</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	
+	<!-- Handler for actions portlet -->
+	<managed-bean>
+		<managed-bean-name>actionHandler</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.handler.ActionHandlerEE</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	
+	<!-- Managed bean for Actions Portlet's intermediate screens -->
+	<managed-bean>
+		<managed-bean-name>commandParamsBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.action.CommandParamsBean</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	<!--
+		Managed bean to decide visibility of components on intermediate
+		screens
+	-->
+	<managed-bean>
+		<managed-bean-name>visibilityBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.action.VisibilityBean</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+			
+	<!-- Managed Bean for Comments Portlet -->
+	<managed-bean>
+		<description>Backing bean for Comments Portlet</description>
+		<managed-bean-name>commentsHandler</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.handler.CommentsHandler</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	
+	<!-- Managed bean for Service Availability Portlet -->	
+	<managed-bean>
+		<managed-bean-name>serviceAvailabilityHandler</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.handler.ServiceAvailabilityHandler</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	
+	
+		
+	<!-- Managed Bean for Acknowledgement Popup -->
+	<managed-bean>
+	<description>Backing bean for Acknowledgement Popup</description>
+	<managed-bean-name>acknowledgePopupBean</managed-bean-name>
+	<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.AcknowledgePopupBean</managed-bean-class>
+	<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	
+	<!-- seurat view -->	
+	<managed-bean>
+		<managed-bean-name>seuratHandler</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.handler.SeuratHandler</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	
+	<managed-bean>
+		<description> Backing bean for Performance Measurement Portlet
+		</description>
+		<managed-bean-name>perfMeasurementTimeBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.PerfMeasurementTimeBean</managed-bean-class>
+		<managed-bean-scope>session</managed-bean-scope>
+	</managed-bean>
+	
+	<!-- Date Time portlet -->
+	<managed-bean>
+		<description>Backing bean for DateTime Portlet</description>
+		<managed-bean-name>dateTimeBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.DateTimeBean</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>	
+	</managed-bean>
+	
+	
+	<managed-bean>
+		<description>Backing bean Navigation.</description>
+		<managed-bean-name>navigationBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.NavigationBean</managed-bean-class>
+		<managed-bean-scope>session</managed-bean-scope>
+	</managed-bean>
+
+	<managed-bean>
+		<description>Backing bean Navigation Rendering.</description>
+		<managed-bean-name>navigationRenderBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.NavigationRenderBean</managed-bean-class>
+		<managed-bean-scope>session</managed-bean-scope>
+	</managed-bean>
+
+	<managed-bean>
+		<description>Bean for storing logged in users role and to check if
+			user in Admin or Operator Role.</description>
+		<managed-bean-name>userRoleBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.UserRoleBean</managed-bean-class>
+		<managed-bean-scope>session</managed-bean-scope>
+	</managed-bean>
+	
+	<managed-bean>
+		<description>Navigation Tabset Bean.</description>
+		<managed-bean-name>navigationTabsetBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.NavigationTabsetBean</managed-bean-class>
+		<managed-bean-scope>session</managed-bean-scope>
+	</managed-bean>
+
+	<managed-bean>
+		<description>Request Handler Bean.</description>
+		<managed-bean-name>requestHandlerBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.RequestHandlerBean</managed-bean-class>
+		<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	
+	<managed-bean>
+		<description>Bean for storing extended roles for users</description>
+		<managed-bean-name>userExtendedRoleBean</managed-bean-name>
+		<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.UserExtendedRoleBean</managed-bean-class>
+		<managed-bean-scope>session</managed-bean-scope>
+	</managed-bean>
+	
+	<managed-bean>
+	<description>Backing bean for CustomGroup</description>
+	<managed-bean-name>customGroupBean</managed-bean-name>
+	<managed-bean-class>com.groundworkopensource.portal.statusviewer.bean.DelegatingCustomGroupBean</managed-bean-class>
+	<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	
+	<managed-bean>
+	<description>Backing bean for CustomGroup</description>
+	<managed-bean-name>customGroup</managed-bean-name>
+	<managed-bean-class>com.groundworkopensource.portal.model.CustomGroup</managed-bean-class>
+	<managed-bean-scope>request</managed-bean-scope>
+	</managed-bean>
+	
+	<managed-bean>
+	<description>Backing bean for Events Pie</description>
+	<managed-bean-name>eventsPieHandler</managed-bean-name>
+	<managed-bean-class>com.groundworkopensource.portal.statusviewer.handler.EventsPieHandler</managed-bean-class>
+	<managed-bean-scope>application</managed-bean-scope>
+	</managed-bean>
+
+
+    <!-- Event console backing beans-->
+    <managed-bean>
+        <description>Backing bean for JMSTopicConnection
+        </description>
+        <managed-bean-name>jmsConsoleTopicConnection</managed-bean-name>
+        <managed-bean-class>com.groundworkopensource.webapp.console.JMSTopicConnection</managed-bean-class>
+        <managed-bean-scope>application</managed-bean-scope>
+    </managed-bean>
+
+    <managed-bean>
+        <description>Backing bean for ConsoleBean.</description>
+        <managed-bean-name>console</managed-bean-name>
+        <managed-bean-class>
+            com.groundworkopensource.webapp.console.ConsoleBean
+        </managed-bean-class>
+        <managed-bean-scope>request</managed-bean-scope>
+    </managed-bean>
+
+
+
+    <managed-bean>
+        <description>Backing bean for tabset.</description>
+        <managed-bean-name>tabset</managed-bean-name>
+        <managed-bean-class>
+            com.groundworkopensource.webapp.console.TabsetBean
+        </managed-bean-class>
+        <managed-bean-scope>request</managed-bean-scope>
+
+    </managed-bean>
+
+
+    <managed-bean>
+        <description>Backing bean for popup message.</description>
+        <managed-bean-name>popup</managed-bean-name>
+        <managed-bean-class>
+            com.groundworkopensource.webapp.console.PopupBean
+        </managed-bean-class>
+        <managed-bean-scope>request</managed-bean-scope>
+    </managed-bean>
+
+    <managed-bean>
+        <managed-bean-name>freezeBean</managed-bean-name>
+        <managed-bean-class>
+            com.groundworkopensource.webapp.console.FreezeTableBean
+        </managed-bean-class>
+        <managed-bean-scope>request</managed-bean-scope>
+    </managed-bean>
+
+    <managed-bean>
+        <managed-bean-name>msgSelectBean</managed-bean-name>
+        <managed-bean-class>
+            com.groundworkopensource.webapp.console.MessageSelectBean
+        </managed-bean-class>
+        <managed-bean-scope>request</managed-bean-scope>
+    </managed-bean>
+
+    <managed-bean>
+        <managed-bean-name>consoleActionBean</managed-bean-name>
+        <managed-bean-class>
+            com.groundworkopensource.webapp.console.ActionBean
+        </managed-bean-class>
+        <managed-bean-scope>request</managed-bean-scope>
+    </managed-bean>
+
+    <managed-bean>
+        <managed-bean-name>filterTreeBean</managed-bean-name>
+        <managed-bean-class>
+            com.groundworkopensource.webapp.console.SystemFilterTreeBean
+        </managed-bean-class>
+        <managed-bean-scope>request</managed-bean-scope>
+    </managed-bean>
+
+    <managed-bean>
+        <managed-bean-name>consoleFilterBean</managed-bean-name>
+        <managed-bean-class>
+            com.groundworkopensource.webapp.console.FilterBean
+        </managed-bean-class>
+        <managed-bean-scope>request</managed-bean-scope>
+    </managed-bean>
+
+    <managed-bean>
+        <managed-bean-name>publicFilterTreeBean</managed-bean-name>
+        <managed-bean-class>
+            com.groundworkopensource.webapp.console.PublicFilterTreeBean
+        </managed-bean-class>
+        <managed-bean-scope>request</managed-bean-scope>
+    </managed-bean>
+    <managed-bean>
+        <managed-bean-name>event</managed-bean-name>
+        <managed-bean-class>
+            com.groundworkopensource.webapp.console.EventBean
+        </managed-bean-class>
+        <managed-bean-scope>request</managed-bean-scope>
+    </managed-bean>
+
+
+    <managed-bean>
+        <managed-bean-name>searchBean</managed-bean-name>
+        <managed-bean-class>
+            com.groundworkopensource.webapp.console.SearchBean
+        </managed-bean-class>
+        <managed-bean-scope>request</managed-bean-scope>
+    </managed-bean>
+
+    <managed-bean>
+        <managed-bean-name>consoleMgr</managed-bean-name>
+        <managed-bean-class>
+            com.groundworkopensource.webapp.console.ConsoleManager
+        </managed-bean-class>
+        <managed-bean-scope>request</managed-bean-scope>
+    </managed-bean>
+
+    <managed-bean>
+        <description>Backing bean for locale.</description>
+        <managed-bean-name>locale</managed-bean-name>
+        <managed-bean-class>
+            com.groundworkopensource.webapp.console.LocaleBean
+        </managed-bean-class>
+        <managed-bean-scope>application</managed-bean-scope>
+    </managed-bean>
+
+    <managed-bean>
+        <managed-bean-name>extendedUIRoleBean</managed-bean-name>
+        <managed-bean-class>
+            com.groundworkopensource.webapp.console.ExtendedUIRoleBean
+        </managed-bean-class>
+        <managed-bean-scope>session</managed-bean-scope>
+    </managed-bean>
+
+    <managed-bean>
+        <managed-bean-name>sysAccountInfo</managed-bean-name>
+        <managed-bean-class>
+            com.groundworkopensource.portal.statusviewer.bean.SysAccountInfo
+        </managed-bean-class>
+        <managed-bean-scope>request</managed-bean-scope>
+    </managed-bean>
+
+    <managed-bean>
+        <managed-bean-name>sysAccountHandler</managed-bean-name>
+        <managed-bean-class>
+            com.groundworkopensource.portal.statusviewer.handler.SysAccountHandler
+        </managed-bean-class>
+        <managed-bean-scope>request</managed-bean-scope>
+    </managed-bean>
+	
+	
+	<navigation-rule> 
+    <from-view-id>/jsp/customGroupList.jspx</from-view-id> 
+    <navigation-case> 
+      <from-outcome>add</from-outcome> 
+      <to-view-id>/jsp/createCustomGroup.iface</to-view-id> 
+    </navigation-case> 
+    <navigation-case> 
+      <from-outcome>edit</from-outcome> 
+      <to-view-id>/jsp/editCustomGroup.iface</to-view-id> 
+    </navigation-case> 
+    <navigation-case> 
+      <from-outcome>invalidEditSelection</from-outcome> 
+      <to-view-id>/jsp/customGroupList.iface</to-view-id> 
+    </navigation-case> 
+  </navigation-rule> 
+  
+  <navigation-rule> 
+    <from-view-id>/jsp/createCustomGroup.jspx</from-view-id> 
+    <navigation-case> 
+      <from-outcome>saveSuccess</from-outcome> 
+      <to-view-id>/jsp/customGroupList.iface</to-view-id>       
+    </navigation-case> 
+    <navigation-case> 
+     <from-outcome>saveFail</from-outcome> 
+      <to-view-id>/jsp/createCustomGroup.iface</to-view-id>       
+    </navigation-case> 
+    <navigation-case> 
+      <from-outcome>cancel</from-outcome> 
+      <to-view-id>/jsp/customGroupList.iface</to-view-id>       
+    </navigation-case> 
+  </navigation-rule>   
+  
+   <navigation-rule> 
+    <from-view-id>/jsp/editCustomGroup.jspx</from-view-id> 
+    <navigation-case> 
+      <from-outcome>updateSuccess</from-outcome> 
+      <to-view-id>/jsp/customGroupList.iface</to-view-id>       
+    </navigation-case> 
+    <navigation-case> 
+     <from-outcome>updateFail</from-outcome> 
+      <to-view-id>/jsp/editCustomGroup.iface</to-view-id>       
+    </navigation-case> 
+    <navigation-case> 
+      <from-outcome>cancel</from-outcome> 
+      <to-view-id>/jsp/customGroupList.iface</to-view-id>       
+    </navigation-case> 
+  </navigation-rule>
+	
+	<!--  VALIDATOR BEANS -->
+	
+	<!-- Validator for comments -->
+	<validator>
+            <validator-id>commentsValidator</validator-id>
+            <validator-class>com.groundworkopensource.portal.statusviewer.handler.CommentsValidator</validator-class>
+    </validator>
+    
+    <lifecycle>
+      <phase-listener>
+        com.groundworkopensource.portal.statusviewer.handler.CustomMessageListener
+      </phase-listener>
+    </lifecycle>
+    
+    <application>
+      <message-bundle>StatusViewerResources</message-bundle>
+        <resource-bundle>
+            <base-name>
+                messages
+            </base-name>
+            <var>msg</var>
+        </resource-bundle>
+      <locale-config>
+      	<default-locale>en</default-locale>
+      	<supported-locale>fr</supported-locale>
+      </locale-config>
+    </application>
+
+</faces-config>

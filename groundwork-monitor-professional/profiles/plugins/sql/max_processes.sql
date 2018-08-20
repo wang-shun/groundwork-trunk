@@ -1,0 +1,1 @@
+select  'Found ' || a.actprocs || ' processes out of ' || b.value || ' max' Header,  a.actprocs Actual,  b.value Max, round(a.actprocs/b.value*100,0) pct_procs from (select count(*) actprocs from v$process) a, (select value from v$parameter where name like 'processes') b

@@ -1,0 +1,29 @@
+*** noma_2.0.3/share/inc/content_log_viewer.php.orig	Thu Jan  8 08:13:55 2015
+--- noma_2.0.3/share/inc/content_log_viewer.php	Thu Jan 29 16:02:16 2015
+***************
+*** 135,141 ****
+  		$filter = 'where ';
+  		$sep = null;
+  		foreach ($cols as $col => $val) {
+! 			$filter .= $sep . $col . ' like \'%%' . $findPrep . '%%\'';
+  			if (!$sep) $sep = ' or ';
+  		}
+  
+--- 135,141 ----
+  		$filter = 'where ';
+  		$sep = null;
+  		foreach ($cols as $col => $val) {
+! 			$filter .= $sep . quoteIdentifier($col) . ' like \'%%' . $findPrep . '%%\'';
+  			if (!$sep) $sep = ' or ';
+  		}
+  
+***************
+*** 202,207 ****
+--- 202,208 ----
+  
+  
+  	// get logs
++ 	$order_by = quoteIdentifier($order_by);
+  	$query = sprintf(
+  		$query . ' order by %s %s, counter %s %s',
+  		'*',

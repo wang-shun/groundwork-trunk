@@ -1,0 +1,94 @@
+========================================================================
+The stuff in this directory is here in service of GWMON-13009:
+capture GWMEE-level NoMa patch-generation assets in Subversion.
+========================================================================
+
+If we revise NoMa patches, we do not pretend that we can reconstruct the
+old TB patch files using this file tree.  That is not our purpose here.
+We will update build files as necessary for the new versions of the NoMa
+patches, and ensure that the new versions contain the desired content
+and build correctly.  There are no guarantees of being able to build
+older patches unless you check out a Subversion copy of this tree as it
+existed when the original patches were built.
+
+Makefile
+    Automation for creating the final patches from the artifacts stored
+    hereunder.  This is necessary to ensure that we don't make mistakes
+    during iterative development and final construction of the NoMa
+    patches, as there are many details to track and get right.  Type
+    "make" with no arguments to create the TB tarballs to be published.
+
+README
+    The file you're now reading.
+
+TB7.1.0-8.noma_fixes/
+    Directory under which the final files for this particular patch are
+    edited and deposited before final packaging as the patch tarball.
+    In particular, the patch install and uninstall scripts live here,
+    and are to be edited directly in this location.  In contrast, the
+    tarball in this directory, containing the NoMa files that are fixed
+    as part of the patch, is created by the top-level Makefile.
+
+TB7.1.0-8.noma_fixes.tar.gz
+    The built copy of the NoMa patch for the GWMEE 7.1.0 release, to be
+    published as part of a public Technical Bulletin.
+
+TB7.1.1-9.noma_fixes/
+    Directory under which the final files for this particular patch are
+    edited and deposited before final packaging as the patch tarball.
+    In particular, the patch install and uninstall scripts live here,
+    and are to be edited directly in this location.  In contrast, the
+    tarball in this directory, containing the NoMa files that are fixed
+    as part of the patch, is created by the top-level Makefile.
+
+TB7.1.1-9.noma_fixes.tar.gz
+    The built copy of the NoMa patch for the GWMEE 7.1.1 release, to be
+    published as part of a public Technical Bulletin.
+
+patch-7.1.0-perl/
+    The files from the Perl JSON::PP package, as installed from CPAN
+    over our GWMEE 7.1.0 release (which did not include this package).
+    We installed and captured these files so we could include them in
+    the tailored NoMa patch for the GWMEE 7.1.0 release, which differs
+    slightly from the patch for the GWMEE 7.1.1 release in that it has
+    to include some stuff that was later fixed and folded into GWMEE
+    7.1.1 before that release went out.
+
+    We identified the particular added files by saving away a copy of
+    the full GWMEE 7.1.0 perl tree, adding the JSON::PP package using
+    perl/bin/cpan, and then running a full-tree diff.  Note that the
+    global perl/lib/5.8.9/x86_64-linux-thread-multi/.packlist file, while
+    it is modified by adding the JSON::PP package, is not included in
+    our NoMa patch.  That's because doing so might overlay and wipe out
+    information about packages the site has locally installed.  We lose
+    information that the JSON::PP package is installed, but that is not
+    critical to operation of the system.
+
+patch-7.1.1-9-page
+    Initial text for the indicated TB.  It's easier to edit this content
+    first as a standalone file in this manner before publishing to the KB.
+    The actual page content evolves further once it's in the KB.
+
+patch-7.1.1-perl/
+patch-7.2.0-perl/
+    The files from the Perl JSON::PP package, as included in the GWMEE
+    7.1.1 and GWMEE 7.2.0 builds, respectively.  We captured these files
+    during patch development so we could compare them against what
+    we need to include for the tailored NoMa patch for GWMEE 7.1.0.
+    These files are not actually included in our NoMa patch for the
+    GWMEE 7.1.1 release.
+
+patch-noma/
+    A file tree containing all of the most up-to-date patched NoMa files,
+    that might appear in any or all of the NoMa patches.  The build of
+    each patch extracts from this tree only the particular NoMa files
+    that it needs.  The particular files we included in this tree are
+    constructed elsewhere based on our patched official NoMa build,
+    and copied here manually.
+
+update_foundation
+    An original script for testing just the part of the patch
+    installation that adds the fas.executor.interrupt property to the
+    config/foundation.properties file.  The code in this script has been
+    folded into the patch install scripts, and possibly improved there,
+    so this standalone script remains only for historical interest.

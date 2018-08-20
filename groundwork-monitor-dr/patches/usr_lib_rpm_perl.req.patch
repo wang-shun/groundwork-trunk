@@ -1,0 +1,20 @@
+--- /usr/lib/rpm/perl.req.orig	2009-09-03 17:25:19.000000000 -0700
++++ /usr/lib/rpm/perl.req	2010-03-02 19:04:22.000000000 -0800
+@@ -82,12 +82,14 @@
+     
+     # skip the "= <<" block
+ 
+-    if ( ( m/^\s*\$(.*)\s*=\s*<<\s*["'](.*)['"]/) ||
+-         ( m/^\s*\$(.*)\s*=\s*<<\s*(.*);/) ) {
++    if ( ( m/^\s*\$(?:.*)\s*=\s*<<\s*(["'`])(.*?)\1/) ||
++         ( m/^\s*\$(.*)\s*=\s*<<\s*(\w*)\s*;/) ) {
+       $tag = $2;
+       while (<FILE>) {
+-        ( $_ =~ /^$tag/) && last;
++        chomp;
++        ( $_ eq $tag ) && last;
+       }
++      $_ = <FILE>;
+     }
+ 
+     # skip q{} quoted sections - just hope we don't have curly brackets

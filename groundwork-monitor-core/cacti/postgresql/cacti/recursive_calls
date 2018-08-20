@@ -1,0 +1,69 @@
+While modifying Cacti code, I noticed the following anomaly.
+
+% fgrep log_verbosity lib/database.php | fgrep '$log' | sed -e 's/\s*//' | sort
+if (($log) && (read_config_option("log_verbosity") == POLLER_VERBOSITY_DEVDBG)) {
+}else if (($log) || (read_config_option("log_verbosity") >= POLLER_VERBOSITY_DEBUG)) {
+}else if (($log) || (read_config_option("log_verbosity") >= POLLER_VERBOSITY_DEBUG)) {
+}else if (($log) || (read_config_option("log_verbosity") >= POLLER_VERBOSITY_DEBUG)) {
+}else if (($log) || (read_config_option("log_verbosity") >= POLLER_VERBOSITY_DEBUG)) {
+
+Notice the inconsistency of those lines.  In particular, the first uses
+"&&" while all the others use "||".  Something strikes me as inappropriate
+about that.  Shouldn't "&&" be used in all cases?
+
+The issue is particularly critical in one specific case.  In function
+db_fetch_row(), we have:
+
+    180         if (($log) && (read_config_option("log_verbosity") == POLLER_VERBOSITY_DEVDBG)) {
+    181                 cacti_log("DEVEL: SQL Row: \"" . $sql . "\"", FALSE);
+    182         }
+
+    198         }else if (($log) || (read_config_option("log_verbosity") >= POLLER_VERBOSITY_DEBUG)) {
+    199                 cacti_log("ERROR: SQL Row Failed!, Error:'" . $db_conn->ErrorNo() .  "', SQL:\""
+			. str_replace("\n", "", str_replace("\r", "", str_replace("\t", " ", $sql))) . "\"", FALSE);
+    200         }
+
+Now let's look at function read_config_option() over in the
+lib/functions.php file:
+
+    185         if ((!isset($config_array[$config_name])) || ($force)) {
+    186                 $db_setting = db_fetch_row("select value from `$database_default`.`settings` where name='$config_name'", FALSE);
+			// other stuff ...
+    199         }
+
+So what can happen?  Let's look at the call sequence:
+
+    read_config_option() gets called to look up some option;
+        it calls db_fetch_row() to find that option in the database
+    db_fetch_row() runs:
+        if (($log) && (read_config_option("log_verbosity") == POLLER_VERBOSITY_DEVDBG)) {
+	but finds that $log is false, so it skips that call to
+	    read_config_option()
+	then it runs some SQL
+	then it might run:
+        }else if (($log) || (read_config_option("log_verbosity") >= POLLER_VERBOSITY_DEBUG)) {
+        which in this case (since $log is FALSE) calls read_config_option() ...
+    read_config_option() finds that the log_verbosity option is not defined yet,
+        so naturally it calls db_fetch_row() ...
+    db_fetch_row() finds the same situation it finds before, so it runs ...
+        you guessed it ... read_config_option() ...
+
+I think you get the picture.  Infinite recursion leads to infinite stack
+growth leads to stack overflow and a dead process, very quickly.
+
+This is not just a theoretical issue.  I only know about this because
+I ran into it.
+
+The infinite recursion can be solved by changing, within function
+db_fetch_row() in lib/database.php:
+
+        }else if (($log) || (read_config_option("log_verbosity") >= POLLER_VERBOSITY_DEBUG)) {
+to:
+        }else if (($log) && (read_config_option("log_verbosity") >= POLLER_VERBOSITY_DEBUG)) {
+
+because $log is FALSE in the call from read_config_option() to
+db_fetch_row(), thereby blocking a recursive call.
+
+Is this the right solution?  If so, I believe the same change should
+also be applied to the other 3 instances of this line in the same file.
+

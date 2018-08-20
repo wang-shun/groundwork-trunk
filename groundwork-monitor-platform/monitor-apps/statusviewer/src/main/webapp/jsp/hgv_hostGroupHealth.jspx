@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+                <!-- required to initialize the bean ie actually populate the page with actual data rather than ???'s-->
+		<ice:inputHidden id="HV_healthHiddenField" value="#{healthPortletsHandler.healthHiddenField}" />
+
+		<!--  error / info message -->
+		<ice:panelGroup rendered="#{healthPortletsHandler.message}"
+			id="hghpanelsSearchError">
+			<ice:column id="hghcolumnError"
+				rendered="#{healthPortletsHandler.error}">
+				<ui:include src="/jsp/error.jspx">
+					<ui:param name="errorMessage"
+						value="#{healthPortletsHandler.errorMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:column id="hghcolumninfo"
+				rendered="#{healthPortletsHandler.info}">
+				<ui:include src="/jsp/info.jspx">
+					<ui:param name="infoMessage"
+						value="#{healthPortletsHandler.infoMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:commandButton id="hghcmdRetryNow"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{healthPortletsHandler.reloadPage}"></ice:commandButton>
+		</ice:panelGroup>
+
+		<ice:panelGrid id="hghpanelmain"
+			width="100%"
+			rendered="#{!healthPortletsHandler.message}">
+			<table width="100%" cellpadding="0" cellspacing="0">
+				<tr>
+					<td width="50%">
+						<!-- Host Group Name -->
+						<ice:outputText id="hghtxtHostGroup"
+							value="#{healthPortletsHandler.hostGroupHealthBean.hostGroupNameLabel}"
+							style="font-weight: bold; font-size: 13px;"
+						 	title="#{healthPortletsHandler.hostGroupHealthBean.hostGroupName}" />						
+						<br />
+						
+						<!-- Host Group Alias -->
+						<ice:outputText styleClass="iceOutTxt" style="font-weight: normal; padding-top: 2px; width:250px; margin-right:10px;display:inline-block; overflow:hidden"
+							value="(#{healthPortletsHandler.hostGroupHealthBean.hostGroupAlias})"
+							title="#{healthPortletsHandler.hostGroupHealthBean.hostGroupAliasLabel}" 
+							id="txtHostGroupAlias" />
+						<br />						
+						
+						<!-- Host Group State icon -->
+						<ice:graphicImage
+							url="#{healthPortletsHandler.hostGroupHealthBean.status.iconPath}"
+							style="padding-right: 4px; padding-top: 2px; padding-bottom: 2px;"
+							id="hghimgHostGroupStatus" />
+						<ice:outputText
+							value=" #{healthPortletsHandler.hostGroupHealthBean.status.status}"
+							style="color:#{healthPortletsHandler.hostGroupHealthBean.status.hexColor};"
+							id="hghtxtHostGroupStatus" />
+						<br />
+						
+						<!-- Host Group Description -->
+						<div style="width: 220px; height: 25px; overflow: auto; padding: 5px;">
+							<ice:outputText styleClass="iceOutTxt" style="font-weight: normal;"
+								value="#{healthPortletsHandler.hostGroupHealthBean.hostGroupDescription}"								
+								escape="false"
+								id="txtHostGroupDescription" />
+						</div>
+					</td>
+					
+					<td>
+						<table width="100%" cellpadding="0" cellspacing="0">
+							<tr>
+								<td class="cust_iceOrangeStatusLeft"></td>
+								
+								<td class="cust_iceOrangeStatusCenter" align="center">
+									<!-- Host Group Availability -->
+									<ice:outputText
+										value="#{message['com_groundwork_portal_statusviewer_outputtext_availability']}"
+										style="font-weight: bold; font-size: 17px;"
+										id="hghhghtxtAvailability" />
+								
+									<br />
+									<ice:outputText id="hghtxtHostAvailabilityLabel"
+										style="font-weight: bold; font-size: 12px;" 
+										value="#{message['com_groundwork_portal_statusviewer_outputtext_host']}" />
+									<ice:outputText id="hghtxtHostAvailabilityValue"
+										style="font-weight: bold; font-size: 12px;"
+										value="#{healthPortletsHandler.hostGroupHealthBean.hostAvailability}%" />
+									<ice:outputText id="hghtxtHostServiceSeparator" 
+										style="font-weight: bold; font-size: 12px;"
+										value="|" />
+									<ice:outputText id="hghtxtServiceAvailabilityLabel"
+										style="font-weight: bold; font-size: 12px;" 
+										value="#{message['com_groundwork_portal_statusviewer_outputtext_service']}" />
+									<ice:outputText id="hghtxtServiceAvailabilityValue" 
+										style="font-weight: bold; font-size: 12px;"
+										value="#{healthPortletsHandler.hostGroupHealthBean.serviceAvailability}%" />
+								</td>
+								
+								<td class="cust_iceOrangeStatusRight"></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+		</ice:panelGrid>		
+	</ui:define>
+</ui:composition>
+			

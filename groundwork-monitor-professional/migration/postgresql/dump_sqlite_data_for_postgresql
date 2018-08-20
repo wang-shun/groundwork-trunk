@@ -1,0 +1,255 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+# dump_sqlite_data_for_postgresql
+
+# Copyright (c) 2015-2017 GroundWork, Inc. (www.gwos.com).  All rights reserved.
+# Use of this software is subject to commercial license terms.
+
+# This script is used to dump data from a SQLite3 database in a form that
+# can be swallowed by PostgreSQL.  This does not include any statements that
+# will in any way alter the schema of the target database.  The assumption
+# is that you have already created an empty database with all the desired
+# tables, indexes, and other related objects.
+
+use strict;
+use warnings;
+
+use File::Temp;
+
+sub print_usage {
+    print "usage:  dump_sqlite_data_for_postgresql sqlite_database_file [postgresql_dump_file]\n";
+    print "where:  sqlite_database_file\n";
+    print "            is typically /usr/local/groundwork/noma/var/NoMa.db\n";
+    print "            but may be any other SQLite database\n";
+    print "        postgresql_dump_file\n";
+    print "            is where you want the output written; you may specify\n";
+    print "            STDOUT either as \"-\" or by omitting this parameter\n";
+    print "\n";
+    print "If you pipe the output from this this script directly into psql,\n";
+    print "you should use the -q option to avoid lots of pointless output, and\n";
+    print "\"-v ON_ERROR_STOP=\" both to be able to test the psql exit code for\n";
+    print "errors and to suppress excessive \"ERROR:  current transaction is aborted,\n";
+    print "commands ignored until end of transaction block\" messages in case of error:\n";
+    print "\n";
+    print "    /usr/local/groundwork/core/migration/postgresql/dump_sqlite_data_for_postgresql /usr/local/groundwork/noma/var/NoMa.db \\\n";
+    print "        | /usr/local/groundwork/postgresql/bin/psql -q -h \"\$dbhost\" -v ON_ERROR_STOP= -d noma\n";
+    print "\n";
+}
+
+if ( @ARGV < 1 || @ARGV > 2 ) {
+    print_usage();
+    exit(1);
+}
+
+my $sqlite3              = '/usr/local/groundwork/sqlite/bin/sqlite3';
+my $sqlite_database_file = $ARGV[0];
+my $postgresql_dump_file = $ARGV[1];
+$postgresql_dump_file = '-' if not defined $postgresql_dump_file;
+
+# Basic security:  disallow shell metacharacters.
+$sqlite_database_file =~ s{[^-+./0123456789\@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz]}{}g;
+$postgresql_dump_file =~ s{[^-+./0123456789\@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz]}{}g;
+
+if ( !-f $sqlite_database_file ) {
+    print "ERROR:  $sqlite_database_file is not a file.\n";
+    exit(1);
+}
+
+# This is not a complete security check, as there are race conditions involved
+# with checking before use.  But this can still handle the usual user mistakes.
+if ( $postgresql_dump_file ne '-' && -e $postgresql_dump_file ) {
+    print "ERROR:  \"$postgresql_dump_file\" already exists.\n";
+    exit(1);
+}
+
+if ( $postgresql_dump_file =~ m{/$} ) {
+    print "ERROR:  $postgresql_dump_file cannot name a directory.\n";
+    exit(1);
+}
+
+if ( not open( SQLITE, '-|', "$sqlite3 $sqlite_database_file .dump" ) ) {
+    die "FATAL:  Cannot run sqlite3 to create a database dump file ($!).\n";
+}
+
+my ( $dump_handle, $noma_temp_file ) = ( \*STDOUT, 'STDOUT' );
+if ( $postgresql_dump_file ne '-' ) {
+    ## We avoid problems with a cross-mount rename at the end, by simply creating the
+    ## temporary output dump file in the same place that it will ultimately reside.
+    $postgresql_dump_file =~ m{^(.*/)};
+    my $dump_directory = $1;
+    $dump_directory = '.' if !defined($dump_directory) || $dump_directory eq '';
+    $dump_directory =~ s{(?<=.)/+$}{};
+    if ( $dump_directory eq '/' ) {
+	print "ERROR:  $postgresql_dump_file cannot name a file in the root directory.\n";
+	exit(1);
+    }
+    ( $dump_handle, $noma_temp_file ) = File::Temp::tempfile( "NoMa_Temporary_Dump_File_XXXXXX", DIR => $dump_directory, SUFFIX => '.sql' );
+    if ( not $dump_handle ) {
+	die "FATAL:  Cannot create a temporary database dump file ($!).\n";
+    }
+}
+
+my @update_sequence_statements;
+while (<SQLITE>) {
+    next if /^(PRAGMA|CREATE UNIQUE INDEX|CREATE INDEX|DELETE FROM sqlite_sequence|INSERT INTO "sqlite_sequence")/;
+
+    # ERROR:  cannot truncate a table referenced in a foreign key constraint
+    # DETAIL:  Table "tmp_active" references "tmp_commands".
+    # HINT:  Truncate table "tmp_active" at the same time, or use TRUNCATE ... CASCADE.
+
+    if (/^CREATE TABLE (?:\[|`)?(\w+)(?:\]|`)? /) {
+	print $dump_handle "TRUNCATE TABLE $1 RESTART IDENTITY CASCADE;\n";
+	if (/CREATE TABLE (?:\[|`)?(\w+)(?:\]|`)?\s*\(\s*(?:\[|`)?(\w+)(?:\]|`)?\s*INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT/) {    # ) to balance
+	    push @update_sequence_statements, "SELECT setval('${1}_${2}_seq', (SELECT MAX($2) FROM $1));\n";
+	}
+	next;
+    }
+
+    # Sadly, the SQLite source database probably contains many rows that look similar to this:
+    #
+    # INSERT INTO "tmp_active" VALUES(3,'','','','','','','','',0,'',0,0,0,'');
+    # INSERT INTO "tmp_active" VALUES(4,'','','','','','','','',0,'',0,0,0,'');
+    # INSERT INTO "tmp_active" VALUES(5,'','','','','','','','',0,'',0,0,0,'');
+    # INSERT INTO "tmp_active" VALUES(6,'','','','','','','','',0,'',0,0,0,'');
+    #
+    # That seems to happen whenever we get a notification whose text message includes an
+    # un-escaped single-quote character.  Until that is patched in the NoMa code (which
+    # we are doing for the GWMEE 7.1.0 release, by doubling the single-quote character
+    # when inserting into the database), we get a failed insert into the tmp_commands
+    # table.  Then the code fails to take account of the fact that said insert failed
+    # (which we are not fixing for the GWMEE 7.1.0 release), and it queries for the row
+    # just supposedly inserted.  It then fails to notice that no row got returned from
+    # the SELECT (which we are also patching for the GWMEE 7.1.0 release).  Using that
+    # (non-existent) result data, it then tries to run this command to insert a row into
+    # the tmp_active table:
+    #
+    #   INSERT INTO tmp_active (user, method, notify_cmd, time_string, notify_id, dest,
+    #     from_user, rule, command_id, stime) VALUES ('','','','','','','','','','');
+    #
+    # This INSERT leaves the retries, progress, esc_flag, and bundled fields set by the
+    # "DEFAULT 0" clause in the tmp_active table schema.  But the rest of the fields
+    # (aside from id, which gets automatically assigned from an auto-incremented sequence)
+    # are forcibly set to empty strings.  And SQLite accepts these empty strings as such,
+    # even for integral fields where a character value is improper (see below).
+    #
+    # The SQLite table setup for the NoMa.db database does not impose the same NOT NULL
+    # constraints on certain fields as does the MySQL version of the noma database.  But
+    # that is not what is in play here.  (That said, MySQL is wont to silently coerce an
+    # empty string for an integral field that is supposed to be NOT NULL to be 0 instead,
+    # and not object to the insertion.  So any bad code that makes such an insert simply
+    # never gets properly debugged.)
+    #
+    # The real problem is that SQLite is even sloppier than MySQL.  Here is a part of its
+    # doc, found at:  http://www.sqlite.org/different.html
+    #
+    #   Manifest typing
+    #
+    #   Most SQL database engines use static typing. A datatype is associated with each
+    #   column in a table and only values of that particular datatype are allowed to
+    #   be stored in that column. SQLite relaxes this restriction by using manifest
+    #   typing. In manifest typing, the datatype is a property of the value itself, not
+    #   of the column in which the value is stored. SQLite thus allows the user to store
+    #   any value of any datatype into any column regardless of the declared type of that
+    #   column. (There are some exceptions to this rule: An INTEGER PRIMARY KEY column
+    #   may only store integers. And SQLite attempts to coerce values into the declared
+    #   datatype of the column when it can.)
+    #
+    #   As far as we can tell, the SQL language specification allows the use of manifest
+    #   typing. Nevertheless, most other SQL database engines are statically typed and
+    #   so some people feel that the use of manifest typing is a bug in SQLite. But the
+    #   authors of SQLite feel very strongly that this is a feature. The use of manifest
+    #   typing in SQLite is a deliberate design decision which has proven in practice to
+    #   make SQLite more reliable and easier to use, especially when used in combination
+    #   with dynamically typed programming languages such as Tcl and Python.
+    #
+    # However it happened, we need to correctly accommodate the NOT NULL attribute applied
+    # to the tmp_active.notify_id field (the second field in this table) in the MySQL
+    # and PostgreSQL forms of the noma database.  And more generally, we need to convert
+    # what are clearly stored as zero-length strings in SQLite within supposedly integral
+    # columns, into some sort of numeric values for insertion into PostgreSQL.  We either
+    # need to drop such rows entirely, as representing some bug, or convert them to some
+    # form that will import without error.  Seeing how these rows came about, we choose to
+    # do the former.  The three tests here are a bit of overkill (the first test should
+    # handle all of these lines), but a little extra caution won't hurt.
+    next if /INSERT INTO "tmp_active" VALUES\((\d+),'',/;
+    next if /INSERT INTO "tmp_active" VALUES\((\d+),(\d+),'',/;
+    next if /INSERT INTO "tmp_active" VALUES\((.*),''\);/;
+
+    # We must handle the fact that '' is not a valid value in PostgreSQL for an integral
+    # field, in places other than the lines shown above where we have seen this situation
+    # come up in testing.  PostgreSQL won't allow arbitrary text-to-integral conversions
+    # since it has no implicit coercion defined for this type transformation; possibly,
+    # setting these to NULL is the most sensible approach, seeming to best reflect the
+    # original intent.  We have to treat these on a case-by-case basis.
+    #
+    # Whether to set this case to NULL or to 0 is unclear.  We'll go with NULL for now.
+    # Either value might make the row effectively invisible to certain types of further
+    # processing, but there's little hope of doing better.
+    s/INSERT INTO "notification_logs" VALUES\((.*),''\);/INSERT INTO "notification_logs" VALUES\($1,NULL);/;
+
+    # This statement is so badly constructed (setting external_id, recipients, and
+    # hostgroups fields all to NULL when they are all explicitly declared to be NOT NULL)
+    # that there must be something seriously wrong with this data.  (Indeed, I'm seeing
+    # this from a dump wherein if I try to run sqlite3 on the database, and try to run
+    # some SQL statements, it says "Error: database disk image is malformed".)  In a
+    # non-malformed database, it's not possible to insert such a row in the first place,
+    # because SQLite does enforce the NOT NULL attributes on the columns where it is
+    # declared.  For that reason, I'm not going to bring forward such a line.  This will
+    # have the effect of suppressing errors about a corrupt database, but that seems to
+    # be about the best we can do in such a situation.  We only hope that the resultant
+    # target database will be sufficiently consistent that we can use it afterward.
+    next if /INSERT INTO "tmp_commands" VALUES\(0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL\);/;
+
+    if (/^COMMIT;$/) {
+	# We push out the following statements, which should have been captured above.
+	# These statements update the PostgreSQL sequences corresponding to SQLite3
+	# auto-increment variables, so we don't generate duplicate-key conflicts the
+	# next time we attempt an insert into these tables.
+	#
+	# select setval( 'contactgroups_id_seq',        ( select MAX(id) from contactgroups ) );
+	# select setval( 'contacts_id_seq',             ( select MAX(id) from contacts ) );
+	# select setval( 'escalation_stati_id_seq',     ( select MAX(id) from escalation_stati ) );
+	# select setval( 'escalations_contacts_id_seq', ( select MAX(id) from escalations_contacts ) );
+	# select setval( 'holidays_id_seq',             ( select MAX(id) from holidays ) );
+	# select setval( 'notification_logs_id_seq',    ( select MAX(id) from notification_logs ) );
+	# select setval( 'notification_methods_id_seq', ( select MAX(id) from notification_methods ) );
+	# select setval( 'notification_stati_id_seq',   ( select MAX(id) from notification_stati ) );
+	# select setval( 'notifications_id_seq',        ( select MAX(id) from notifications ) );
+	# select setval( 'timeframes_id_seq',           ( select MAX(id) from timeframes ) );
+	# select setval( 'tmp_active_id_seq',           ( select MAX(id) from tmp_active ) );
+	# select setval( 'tmp_commands_id_seq',         ( select MAX(id) from tmp_commands ) );
+	#
+	foreach my $update_statement (@update_sequence_statements) {
+	    print $dump_handle $update_statement
+	      or die 'FATAL:  Could not write to '
+	      . ( $postgresql_dump_file ne '-' ? ' the temporary output file ' : ' the standard output stream ' )
+	      . " ($!).";
+	}
+    }
+
+    # Output our edited result, suitable for execution by PostgreSQL.
+    print $dump_handle $_
+      or die 'FATAL:  Could not write to '
+      . ( $postgresql_dump_file ne '-' ? ' the temporary output file ' : ' the standard output stream ' )
+      . " ($!).";
+}
+
+close SQLITE;
+
+if ( $postgresql_dump_file ne '-' ) {
+    ## We try here to prevent clobbering some file that got created while this script was
+    ## running.  This is not a complete security check, as there are race conditions involved
+    ## with checking before the rename.  But some checking is better than no checking.
+    if ( -e $postgresql_dump_file ) {
+	print "ERROR:  \"$postgresql_dump_file\" already exists.\n";
+	unlink $noma_temp_file;
+	close $dump_handle;
+	exit(1);
+    }
+
+    close $dump_handle
+      or die 'FATAL:  Could not close '
+      . ( $postgresql_dump_file ne '-' ? ' the temporary output file ' : ' the standard output stream ' )
+      . " ($!).";
+    rename( $noma_temp_file, $postgresql_dump_file ) or die "FATAL:  Cannot rename the final output file to $postgresql_dump_file ($!).\n";
+}

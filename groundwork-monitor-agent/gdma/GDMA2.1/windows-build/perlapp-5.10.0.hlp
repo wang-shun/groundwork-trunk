@@ -1,0 +1,832 @@
+NAME
+    perlapp - Convert Perl program into a standalone application
+
+SYNOPSIS
+    perlapp [options] perlscript
+
+    perlapp [options] project
+
+    perlapp
+
+    perlapp --help
+
+    perlapp --version
+
+DESCRIPTION
+    The *PerlApp* utility converts a Perl program into a standalone
+    application. This utility combines a Perl program, all of the required
+    Perl modules and a modified Perl interpreter into one binary unit. When
+    the resulting application is run, it searches for modules within itself
+    before searching the filesystem.
+
+    Most commonly, *PerlApp* is invoked with the name of the Perl program
+    that you want converted as an argument. This produces a working
+    application. Some of the options described below make it possible to
+    control which modules are included and how the generated application
+    behaves.
+
+    If *PerlApp* is invoked without arguments, the graphical interface is
+    displayed. If invoked with the "--version" or "--help" option, it will
+    print the corresponding message and exit.
+
+OPTIONS
+    The following command-line options are supported. Options can be
+    abbreviated for uniqueness (shortened only to the point that they are
+    still distinct from other options).
+
+    @file
+         If the command line contains arguments that start with "@", then
+         *PerlApp* replaces each one of these with the arguments parsed from
+         the corresponding file.
+
+    --add *modules*
+         List additional modules to include in the application. *PerlApp*
+         also attempts to include modules that the listed modules depend on.
+         Multiple modules can be separated by whitespace or a semicolon.
+         This option can be repeated. For example:
+
+             perlapp myscript.pl --add IO::Socket --add XML::Parser::Expat
+
+         ...would include IO::Socket and XML::Parser in your application.
+
+         The "--add" option supports the following wildcard notations:
+         "--add Module::*" includes "Module::Foo", but neither "Module"
+         itself nor "Module::Foo::Bar". "--add Module::**" includes
+         "Module::Foo" and "Module::Foo::Bar", but not "Module". "--add
+         Module::" works the same as "--add Module;Module::**", including
+         all of "Module", "Module::Foo" and "Module::Foo::Bar". Note that
+         you may have to quote the "*" character to prevent wildcard
+         expansion by your command shell.
+
+         PerlApp uses built-in heuristics to determine any additional
+         modules that may be required at runtime. When building an
+         executable, missing modules are displayed as errors. In a few
+         cases, however, the heuristics are used to downgrade errors to
+         warnings. PerlApp issues warnings for the following:
+
+         *   Windows executables built without Unix, Mac, VMS and OS/2
+             modules
+
+         *   Non-Windows executables built without "Win32::*" modules
+
+         *   All lowercase module names (because they are sometimes detected
+             incorrectly by PerlApp)
+
+    --bind file
+         List an additional file to include in the application. The
+         application can access this file at runtime through the
+         "PerlApp::get_bound_file()" and "PerlApp::extract_bound_file()"
+         functions. Separate multiple filenames with semicolons. This option
+         can be repeated.
+
+         Additional options can be specified after the filename, within
+         brackets and separated by commas:
+
+            name[option1,option2,...]
+
+         Valid options are:
+
+         file=filename
+             Specifies the filesystem name of the file to be bound. Cannot
+             be specified together with "data". If neither "file" nor "data"
+             is specified, then the bound "name" is used as the filesystem
+             name as well.
+
+         data=*text*
+             File contents specified as literal text. Cannot be specified
+             together with "file".
+
+         text
+             The file will be read in text mode on Windows.
+
+         extract
+             The bound file is extracted into the "TEMP" directory upon
+             application start. It is deleted when the application
+             terminates. The extraction directory is added to the "PATH"
+             environment variable (as well as to the "LD_LIBRARY_PATH"
+             variable on Unix). It is also added to the front of @INC.
+
+         mode=*file permissions*
+             Specifies the access mode for the file when extracted either by
+             the "extract" option or the "PerlApp::extract_bound_file()"
+             function. File permissions must be specified as an octal number
+             (0555 by default); "PerlApp" implicitly calls chmod() after
+             extracting the file to make sure it ends up with the right
+             permission bits. The "mode=" prefix is optional.
+
+         Examples:
+
+             --bind PerlEz.dll[file=\perl\bin\PerlEz.dll,extract]
+             --bind data.txt[text,0777]
+
+         Note: Files bound using the "extract" suboption of "--bind" or
+         extracted via "PerlApp::extract_bound_file()" are written to a a
+         per-process temporary directory and are automatically deleted when
+         the process ends. This occurs regardless of whether the "--clean"
+         option is used.
+
+    --blib libpath
+         Similar to "--lib", but it searches for a MakeMaker-like *blib*
+         directory structure starting in *libpath* and working back up to
+         five levels of '..'. If found, it adds both the *lib* and the
+         *arch* part of the *blib* structure to the module search path.
+
+    --clean
+         Clean up object files that were extracted from the application at
+         runtime. By default, these files are cached in the temporary
+         directory to allow the next invocation of the application to start
+         more quickly.
+
+    --debug *host:port*
+         Create a debugging application. It connects to a remote debugger at
+         startup. The default host is '127.0.0.1' and the default port is
+         ':2000'. Using a single dash '-' selects the standard Perl
+         command-line debugger from the local Perl installation.
+
+         The special port name ':komodo' provides support for remote
+         debugging with the ActiveState Komodo IDE (version 1.2 and later,
+         http://www.ActiveState.com/Komodo). Komodo uses a custom version of
+         perl5db.pl. The path to this file must be made available to the
+         application either via the "PERL5LIB" environment variable (for
+         dependent applications) or via the "--lib" *PerlApp* command-line
+         option (for freestanding applications). For example:
+
+             perlapp --lib /path-to/komodo-1.2/perl/site/lib ...
+
+         Refer to the Komodo Remote Debugging documentation for additional
+         information.
+
+    --dependent
+         Build a standalone application that loads modules installed with
+         Perl on the target system. This option makes the application
+         smaller, but it might not run correctly if Perl and/or the required
+         modules are not installed on the target system.
+
+         Modules loaded from the directories specified with a "--lib" or
+         "--blib" option are still included. This allows you to selectively
+         include only some non-standard modules in your *PerlApp* generated
+         application.
+
+    --dyndll
+         Use the 'dynamic DLL loader'. By default, PerlApp writes bundled
+         DLLs to disk in the "tmp" directory and then uses the operating
+         system to load them into the process. The default setting is
+         "--nodyndll".
+
+         The dynamic DLL loader bypasses some operating system mechanisms
+         and loads the libraries directly from memory without ever writing
+         them to disk. However it may not be fully compatible with all types
+         of DLLs. It is also not compatible with Windows 9x. Executables
+         generated using the "--dyndll" option will still write DLLs to disk
+         when running on Windows 95/98/Me.
+
+         This option only applies to executables generated for the Windows
+         platform. For other platforms it has no effect.
+
+    --exe filename
+         This option allows you to specify the filename to which the
+         generated application will be written. By default, a name derived
+         from the script name will be chosen. This default name will include
+         the target platform specification if the "--target" option is being
+         used.
+
+         If the argument for "--exe" ends with .app (i.e. is a Mac OS X
+         application), the "--gui" option is implied.
+
+    --explain *modules*
+         For each module, explain why the module will be included in the
+         application and then exit. No executable will be produced.
+
+         Multiple modules can be separated by whitespace or semi-colons. The
+         special value "all" will make *PerlApp* explain all files it
+         includes.
+
+    --force
+         Normally *PerlApp* asks for permission to overwrite an existing
+         application. This option tells it to proceed without prompting for
+         confirmation.
+
+    --freestanding
+         Build an executable that includes all modules required to run the
+         program on the target system. This option is the default. Use the
+         "--dependent" option to built a non-freestanding application.
+
+    --gui
+         Build an executable that does not have a console. This option is
+         only effective on Windows and Mac OS X; on other systems it is
+         ignored.
+
+         On Mac OS X this creates a ".app" application directory. The
+         executble itself is stored in:
+
+           ...<Application>.app/Contents/MacOS/
+
+         All "--runlib" ($PerlApp::RUNLIB) options will be relative to this
+         directory.
+
+    --help *topic*
+         Print this manpage and exit. If an optional *topic* is specified,
+         only sections whose headings include the *topic* word are printed.
+         Option names as *topics* must be specified without the leading
+         dashes. Examples:
+
+             perlapp --help FUNCTIONS
+             perlapp --help bind
+
+    --icon filename
+         Associate icons with the application. This option only applies to
+         executables generated for the Mac OS X and Windows platforms. For
+         other platforms it has no effect.
+
+         On Windows the filename given must be an .ico, .dll or .exe
+         filename. For .dll and .exe files, the name can be followed by a
+         comma and the icon number. The first icon in the file is ",0", the
+         second ",1", etc. If the icon number is not provided, then ",0" is
+         assumed. Separated multiple *filenames* with semicolons. This
+         option can be repeated.
+
+         On Mac OS X the filename given must be an .icns file and only a
+         single icon can be provided. The "--gui" option must be specified
+         so that an .app directory is created.
+
+    --info *name* = *val* ; ...
+         The arguments to this option is a sequence of name/value pairs that
+         is used to initialize the version information of the generated
+         application. Name/value pairs are separated by an equals sign, with
+         each pair separated by a semicolon. Valid names are as follows, and
+         are case-insensitive:
+
+         Comments
+             Comments or other information to be displayed for diagnostic
+             purposes.
+
+         CompanyName
+             The name of the company that produced the file.
+
+         FileDescription
+             The file description presented to users (e.g. in a list box)
+             when the user is choosing files to install.
+
+         FileVersion
+             The version number of the file in the form 'W.X.Y.Z' where W,
+             X, Y, and Z are numbers in the range 0-65535. X, Y, and Z are
+             optional and default to 0.
+
+         InternalName
+             The internal name of the file (e.g. a module name if the file
+             is a dynamic-link library). If the file has no internal name,
+             this string should be the same as the original filename,
+             without an extension.
+
+         LegalCopyright
+             Copyright notices that apply to the file, including all
+             notices, legal symbols, and copyright dates.
+
+         LegalTrademarks
+             Trademarks and registered trademarks that apply to the file,
+             including the full text of all notices, legal symbols, and
+             trademark numbers.
+
+         OriginalFilename
+             The original name of the file, not including a path. An
+             application uses this information to determine whether a file
+             has been renamed by a user. The format of the name depends on
+             the filesystem for which the file was created.
+
+         ProductName
+             The name of the product.
+
+         ProductVersion
+             The version of the product with which the file is distributed
+             in the form 'W.X.Y.Z' where W, X, Y, and Z are numbers in the
+             range 0-65535. X, Y, and Z are optional and default to 0.
+             Typically, the first number represents the major version
+             number, the second represents the minor version number, the
+             third represents the build number, and the last represents the
+             private part number.
+
+         All values are taken as strings except "FileVersion" and
+         "ProductVersion", which must be in the form 'W.X.Y.Z' (where W, X,
+         Y, and Z are numbers in the range 0-65535. X, Y, and Z are optional
+         and default to 0).
+
+         This option only applies to executables generated for the Windows
+         platform. For other platforms it has no effect.
+
+    --lib libpath
+         Add to the path where *PerlApp* looks for modules to include in the
+         application. The libpath can contain multiple directories that are
+         separated in the same way as the "PATH" environment variable. This
+         option can be repeated.
+
+         *PerlApp* will automatically add architecture and version specific
+         subdirectories the same way the Perl "-I" option and the Perl "lib"
+         pragma do.
+
+         The content of the "PERL5LIB" environment variable is automatically
+         added via an implicit "--lib" option.
+
+    --list-targets
+         Writes a list of supported platform targets to STDOUT. These
+         platform names can be used as arguments for the "--target" option.
+         This option can be combined with "--verbose" to reveal the location
+         of the installed Perls.
+
+    --manifest filename
+         Embed a custom manifest file in the executable. The default
+         manifest requests an execution level of "asInvoker" on Windows
+         Vista and later and also requests the new style of the common GUI
+         controls (Open/Print/Save dialogs) on Windows XP and later.
+
+         Use the --nomanifest option to generate an executable without
+         embedded manifest.
+
+         This option only applies to executables generated for the Windows
+         platform. For other platforms it has no effect.
+
+    --nocompress
+         Do not try to compress embedded modules and libraries. Compression
+         produces a smaller application, but might slow down execution
+         because the script and modules must be decompressed before they can
+         be parsed.
+
+    --nologo
+         Suppress display of version and license information. This option
+         has no effect when used with an evaluation license.
+
+    --nomanifest
+         Don't embed any manifest in the generated executable. Use the
+         --manifest option to specify a non-default manifest.
+
+         This option only applies to executables generated for the Windows
+         platform. For other platforms it has no effect.
+
+    --norunlib
+         Specifies that the generated application does not use a runtime
+         library directory. This is different from not specifying the
+         "--runlib" option because the default runlib location is the
+         directory where the application is stored.
+
+    --perl perlpath
+         Use the given Perl executable with PerlApp. The perlpath should be
+         the path to the perl program.
+
+    --runlib dirname
+         Specifies the location of the runtime library directory. This
+         directory is added to @INC and the PATH environment variable at
+         runtime. The runlib directory should normally be a relative path.
+         It is resolved at runtime relative to the location of the
+         executable and not relative to the current working directory. The
+         default value for this option is "." (current directory). The
+         "--gui" option on OS X changes this to
+         <Application>.app/Contents/MacOS/.
+
+         The "--norunlib" option can be used to specify that no runlib
+         directory should be used.
+
+         The runlib directory is also used to locate shared library files
+         specified using the "--use" option.
+
+         The fully qualified path to the runlib directory is stored in the
+         $PerlApp::RUNLIB variable.
+
+    --scan scriptname
+         Tells *PerlApp* to scan scriptname for additional module
+         dependencies. scriptname itself is not included in the generated
+         executable. Separate multiple *scriptnames* with a semicolon. The
+         option can be repeated.
+
+         This option is being used to create a shared library that can be
+         referenced by other applications with the "--use" option.
+
+         The "--shared" option must be used to grant other programs access
+         to modules bundled in the current executable.
+
+    --script scriptname
+         Name of the Perl script to be converted into an executable.
+
+         If no "--script" option is specified, the argument to *PerlApp* is
+         assumed to be the input script filename. Thus
+
+             perlapp myscript.pl
+
+         ...is equivalent to:
+
+             perlapp --script myscript.pl
+
+    --shared *mode*
+         Specifies the sharing mode for the generated executable. Valid
+         values for *mode* are "none", "private" or "public". The default,
+         "none", prevents other applications from accessing modules bundled
+         in this executable.
+
+         The "private" mode allows applications built with the same PDK
+         license to access any bundled modules. This means that part of the
+         license serial number is encoded in the generated executable. The
+         accessing application must then also be built using the "private"
+         sharing mode to enable serial number matching.
+
+         Shared libraries built with the "public" sharing mode can be
+         accessed by all executables built by the PDK without restriction.
+
+    --target *platform*
+         Specifies the target *platform* for the generated executable.
+
+         See the "--list-targets" option to display a list of all supported
+         platforms.
+
+         PerlApp will maintain a cached Perl installation for the foreign
+         platform unless the "--target-perl" option is used to specify an
+         existing installation. The PerlApp maintained installation will use
+         the same build number as the ActivePerl used locally. PerlApp will
+         use the locally configured PPM repositories to try to install all
+         locally installed packages into the cached foreign Perl
+         installation as well.
+
+    --target-install *module*
+         Installs a *module* into the foreign Perl installation managed by
+         PerlApp.
+
+         PerlApp automatically tries to install all locally installed
+         modules into the target Perl installation using PPM. But sometimes
+         a module is only available (and needed) on the foreign platform, so
+         it can't be installed locally. For example to install "Win32::API"
+         on OS X into the Windows Perl installation you write:
+
+             perlapp --target windows --target-install Win32::API
+
+         The "--target-install" option must be combined with "--target". It
+         does not work for foreign Perl installations that are specified via
+         "-target-perl" and are not managed by PerlApp.
+
+         The option can be repeated to install multiple modules. Multiple
+         module names can also be provided as a semi-colon separated list.
+
+    --target-perl location
+         Specify the filesystem location of a foreign Perl installation. Can
+         only be used incombination with the "--target" option that
+         specifies the platform for this Perl.
+
+         PerlApp will not try to install additional modules into this
+         foreign Perl location; everything has to be maintained by the user.
+
+    --tmpdir path
+         Specify an alternate location for the /tmp directory. This can be
+         used in scenarios where /tmp is not writeable (e.g. for some
+         virtual web servers hosted by ISPs). This option should only be
+         used with an absolute pathname.
+
+         Note: *PerlApp* does not automatically create this directory; it
+         must exist before the application is run.
+
+    --trim *modules*
+         Prevents modules from being included in the executable.
+         Prerequisites for these modules are excluded unless they are also
+         referenced in other parts of the application.
+
+         Multiple modules can be separated by whitespace or a semicolon.
+         This option can be repeated.
+
+         The "--trim" option supports the following wildcard notations:
+         "--trim Module::*" excludes "Module::Foo", but neither "Module"
+         itself nor "Module::Foo::Bar". "--trim Module::**" excludes
+         "Module::Foo" and "Module::Foo::Bar", but not "Module". "--trim
+         Module::" works the same as "--trim Module;Module::**", excluding
+         all of "Module", "Module::Foo" and "Module::Foo::Bar". Note that
+         you may have to quote the "*" character to prevent wildcard
+         expansion by your command shell.
+
+         If a command explicitly adds and removes modules at the same time,
+         modules added with "--add" will not be removed by "--trim". The one
+         exception to this rule is that modules added by the wildcard form
+         of "--add" can be individually removed by using the non-wildcard
+         form of "--trim". For example "--add Module::* --trim Module::Bar"
+         will bundle "Module::Foo" but not "Module::Bar".
+
+    --trim-implicit
+         This prevents including core modules that are loaded implicitly by
+         Perl on certain syntactic constructs. The following modules belong
+         to this category and are always included unless this option is
+         used:
+
+             attributes
+             Errno
+             File::Glob
+             PerlIO
+             PerlIO::scalar
+             Tie::Hash::NamedCapture
+
+         You can also use the "--trim" option to exclude these modules on a
+         one-by-one basis.
+
+    --use libname
+         Specifies shared library file containing additional modules.
+         Modules found in a shared library will are not included in the
+         generated executable, reducing its size.
+
+         The libname argument can be specified using a full path name. At
+         runtime, the library is located in the runtime library directory
+         specified by the "--runlib" option. If the library cannot be found,
+         the executable will not run.
+
+         If the shared library has been built as a "private" shared library,
+         the application that is using it must be built with the "private"
+         "--shared" option too.
+
+         Separte multiple *libnames* with semicolons. The option can be
+         repeated.
+
+    --verbose
+         This option causes *PerlApp* to produce more diagnostic ouput when
+         it runs. It reports which modules were included in the application
+         and where the application was written.
+
+         Output lines prefixed with "+++" are modules that were included.
+         Lines prefixed with "---" are dependent modules that were *not*
+         included.
+
+    --warnings
+         Display all optional warnings in addition to error messages, which
+         are always displayed. Most warnings will be about optional modules
+         which may be required by other modules, but which are not installed
+         on the machine.
+
+         The "--verbose" option automatically enables "--warnings" as well.
+
+    --version
+         Print the *PerlApp* version number and exit. Information about the
+         current license is also printed.
+
+    --xclude
+         Don't include the perl dynamic library (perl56.dll, perl58.dll, or
+         perl510.dll on Windows, libperl.so on most other systems) in the
+         generated application. This option makes the application smaller,
+         but it will not run correctly unless the perl dynamic library
+         corresponding to your ActivePerl version is present on the target
+         system. The PDK license allows you to redistribute the perl dynamic
+         library together with your application. It should be installed on
+         the target system in the same directory as your application and not
+         be put into a system directory on the PATH.
+
+FUNCTIONS
+    The following functions are made available to the application created by
+    *PerlApp*.
+
+    PerlApp::exe()
+        Returns the full path (including filename) to the running
+        application.
+
+    PerlApp::extract_bound_file(FILENAME)
+        Writes the content of a bound file to the filesystem. The file is
+        created in a temporary directory and is automatically deleted when
+        the application terminates. The function returns the full filename
+        of the temporary file created:
+
+            my $datafile = "data.txt";
+            my $filename = PerlApp::extract_bound_file($datafile);
+            die "$datafile not bound to application\n" unless defined $filename;
+            open(my $fh, $filename) or die "Can't open $datafile($filename)\n";
+
+        If the file is not bound, no file is created and
+        "extract_bound_file()" returns "undef".
+
+        "extract_bound_file()" always writes files in "binmode". Therefore
+        files bound with the "[text]" option on Windows are extracted with
+        "\n" and not "\r\n" line endings.
+
+    PerlApp::get_bound_file(FILENAME)
+        Returns the content of files included in the executable with the
+        "--bind" command-line option. Returns the whole file as a single
+        string in scalar context or separate lines in list context, in which
+        case lines are always split on newline (i.e. $/ is not considered).
+
+            foreach my $line (PerlApp::get_bound_file("data.txt")) {
+                # ... process $line ...
+            }
+
+        If the file is not bound, "get_bound_file()" returns "undef" in
+        scalar context or the empty list in list context.
+
+VARIABLES
+    The following predefined variables are available to the application
+    created by *PerlApp*.
+
+    $PerlApp::BUILD
+        The $PerlApp::BUILD variable contains the *PerlApp* build number.
+
+    $PerlApp::PERL5LIB
+        The $PerlApp::PERL5LIB variable contains the value of the PERL5LIB
+        environment variable. If that does not exist, it contains the value
+        of the PERLLIB environment variable. If that one does not exists
+        either, $PerlApp::PERL5LIB is "undef".
+
+    $PerlApp::RUNLIB
+        The $PerlApp::RUNLIB variable contains the fully qualified path name
+        to the runtime library directory specified by the "--runlib" option.
+        If the "--norunlib" option is used, this variable is "undef".
+
+    $PerlApp::TOOL
+        The $PerlApp::TOOL variable contains the string: "PerlApp",
+        indicating that the currently running executable has been produced
+        by the *PerlApp* tool.
+
+    $PerlApp::VERSION
+        The $PerlApp::VERSION variable contains the *PerlApp* version
+        number: "major.minor.release", but not including the build number.
+
+FILES
+    When the application built with *PerlApp* runs, it extracts its dynamic
+    object files in the pdk-username subdirectory of the temporary
+    directory. The temporary directory is located using the "TEMP"
+    environment variable. It is also possible to hardcode the location with
+    the "--tmpdir" command-line option.
+
+    On Unix, dynamic object files are extracted in the /tmp/pdk-username
+    directory. The temporary directory location can be overridden with the
+    "TMPDIR" environment variable.
+
+    If the application was built using the "--clean" option, PerlApp also
+    appends the process id to the username when creating the temporary
+    directory (e.g., pdk-username-1234). This avoids race conditions during
+    cleanup. Unless the "--clean" option is used, extracted files are left
+    behind when the application terminates. They are reused by later
+    incarnations of the same application (or by other *PDK*-created
+    executables).
+
+ENVIRONMENT
+  Build Time
+    *PerlApp* uses the "PERLAPP_OPT" environment variable to set default
+    command-line options. *PerlApp* treats these options as if they were
+    specified at the beginning of every *PerlApp* command line. Note: Perl
+    must be in your "PATH" if you want to use "PERLAPP_OPT".
+
+    All directories specified in the "PERL5LIB" environment variable are
+    treated as if they had been specified with the "--lib" command-line
+    option. Therefore modules located in "PERL5LIB" directories will be
+    included even in dependent applications. If "PERL5LIB" is not set,
+    *PerlApp* will use the value of "PERLLIB" instead (just like regular
+    Perl).
+
+    *PerlApp* will pipe the output of "perlapp --help" through the program
+    specified in the "PAGER" environment variable if "STDOUT" is a terminal.
+
+  Run time
+    The following environment variables are not visible to the application
+    built with *PerlApp*: "PERL5LIB", "PERLLIB", "PERL5OPT", "PERL5DB" and
+    "PERL5SHELL".
+
+    The temporary extraction directory is automatically added to the "PATH"
+    environment variable (as well as to the "LD_LIBRARY_PATH" variable on
+    Unix) when a file is bound using the "[extract]" option.
+
+DIAGNOSTICS
+  Error: Can't locate *module*.pm
+    When *PerlApp* can't locate a module that seems to be used or required
+    by the application, it produces an error message:
+
+        VMS\Stdio.pm:
+            warn: Can't locate VMS\Stdio.pm
+            refby: C:\perl\lib\File\Temp.pm
+
+    In general, *PerlApp* cannot determine whether a module is absolutely
+    needed at runtime. For the error message above, looking at the source
+    code of the File::Temp module reveals that the VMS::Stdio module is only
+    used on the VMS platform:
+
+        require VMS::Stdio if $^O eq 'VMS';
+
+    It is therefore safe to ignore the error. *PerlApp* includes a number of
+    platform-specific rules telling it that certain dependencies are likely
+    not required. In those cases, the error messages are downgraded to a
+    warning. In all other cases it is the responsibility of the user to
+    verify if the module is needed or not. *PerlApp* still generates a valid
+    executable, even while this error message is displayed.
+
+    It is possible to suppress the error/warning message by explicitly
+    excluding the missing module with the "--trim" option:
+
+        --trim VMS::Stdio
+
+  Error: Case mismatch between module and file name
+    Windows uses case-insensitive filesystems. It is often possible to
+    misspell a module name and still have Perl load the correct file. For
+    example:
+
+        use Win32::Eventlog;
+
+    ...loads the Win32::EventLog module, but it does not import any symbols
+    from it: Perl tries to call the "Win32::Eventlog->import()" method,
+    which doesn't exist, and gives up. *PerlApp* on Windows generates an
+    error when the file name and the module name cases don't match:
+
+        Win32\Eventlog.pm:
+            error: Case mismatch between module and file name
+            file: C:\perl\site\lib\Win32\EventLog.pm
+        auto\Win32\Eventlog\Eventlog.dll:
+            error: Case mismatch between module and file name
+            file: C:\perl\site\lib\auto\Win32\EventLog\EventLog.dll
+
+    It is important to either correct the wrong spelling in the program or
+    rename the file on disk to the correct name as *PerlApp* internally uses
+    a case-sensitive file name lookup and otherwise does not load the file
+    at runtime.
+
+  Error: Skipping duplicate file *file name*
+    *PerlApp* sometimes needs to include additional module-specific data
+    files. When the module is installed both into the standard Perl library
+    tree and into an additional location added either via the "--lib" option
+    or "PERL5LIB" environment variable, the data file will be found twice
+    (but only included once). The same problem can happen when the standard
+    Perl library directories are specified again using "--lib" or
+    "PERL5LIB". The error message should display both the original and the
+    duplicate filenames:
+
+        Tk\srcfile.xpm:
+            error: Skipping duplicate file D:\perl\site\lib\Tk\srcfile.xpm
+            file: C:\perl\site\lib\Tk\srcfile.xpm
+
+    Please make sure that you don't include modules from a library created
+    for a different version of Perl unless you are sure that it is binary
+    compatible.
+
+FAQ
+    This section answers some frequently asked questions about *PerlApp*.
+
+  How does *PerlApp* work?
+    The first thing *PerlApp* needs to do is to determine which modules and
+    external files the converted script depends upon. The *PerlApp* program
+    starts out by scanning the source code of the script. When it finds
+    occurrences of "use", "do" or "require", it tries to locate the
+    corresponding module and then parse the source of that module. This
+    continues as long as *PerlApp* finds new modules to examine.
+
+    *PerlApp* does not try to run the script. It will not automatically
+    determine which modules might be loaded by a statement such as:
+
+      require $module;
+
+    In cases like this, try listing additional modules to traverse with the
+    "--add" option.
+
+    The *PerlApp* program has some built-in heuristics for major Perl
+    modules that determine additional modules at runtime, like "DBI", "LWP",
+    "Tk". PerlApp anticipates which additional modules are required so that
+    they are available in freestanding executables.
+
+    *PerlApp* then decides which modules to include in the generated
+    application. Normally, all located modules are included. This also
+    includes the dynamic object files (.so/.dll) and AutoLoader files (.al)
+    that go with the located modules. If the "--dependent" option is used,
+    only modules located under the directories given by the "--lib" option
+    are included.
+
+    Finally, the application is built with all the modules compressed
+    (unless the "--nocompress" option is used) and included. When the
+    application runs it arranges for any "use", "do" and "require"
+    statements to look for and extract the corresponding modules in itself.
+
+  How can a script determine if it runs under *PerlApp*?
+    It can check for the $PerlApp::VERSION variable. It will be set to the
+    version number of *PerlApp* that was used to build the executable.
+
+  What is $^X when running under *PerlApp*?
+    It will always have the value: "perl". The $^X is a special variable
+    that normally contains the filename of the Perl interpreter that is
+    executing the script. It is sometimes used in calls to system or exec to
+    invoke perl from within the script.
+
+  Will *PerlApp* work for programs using source filters?
+    No. *PerlApp* does not support modules using source filters (e.g.
+    Switch, Filter::Util, and Filter::cpp). See perlfilter in the ActivePerl
+    documentation or 'perldoc perlfilter' for more information on source
+    filters in perl.
+
+  Will cross-platform builds be supported?
+    Cross-platform builds allow you to target executables for platforms
+    different from the one *PerlApp* is running on. This is currently not
+    supported.
+
+  Will *PerlApp* work with Perl builds other than ActivePerl?
+    No, *PerlApp* will only work with ActivePerl.
+
+  Where can I obtain license for *PerlApp*?
+    Visit http://www.ActiveState.com/Products/Perl_Dev_Kit/ to obtain a
+    license for PDK 8.0.
+
+  Does the evaluation license give me fully working applications?
+    The application built with *PerlApp* running with an evaluation license
+    expires when the evaluation license times out. Use the "--version"
+    option to view the time limit of your current license.
+
+SEE ALSO
+    perl(1)
+
+    *PerlApp* is part of the *Perl Dev Kit*. More information available at
+    http://www.ActiveState.com/PerlDevKit/Purchase
+
+VERSION
+    This manpage documents *PerlApp* version 8.0.1 (build 289861)
+
+COPYRIGHT
+    Copyright (C) 1998-2009 ActiveState Software Inc. All rights reserved.
+

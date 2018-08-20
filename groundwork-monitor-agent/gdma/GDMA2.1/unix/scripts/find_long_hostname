@@ -1,0 +1,656 @@
+#!/usr/local/groundwork/perl/bin/perl --
+# For Solaris, use this instead:
+#!/opt/groundwork/perl/bin/perl --
+
+# This script may undergo some revision over time.  Let's mark which one this is.
+my $VERSION = "7.4.0";
+
+# This version of this script contains nascent support for running on a Windows
+# platform.  We have not yet verified that a compiled copy of this script will
+# actually work in that context, nor that the Net::Domain.pm code we include and
+# modify below actually reflects what is executed in a compiled Perl program for
+# Windows GDMA.  Nonetheless, this is a start.
+
+print "
+find_long_hostname is designed to help us figure out where certain anomalous
+hostname resolutions are coming from.  It is a sloppy reworking of the
+Net::Domain code, and pulls apart what that package does into incremental
+steps, adding diagnostic messages along the way, so we can see exactly
+where odd results occur.  We also spill out the content of certain critical
+system files that have a direct effect on name resolution.  The output is
+not designed to be particularly user-friendly; it is only designed to yield
+results that GroundWork can interpret to help customers with certain GDMA
+name-resolution problems.
+
+";
+
+print "================================================================\n";
+if ( ( $^O eq 'linux' ) or ( $^O eq 'solaris' ) or ( $^O eq 'aix' ) or ( $^O eq 'hpux' ) ) {
+    print "For comparison, \"hostname\" yields:\n    ";
+    system("hostname");
+    print "For comparison, \"hostname -s\" yields:\n    ";
+    system("hostname -s");
+    print "For comparison, \"hostname -f\" yields:\n    ";
+    system("hostname -f");
+    print "================================================================\n";
+    print "/etc/resolv.conf listing and contents:\n";
+    print "----------------------------------------------------------------\n";
+    system('ls -l /etc/resolv.conf');
+    print "----------------------------------------------------------------\n";
+    system('cat /etc/resolv.conf');
+    print "================================================================\n";
+    print "/etc/hosts listing and contents:\n";
+    print "----------------------------------------------------------------\n";
+    system('ls -l /etc/hosts');
+    print "----------------------------------------------------------------\n";
+    system('cat /etc/hosts');
+    print "================================================================\n";
+    print "/etc/nsswitch.conf listing and contents:\n";
+    print "----------------------------------------------------------------\n";
+    system('ls -l /etc/nsswitch.conf');
+    print "----------------------------------------------------------------\n";
+    system('cat /etc/nsswitch.conf');
+}
+elsif ( $^O eq 'MSWin32' ) {
+    print "For comparison, \"hostname\" yields:\n    ";
+    system("hostname");
+    print "For comparison, \"hostname -s\" yields:\n    ";
+    system("hostname -s");
+    print "================================================================\n";
+    print "If there is a entry for the host's IP address in this Windows version of the\n";
+    print "hosts file, you can get a Windows box to auto-register as a different hostname.\n";
+    print "So it's worthwhile looking there.\n";
+    print "c:\\windows\\system32\\drivers\\etc\\hosts listing and contents:\n";
+    print "----------------------------------------------------------------\n";
+    system('dir c:\\windows\\system32\\drivers\\etc\\hosts');
+    print "----------------------------------------------------------------\n";
+    system('type c:\\windows\\system32\\drivers\\etc\\hosts');
+    print "================================================================\n";
+    print "ipconfig full info:\n";
+    print "----------------------------------------------------------------\n";
+    system('ipconfig /allcompartments /all');
+
+    ## FIX MINOR:  I'd like to get the equivalent of "nslookup `hostname`" executed here,
+    ## but I don't know how to get Windows to directly execute command-output substitution.
+    ## We might need to capture the output of hostname here and manufacture the nslookup
+    ## command ourselves.  That will take a little testing.
+    ##     print "================================================================\n";
+    ##     my $hostname = qx(hostname);
+    ##     print "\"nslookup $hostname\" output:\n";
+    ##     system("nslookup $hostname");
+}
+else {
+    print "You are running on an unknown platform \"$^O\".\n";
+}
+print "================================================================\n";
+if (exists $ENV{LOCALDOMAIN}) {
+    print "The LOCALDOMAIN environment variable is defined as\n";
+    print "    \"$ENV{LOCALDOMAIN}\".\n";
+}
+else {
+    print "The LOCALDOMAIN environment variable is not defined\n";
+    print "    (this is normal and expected).\n";
+}
+print "================================================================\n";
+
+find_domainname();
+
+exit;
+
+# Code below is a thoroughly hacked copy of:
+# Net::Domain.pm
+#
+# Copyright (c) 1995-1998 Graham Barr <gbarr@pobox.com>. All rights reserved.
+# This program is free software; you can redistribute it and/or
+# modify it under the same terms as Perl itself.
+
+# package Net::Domain;
+
+require Exporter;
+
+use Carp;
+use strict;
+use vars qw($VERSION @ISA @EXPORT_OK);
+use Net::Config;
+
+@ISA       = qw(Exporter);
+@EXPORT_OK = qw(hostname hostdomain hostfqdn domainname clear);
+
+$VERSION = "2.22";
+
+my ($host, $domain, $fqdn) = (undef, undef, undef);
+
+# Try every conceivable way to get hostname.
+
+
+sub _hostname {
+    print "    Call to _hostname():\n";
+
+    # we already know it
+    print "\tCheck if hostname is initially defined.\n";
+    if (defined $host) {
+	print "\thostname is initially defined, as:  \"$host\"\n";
+	return $host;
+    }
+    else {
+	print "\thostname is initially undefined\n";
+    }
+
+    if ($^O eq 'MSWin32') {
+	require Socket;
+	my ($name, $alias, $type, $len, @addr) = gethostbyname($ENV{'COMPUTERNAME'} || 'localhost');
+	while (@addr) {
+	    my $a = shift(@addr);
+	    $host = gethostbyaddr($a, Socket::AF_INET());
+	    last if defined $host;
+	}
+	if (defined($host) && index($host, '.') > 0) {
+	    $fqdn = $host;
+	    ($host, $domain) = $fqdn =~ /^([^.]+)\.(.*)$/;
+	}
+	return $host;
+    }
+    elsif ($^O eq 'MacOS') {
+	chomp($host = `hostname`);
+    }
+    elsif ($^O eq 'VMS') {    ## multiple varieties of net s/w makes this hard
+	$host = $ENV{'UCX$INET_HOST'}      if defined($ENV{'UCX$INET_HOST'});
+	$host = $ENV{'MULTINET_HOST_NAME'} if defined($ENV{'MULTINET_HOST_NAME'});
+	if (index($host, '.') > 0) {
+	    $fqdn = $host;
+	    ($host, $domain) = $fqdn =~ /^([^.]+)\.(.*)$/;
+	}
+	return $host;
+    }
+    else {
+	local $SIG{'__DIE__'};
+
+	# syscall is preferred since it avoids tainting problems
+	eval {
+	    my $tmp = "\0" x 256;    ## preload scalar
+	    eval {
+		package main;
+		require "syscall.ph";
+		my $result = defined(&main::SYS_gethostname);
+		$result;
+	      }
+	      || eval {
+		package main;
+		require "sys/syscall.ph";
+		my $result = defined(&main::SYS_gethostname);
+		$result;
+	      }
+	    and $host =
+	    (syscall(&main::SYS_gethostname, $tmp, 256) == 0)
+	    ? $tmp
+	    : undef;
+	    print "\tafter syscall(&main::SYS_gethostname) call, hostname = \"$host\"\n";
+	    $host;
+	  }
+
+	  # POSIX
+	  || eval {
+	    require POSIX;
+	    $host = (POSIX::uname())[1];
+	    print "\tafter POSIX::uname() call, hostname = \"$host\"\n";
+	    $host;
+	  }
+
+	  # trusty old hostname command
+	  || eval {
+	    my $result = chop($host = `(hostname) 2>/dev/null`);    # BSD'ish
+	    print "\tafter call to system \"hostname\" command, hostname = \"$host\"\n";
+	    $result;
+	  }
+
+	  # sysV/POSIX uname command (may truncate)
+	  || eval {
+	    my $result = chop($host = `uname -n 2>/dev/null`);      ## SYSV'ish && POSIX'ish
+	    print "\tafter call to system \"uname -n\" command, hostname = \"$host\"\n";
+	    $result;
+	  }
+
+	  # Apollo pre-SR10
+	  || eval { $host = (split(/[:. ]/, `/com/host`, 6))[0];
+	    print "\tafter call to system \"/com/host\" command, hostname = \"$host\"\n";
+	    $host;
+	  }
+
+	  || eval { $host = "";
+	    print "\tafter all the above, hostname = \"$host\" (empty string, since no result from above)\n";
+	    $host;
+	  };
+    }
+
+    # remove garbage
+    $host =~ s/[\0\r\n]+//go;
+    $host =~ s/(\A\.+|\.+\Z)//go;
+    $host =~ s/\.\.+/\./go;
+    print "\tcleaned up hostname = \"$host\"\n";
+
+    $host;
+}
+
+
+sub _hostdomain {
+    print "    Call to _hostdomain():\n";
+
+    # we already know it
+    print "\tCheck if domainname is initially defined.\n";
+    if (defined $domain) {
+	print "\tdomainname is initially defined, as:  \"$domain\"\n";
+	return $domain;
+    }
+    else {
+	print "\tdomainname is initially undefined\n";
+    }
+
+    local $SIG{'__DIE__'};
+
+    print "\tCheck if \$NetConfig{'inet_domain'} has a value.\n";
+    if (defined $NetConfig{'inet_domain'}) {
+	$domain = $NetConfig{'inet_domain'};
+	print "\tfrom \$NetConfig{'inet_domain'}, domainname is \"$domain\"\n";
+	return $domain;
+    }
+    else {
+	print "\tdomainname is still undefined\n";
+    }
+
+    # try looking in /etc/resolv.conf
+    # putting this here and assuming that it is correct, eliminates
+    # calls to gethostbyname, and therefore DNS lookups. This helps
+    # those on dialup systems.
+
+    local *RES;
+    local ($_);
+
+    my @search_domains = ();
+
+    # From resolv.conf(5):
+    #   The search keyword of a system's resolv.conf file can be overridden on
+    #   a per-process basis by setting the environment variable "LOCALDOMAIN"
+    #   to a space-separated list of search domains.
+    # In fact, it also overrides any domain keyword in resolv.conf.
+    # LOCALDOMAIN may contain a list of domains to search.
+    if (defined $ENV{LOCALDOMAIN}) {
+      print "\tdomain search list from ENV{LOCALDOMAIN} is \"$ENV{LOCALDOMAIN}\"\n";
+      @search_domains = split(' ', $ENV{LOCALDOMAIN});
+    }
+    elsif (open(RES, "/etc/resolv.conf")) {
+	while (<RES>) {
+	    # From resolv.conf(5):
+	    #   The domain and search keywords are mutually exclusive.  If more than
+	    #   one instance of these keywords is present, the last instance wins.
+	    if (/\A\s*domain\s+(\S+)/) {
+		$domain = $1;
+		@search_domains = ();
+		print "\tduring /etc/resolv.conf initial setup, these settings override any previous setup:\n";
+		print "\t    domainname is \"$domain\"\n";
+		print "\t    set of search domains is empty\n";
+	    }
+	    elsif (/\A\s*search\s+(\S.*)/) {
+		@search_domains = split(' ', $1);
+		$domain = undef;
+		print "\tduring /etc/resolv.conf initial setup, these settings override any previous setup:\n";
+		print "\t    domainname is undefined\n";
+		print "\t    set of search domains is \"@search_domains\"\n";
+	    }
+	}
+	close(RES);
+    }
+
+    if (not $domain and @search_domains) {
+	print "\tduring /etc/resolv.conf processing:\n";
+	print "\t    set of search domains is \"@search_domains\"\n";
+    }
+
+    if (defined $domain) {
+	print "\tfrom /etc/resolv.conf processing:\n";
+	print "\t    domainname is \"$domain\"\n";
+	return $domain;
+    }
+
+    my $host = _hostname();
+
+    if (defined($host) && @search_domains) {
+        foreach my $s_dom (@search_domains) {
+	    print "\t??? host is $host; try matching to search domain \"$s_dom\"\n";
+	    my $trial_host = ($host =~ /\.$s_dom$/) ? $host : "$host.$s_dom";
+	    print "\t    (checking \"$trial_host\" for viability,\n\t    by calling gethostbyname(\"$trial_host\") ...)\n";
+	    my @info = gethostbyname($trial_host);
+	    next unless @info;
+	    print "\t    got host info for \"$trial_host\"\n";
+
+	    # look at real name & aliases
+	    my $site;
+	    my $domain_found = undef;
+	    my $alias = undef;
+	    foreach $site ($info[0], split(/ /, $info[1])) {
+		if (rindex($site, ".") > 0) {
+		    ## Extract domain from FQDN
+		    (my $this_domain = $site) =~ s/\A[^.]+\.//;
+		    print "\t==> \"$site\" is accepted; domainname is \"$this_domain\"\n";
+		    if (not $domain_found) {
+			$domain_found = $this_domain;
+			$alias = $site;
+		    }
+		}
+		else {
+		    print "\t==> \"$site\" is rejected for our purposes because it includes no domain\n";
+		}
+	    }
+	    if ($domain_found) {
+		$domain = $domain_found;
+		print "\t==> from gethostbyname(\"$trial_host\"), will use domain \"$domain\"\n";
+		print "\t    (it being from the first acceptable name or alias, which is \"$alias\")\n";
+		return $domain;
+	    }
+	}
+    }
+
+    # just try hostname and system calls
+
+    my (@hosts);
+
+    @hosts = ($host, "localhost");
+
+    if (defined($host)) {
+	unless ($host =~ /\./) {
+	    my $dom = undef;
+	    eval {
+		my $tmp = "\0" x 256;    ## preload scalar
+		eval {
+		    package main;
+		    require "syscall.ph";
+		  }
+		  || eval {
+		    package main;
+		    require "sys/syscall.ph";
+		  }
+		and $dom =
+		(syscall(&main::SYS_getdomainname, $tmp, 256) == 0)
+		? $tmp
+		: undef;
+		print "\tafter syscall(&main::SYS_getdomainname) call, will test domain \"$dom\" components\n";
+	    };
+
+	    if ($^O eq 'VMS') {
+		$dom ||= $ENV{'TCPIP$INET_DOMAIN'}
+		  || $ENV{'UCX$INET_DOMAIN'};
+	    }
+
+	    unless (defined $dom || $^O =~ /^(?:cygwin|MSWin32)/) {
+		chop($dom = `domainname 2>/dev/null`);
+		print "\tfrom calling domainname command, will test domain \"$dom\" components\n";
+	    }
+
+	    # This strategy of testing against truncated domains is not reliable, because calls
+	    # to gethostbyname() may depend on network resources.  If the gethostbyname() call
+	    # below fails on some transient outage when trying to test the actual hostname, the
+	    # loop can continue on and match some other hostname completely outside your actual
+	    # domain, say if a subsequent call resolves to some general Internet site.  For
+	    # example, if my machine is foobar.mydomain.com and that call fails, it will test
+	    # foobar.com and that will likely succeed.
+	    if (defined $dom) {
+		my @h = ();
+		$dom =~ s/^\.+//;
+		while (length($dom)) {
+		    push(@h, "$host.$dom");
+		    $dom =~ s/^[^.]+.+// or last;
+		}
+		print "\tto find domainname, will test hostnames: @h\n";
+		unshift(@hosts, @h);
+	    }
+	}
+    }
+
+    # Attempt to locate FQDN
+
+    foreach (grep { defined $_ } @hosts) {
+	my $this_host = $_;
+	print "\ttesting hostname \"$this_host\" for viability,\n\tby calling gethostbyname(\"$_\") ...\n";
+	my @info = gethostbyname($_);
+	if (not @info) {
+	    print "\t... gethostbyname(\"$_\") returned no info\n";
+	    next;
+	}
+
+	# look at real name & aliases
+	my $site;
+	my $domain_found = undef;
+	my $alias = undef;
+	foreach $site ($info[0], split(/ /, $info[1])) {
+	    if (rindex($site, ".") > 0) {
+
+		# Extract domain from FQDN
+
+		(my $this_domain = $site) =~ s/\A[^.]+\.//;
+		print "\t... \"$site\" is accepted; domainname is \"$this_domain\"\n";
+		if (not $domain_found) {
+		    $domain_found = $this_domain;
+		    $alias = $site;
+		}
+	    }
+	    else {
+	        print "\t... \"$site\" is rejected for our purposes because it includes no domain\n";
+	    }
+	}
+	if ($domain_found) {
+	    $domain = $domain_found;
+	    print "\t... from gethostbyname(\"$this_host\"), will use domain \"$domain\"\n";
+	    print "\t    (it being from the first acceptable name or alias, which is \"$alias\")\n";
+	    return $domain;
+	}
+    }
+
+    # Look for environment variable
+
+    if (not $domain) {
+	if ($ENV{DOMAIN}) {
+	    print "\tdomainname from ENV{DOMAIN} is \"$ENV{DOMAIN}\"\n";
+	}
+    }
+    $domain ||= $ENV{DOMAIN};
+
+    if (defined $domain) {
+	$domain =~ s/[\r\n\0]+//g;
+	$domain =~ s/(\A\.+|\.+\Z)//g;
+	$domain =~ s/\.\.+/\./g;
+    }
+    print "\tcleaned up domainname = \"$domain\"\n";
+
+    $domain;
+}
+
+sub find_domainname {
+
+    print "Check if FQDN is initially defined.\n";
+    if (defined $fqdn) {
+	print "FQDN is initially defined, and would be returned as:  \"$fqdn\"\n";
+    }
+    else {
+	print "FQDN is initially undefined\n";
+    }
+
+    _hostname();
+
+    # *.local names are special on darwin. If we call gethostbyname below, it
+    # may hang while waiting for another, non-existent computer to respond.
+    if($^O eq 'darwin' && $host =~ /\.local$/) {
+	return $host;
+    }
+
+    _hostdomain();
+
+    # Assumption: If the host name does not contain a period
+    # and the domain name does, then assume that they are correct
+    # this helps to eliminate calls to gethostbyname, and therefore
+    # eleminate DNS lookups
+
+    print "if that fails, check if FQDN is defined after _hostname() and _hostdomain calls\n";
+    if (defined $host
+    and defined $domain
+    and $host !~ /\./
+    and $domain =~ /\./) {
+	$fqdn = $host . "." . $domain;
+	print "FQDN is defined after _hostname() and _hostdomain calls, and would be returned as:  \"$fqdn\"\n";
+    }
+    else {
+	print "FQDN is still undefined\n";
+    }
+
+    # For hosts that have no name, just an IP address
+    print "if that fails, FQDN is defined if it is an IP address\n";
+    if ( defined $host and $host =~ /^\d+(\.\d+){3}$/ ) {
+	$fqdn = $host;
+	print "FQDN is defined as an IP address, and would be returned as:  \"$fqdn\"\n";
+    }
+    else {
+	print "FQDN is still undefined\n";
+    }
+
+    my @host   = defined $host   ? split(/\./, $host)   : ('localhost');
+    my @domain = defined $domain ? split(/\./, $domain) : ();
+    my @fqdn   = ();
+
+    # Determine from @host & @domain the FQDN
+
+    my @d = @domain;
+
+    print "if that fails, try combining initial segments of hostname and trailing segments of domainname\n";
+LOOP:
+    while (1) {
+	my @h = @host;
+	while (@h) {
+	    my $tmp = join(".", @h, @d);
+	    print "probing gethostbyname(\"$tmp\")\n";
+	    my ($name, $alias, $type, $len, @addr) = gethostbyname($tmp);
+	    if ($name) {
+		@fqdn = (@h, @d);
+		$fqdn = $tmp;
+		foreach (@addr) {
+		    $_ = sprintf("%vd", $_);
+		}
+		print "FQDN is defined by gethostbyname(\"$tmp\") as:  \"$fqdn\"\n";
+		print "    with IP addresses:  @addr\n";
+		last LOOP;
+	    }
+	    pop @h;
+	}
+	last unless shift @d;
+    }
+
+    if (@fqdn) {
+	$host = shift @fqdn;
+	until ((gethostbyname($host))[0]) {
+	    $host .= "." . shift @fqdn;
+	}
+	$domain = join(".", @fqdn);
+    }
+    else {
+	undef $host;
+	undef $domain;
+	undef $fqdn;
+    }
+
+    print "if we got to the end, FQDN is finally returned as:  \"$fqdn\"\n";
+}
+
+
+sub hostfqdn { domainname() }
+
+
+sub hostname {
+    domainname()
+      unless (defined $host);
+    return $host;
+}
+
+
+sub hostdomain {
+    domainname()
+      unless (defined $domain);
+    return $domain;
+}
+
+sub clear {
+  $host = undef;
+  $domain = undef;
+  $fqdn = undef;
+}
+
+1;    # Keep require happy
+
+__END__
+
+=head1 NAME
+
+Net::Domain - Attempt to evaluate the current host's internet name and domain
+
+=head1 SYNOPSIS
+
+    use Net::Domain qw(hostname hostfqdn hostdomain domainname);
+
+=head1 DESCRIPTION
+
+Using various methods B<attempt> to find the Fully Qualified Domain Name (FQDN)
+of the current host. From this determine the host-name and the host-domain.
+
+Each of the functions will return I<undef> if the FQDN cannot be determined.
+
+=over 4
+
+=item hostfqdn ()
+
+Identify and return the FQDN of the current host.
+
+=item domainname ()
+
+An alias for hostfqdn ().
+
+=item hostname ()
+
+Returns the smallest part of the FQDN which can be used to identify the host.
+
+=item hostdomain ()
+
+Returns the remainder of the FQDN after the I<hostname> has been removed.
+
+=item clear ()
+
+Net::Domain caches the results of apparently successful calls, and
+subsequent calls just return the precomputed data.  However, it operates
+by using a series of heuristics, which might fail (say, due to transient
+network outages).  This can result in incorrect cached values, which would
+then be impossible to reset.  If you suspect the cache is contaminated,
+you can call clear() to empty it so the next call is forced to recompute
+its result from scratch.  Without this routine, you would need to restart
+your entire application process to clear the cache.
+
+This being a fairly generic term, you will probably not want to import
+the clear() routine name.  Call it as Net::Domain::clear() instead.
+
+=back
+
+=head1 BUGS
+
+Ideally, these routines would use the SIOCGLIFCONF ioctl() [supporting
+both IPv4 and IPv6] or the SIOCGIFCONF ioctl() [IPv4 only] to prove
+the discovered hostname is accurate, by checking its address against
+those supported by the actual network interfaces currently active on
+the machine.  However, those ioctls only list the addresses supported
+by the physical network interfaces, and will not find a VPN address.
+
+=head1 AUTHOR
+
+Graham Barr <gbarr@pobox.com>.
+Adapted from Sys::Hostname by David Sundstrom <sunds@asictest.sc.ti.com>
+
+=head1 COPYRIGHT
+
+Copyright (c) 1995-1998 Graham Barr. All rights reserved.
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

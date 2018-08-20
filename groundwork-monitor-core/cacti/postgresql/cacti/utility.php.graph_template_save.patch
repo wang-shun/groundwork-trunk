@@ -1,0 +1,16 @@
+*** cacti.orig/htdocs/lib/utility.php	Fri Oct  5 02:24:47 2012
+--- cacti/htdocs/lib/utility.php	Thu Nov  1 14:26:56 2012
+***************
+*** 319,324 ****
+--- 319,329 ----
+  	$save["graph_template_id"] = (!empty($_local_graph_id) ? $graph_template_graph["graph_template_id"] : $graph_template_id);
+  	$save["title_cache"] = $graph_template_graph["title_cache"];
+  
++ 	// Provide default values for all other non-null database columns with no defaults defined there.
++ 	$save["title"] = '';
++ 	$save["grouping"] = '';
++ 	$save["unit_exponent_value"] = '';
++ 
+  	reset($struct_graph);
+  	while (list($field, $array) = each($struct_graph)) {
+  		$save{$field} = $graph_template_graph{$field};

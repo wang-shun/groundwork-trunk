@@ -1,0 +1,62 @@
+*** nagios-plugins-1.4.16/plugins/Makefile.in.orig	2012-06-27 10:33:07.000000000 -0700
+--- nagios-plugins-1.4.16/plugins/Makefile.in	2012-08-04 10:05:00.980226500 -0700
+***************
+*** 780,785 ****
+--- 780,786 ----
+  LIBSOCKET = @LIBSOCKET@
+  LIBTOOL = @LIBTOOL@
+  LIPO = @LIPO@
++ LNKEXT = @LNKEXT@
+  LN_S = @LN_S@
+  LOCALCHARSET_TESTS_ENVIRONMENT = @LOCALCHARSET_TESTS_ENVIRONMENT@
+  LOCALE_FR = @LOCALE_FR@
+***************
+*** 1111,1118 ****
+  @RELEASE_PRESENT_TRUE@NP_VERSION = @NP_RELEASE@
+  AM_CFLAGS = -DNP_VERSION='"$(NP_VERSION)"'
+  INCLUDES = -I.. -I$(top_srcdir)/lib -I$(top_srcdir)/gl -I$(top_srcdir)/intl @LDAPINCLUDE@ @PGINCLUDE@ @SSLINCLUDE@
+! check_tcp_programs = check_ftp check_imap check_nntp check_pop \
+! 	check_udp check_clamd @check_tcp_ssl@
+  
+  EXTRA_DIST = t tests utils.c netutils.c sslutils.c popen.c utils.h netutils.h \
+  	popen.h common.h runcmd.c runcmd.h
+--- 1112,1119 ----
+  @RELEASE_PRESENT_TRUE@NP_VERSION = @NP_RELEASE@
+  AM_CFLAGS = -DNP_VERSION='"$(NP_VERSION)"'
+  INCLUDES = -I.. -I$(top_srcdir)/lib -I$(top_srcdir)/gl -I$(top_srcdir)/intl @LDAPINCLUDE@ @PGINCLUDE@ @SSLINCLUDE@
+! check_tcp_programs = check_ftp$(LNKEXT) check_imap$(LNKEXT) check_nntp$(LNKEXT) check_pop$(LNKEXT) \
+! 	check_udp$(LNKEXT) check_clamd$(LNKEXT) @check_tcp_ssl@
+  
+  EXTRA_DIST = t tests utils.c netutils.c sslutils.c popen.c utils.h netutils.h \
+  	popen.h common.h runcmd.c runcmd.h
+***************
+*** 1833,1846 ****
+  
+  all-local: $(check_tcp_programs)
+  
+! $(check_tcp_programs): check_tcp
+  	rm -f $@
+! 	ln -s check_tcp $@
+  
+  install-exec-hook:
+  	cd $(DESTDIR)$(libexecdir) && \
+! 	for i in $(check_tcp_programs) ; do rm -f $$i; ln -s check_tcp $$i ; done ;\
+! 	if [ -x check_ldap ] ; then rm -f check_ldaps ; ln -s check_ldap check_ldaps ; fi
+  
+  clean-local:
+  	rm -f $(check_tcp_programs)
+--- 1834,1847 ----
+  
+  all-local: $(check_tcp_programs)
+  
+! $(check_tcp_programs): check_tcp$(EXEEXT)
+  	rm -f $@
+! 	$(LN_S) check_tcp$(EXEEXT) $@
+  
+  install-exec-hook:
+  	cd $(DESTDIR)$(libexecdir) && \
+! 	for i in $(check_tcp_programs) ; do rm -f $$i; $(LN_S) check_tcp$(EXEEXT) $$i ; done ;\
+! 	if [ -x check_ldap$(EXEEXT) ] ; then rm -f check_ldaps$(LNKEXT) ; $(LN_S) check_ldap$(EXEEXT) check_ldaps$(LNKEXT) ; fi
+  
+  clean-local:
+  	rm -f $(check_tcp_programs)

@@ -1,0 +1,526 @@
+#!/bin/bash
+#####################################################################################
+#
+#    Copyright (C) 2012-2013 GroundWork Inc. (www.groundworkopensource.com)
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of version 2 of the GNU General Public License
+#    as published by the Free Software Foundation.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#
+#	$Id: mysql2postgresql.sh 12/16/2011 Arul Shanmugam$
+#
+# 	Simple script to copy mysql data to postgresql.
+#
+#####################################################################################
+start_time=`date +%s`
+OLDIFS=$IFS
+export IFS=":"
+
+## Usage function
+print_usage () {
+    echo "usage: ./mysql2postgresql.sh <source_host:source_port:source_database:source_user:source_password> \\"
+    echo "           <dest_host:dest_port:dest_database:dest_user:dest_password> <export_file_path>"
+}
+
+if [ $# != 3 ]; then
+    print_usage
+    exit 1
+fi
+
+SOURCE=($1)
+DEST=($2)
+OUTFILE_PATH=($3)
+
+
+#### Begin Source Configuration ####
+MYSQL_HOST=${SOURCE[0]}
+MYSQL_PORT=${SOURCE[1]}
+SRC_DB=${SOURCE[2]}
+MYSQL_USER=${SOURCE[3]}
+MYSQL_PASSWD=${SOURCE[4]}
+MYSQL="/usr/local/groundwork/mysql/bin/mysql"
+#### End Source Configuration ####
+
+
+#### Begin Destination Configuration ####
+PSQL_HOST=${DEST[0]}
+PSQL_PORT=${DEST[1]}
+DEST_DB=${DEST[2]}
+PSQL_USER=${DEST[3]}
+PSQL_PASSWD=${DEST[4]}
+PSQL="/usr/local/groundwork/postgresql/bin/psql"
+PSQL_CMD="$PSQL -U '$PSQL_USER' -h'$PSQL_HOST' -p'$PSQL_PORT'"
+#### End Destination Configuration ####
+
+if [ ! -x $MYSQL ]; then
+	end_time=`date +%s`
+	time_elapsed=$(($end_time-$start_time))
+	echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+	echo "MIGRATION FAILED! CANNOT EXECUTE $MYSQL !"
+	echo "Script execution took $time_elapsed seconds."
+	echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+	exit 1;
+fi
+
+if [ ! -x $PSQL ]; then
+	end_time=`date +%s`
+	time_elapsed=$(($end_time-$start_time))
+	echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+	echo "MIGRATION FAILED! CANNOT EXECUTE $PSQL !"
+	echo "Script execution took $time_elapsed seconds."
+	echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+	exit 1;
+fi
+
+IFS=$OLDIFS
+
+# We don't use a .csv extension on the table dump files, because that would be misleading.
+# They do NOT contain comma-separated values.  Instead, the files contain tab-separated fields.
+DUMP_EXTENSION=dump
+
+export PGPASSWORD=$PSQL_PASSWD
+shopt -s nullglob
+rm -f $OUTFILE_PATH/*.$DUMP_EXTENSION
+shopt -u nullglob
+
+## Initialize the table filter. This is specifically to ignore Jboss portal jbpm_xx tables.
+TABLE_FILTER="ZZZZ9999"; ## Some dummy filter for all databases except jbossportal
+if [ "$SRC_DB" = "jbossportal" ]; then
+	eval "$PSQL_CMD --quiet -f /usr/local/groundwork/core/databases/postgresql/create-fresh-jbossportal.sql"
+	if [ $? -ne 0 ]; then
+		end_time=`date +%s`
+		time_elapsed=$(($end_time-$start_time))
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		echo "RECREATING JBOSSPORTAL FAILED! ERROR OCCURRED WHILE RECREATING JBOSSPORTAL DATABASE!"
+		echo "Script execution took $time_elapsed seconds."
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		exit 1;
+	fi
+	eval "$PSQL_CMD --quiet -f /usr/local/groundwork/core/databases/postgresql/postgres-xtra-functions.sql '$SRC_DB'"
+	if [ $? -ne 0 ]; then
+		end_time=`date +%s`
+		time_elapsed=$(($end_time-$start_time))
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		echo "RECREATING POSTGRES EXTRA FUNCTIONS FAILED! ERROR OCCURRED WHILE RECREATING POSTGRES EXTRA FUNCTIONS FOR JBOSSPORTAL DATABASE!"
+		echo "Script execution took $time_elapsed seconds."
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		exit 1;
+	fi
+	eval "$PSQL_CMD --quiet -f /usr/local/groundwork/core/migration/postgresql/jbossportal_66.sql '$SRC_DB'"
+	if [ $? -ne 0 ]; then
+		end_time=`date +%s`
+		time_elapsed=$(($end_time-$start_time))
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		echo "CREATING JBOSSPORTAL FAILED! ERROR OCCURRED WHILE CREATING 6.6 JBOSSPORTAL SNAPSHOT!"
+		echo "Script execution took $time_elapsed seconds."
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		exit 1;
+	fi
+	TABLE_FILTER="JBPM_%";
+fi
+
+## Check to use mysql with password or not.
+if [ -n "$MYSQL_PASSWD" ]; then
+	MYSQL_CMD="$MYSQL -u $MYSQL_USER -p$MYSQL_PASSWD -P $MYSQL_PORT -h $MYSQL_HOST"
+else
+	MYSQL_CMD="$MYSQL -u $MYSQL_USER -P $MYSQL_PORT -h $MYSQL_HOST"
+fi
+
+BIT_COLUMNS="";
+convert_bit2boolean ()
+{
+	BIT_COLUMNS=`$MYSQL_CMD --batch -N -D Information_Schema -e "select Column_Name from Information_Schema.Columns where Data_Type='bit' and Table_Name not like '$TABLE_FILTER';"`
+	for BIT_COLUMN in $BIT_COLUMNS
+	do
+		BIT_TABLE=`$MYSQL_CMD --batch -N -D Information_Schema -e "select Table_Name from Information_Schema.Columns where Data_Type='bit' and Table_Name not like '$TABLE_FILTER' and Column_Name='$BIT_COLUMN';"`
+		if [ $? -ne 0 ]; then
+			end_time=`date +%s`
+			time_elapsed=$(($end_time-$start_time))
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			echo "SELECT FAILED! ERROR OCCURRED WHILE CONVERTING BIT TO BOOLEAN!"
+			echo "Script execution took $time_elapsed seconds."
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			exit 1;
+		fi
+		$MYSQL_CMD --database=$SRC_DB --execute="alter table $BIT_TABLE modify $BIT_COLUMN boolean;" 
+		if [ $? -ne 0 ]; then
+			end_time=`date +%s`
+			time_elapsed=$(($end_time-$start_time))
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			echo "ALTER FAILED! ERROR OCCURRED WHILE CONVERTING BIT TO BOOLEAN!"
+			echo "Script execution took $time_elapsed seconds."
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			exit 1;
+		fi
+	done
+}
+
+revert_bit2boolean ()
+{
+	for BIT_COLUMN in $BIT_COLUMNS
+	do
+		BIT_TABLE=`$MYSQL_CMD --batch -N -D Information_Schema -e "select Table_Name from Information_Schema.Columns where Data_Type='tinyint' and Table_Name not like '$TABLE_FILTER' and Column_Name='$BIT_COLUMN';"`
+		if [ $? -ne 0 ]; then
+			end_time=`date +%s`
+			time_elapsed=$(($end_time-$start_time))
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			echo "SELECT FAILED! ERROR OCCURRED WHILE REVERTING BIT TO BOOLEAN!"
+			echo "Script execution took $time_elapsed seconds."
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			exit 1;
+		fi
+		$MYSQL_CMD --database=$SRC_DB --execute="alter table $BIT_TABLE modify $BIT_COLUMN bit(1);" 
+		if [ $? -ne 0 ]; then
+			end_time=`date +%s`
+			time_elapsed=$(($end_time-$start_time))
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			echo "ALTER FAILED! ERROR OCCURRED WHILE REVERTING BIT TO BOOLEAN!"
+			echo "Script execution took $time_elapsed seconds."
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			exit 1;
+		fi
+	done
+}
+
+update_jbossportal_sequences ()
+{
+	eval "$PSQL_CMD --dbname='$DEST_DB' --quiet -c \"SELECT setval('portal_seq', (select max(pk)+1 from jbp_object_node))\""
+	eval "$PSQL_CMD --dbname='$DEST_DB' --quiet -c \"SELECT setval('portlet_seq', (select max(pk)+1 from ((select max(pk) as pk from jbp_portlet_state) union (select max(pk) as pk from jbp_portlet_state_entry) union (select max(pk) as pk from jbp_portlet_group) union (select max(pk) as pk from jbp_portlet_consumer) union (select max(pk) as pk from jbp_portlet_reg)) t))\""
+	eval "$PSQL_CMD --dbname='$DEST_DB' --quiet -c \"SELECT setval('sec_seq', (select max(pk)+1 from jbp_object_node_sec))\""
+	eval "$PSQL_CMD --dbname='$DEST_DB' --quiet -c \"SELECT setval('user_seq', (select max(uid)+1 from ((select max(jbp_uid) as uid from jbp_users) union (select max(jbp_rid) as uid from jbp_roles)) t))\""
+	eval "$PSQL_CMD --dbname='$DEST_DB' --quiet -c \"SELECT setval('nav_seq', (select max(id)+1 from user_navigation))\""
+	eval "$PSQL_CMD --dbname='$DEST_DB' --quiet -c \"SELECT setval('instance_seq', (select max(pk)+1 from ((select max(pk) as pk from jbp_instance) union (select max(pk) as pk from jbp_instance_per_user) union (select max(pk) as pk from jbp_instance_security)) as t))\""
+}
+
+reset_sequences ()
+{
+	echo "Adjusting the sequence numbers, please wait ..."
+	SEQUENCE_TABLES=`eval "$PSQL_CMD --dbname='$DEST_DB' -t -c \"select table_name from information_schema.columns where table_catalog='$DEST_DB' and column_default like 'nextval%'\""`
+	for SEQUENCE_TABLE in $SEQUENCE_TABLES
+	do
+		SEQUENCE_COLUMN=`eval "$PSQL_CMD --dbname='$DEST_DB' -t -c \"select column_name from information_schema.columns where table_catalog='$DEST_DB' and column_default like 'nextval%' and table_name='$SEQUENCE_TABLE'\""`
+		SEQUENCE_NAME=`eval "$PSQL_CMD --dbname='$DEST_DB' -t -c \"select substr(column_default,strpos(column_default,'nextval(' ) +9 ,strpos(column_default,'::' )-11) from information_schema.columns where table_catalog='$DEST_DB' and column_default like 'nextval%' and table_name='$SEQUENCE_TABLE'\""`
+		##echo $SEQUENCE_NAME $SEQUENCE_COLUMN $SEQUENCE_TABLE
+		SEQ_RESULT=`eval "$PSQL_CMD --dbname='$DEST_DB' --quiet -c \"SELECT setval('$SEQUENCE_NAME', (SELECT MAX($SEQUENCE_COLUMN) FROM $SEQUENCE_TABLE));\""`
+	done
+	## Fix for JIRA 10534
+	if [ "$SRC_DB" = "jbossportal" ]; then
+		update_jbossportal_sequences
+	fi
+}
+
+
+
+update_schemaversion ()
+{
+	currentSchemaVersion="6.6.1";
+	eval "$PSQL_CMD --dbname='$DEST_DB' --quiet -c \"UPDATE schemainfo set value='$currentSchemaVersion' WHERE name = 'CurrentSchemaVersion'\""
+	if [ $? -ne 0 ]; then
+		end_time=`date +%s`
+		time_elapsed=$(($end_time-$start_time))
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		echo "UPDATE SCHEMA VERSION FAILED! ERROR OCCURRED WHILE UPDATING SCHEMAVERSION!"
+		echo "Script execution took $time_elapsed seconds."
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		exit 1;
+	fi
+	eval "$PSQL_CMD --dbname='$DEST_DB' --quiet -c \"UPDATE schemainfo set value=now() WHERE name = 'SchemaUpdated'\""
+	if [ $? -ne 0 ]; then
+		end_time=`date +%s`
+		time_elapsed=$(($end_time-$start_time))
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		echo "UPDATE SCHEMA VERSION FAILED! ERROR OCCURRED WHILE UPDATING SCHEMA TIMESTAMP!"
+		echo "Script execution took $time_elapsed seconds."
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		exit 1;
+	fi
+}
+
+downgrade_gwcollagedb_to_661 ()
+{
+	# Back out the following changes that were made in the GWMEE 7.0.0 release,
+	# if these changes are present in the tables as they exist right now:
+	#
+	#    ALTER TABLE hostgroup     ADD COLUMN agentid character varying(128);
+	#    ALTER TABLE host          ADD COLUMN agentid character varying(128);
+	#    ALTER TABLE servicestatus ADD COLUMN agentid character varying(128);
+	#
+	echo "Downgrading gwcollagedb table schemas, please wait ..."
+	for POSTGRESQL_TABLE in hostgroup host servicestatus
+	do
+		# The "IF EXISTS" clauses will throw NOTICEs, but not ERRORs, if the columns do not exist.
+		# That's a bit noisy, but acceptable.
+		eval "$PSQL_CMD --dbname='$DEST_DB' --quiet -c 'ALTER TABLE \"$POSTGRESQL_TABLE\" DROP COLUMN IF EXISTS agentid'"
+		if [ $? -ne 0 ]; then
+			end_time=`date +%s`
+			time_elapsed=$(($end_time-$start_time))
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			echo "SCHEMA DOWNGRADE FAILED! ERROR OCCURRED WHILE DOWNGRADING $POSTGRESQL_TABLE TABLE!"
+			echo "Script execution took $time_elapsed seconds."
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			exit 1;
+		fi
+	done
+}
+
+# This routine is used to back out any changes we have made in releases subsequent to
+# GWMEE 6.6.1 that altered the schema of the PostgreSQL database.
+downgrade_to_661_schema ()
+{
+	if [ "$SRC_DB" = "GWCollageDB" ]; then
+		# Alter the PostgreSQL gwcollagedb database, if needed, to restore the 6.6.1 schema
+		# that we need to have in place before copying data from MySQL.
+		downgrade_gwcollagedb_to_661
+		# Downgrade the current schema version to 6.6.1, to reflect the changes we just imposed.
+		update_schemaversion
+	fi
+}
+
+if [ "$SRC_DB" = "jbossportal" ]; then
+	convert_bit2boolean
+fi
+
+# Setting pipefail is necessary to get a $MYSQL_CMD failure to be recognized
+# in the exit status of the complete piped command to fetch the list of tables.
+set -o pipefail
+
+GLOBAL_COPY_SUCCESS="";
+TABLES=`$MYSQL_CMD --batch -N -D Information_Schema -e "select distinct (case when (KCU.REFERENCED_TABLE_NAME is null) then T.TABLE_NAME else KCU.REFERENCED_TABLE_NAME end), T.TABLE_NAME from TABLES T LEFT JOIN Key_Column_Usage KCU ON T.TABLE_NAME=KCU.TABLE_NAME and T.TABLE_SCHEMA=KCU.TABLE_SCHEMA where T.Table_Schema='$SRC_DB' and UCASE(T.TABLE_NAME) not like UCASE('$TABLE_FILTER');" | tsort`
+if [ $? -ne 0 ]; then
+	end_time=`date +%s`
+	time_elapsed=$(($end_time-$start_time))
+	echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+	echo "SELECT FAILED! ERROR OCCURRED WHILE FINDING TABLE NAMES"
+	echo "FOR THE $SRC_DB DATABASE!"
+	echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+
+	# There are rare circumstances in which it might make sense to continue in
+	# spite of this failure.  One such circumstance would be if you had a Cacti
+	# database on a child GWMEE server that did not allow access from a test server
+	# that you are upgrading before putting it into production to replace your
+	# original GWMEE master server.  The Cacti database would eventually also be
+	# converted when you upgraded that child server.  In almost every other case,
+	# a failure here should be taken as a serious threat to the overall upgrade
+	# process, with the cause tracked down and fixed before proceeding.
+
+	answer=unknown
+	until expr "$answer" : '[yYnN]$' > /dev/null; do
+		echo ""
+		echo -n "Do you want to continue in spite of this failure? [y/n] "
+		read answer
+		if expr "$answer" : '[yYnN]$' > /dev/null; then
+			break
+		fi
+		echo "ERROR:  You must answer with one of these letters:  N n Y y"
+	done
+	if [ "$answer" != 'Y' -a "$answer" != 'y' ]; then
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		echo "Database copying has failed, per user instruction."
+		echo "Script execution took $time_elapsed seconds."
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		exit 1;
+	else
+		echo ""
+	fi
+fi
+
+## Suppress the notices while truncating. This is good for the session only.
+export PGOPTIONS='--client-min-messages=warning'
+
+if [ -z "$TABLES" ]; then
+	echo "WARNING:  There are no tables to truncate for the $SRC_DB database!"
+else
+	echo "Truncating tables, please wait ..."
+	for MYSQL_TABLE in $TABLES
+	do
+		# We are forced to double-quote the PostgreSQL table names because some of them might
+		# look like keywords and cause the truncation to fail if they are not quoted.  But some
+		# of our MySQL tables names are mixed-case, and all our PostgreSQL table names are in
+		# lowercase.  If we quote a mixed-case name, PostgreSQL won't match it to the lowercase
+		# table name.  So we need to lowercase each name before using it in the TRUNCATE command.
+		POSTGRESQL_TABLE=`echo $MYSQL_TABLE | tr '[A-Z]' '[a-z]'`
+		eval "$PSQL_CMD --dbname='$DEST_DB' --quiet -c 'TRUNCATE \"$POSTGRESQL_TABLE\" CASCADE'"
+		if [ $? -ne 0 ]; then
+			end_time=`date +%s`
+			time_elapsed=$(($end_time-$start_time))
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			echo "TRUNCATE FAILED! ERROR OCCURRED WHILE TRUNCATING $POSTGRESQL_TABLE TABLE!"
+			echo "Script execution took $time_elapsed seconds."
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			exit 1;
+		fi
+	done
+fi
+
+# Back out any changes to the PostgreSQL database schema beyond the schema used in the GWMEE 6.6.1 release,
+# to ensure compatibility with the MySQL schema used as the source for the data we are about to copy.
+downgrade_to_661_schema
+
+if [ -z "$TABLES" ]; then
+	echo "WARNING:  There are no tables to copy for the $SRC_DB database!"
+else
+	echo "Copying the data, please wait ..."
+	for MYSQL_TABLE in $TABLES
+	do
+		GLOBAL_COPY_SUCCESS="";
+		OUTFILE="$OUTFILE_PATH/$MYSQL_TABLE.$DUMP_EXTENSION"
+
+		# An earlier version of this script tried to use:
+		#   $MYSQL_CMD --database=$SRC_DB --execute="select * into outfile '$OUTFILE' from $MYSQL_TABLE;"
+		# to dump the table content, without even checking the exit status.
+		# But that command flat-out won't work, on two counts:
+		# (1) It requires FILE permissions for the arbitrary $MYSQL_USER (non-root) user embedded in
+		#     $MYSQL_CMD, something that, for security reasons, we NEVER want to have so granted.
+		# (2) It effectively requires that the database reside on the same machine on which
+		#     this command is being run, because SELECT INTO OUTFILE only writes to a file
+		#     on the server, not on the client.
+		#
+		# The only way I have found to produce a similar result file is the following command.
+		# Its downsides are:
+		# (1) It spends some resources sending the results to the client program, which is then
+		#     responsible for formatting and writing the data, instead of writing directly to the
+		#     file (but of course, that's exactly what we want to have happen).
+		# (2) NULL values are printed as NULL instead of as \N (which is the value that
+		#     SELECT INTO OUTFILE uses, and that PostgreSQL prefers).  There doesn't seem to be
+		#     any kind of "mysql"-client-programoption to globabally override this output string
+		#     value.  Thus we recode after we get the data out of the database, under the assumption
+		#     that we will never have a column containing the string "NULL".
+		# Exception for jbossportal tables gw_ext_role_attributes & user_navigation. There were few changes over the releases.
+		if [ "$SRC_DB" = "jbossportal" ]; then
+			case "$MYSQL_TABLE" in
+				"gw_ext_role_attributes" )
+					ACTIONS_ENABLED_COLUMN_EXIST=`$MYSQL_CMD --batch -N -D Information_Schema -e "select column_name from columns where table_name='gw_ext_role_attributes' and column_name='actions_enabled';"` 
+					if [ $? -ne 0 ]; then
+						end_time=`date +%s`
+						time_elapsed=$(($end_time-$start_time))
+						echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+						echo "SELECT FAILED! ERROR OCCURRED WHILE LOOKING FOR COLUMN NAME"
+						echo "FOR ROLE ATTRIBUTES ACTIONS ENABLED!"
+						echo "Script execution took $time_elapsed seconds."
+						echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+						exit 1;
+					fi
+					if [ "$ACTIONS_ENABLED_COLUMN_EXIST" = "" ]; then
+						$MYSQL_CMD --database=$SRC_DB --batch --skip-column-names --execute="select *, (case when jbp_name in ('GWAdmin','GWOperator') then 't' else 'f' end) as actions_enabled from $MYSQL_TABLE" > $OUTFILE
+					else
+						$MYSQL_CMD --database=$SRC_DB --batch --skip-column-names --execute="select * from $MYSQL_TABLE" > $OUTFILE
+					fi	;;	
+				"USER_NAVIGATION" )
+					TAB_HISTORY_COLUMN_EXISTS=`$MYSQL_CMD --batch -N -D Information_Schema -e "select column_name from columns where table_name='user_navigation' and column_name='tab_history';"`
+					if [ $? -ne 0 ]; then
+						end_time=`date +%s`
+						time_elapsed=$(($end_time-$start_time))
+						echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+						echo "SELECT FAILED! ERROR OCCURRED WHILE LOOKING FOR COLUMN NAME"
+						echo "FOR USER NAVIGATION TAB HISTORY!"
+						echo "Script execution took $time_elapsed seconds."
+						echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+						exit 1;
+					fi
+					NODE_LABEL_COLUMN_EXISTS=`$MYSQL_CMD --batch -N -D Information_Schema -e "select column_name from columns where table_name='user_navigation' and column_name='node_label';"`
+					if [ $? -ne 0 ]; then
+						end_time=`date +%s`
+						time_elapsed=$(($end_time-$start_time))
+						echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+						echo "SELECT FAILED! ERROR OCCURRED WHILE LOOKING FOR COLUMN NAME"
+						echo "FOR USER NAVIGATION NODE LABEL!"
+						echo "Script execution took $time_elapsed seconds."
+						echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+						exit 1;
+					fi
+					if [ "$TAB_HISTORY_COLUMN_EXISTS" = "" ] && [ "$NODE_LABEL_COLUMN_EXISTS" = "" ]; then
+						$MYSQL_CMD --database=$SRC_DB --batch --skip-column-names --execute="select *, null as tab_history,null as  node_label from $MYSQL_TABLE" > $OUTFILE
+					else
+						$MYSQL_CMD --database=$SRC_DB --batch --skip-column-names --execute="select * from $MYSQL_TABLE" > $OUTFILE
+					fi;;		
+				*)
+					$MYSQL_CMD --database=$SRC_DB --batch --skip-column-names --execute="select * from $MYSQL_TABLE" > $OUTFILE;;
+			esac		
+		else
+			$MYSQL_CMD --database=$SRC_DB --batch --skip-column-names --execute="select * from $MYSQL_TABLE" > $OUTFILE
+		fi
+		
+		if [ $? -ne 0 ]; then
+			end_time=`date +%s`
+			time_elapsed=$(($end_time-$start_time))
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			echo "COPY FAILED! ERROR OCCURRED WHILE EXPORTING $MYSQL_TABLE TABLE!"
+			echo "Script execution took $time_elapsed seconds."
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			exit 1;
+		fi
+
+		# Massage the data to create PostgreSQL-compatible NULL values, to convert the MySQL default
+		# date "0000-00-00 00:00:00" into a PostgreSQL-compatible equivalent epoch value, and to
+		# convert any literal carriage returns into a visible form that PostgreSQL can accept.
+		#
+		# To convert NULL to \N, we might try to use this:  -e 's/[[:<:]]NULL[[:>:]]/\\N/g'
+		# but I don't see any documentation on those character classes (if they're even supported)
+		# that would lead me to believe they only match at tab boundaries.  For the construction
+		# that we use instead, we need to repeat the NULL-matching pattern, because it includes
+		# any leading and/or trailing tabs, and thus it won't match a NULL values in a second
+		# consecutive column.  The second match does that; effectively, we match and convert all
+		# the odd consecutive NULLs, then all the even consecutive NULLs.
+		sed -i \
+		    -e 's/\(^\|\t\)NULL\(\t\|$\)/\1\\N\2/g' \
+		    -e 's/\(^\|\t\)NULL\(\t\|$\)/\1\\N\2/g' \
+		    -e 's/0000-00-00 00:00:00/1970-01-01 00:00:00/g' \
+		    -e 's/\r/\\r/g' \
+		    $OUTFILE
+		if [ $? -ne 0 ]; then
+			end_time=`date +%s`
+			time_elapsed=$(($end_time-$start_time))
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			echo "COPY FAILED! ERROR OCCURRED WHILE EDITING $MYSQL_TABLE TABLE CONTENT!"
+			echo "Script execution took $time_elapsed seconds."
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			exit 1;
+		fi
+
+		POSTGRESQL_TABLE=`echo $MYSQL_TABLE | tr '[A-Z]' '[a-z]'`
+		eval "$PSQL_CMD --dbname='$DEST_DB' -c 'COPY \"$POSTGRESQL_TABLE\" FROM STDIN;' < '$OUTFILE'"
+		if [ $? -ne 0 ]; then
+			end_time=`date +%s`
+			time_elapsed=$(($end_time-$start_time))
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			echo "COPY FAILED! ERROR OCCURRED WHILE IMPORTING $POSTGRESQL_TABLE TABLE!"
+			echo "Script execution took $time_elapsed seconds."
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			exit 1;
+		else
+			##echo "MySQL \"$MYSQL_TABLE\" table copied successfully!"
+			GLOBAL_COPY_SUCCESS="0";
+		fi
+	done
+fi
+
+if [ -n "$GLOBAL_COPY_SUCCESS" ]; then
+	if [ "$SRC_DB" = "jbossportal" ]; then
+		revert_bit2boolean
+	fi
+	if [ "$SRC_DB" = "GWCollageDB" ]; then
+		# Update the current schema version to 6.6.1.
+		update_schemaversion
+	fi
+	# BUMP UP THE SEQUENCE NUMBERS
+	reset_sequences 
+	shopt -s nullglob
+	rm -f $OUTFILE_PATH/*.$DUMP_EXTENSION  
+	shopt -u nullglob
+	end_time=`date +%s`
+	time_elapsed=$(($end_time-$start_time))
+	echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+	echo "ALL TABLES IN $SRC_DB DATABASE COPIED SUCCESSFULLY!"
+	echo "Script execution took $time_elapsed seconds."
+	echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+fi
+

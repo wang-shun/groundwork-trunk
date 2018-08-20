@@ -1,0 +1,121 @@
+#!/usr/local/groundwork/perl/bin/perl
+
+use CGI ':standard';
+use Text::ParseWords;
+use CGI qw(:standard);
+use CGI::Carp qw(warningsToBrowser fatalsToBrowser);
+use Shell;
+use Time::Local;
+
+$HOSTNAME = $ARGV[1];
+$PORT     = $ARGV[3];
+$SID      = $ARGV[5];
+$USERNAME = $ARGV[7];
+$PASSWORD = $ARGV[9];
+$CHECK    = $ARGV[11];
+$WARN     = $ARGV[13];
+$CRIT     = $ARGV[15];
+$FIELD    = $ARGV[17];    # field to check warn/crit for
+$OUTAGE   = $ARGV[19];
+$GRAPH    = $ARGV[21];
+$REGEX    = $ARGV[23];
+
+if (!$REGEX) {
+   $REGEX = '.*,(.*)';
+} 
+
+my $sqlpath = "/usr/local/groundwork/nagios/libexec/sql/$CHECK.sql";
+if ( !-f $sqlpath ) {
+    $sqlpath = "/usr/local/groundwork/nagios/libexec/$CHECK.sql";
+}
+
+$cmd = "/usr/local/groundwork/nagios/libexec/check_oracle_by_jdbc -H $HOSTNAME -p $PORT -s $SID -l $USERNAME -x $PASSWORD -f '$sqlpath' -r '$REGEX' -w $WARN -c $CRIT ";
+
+$LC = 0;
+$CRIT_COUNT=0;
+$WARN_COUNT=0;
+$UNKNOWN_COUNT=0;
+$TEXT_OUT="";
+$PERF_OUT="";
+$PERF_HEAD="";
+$ORA_ERROR=0;
+
+open(LINES, "$cmd 2>&1 |");
+while ($line = <LINES>) {
+	#print "LINE=$line\n";
+	#print "LC=$LC : ORA_ERROR=$ORA_ERROR \n";
+	$line =~ s/\n//g;
+	if ( $LC > 0 && $ORA_ERROR == 0 ) {
+		@LineParts = split(/!-!/, $line);
+		#print "LP $LineParts[$FIELD] $CRIT $WARN\n";
+		if ( $LineParts[$FIELD] >= $CRIT ) {
+			$CRIT_COUNT++;
+			$TEXT_OUT=$TEXT_OUT."C: $LineParts[0] ($LineParts[$FIELD]%) ";
+			#print "$TEXT_OUT \n";
+		} elsif ( $LineParts[$FIELD] >= $WARN ) {
+			$WARN_COUNT++;
+			$TEXT_OUT=$TEXT_OUT."W: $LineParts[0] ($LineParts[$FIELD]%) ";
+			#print "$TEXT_OUT \n";
+		}
+		$LP_COUNT = @LineParts;
+		for ( $i=1 ; $i<$LP_COUNT ; $i++ ) {
+			$LineParts[$i] =~ s/ /_/g;
+			$PERF_OUT = $PERF_OUT." $PERF_HEAD[$i]=$LineParts[$i]";
+		}
+        } elsif ( $line =~ /java.sql.SQLException/ && $ORA_ERROR == 0 ) {
+                print "JDBC Error\n";
+                $ORA_ERROR=1;
+                $CRIT_COUNT=1;
+                if ( $line =~ /Connection refused/ ) {
+                        $TEXT_OUT="TNS Connection Refused";
+                } elsif ( $line =~ /The Network Adapter could not establish the connection/ ) {
+                        $TEXT_OUT="No Listener at Specified Destination";
+                } else {
+                        $TEXT_OUT="Unknown JDBC error : $line";
+                }
+	} elsif ( $line =~ /ORA-/ && $ORA_ERROR == 0 ) {
+		@LineParts = split(/:/, $line);
+		$TEXT_OUT="$LineParts[1]: $LineParts[2]";
+		if ( $line =~ /ORA-01034/ && "$OUTAGE" == "Y" ) {
+			$CRIT_COUNT=1;
+		} elsif ( "$CHECK" ne "status" ) {
+			$UNKNOWN_COUNT=1;
+		} else {
+			$CRIT_COUNT=1;
+		}
+		$ORA_ERROR=1;
+	} elsif ( $LC == 0 ) {
+		@LineParts = split(/!-!/, $line);
+		$LP_COUNT = @LineParts;
+		for ( $i=1 ; $i<$LP_COUNT ; $i++ ) {
+			$PERF_HEAD[$i]=$LineParts[$i];
+			$PERF_HEAD[$i] =~ s/ /_/g;
+			$PERF_HEAD[$i] =~ s/\n//g;
+		}
+	}
+	$LC++;
+}
+close(LINES);
+
+$TEXT_START=uc($CHECK);
+if ( $UNKNOWN_COUNT > 0 ) {
+	$TEXT_OUT="$TEXT_START UNKNOWN - ".$TEXT_OUT;
+	$EXIT_CODE = 3;
+} elsif ( $CRIT_COUNT > 0 ) {
+	$TEXT_OUT="$TEXT_START CRITICAL - ".$TEXT_OUT;
+	$EXIT_CODE = 2;
+} elsif ($WARN_COUNT > 0 ) {	
+	$TEXT_OUT="$TEXT_START WARNING - ".$TEXT_OUT;
+	$EXIT_CODE = 1;
+} else {
+	$TEXT_OUT="$TEXT_START OK - No Problems";
+	$EXIT_CODE = 0;
+}
+
+print "$TEXT_OUT";
+if ( "$GRAPH" eq "Y" ) {
+	print " | $PERF_OUT";
+}
+print "\n";	
+
+exit $EXIT_CODE;

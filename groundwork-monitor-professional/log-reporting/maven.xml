@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE project [
+  
+]>
+
+<!--
+#
+#Copyright 2007 GroundWork Open Source, Inc. ("GroundWork")
+#All rights reserved. Use is subject to GroundWork commercial license terms. 
+#
+
+-->
+<project default="allBuild"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+
+<goal name='allBuild'>
+        description="Build the master project and all subprojects">
+    <attainGoal name='reports.build' />
+</goal>
+
+<goal name="allDeploy"
+        description="Deploy the master project and all subprojects">
+    <attainGoal name='reports.deploy' />
+</goal>
+
+<goal name="allClean"
+        description="Clean the master project and all subprojects">
+    <attainGoal name='reports.clean' />
+</goal>
+
+
+<goal name="reports.build" description="Builds all components of reports">
+
+</goal>
+
+<goal name="reports.deploy" description="Deploys all components of reports">
+ <mkdir dir="${org.groundwork.deploy.prefix}/log-reporting"/>
+ 
+	<copy todir="${org.groundwork.deploy.prefix}/log-reporting" overwrite="true">
+	    <fileset dir="${basedir}">
+	      <include name="**/*"/>
+	    	<exclude name="**/*.svn" />
+		<exclude name="**/maven.xml" />
+		<exclude name="**/project.xml" />
+	    <exclude name="**/test/**" />
+	    </fileset>
+	</copy>
+	
+ 
+
+ <copy file="${basedir}/../database/log-reports.sql" tofile="${org.groundwork.deploy.prefix}/databases/log-reports.sql">
+ </copy>
+</goal>
+
+<goal name="reports.clean" description="Cleans the build and the deployment section of reports">
+ <delete dir="${org.groundwork.deploy.prefix}/log-reporting"/>
+ <delete dir="${org.groundwork.apache2.htdocs}/log-reporting"/>
+ <delete file="${org.groundwork.deploy.prefix}/databases/log-reports.sql"/>
+</goal>
+</project>

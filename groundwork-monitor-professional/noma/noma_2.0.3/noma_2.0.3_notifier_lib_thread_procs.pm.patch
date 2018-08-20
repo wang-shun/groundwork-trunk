@@ -1,0 +1,20 @@
+--- noma_2.0.3/notifier/lib/thread_procs.pm.orig	2012-05-30 16:53:06.000000000 -0700
++++ noma_2.0.3/notifier/lib/thread_procs.pm	2017-04-26 13:31:13.393345431 -0700
+@@ -182,14 +182,14 @@
+ 		exit 0;
+ 	}
+ 
+-
+-    my $bitmask = pack("C", 2**fileno($sock));
++    my $bitmask = ""; vec($bitmask, fileno($sock), 1) = 1;
++    my $no_bits = ""; vec($no_bits, fileno($sock), 1) = 0;
+ 
+     while (1==1)
+     {
+         my $ready;
+         select($ready = $bitmask, undef, undef, 0.5);
+-        if (($ready & $bitmask ) ne pack("C", 0))
++        if (($ready & $bitmask ) ne $no_bits)
+         {
+             my $conn = $sock->accept();
+             my($dummy, $ipaddr) = sockaddr_in($conn->peername);

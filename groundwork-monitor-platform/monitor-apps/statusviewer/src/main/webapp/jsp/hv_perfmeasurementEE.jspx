@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+
+<!--
+ 
+This jsp code is used for rendering RRD graphs and/or client-side rendered graphs (currently with dimple.js)
+It uses the PerfMeasurementBeanEE bean (monitor-platform/monitor-apps/statusviewer-common/src/main/java/com/groundworkopensource/portal/statusviewer/bean/PerfMeasurementBeanEE.java)
+which in turn uses RrdGraphBean class (monitor-platform/monitor-apps/statusviewer-common/src/main/java/com/groundworkopensource/portal/statusviewer/bean/RrdGraphBean.java)
+
+This code is used for rendering in:
+   a) Status Viewer -> host -> service -> "Service Availability & Performance Measurement" 
+   b) the "Performance Measurement Portlet" (you can add this into your own page in the portal, and it will be outside of Status Viewer)
+   c) possibly some other places too
+
+The PerfMeasurementBeanEE bean figures out a list of rrdGraphBean objects for use by icefaces here (search in here for tblperfmeasurement_Portlet).
+That object list is iterated over by icefaces and each graph is rendered. 
+The objects contain a pile of information, and in the case of the RRD's, the actual RRD graph binary data.
+Some of the object's information is used by icefaces to determine whether or not to render something.
+
+If status-viewer.properties perf.monitoring.client.rendering is true, then today this will also render the associated RRD graph if it finds one.
+
+Currently there are various issues :
+- when client side rendering is enabled :
+   - expand/shrink of each graph doesn't work 
+   - client side rendering doesn't work if this code is being invoked via Performance Measurement portlet - only RRD's show up
+   - there is currently no way to turn off rendering of the RRD graphs altogether
+- usual poorly documented spagetti code in PerfMeasurementBeanEE bean and in here 
+   - these comments are an attempt to fix some of this debt and make is at least somewhat comprehensible and maintainable for other dev)
+
+DN Apr 2017
+
+--> 
+
+
+<ui:composition template="/templates/template.xhtml"
+    xmlns:jsp="http://java.sun.com/JSP/Page"
+    xmlns:f="http://java.sun.com/jsf/core"
+    xmlns:h="http://java.sun.com/jsf/html"
+    xmlns:ice="http://www.icesoft.com/icefaces/component"
+    xmlns:ui="http://java.sun.com/jsf/facelets">
+
+    <ui:define name="content">
+
+
+        <!-- Intialize the bean via PerfMeasurementBeanEE class getPerfHiddenField(). 
+             This creates the rrd graph list which is a thread-safe sync'd array list of RrdGraphBean objects.  
+             Without this, initialization no beans => no graphs 
+        -->
+        <ice:inputHidden id="PMhiddenField" 
+             value="#{PerformanceMeasurementBean.perfHiddenField}">
+        </ice:inputHidden>
+
+
+        <!-- A group for messages. This gets rendered if message is true which gets set in PerfMeasurementBeanEE.java in various places -->
+        <!-- panel group render when message is set true -->
+        <ice:panelGroup id="PMpanelsgrpError"
+             rendered="#{PerformanceMeasurementBean.message}" >
+
+            <!-- errors message -->
+            <ice:column id="PMcolumnError" 
+                 rendered="#{PerformanceMeasurementBean.error}">
+
+                <ui:include src="/jsp/error.jspx">
+                    <ui:param name="errorMessage" 
+                        value="#{PerformanceMeasurementBean.errorMessage}" />
+                </ui:include>
+
+            </ice:column>
+
+            <!-- info message -->
+            <ice:column id="PMcolumninfo" 
+                 rendered="#{PerformanceMeasurementBean.info}">
+
+                 <ui:include src="/jsp/info.jspx">
+                    <ui:param name="infoMessage"  
+                        value="#{PerformanceMeasurementBean.infoMessage}" />
+                </ui:include>
+
+            </ice:column>
+
+            <!-- a button to retry, which when hit calls the reloadPage which recreates graphs -->
+            <ice:commandButton id="PMcmdRetryNow"
+                 value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+                 actionListener="#{PerformanceMeasurementBean.reloadPage}">
+            </ice:commandButton>
+
+        </ice:panelGroup>
+
+
+        <!-- main panel group into which, amongst other things, the actual graphs contained in each rrdGraphBean will be rendered -->
+        <ice:panelGroup id="PMpanelsgrpError1" 
+             rendered="#{!PerformanceMeasurementBean.message}" 
+             style="padding-left:108px;">
+
+            <table>
+                <!-- a time selector - not sure under which circumstances selectedTime == '-1' though yet - poss out of status viewer context , possibly on Custom Date selection too -->
+                <tr> 
+                    <td>
+                            <ice:message 
+                                for="perfmeasurement_Portlet_startDateTime" 
+                                showDetail="true"
+                                showSummary="false"
+                                style="color:red; width:350px; font-weight:normal;"
+                                rendered="#{PerformanceMeasurementBean.selectedTime == '-1'}">
+                            </ice:message>
+
+                            <ice:message 
+                                for="perfmeasurement_Portlet_endDateTime" 
+                                showDetail="true"
+                                showSummary="false"
+                                style="color:red; width:350px; font-weight:normal;"
+                                rendered="#{PerformanceMeasurementBean.selectedTime == '-1'}">
+                            </ice:message>
+                     </td>
+                </tr>
+
+                <!-- only rendered when used from outside of status viewer but not sure what it is yet -->
+                <tr align="right">
+                    <td>
+                        <ice:panelGroup 
+                             rendered="#{!PerformanceMeasurementBean.inStatusViewer}">
+
+                             <ice:outputLabel id="perfmeasurement_Portlet_lblTimeSelector"
+                                  for="perfmeasurement_Portlet_menuTimeSelector"
+                                  value="#{message['com_groundwork_portal_statusviewer_hostAvailabilityPortlet_label_time']}">
+                            </ice:outputLabel> 
+
+                            <!-- Time selector drop down list as selectOneMenu component --> 
+                            <ice:selectOneMenu id="perfmeasurement_Portlet_menuTimeSelector"
+                                 value="#{PerformanceMeasurementBean.selectedTime}" 
+                                 valueChangeListener="#{PerformanceMeasurementBean.selectedTimeChangeListener}">
+
+                                 <f:selectItems 
+                                    value="#{PerformanceMeasurementBean.timeSelectorList}" />
+
+                            </ice:selectOneMenu> 
+ 
+                            <!-- 'Apply' command button --> 
+                            <span style="padding-left: 5px">
+                                <ice:commandButton id="perfmeasurement_Portlet_submitApply" 
+                                     type="submit"
+                                     value="#{message['com_groundwork_portal_statusviewer_apply']}"
+                                     actionListener="#{PerformanceMeasurementBean.applyTimeFilter}"
+                                     styleClass="cust_portlet_filter_button">
+                                </ice:commandButton>
+                            </span>
+
+                            <!-- Custom start/end date picker section -->
+                            <ice:panelGrid id="perfmeasurement_Portlet_custstartendtimegroup" 
+                                 columns="2" 
+                                 rendered="#{PerformanceMeasurementBean.selectedTime == '-1'}"> 
+
+                                 <!-- Custom Start date -->
+                                 <div> 
+                                      <ice:outputText id="perfmeasurement_Portlet_startdatelbl"
+                                           value="#{message['com_groundwork_portal_statusviewer_perf_measurement_label_start_Date']}">
+                                      </ice:outputText> 
+
+                                      <ice:inputText
+                                           id="perfmeasurement_Portlet_startDateTime"
+                                           value="#{PerformanceMeasurementBean.custStartDate}"
+                                           validator="#{PerformanceMeasurementBean.validateStartDateTime}">
+                                      </ice:inputText>
+
+                                      <ice:graphicImage  
+                                           value="/images/date-time.png"
+                                           onclick="datePicker(this);" 
+                                           onmouseover="datePicker(this);">
+                                      </ice:graphicImage>
+                                </div>
+
+                                <!-- Custom end Date -->
+                                <div>
+                                      <ice:outputLabel id="perfmeasurement_Portlet_enddatelbl" 
+                                           for="perfmeasurement_Portlet_endDateTime" 
+                                           value="#{message['com_groundwork_portal_statusviewer_perf_measurement_label_end_Date']}">
+                                      </ice:outputLabel>
+
+                                      <ice:inputText id="perfmeasurement_Portlet_endDateTime"
+                                           value="#{PerformanceMeasurementBean.custEndDate}"
+                                           validator="#{PerformanceMeasurementBean.validateEndDateTime}">
+                                      </ice:inputText>
+
+                                      <ice:graphicImage 
+                                           value="/images/date-time.png"
+                                           onclick="datePicker(this);" 
+                                           onmouseover="datePicker(this);">
+                                      </ice:graphicImage>
+                                </div>
+
+                            </ice:panelGrid>
+
+                        </ice:panelGroup>
+                    </td>
+                </tr>
+
+                <!-- This row is always rendered, regardless of whether in status viewer or not.  It contains the graphs.  -->
+                <tr>
+                    <td>
+                        <ice:dataTable id="tblperfmeasurement_Portlet" 
+                             value="#{PerformanceMeasurementBean.rrdGraphList}" 
+                             var="rrdbean">
+
+                             <!-- Crudely put, icefaces iterates over the rrdGraphList list rrdgraphbean objects, one per ice:column below.
+                                  (The column's seem to be more akin to rows?)
+                                  Each column is expandable/collapsible, has a title,  contains a graph, and under some circumstances date/time selector stuff.
+                                  Whether things are render is based on various rrdGraphBean data values, and and status-viewer.properties settings.
+                             -->
+                               
+                             <ice:column id="column1">
+
+                                  <!--p><b>In column : title = #{rrdbean.collapsibleTitle}, expanded = #{rrdbean.expanded}, clientRendering=#{rrdbean.clientRendering} </b></p-->
+
+                                  <ice:panelCollapsible id="PMpnlCollapsible"
+                                       actionListener="#{PerformanceMeasurementBean.collapsibleAction}"
+                                       expanded="#{rrdbean.expanded}" 
+                                       toggleOnClick="true">
+
+                                       <!-- This creates an expandable/collapsible title over the graph  -->
+                                       <f:facet name="header">
+
+                                           <ice:panelGroup id="PMpnlGroupCollapsible" 
+                                                style="width:730px">
+
+                                               <ice:outputText id="PMpnlCollapsible_outtxt" 
+                                                    value="#{rrdbean.collapsibleTitle}" />
+
+                                           </ice:panelGroup>
+
+                                       </f:facet>
+
+                                       <!-- This is a section for the graph image -->
+                                       <ice:panelGroup>
+
+                                           <!-- The RRD graph image -->
+                                           <!-- This only gets rendered if perf.monitoring.client.rendering = false, and there was some data in the rrd/rrd was found -->
+                                           <ice:graphicImage 
+                                                value="#{rrdbean.rrdGraphBytes}"
+                                                mimeType="image/png"
+                                                rendered="#{!rrdbean.clientRendering and rrdbean.rrdGraphBytes != null}">
+                                           </ice:graphicImage>
+    
+                                           <!-- The client-side rendered graph -->
+                                           <!-- This only gets rendered if perf.monitoring.client.rendering = true, AND rrdbean.targetDivId was set to something -->
+                                           <ice:panelGroup 
+                                                rendered="#{rrdbean.clientRendering and rrdbean.targetDivId != null}">
+    
+                                                <!--p>rrdbean.hideRRDs=#{rrdbean.hideRRDs}, rrdbean.clientRendering=#{rrdbean.clientRendering}, rrdbean.rrdGraphBytes=#{rrdbean.rrdGraphBytes},target div = #{rrdbean.targetDivId} </p-->
+                                                <!-- this is the div into which the dimple graph will be put -->
+                                                <div id="#{rrdbean.targetDivId != null ? rrdbean.targetDivId : 'notrendered'}" class="client-rendering-target" />
+    
+                                          </ice:panelGroup>
+    
+                                          <!-- not sure what this is for yet -->
+                                          <ice:graphicImage id="imgRrdgraphconnectactive"
+                                               value="/images/connect_active.gif"
+                                               rendered="#{rrdbean.targetDivId == null and rrdbean.rrdGraphBytes == null}">
+                                          </ice:graphicImage>
+    
+                                       </ice:panelGroup>
+
+                                       <f:attribute name="collapsibleTitle" 
+                                          value="#{rrdbean.collapsibleTitle}" />
+
+                                    </ice:panelCollapsible>
+
+                             </ice:column>
+
+                        </ice:dataTable>
+                    </td>
+                </tr>
+
+            </table>
+
+        </ice:panelGroup>
+
+    </ui:define>
+
+</ui:composition>

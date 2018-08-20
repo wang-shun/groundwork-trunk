@@ -1,0 +1,92 @@
+#!/bin/bash -x
+#Copyright (C) 2009  GroundWork Open Source Solutions info@groundworkopensource.com
+#
+
+# Get the date for today's directory
+export DATE=$(date +%d-%m-%y)
+RUN_DIR=/root/build
+LOG_DIR=$RUN_DIR/logs
+
+arch=$(arch)
+if [ "$arch" == "x86_64" ] ; then
+  bitrock_os=64
+else
+  bitrock_os=32
+fi
+
+rm -rf /usr/local/groundwork-common.ce
+rm -rf /usr/local/groundwork-common.ent
+rm -rf /root/.maven/repository/org.itgroundwork/jars
+
+# Copy the updated scipts from arizona
+scp -rp root@arizona:/root/build/CEBuild.sh /root/build
+scp -rp root@arizona:/root/build/EntBuild.sh /root/build
+scp -rp root@arizona:/root/build/gdkBuild.sh /root/build
+scp -rp root@arizona:/root/build/nightlyBuildCE.sh /root/build
+scp -rp root@arizona:/root/build/nightlyBuildEnt.sh /root/build
+
+# Check if Common build is done on arizona
+minute_asleep=0
+while ! [ -f $LOG_DIR/start_32bit ]
+do
+  sleep 60
+  minute_asleep=`expr $minute_asleep + 1`
+done
+sleep 60
+
+scp -rp root@arizona:/usr/local/groundwork-common.ce /usr/local
+scp -rp root@arizona:/usr/local/groundwork-common.ent /usr/local
+scp -rp root@arizona:/root/.maven/repository/org.itgroundwork/jars /root/.maven/repository/org.itgroundwork
+rm -f $LOG_DIR/start_32bit
+
+
+
+date
+# Build Monitor CE
+cd $RUN_DIR
+echo "Start Building CE using BitRock Installer"
+. nightlyBuildCE.sh
+
+NewBuildNumber=$(grep "<version>" $RUN_DIR/BitRock/groundwork/project.xml | sed 's/<version>//' | sed 's/<\/version>//' | sed 's/ //g')
+# Make a backup of BitRock package directory
+cd $RUN_DIR/BitRock
+tar zcf groundwork-ce.tar.gz groundwork
+scp -rp groundwork-ce.tar.gz root@morat:/var/www/html/builds/groundwork-ce-$NewBuildNumber-$bitrock_os.tar.gz
+
+
+
+date
+# Build Monitor Enterprise
+cd $RUN_DIR
+echo "Start Building Ent using BitRock Installer"
+. nightlyBuildEnt.sh 
+
+NewBuildNumber=$(grep "<version>" $RUN_DIR/BitRock/groundwork/project.xml | sed 's/<version>//' | sed 's/<\/version>//' | sed 's/ //g')
+# Make a backup of BitRock package directory
+cd $RUN_DIR/BitRock
+tar zcf groundwork-ee.tar.gz groundwork
+scp -rp groundwork-ee.tar.gz root@morat:/var/www/html/builds/groundwork-ee-$NewBuildNumber-$bitrock_os.tar.gz
+
+
+
+# Delete old tar files
+OldTarFile=$(cat $RUN_DIR/logs/TarFileList.$bitrock_os | awk '{ print $1, $2 }')
+ssh root@morat rm -f /var/www/html/builds/$OldTarFile
+# Make a new list of tar files
+cat $RUN_DIR/logs/TarFileList.$bitrock_os | awk '{ print $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20 }' > $RUN_DIR/logs/TarFileList.$bitrock_os.tmp
+NewTarFileList=$(cat $RUN_DIR/logs/TarFileList.$bitrock_os.tmp)
+echo "$NewTarFileList groundwork-ce-$NewBuildNumber-$bitrock_os.tar.gz groundwork-ee-$NewBuildNumber-$bitrock_os.tar.gz" > $RUN_DIR/logs/TarFileList.$bitrock_os
+
+
+
+date
+TODAY=`date +%A`
+echo "Today is $TODAY"
+if [ "$TODAY" == "Sunday" ] ; then
+  cd $RUN_DIR
+  echo "Start Building GDK using BitRock Installer"
+  . gdkBuild.sh
+fi
+
+date
+echo "master-nightlyBuild.sh is done..."

@@ -1,0 +1,739 @@
+<!--
+	Collage - The ultimate data integration framework.
+
+	Copyright (C) 2008 GroundWork Open Source, Inc. ("GroundWork")
+	All rights reserved. Use is subject to GroundWork commercial license terms.
+-->
+<!--
+	Top level build script for GroundWork Professional
+	
+	Make sure that the build/prepare.sh run before invoking this build script
+
+-->
+<project default="allBuild"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+
+	<goal name="build"
+		description="Build Guava packages" >
+	
+		<attainGoal name="allBuild" />
+	</goal>
+	
+	<goal name="deploy"
+			description="Deploy Guava packages" >
+		
+			<attainGoal name="allDeploy" />
+		</goal>
+	
+	
+	<goal name='allBuild' 
+		description="Moves all components packages for monitor-professional into the deplyoment folders">
+		
+		<attainGoal name="widgets" />
+		<attainGoal name="gwwidgets" />
+		<attainGoal name="console" />		
+		<attainGoal name="dashboard" />
+		<attainGoal name="foundation" />
+		<attainGoal name="reportserver.build" />
+
+	<!--	
+		<attainGoal name="ezmonarch" />				
+		<attainGoal name="guavachat" />				
+		<attainGoal name="map" />				
+		<attainGoal name="monarch" />				
+		<attainGoal name="monitor" />				
+		<attainGoal name="monitoringserver" />				
+		<attainGoal name="nagios" />				
+		<attainGoal name="nagiosmap" />				
+		<attainGoal name="nagiosreports" />				
+		<attainGoal name="perfconfig" />				
+		<attainGoal name="performance" />				
+		<attainGoal name="profiles" />				
+		<attainGoal name="reports" />				
+		<attainGoal name="svperfgraph" />
+		-->				
+	</goal>
+	
+	<goal name="allClean"
+	        description="Clean the master project and all subprojects">
+	    <attainGoal name="subClean"/>
+	    <attainGoal name="clean"/>
+		
+		<attainGoal name="widgets.clean" />
+		<attainGoal name="gwwidgets.clean" />
+		<attainGoal name="console.clean" />
+		<attainGoal name="dashboard.clean" />
+		<attainGoal name="foundation.clean" />
+		<attainGoal name="reportserver.clean" />
+
+		<!--
+		<attainGoal name="ezmonarch.clean" />				
+		<attainGoal name="guavachat.clean" />				
+		<attainGoal name="map.clean" />				
+		<attainGoal name="monarch.clean" />				
+		<attainGoal name="monitor.clean" />				
+		<attainGoal name="monitoringserver.clean" />				
+		<attainGoal name="nagios.clean" />				
+		<attainGoal name="nagiosmap.clean" />				
+		<attainGoal name="nagiosreports.clean" />				
+		<attainGoal name="perfconfig.clean" />				
+		<attainGoal name="performance.clean" />				
+		<attainGoal name="profiles.clean" />				
+		<attainGoal name="reports.clean" />				
+		<attainGoal name="restrictedui.clean" />				
+		<attainGoal name="svperfgraph.clean" />				
+	  	-->
+	   </goal>
+	
+	<goal name="allDeploy" 
+		description="Deploy build into deploy area" >
+		
+		<attainGoal name="widgets.deploy" />
+		<attainGoal name="gwwidgets.deploy" />
+		<attainGoal name="console.deploy" />		
+		<attainGoal name="dashboard.deploy" />
+		<attainGoal name="foundation.deploy" />
+		<attainGoal name="reportserver.deploy" />
+
+
+		<!--
+		<attainGoal name="ezmonarch.deploy" />				
+		<attainGoal name="map.deploy" />				
+		<attainGoal name="monarch.deploy" />				
+		<attainGoal name="monitor.deploy" />				
+		<attainGoal name="monitoringserver.deploy" />				
+		<attainGoal name="nagios.deploy" />				
+		<attainGoal name="nagiosmap.deploy" />				
+		<attainGoal name="nagiosreports.deploy" />				
+		<attainGoal name="perfconfig.deploy" />				
+		<attainGoal name="performance.deploy" />				
+		<attainGoal name="profiles.deploy" />				
+		<attainGoal name="reports.deploy" />				
+		<attainGoal name="svperfgraph.deploy" />	
+		-->			
+	</goal>
+
+	<!-- 
+		All the components to build Monitor Professional
+	 -->
+	
+
+
+
+
+	<!-- Build svperfgraph-guava package files -->
+			<goal name="svperfgraph" 
+					description="Build">
+			</goal>
+		
+		<!-- Clean  files -->
+			<goal name="svperfgraph.clean" 
+					description="Clean">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/svperfgraph" />
+				
+			</goal>
+		
+		<!-- Deploy files -->
+		<goal name="svperfgraph.deploy" 
+				description="Deploy">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/svperfgraph"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/svperfgraph">
+			    <fileset dir="${basedir}/svperfgraph">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+		</goal>
+	<!--####################################################################-->	
+
+	<!-- Build reports-guava package files -->
+			<goal name="reports" 
+					description="Build">
+			</goal>
+		
+		<!-- Clean  files -->
+			<goal name="reports.clean" 
+					description="Clean">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/reports" />
+				
+			</goal>
+		
+		<!-- Deploy files -->
+		<goal name="reports.deploy" 
+				description="Deploy">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/reports"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/reports">
+			    <fileset dir="${basedir}/reports">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+		</goal>
+	<!--####################################################################-->	
+
+
+	<!-- Build profiles-guava package files -->
+			<goal name="profiles" 
+					description="Build">
+			</goal>
+		
+		<!-- Clean  files -->
+			<goal name="profiles.clean" 
+					description="Clean">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/profiles" />
+				
+			</goal>
+		
+		<!-- Deploy files -->
+		<goal name="profiles.deploy" 
+				description="Deploy">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/profiles"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/profiles">
+			    <fileset dir="${basedir}/profiles">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+		</goal>
+	<!--####################################################################-->	
+
+
+	<!-- Build performance-guava package files -->
+			<goal name="performance" 
+					description="Build">
+			</goal>
+		
+		<!-- Clean  files -->
+			<goal name="performance.clean" 
+					description="Clean">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/performance" />
+				
+			</goal>
+		
+		<!-- Deploy files -->
+		<goal name="performance.deploy" 
+				description="Deploy">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/performance"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/performance">
+			    <fileset dir="${basedir}/performance">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+		</goal>
+	<!--####################################################################-->	
+
+
+	<!-- Build perfconfig-guava package files -->
+			<goal name="perfconfig" 
+					description="Build">
+			</goal>
+		
+		<!-- Clean  files -->
+			<goal name="perfconfig.clean" 
+					description="Clean">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/perfconfig" />
+				
+			</goal>
+		
+		<!-- Deploy files -->
+		<goal name="perfconfig.deploy" 
+				description="Deploy">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/perfconfig"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/perfconfig">
+			    <fileset dir="${basedir}/perfconfig">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+		</goal>
+	<!--####################################################################-->	
+
+	<!-- Build nagiosreports-guava package files -->
+			<goal name="nagiosreports" 
+					description="Build">
+			</goal>
+		
+		<!-- Clean  files -->
+			<goal name="nagiosreports.clean" 
+					description="Clean">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/nagiosreports" />
+				
+			</goal>
+		
+		<!-- Deploy files -->
+		<goal name="nagiosreports.deploy" 
+				description="Deploy">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/nagiosreports"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/nagiosreports">
+			    <fileset dir="${basedir}/nagiosreports">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+		</goal>
+	<!--####################################################################-->	
+
+
+	<!-- Build nagiosmap-guava package files -->
+			<goal name="nagiosmap" 
+					description="Build">
+			</goal>
+		
+		<!-- Clean  files -->
+			<goal name="nagiosmap.clean" 
+					description="Clean">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/nagiosmap" />
+				
+			</goal>
+		
+		<!-- Deploy files -->
+		<goal name="nagiosmap.deploy" 
+				description="Deploy">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/nagiosmap"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/nagiosmap">
+			    <fileset dir="${basedir}/nagiosmap">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+		</goal>
+	<!--####################################################################-->	
+
+
+	<!-- Build NAGIOS-guava package files -->
+			<goal name="nagios" 
+					description="Build">
+			</goal>
+		
+		<!-- Clean  files -->
+			<goal name="nagios.clean" 
+					description="Clean">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/nagios" />
+				
+			</goal>
+		
+		<!-- Deploy files -->
+		<goal name="nagios.deploy" 
+				description="Deploy">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/nagios"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/nagios">
+			    <fileset dir="${basedir}/nagios">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+		</goal>
+	<!--####################################################################-->	
+
+
+	<!-- Build MONITORINGSERVER files -->
+			<goal name="monitoringserver" 
+					description="Build">
+			</goal>
+		
+		<!-- Clean  files -->
+			<goal name="monitoringserver.clean" 
+					description="Clean">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/monitoringserver" />
+				
+			</goal>
+		
+		<!-- Deploy files -->
+		<goal name="monitoringserver.deploy" 
+				description="Deploy">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/monitoringserver"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/monitoringserver">
+			    <fileset dir="${basedir}/monitoringserver">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+		</goal>
+	<!--####################################################################-->	
+
+
+	<!-- Build MONITOR files -->
+			<goal name="monitor" 
+					description="Build">
+			</goal>
+		
+		<!-- Clean  files -->
+			<goal name="monitor.clean" 
+					description="Clean">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/monitor" />
+				
+			</goal>
+		
+		<!-- Deploy files -->
+		<goal name="monitor.deploy" 
+				description="Deploy">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/monitor"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/monitor">
+			    <fileset dir="${basedir}/monitor">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+		</goal>
+	<!--####################################################################-->	
+
+	<!-- Build MONARCH files -->
+			<goal name="monarch" 
+					description="Build MONARCH Monitor-PRO">
+			</goal>
+		
+		<!-- Clean  files -->
+			<goal name="monarch.clean" 
+					description="Clean MONARCH for Monitor-PRO">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/monarch" />
+				
+			</goal>
+		
+		<!-- Deploy files -->
+		<goal name="monarch.deploy" 
+				description="Deploy MONARCH for Monitor-PRO">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/monarch"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/monarch">
+			    <fileset dir="${basedir}/monarch">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+		</goal>
+	<!--####################################################################-->	
+
+	<!-- Build MAP files -->
+			<goal name="map" 
+					description="Build MAP Monitor-PRO">
+			</goal>
+		
+		<!-- Clean MAP files -->
+			<goal name="map.clean" 
+					description="Clean MAP for Monitor-PRO">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/map" />
+				
+			</goal>
+		
+		<!-- Deploy MAP files -->
+		<goal name="map.deploy" 
+				description="Deploy MAP for Monitor-PRO">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/map"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/map">
+			    <fileset dir="${basedir}/map">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+		</goal>
+	<!--####################################################################-->	
+	
+	<!-- Build GUAVACHAT files -->
+			<goal name="guavachat" 
+					description="Build GUAVACHAT Monitor-PRO">
+			</goal>
+		
+		<!-- Clean files -->
+			<goal name="guavachat.clean" 
+					description="Clean GUAVACHAT for Monitor-PRO">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/guavachat" />
+				
+			</goal>
+		
+		<!-- Deploy GUAVACHAT files -->
+		<goal name="guavachat.deploy" 
+				description="Deploy GUAVACHAT for Monitor-PRO">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/guavachat"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/guavachat">
+			    <fileset dir="${basedir}/guavachat">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+		</goal>
+	
+	<!-- Build EZMONARCH files -->
+			<goal name="ezmonarch" 
+					description="Build EZMONARCH Monitor-PRO">
+			</goal>
+		
+		<!-- Clean EZMONARCH files -->
+			<goal name="ezmonarch.clean" 
+					description="Clean EZMONARCH for Monitor-PRO">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/ezmonarch" />
+				
+			</goal>
+		
+		<!-- Deploy EZMONARCH files -->
+		<goal name="ezmonarch.deploy" 
+				description="Deploy EZMONARCH for Monitor-PRO">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/ezmonarch"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/ezmonarch">
+			    <fileset dir="${basedir}/ezmonarch">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+		</goal>
+
+	<!-- Build Dashboard files -->
+			<goal name="dashboard" 
+					description="Build Dashboard Monitor-PRO">
+			</goal>
+		
+		<!-- Clean Report server files -->
+			<goal name="dashboard.clean" 
+					description="Clean Dashboard for Monitor-PRO">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/dashboard" />
+				
+			</goal>
+		
+		<!-- Deploy Dashboard files -->
+		<goal name="dashboard.deploy" 
+				description="Deploy Dashboard for Monitor-PRO">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/dashboard"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/dashboard">
+			    <fileset dir="${basedir}/dashboard">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+
+			<copy file="${basedir}/dashboard/sqldata/dashboard.sql" tofile="${org.groundwork.deploy.prefix}/databases/dashboard.sql" />
+			
+		</goal>
+	
+	<!-- Build widgets files -->
+				<goal name="widgets" 
+						description="Build widgets Monitor-PRO">
+				</goal>
+			
+			<!-- Clean widgets files -->
+				<goal name="widgets.clean" 
+						description="Clean widgets for Monitor-PRO">
+					
+					<delete dir="${org.groundwork.deploy.prefix}/guava/packages/widgets" />
+					
+				</goal>
+			
+			<!-- Deploy widgets files -->
+			<goal name="widgets.deploy" 
+					description="Deploy widgets for Monitor-PRO">
+				
+				
+				<!-- Guava Application -->
+				<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/widgets"/>
+				<copy todir="${org.groundwork.deploy.prefix}/guava/packages/widgets">
+				    <fileset dir="${basedir}/widgets">
+				      <include name="**/*"/>
+				      <exclude name="*/.svn" />
+				    </fileset>
+				</copy>
+				
+			</goal>
+	
+	<!-- Build gwwidgets files -->
+		<goal name="gwwidgets" 
+				description="Build gwwidgets Monitor-PRO">
+		</goal>
+		
+		<!-- Clean gwwidgets files -->
+			<goal name="gwwidgets.clean" 
+					description="Clean gwwidgets for Monitor-PRO">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/gwwidgets" />
+				
+			</goal>
+		
+		<!-- Deploy widgets files -->
+		<goal name="gwwidgets.deploy" 
+				description="Deploy gwwidgets for Monitor-PRO">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/gwwidgets"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/gwwidgets">
+			    <fileset dir="${basedir}/gwwidgets">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+		</goal>
+	
+	
+	<!-- Build console files -->
+		<goal name="console" 
+				description="Build console Monitor-PRO">
+		</goal>
+		
+		<!-- Clean gwwidgets files -->
+			<goal name="console.clean" 
+					description="Clean console for Monitor-PRO">
+				
+				<delete dir="${org.groundwork.deploy.prefix}/guava/packages/console" />
+				
+			</goal>
+		
+		<!-- Deploy widgets files -->
+		<goal name="console.deploy" 
+				description="Deploy console for Monitor-PRO">
+			
+			
+			<!-- Guava Application -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/console"/>
+			<copy todir="${org.groundwork.deploy.prefix}/guava/packages/console">
+			    <fileset dir="${basedir}/console">
+			      <include name="**/*"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+		</goal>
+	
+	<!-- Build Foundation files -->
+	<goal name="foundation" 
+			description="Build Foundation Monitor-PRO">
+	</goal>
+	
+	<!-- Clean Foundation files -->
+		<goal name="foundation.clean" 
+				description="Clean Foundation for Monitor-PRO">
+			<delete dir="${org.groundwork.deploy.prefix}/guava/packages/foundation" />			
+		</goal>
+	
+	<!-- Deploy Foundation files -->
+	<goal name="foundation.deploy" 
+			description="Deploy Foundation for Monitor-PRO">
+		
+		
+		<!-- Guava Application -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/foundation"/>
+		<copy todir="${org.groundwork.deploy.prefix}/guava/packages/foundation">
+		    <fileset dir="${basedir}/../foundation/misc/guava/foundation">
+		      <include name="**/*"/>
+		      <exclude name="*/.svn" />
+		    </fileset>
+		</copy>
+		
+	<!-- PHP API -->
+	<mkdir dir="${org.groundwork.deploy.prefix}/${org.groundwork.php.share}"/>
+	<copy todir="${org.groundwork.deploy.prefix}/${org.groundwork.php.share}">
+		<fileset dir="${basedir}/../foundation/collage/api/php/"  includes="adodb/**" excludes="**/.svn">
+	  	</fileset>
+	 </copy>
+		
+	<copy todir="${org.groundwork.deploy.prefix}/${org.groundwork.php.share}">
+		<fileset dir="${basedir}/../foundation/collage/api/php/" includes="**/collageapi/*" excludes="**/CVS">
+	  	</fileset>
+	  </copy>
+	
+	</goal>
+	
+	<!-- Build Report server files -->
+		<goal name="reportserver.build" 
+				description="Build Report Server for Monitor-PRO">
+		</goal>
+	
+	<!-- Clean Report server files -->
+		<goal name="reportserver.clean" 
+				description="Clean Report Server for Monitor-PRO">
+			
+			<delete dir="${org.groundwork.deploy.prefix}/guava/packages/gwreportserver" />
+			<delete dir="${org.groundwork.report.directory}" />
+			
+		</goal>
+	
+	<!-- Deploy Report server files -->
+	<goal name="reportserver.deploy" 
+			description="Deploy Report Server for Monitor-PRO">
+				
+		<!-- Guava Application -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/gwreportserver"/>
+		<copy todir="${org.groundwork.deploy.prefix}/guava/packages/gwreportserver">
+		    <fileset dir="${basedir}/gwreportserver" excludes="**/.svn">
+		      <include name="**/*" />
+		    </fileset>
+		</copy>
+		
+	</goal>
+
+
+
+</project>

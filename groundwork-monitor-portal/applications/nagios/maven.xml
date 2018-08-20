@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- Coopyright (C) 2010 GroundWork Open Source, Inc. (GroundWork) All rights 
+	reserved. This program is free software; you can redistribute it and/or modify 
+	it under the terms of the GNU General Public License version 2 as published 
+	by the Free Software Foundation. This program is distributed in the hope 
+	that it will be useful, but WITHOUT ANY WARRANTY; without even the implied 
+	warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 
+	GNU General Public License for more details. You should have received a copy 
+	of the GNU General Public License along with this program; if not, write 
+	to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, 
+	MA 02110-1301, USA. -->
+
+<project xmlns:ant="jelly:ant" xmlns:j="jelly:core">
+
+	<goal name="deploy">
+		<echo>Creating symlink ${portal.apps.deploy.root}/${nagios.war.name} to ${nagios.home}</echo>
+		<exec dir="./" executable="ln">
+			<arg line="-s ${nagios.home} ${portal.apps.deploy.root}/${nagios.war.name}" />
+		</exec>
+		<exec dir="./" executable="touch">
+			<arg line="${portal.apps.deploy.root}/${nagios.war.name}.dodeploy" />
+		</exec>
+	</goal>
+
+	<goal name="clean">
+		<delete dir="${portal.apps.deploy.root}/${nagios.war.name}"/>
+	</goal>
+</project>

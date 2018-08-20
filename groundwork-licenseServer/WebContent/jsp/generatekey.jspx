@@ -1,0 +1,79 @@
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<ice:messages errorStyle="color:#FF0000;" infoStyle="color:#347C17;"/>
+		<ice:outputLabel for="menuOrderID" value="Order Id : " />
+		<ice:selectOneMenu id="menuOrderID"
+			value="#{LicenseManagementBean.selectedOrderID}">
+
+			<f:selectItem id="menuItemHostAllFilters" itemValue=""
+				itemLabel="Select OrderID" />
+			<f:selectItems id="menuItemsOrderIDList"
+				value="#{LicenseManagementBean.orderIDList}" />
+		</ice:selectOneMenu>
+		<ice:commandButton id="genLickeyBtn" value="Create License Key"
+			actionListener="#{LicenseManagementBean.generateLicenseKey}"
+			styleClass="text" />
+
+		<table>
+			<tr>
+				<td><ice:outputLabel for="DeviceSoftLimittxt"
+					value="Device Soft Limit : " /> <ice:outputText
+					value="#{LicenseManagementBean.dispalyOrder.softLimitDevice}"
+					id="DeviceSoftLimittxt"></ice:outputText></td>
+			</tr>
+			<tr>
+				<td><ice:outputLabel for="DeviceHardLimittxt"
+					value="Device Hard Limit : " /> <ice:outputText
+					value="#{LicenseManagementBean.dispalyOrder.hardLimitDevice}"
+					id="DeviceHardLimittxt"></ice:outputText></td>
+			</tr>
+			<tr>
+				<td><ice:outputLabel for="StartDatetxt"
+					value="StartDate Limit : " /> <ice:outputText
+					value="#{LicenseManagementBean.dispalyOrder.startDate}"
+					id="StartDatetxt"></ice:outputText></td>
+			</tr>
+			<tr>
+				<td><ice:outputLabel for="ExpiryDatetxt" value="Expiry Date : " />
+				<ice:outputText
+					value="#{LicenseManagementBean.dispalyOrder.expiryDate}"
+					id="ExpiryDatetxt"></ice:outputText></td>
+			</tr>
+			<tr>
+				<td><ice:outputLabel for="HardExpirationDatetxt"
+					value="Hard Expiration Date : " /> <ice:outputText
+					value="#{LicenseManagementBean.dispalyOrder.hardLimitExpiryDate}"
+					id="HardExpirationDatetxt"></ice:outputText></td>
+			</tr>
+			<tr>
+				<td><ice:outputLabel for="Versiontxt" value="Version : " /> <ice:outputText
+					value="#{LicenseManagementBean.dispalyOrder.productVersion}"
+					id="Versiontxt"></ice:outputText></td>
+			</tr>
+			<tr>
+				<td><ice:outputLabel for="NetworkServiceRequiredtxt"
+					value="Network Service Required : " /> <ice:outputText
+					value="#{LicenseManagementBean.dispalyOrder.networkServiceRequired}"
+					id="NetworkServiceRequiredtxt"></ice:outputText></td>
+			</tr>
+		</table>
+		<ice:outputLabel for="displaykeyTxt" value="License Key : "
+			styleClass="text" />
+		<ice:panelGroup>
+			<ice:inputTextarea id="displaykeyTxt" rows="12" cols="100"
+				value="#{LicenseManagementBean.dispalyOrder.licenseKey}"
+				readonly="true" styleClass="text" />
+		</ice:panelGroup>
+	</ui:define>
+</ui:composition>
+
+
+
+
+
+

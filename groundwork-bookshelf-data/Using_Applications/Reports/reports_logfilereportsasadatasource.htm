@@ -1,0 +1,150 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0014)about:internet -->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Adobe RoboHelp 8" />
+<title>Log File Reports as a Data Source</title>
+<link rel="StyleSheet" href="../../Bookshelf.css" type="text/css" />
+<script type="text/javascript" language="JavaScript">
+//<![CDATA[
+function reDo() {
+  if (innerWidth != origWidth || innerHeight != origHeight)
+     location.reload();
+}
+if ((parseInt(navigator.appVersion) == 4) && (navigator.appName == "Netscape")) {
+        origWidth = innerWidth;
+        origHeight = innerHeight;
+        onresize = reDo;
+}
+onerror = null; 
+//]]>
+</script>
+<style type="text/css">
+/*<![CDATA[*/
+<!--
+div.WebHelpPopupMenu { position:absolute;
+left:0px;
+top:0px;
+z-index:4;
+visibility:hidden; }
+-->
+/*]]>*/
+</style>
+
+<script type="text/javascript" language="javascript1.2" src="../../whmsg.js">
+</script>
+<script type="text/javascript" language="javascript" src="../../whver.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../whproxy.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../whutils.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../whlang.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../../whtopic.js">
+</script>
+</head>
+<body>
+<script type="text/javascript" language="javascript1.2">
+//<![CDATA[
+<!--
+if (window.gbWhTopic)
+{
+        var strUrl = document.location.href;
+        var bc = 0;
+        var n = strUrl.toLowerCase().indexOf("bc-");
+        if(n != -1)
+        {
+                document.location.href = strUrl.substring(0, n);
+                bc = strUrl.substring(n+3);
+        }
+
+        if (window.addTocInfo)
+        {
+        addButton("show",BTN_TEXT,"Show Table of Contents","","","","",0,0,"","","");
+
+        }
+        if (window.writeBtnStyle)
+                writeBtnStyle();
+
+        if (window.writeIntopicBar)
+                writeIntopicBar(1);
+
+        
+        
+
+        if (window.setRelStartPage)
+        {
+        setRelStartPage("../../Bookshelf.htm");
+
+                autoSync(0);
+                sendSyncInfo();
+                sendAveInfoOut();
+        }
+}
+else
+        if (window.gbIE4)
+                document.location.reload();
+
+//-->
+//]]>
+</script><script type="text/javascript" language="javascript">
+//<![CDATA[
+document.write("<p  style=\"text-align:right;color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;\">");
+AddMasterBreadcrumbs("../../Bookshelf.htm", "color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;", "&gt;", "Home", "../../Welcome_to_GroundWork_Monitor/index.htm");
+document.write("Log File Reports as a Data Source<\/p>");
+//]]>
+</script>
+<p>&#160;</p>
+<h1><img src="../../Shared_Images/square.gif" alt="square.gif" style="border: none;" width="15" height="15" border="0" /> Custom Reports</h1>
+<h3 align="right"><img src="../../Shared_Images/homeicon.gif" alt="homeicon.gif" style="border: none;" width="33" height="27" border="0" /> <img src="../../Shared_Images/printicon.gif" onclick="window.print()" alt="Print Page" title="Print Page" style="border: none;" width="31" height="27" border="0" /> <a href="mailto:support@groundworkopensource.com?subject=Setting up Log File Reports as a Data Source" title="Send Comments"><img src="../../Shared_Images/commentsicon.gif" alt="commentsicon.gif" style="border: none;" width="33" height="27" border="0" /></a></h3>
+<h2>Setting up Log File Reports as a Data Source</h2>
+<h3>Configuring MySQL for Log File Reports</h3>
+<p>The installation of the MySQL driver is used for Log Reports and availability information (dashboard database). &#160;The Report Designer must use the JDBC Data Source in order to access this information.</p>
+<ol>
+<li class="p-Numbering" style="font-weight: normal;" type="1">
+<p class="Numbering" style="font-weight: normal;"><b><span style="font-weight: normal;">If you have not yet setup your database permissions you will need to start by running the following command to grant permissions to the log report user. For example:</span></b></p>
+</li>
+</ol>
+<p style="margin-left: 40px;"><b style="font-weight: bold;"><span style="font-weight: normal;">Login to the groundwork server and execute the command:</span> <span class="CodeInline">mysql</span></b></p>
+<p style="margin-left: 40px;"><b><span style="font-weight: normal;">At the <span class="CodeInline">mysql&gt;</span> prompt type the command which gives permission to access the logreports DB from any Host:</span></b></p>
+<p style="margin-left: 40px;"><b><span style="font-weight: normal;"><span class="CodeInline">grant all privileges on logreports.* to logreports@'%' identified by 'gwrk';</span> &#160;</span></b></p>
+<ol start="2">
+<li class="p-Numbering" style="font-weight: normal;">
+<p class="Numbering" style="font-weight: normal;"><b><span><b style="font-weight: bold;"><span style="font-weight: normal;">In the Report Designer, select the</span> <span style="font-weight: bold;"><b>Data</b></span> <span style="font-weight: normal;">menu option.</span></b></span></b></p>
+</li>
+<li class="p-Numbering" style="font-weight: normal;">
+<p class="Numbering"><b><span><b><span style="font-weight: normal;">Select <b>New Data Source</b>.</span></b></span></b></p>
+</li>
+<li class="p-Numbering" style="font-weight: normal;">
+<p class="Numbering" style="font-weight: normal;"><b><span style="font-weight: normal;"><b style="font-weight: normal;"><span style="font-weight: normal;">Click on</span> <span style="font-weight: bold;"><b>JDBC Data Source</b></span> <span style="font-weight: normal;">and enter a</span> <span style="font-weight: bold;"><b>Data Source Name</b></span> <span style="font-weight: normal;">(e.g.</span> <span class="CodeInline">Log File Reports Data Source</span>) in the space provided and click</b> <b><span style="font-weight: bold;"><b>Next</b></span></b>.</span></b></p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering"><b><span style="font-weight: normal;">Click on <span style="font-weight: bold;"><b>Manage Drivers</b></span><span style="font-weight: normal;">.</span></span></b></p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering"><b><span style="font-weight: normal;">Select <span style="font-weight: bold;"><b>Add</b></span> and browse to the <span class="CodeInline">MyDocuments/GWCustomReports</span> directory to select the <span class="CodeInline">mysql-connector-java-3.1.13.jar</span> file, select <span style="font-weight: bold;"><b>OK</b></span>.</span></b></p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering"><b><span style="font-weight: normal;">Next, select the <span style="font-weight: bold;"><b>Driver</b></span> <span style="font-weight: bold;"><b>Class</b></span> <span class="CodeInline">com.mysql.jdbc.Driver (3.1)</span> from the drop-down list in the first box.</span></b></p>
+</li>
+</ol>
+<div style="width: 100%; position: relative;" id="footer">
+<p class="Footer" style="font-size: 7pt; line-height: Normal; margin-top: 6pt; margin-bottom: 4pt;">GroundWork, Inc. ©2011</p>
+</div>
+<script type="text/javascript" language="javascript1.2">
+//<![CDATA[
+<!--
+if (window.writeIntopicBar)
+        writeIntopicBar(0);
+
+
+highlightSearch();
+//-->
+//]]>
+</script>
+</body>
+</html>

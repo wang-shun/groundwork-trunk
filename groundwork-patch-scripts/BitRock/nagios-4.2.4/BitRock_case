@@ -1,0 +1,126 @@
+It has recently come to light that older releases of Nagios are subject
+to a few security bugs.  The most efficient way for GroundWork to
+address them seems to be to upgrade to the current upstream release,
+instead of trying to fix the Nagios 3.5.1 release that we currently ship
+in GWMEE 7.1.1.  We have therefore investigated what it will take for
+GroundWork to move forward with a build of the latest available version.
+It requires both revisiting our local patches, and revising the Bronx
+event broker to adapt to changes within the Nagios implementation.
+
+Nagios 4.2.4 is the current upstream version.  It was officially released
+on 2016-12-07, and we have now updated our set of patches to make them
+compatible with it, adapting to changes in the new release.  To make it
+easier to understand what steps to take when building, the new set of
+patches is being kept distinct from the patch set used for Nagios 3.5.1.
+
+There are a few changes in Nagios 4.2.4 that cause it to be incompatible
+with our existing version of Bronx.  We have dealt with that both by
+patching Nagios itself, and by updating the Bronx code to match the
+changes in Nagios.  We have modified the Bronx code using conditional
+compilation, so we could still repair any issues in older releases
+if necessary.  The Bronx Makefile now defines a NAGIOS_4_2_4_OR_LATER
+symbol during the compilation, and this enables compatibility with the
+Nagios 4.2.4 release.
+
+The Nagios 4.2.4 release can be downloaded from the upstream repository
+by following a redirect to a specific server starting from:
+
+    https://downloads.sourceforge.net/project/nagios/nagios-4.x/nagios-4.2.4/nagios-4.2.4.tar.gz
+
+However, for convenience in building, we have captured a copy of that
+tarball and placed it into Subversion alongside our patches for this
+release.  This will also insulate us against possible unavailability of
+this tarball from the upstream source in the future.
+
+The tarball and the new set of Nagios patches from GroundWork are both
+available in this directory in Subversion:
+
+    http://geneva/groundwork-professional/trunk/patch-scripts/BitRock/nagios-4.2.4/
+
+The README file in that directory contains all the notes we took while
+developing the patches for this Nagios release.  This includes details
+of the order in which the patches must be applied.  There is still also
+a cgi/statuswml2.c file under that directory, to be added to the Nagios
+4.2.4 release before building it.  But more to the point for BitRock, that
+directory contains a Makefile which automates all the complications of the
+source-code unrolling, patching, configuration, building, and installation
+of Nagios and its associated CGI programs and other files, except for the
+final steps that BitRock takes to rename the final binaries and create
+wrappers for them.  Because of the complexity of all of these steps,
+we highly recommend that BitRock base your builds on this Makefile, or
+some automatically-derived variation of it.  It installs directly into
+the /usr/local/groundwork/ tree, so you will need to have that available
+and you can pick up and process the final results there.
+
+Note:  The following two programs relate to the "embedded Perl" facility
+in previous releases of Nagios.  Nagios 4.2.4 has completely dropped
+support for embedded Perl, so these programs are no longer produced
+during the build.
+
+    /usr/local/groundwork/nagios/bin/mini_epn
+    /usr/local/groundwork/nagios/bin/new_mini_epn
+
+Note:  The set of files for the new Nagios release has also changed in
+other ways.  Most of those changes are due to the upstream release itself.
+But we have also edited the build process to omit installation of Nagios
+PHP files, since we have no use for them in the GroundWork context and
+some of them have been the source of security issues in the past.
+
+The updated Bronx code is available under its usual directory in
+Subversion:
+
+    http://geneva/groundwork-professional/trunk/monitor-core/bronx/
+
+The Makefile in that directory has been updated to reflect the changes
+required to be compatible with the Nagios 4.2.4 release.  There is also
+a new "make install" option to install the Bronx library directly into
+where it lives in the final deployed GWMEE release.  Before you can build
+Bronx, you must have already installed the Nagios 4.2.4 header files.
+We have a separate "make installheaders" target for that back in the
+Nagios build.  Then back in the Bronx build, "make clean all" will get
+the compilation done, while "make install" will copy the result to its
+final resting place if that is convenient for your purposes.
+
+For both the Nagios build and the Bronx build, you must be either the
+root user or the nagios user to carry out the final installation steps.
+
+Here's a summary of the steps that BitRock must carry out.  The Subversion
+checkout commands shown here dump the checked-out file trees directly
+into the current directory; adjust as needed for your situation.
+
+    # The Makefile installation steps install files and directories in their
+    # ordinary locations in a GWMEE deployment.  The same base directory must
+    # be available on your build machine to catch the installed files.
+    mkdir -p /usr/local/groundwork
+    chown nagios:nagios /usr/local/groundwork
+
+    cd {local-nagios-build-location}
+    svn co http://geneva/groundwork-professional/trunk/patch-scripts/BitRock/nagios-4.2.4/ .
+    make distclean all verify
+    #
+    # To create the installed GWMEE artifacts under the
+    # /usr/local/groundwork/nagios/ directory:
+    make install          # must be run as root or nagios
+    #
+    # To create matching header files for the Bronx build under
+    # the /usr/local/groundwork/common/include/nagios/ directory,
+    # but not to be included in the final GWMEE build:
+    make installheaders   # must be run as root or nagios
+    #
+    (execute steps to create the usual BitRock wrappers)
+
+    cd {local-bronx-build-location}
+    svn co http://geneva/groundwork-professional/trunk/monitor-core/bronx/ .
+    make clean all
+    #
+    # The built library can be found as the dist/libbronx.so file.  If you wish
+    # to install it in the final /usr/local/groundwork/common/lib/ directory,
+    # you can do so this way:
+    make install          # must be run as root or nagios
+
+Please integrate the new version of Nagios into GWMEE 7.1.2 development
+builds, and update Bronx accordingly.  We will also be folding the new
+code into a patch to be applied to the GWMEE 7.1.1 release.
+
+Glenn
+

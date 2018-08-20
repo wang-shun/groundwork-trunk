@@ -1,0 +1,19 @@
+#!/bin/bash -e
+
+# Copyright 2013 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+if [ $# -ne 2 ]; then
+    echo "usage:  make_build_info jira_integration_release subversion_build"
+    exit 1
+fi
+
+jira_integration_release="$1"
+svn_build="$2"
+build_time=`date`
+
+cat << eof
+JIRA Integration Release:  $jira_integration_release
+     Subversion Revision:  $svn_build
+              Build Time:  $build_time
+eof

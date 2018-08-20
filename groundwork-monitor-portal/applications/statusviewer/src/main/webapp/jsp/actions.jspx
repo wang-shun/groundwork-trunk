@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<jsp:root version="1.2" xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<jsp:directive.page contentType="text/html;charset=ISO-8859-1"
+		pageEncoding="ISO-8859-1" />
+
+	<f:view>
+		<ice:outputDeclaration doctypeRoot="HTML"
+			doctypePublic="-//W3C//DTD HTML 4.01 Transitional//EN"
+			doctypeSystem="http://www.w3.org/TR/html4/loose.dtd" />
+		<html>
+		<body>
+		<ice:portlet>
+			<ui:composition template="/templates/template.xhtml">
+				<ui:define name="content">
+					<f:loadBundle basename="#{localeBean.baseName}" var="message" />
+					<ice:inputHidden id="actipHiddn" value="#{actionBean.hiddenField}"></ice:inputHidden>
+					<!--  error message for action handler - START -->
+					<ice:panelGroup rendered="#{!actionBean.error}"
+						id="outerPanel">
+					<ice:panelGroup rendered="#{actionHandler.error}"
+						id="actpanelErrorForHandler">
+						<ui:include src="/jsp/error.jspx">
+							<ui:param name="errorMessage"
+								value="#{actionHandler.errorMessage}" />
+						</ui:include>
+						<ice:commandButton id="actcmdRetryNowForHandler"
+							value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+							actionListener="#{actionHandler.reloadPage}">
+						</ice:commandButton>
+					</ice:panelGroup>
+					<!--  error message for action handle - END -->
+
+					<!--  error message for action bean -START -->
+					<ice:panelGroup rendered="#{actionBean.error}"
+						id="actpanelErrorForBean">
+						<ui:include src="/jsp/error.jspx">
+							<ui:param name="errorMessage" value="#{actionBean.errorMessage}" />
+						</ui:include>
+						<ice:commandButton id="actcmdRetryNowForBean"
+							value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+							actionListener="#{actionHandler.reloadPage}"></ice:commandButton>
+					</ice:panelGroup>
+					<!--  error message for action bean - END -->
+					<table id="acttbl_menu" align="left" border="0"
+						class="actions_strip" cellspacing="0" cellpadding="0">
+						<tr>
+							<td><ice:panelGroup id="actpanelgrpMenu"
+								rendered="#{!(actionHandler.error || actionBean.error)}">
+
+								<ice:menuBar id="actmenubar" orientation="horizontal"
+									displayOnClick="true">
+
+									<ice:menuItems id="actmenuitemsParent"
+										value="#{actionBean.parentMenuList}" styleClass="menuBorder"
+										actionListener="#{actionHandler.showPopup}">
+									</ice:menuItems>
+
+								</ice:menuBar>
+
+
+								
+							</ice:panelGroup></td>
+						</tr>
+					</table>
+					</ice:panelGroup>
+				</ui:define>
+			</ui:composition>
+		</ice:portlet>
+		</body>
+		</html>
+	</f:view>
+</jsp:root>
+

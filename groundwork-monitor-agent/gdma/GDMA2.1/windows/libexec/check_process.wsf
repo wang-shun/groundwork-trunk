@@ -1,0 +1,140 @@
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' "check_process.wsf"
+' nagios@samurai.inka.de
+'
+' 02.06.2003 ver 1.1
+' 
+' --------------------------------------------------------------
+' Checks If at least one defined process Is running.
+'
+
+<job>
+<runtime>
+  <description>
+check_process (nrpe_nt-plugin) 1.1
+The nagios plugins come with ABSOLUTELY NO WARRANTY. You may redistribute
+copies of the plugins under the terms of the GNU General Public License.
+For more information about these matters, see the file named COPYING.
+Copyright (c) 1999-2001 Ethan Galstad/Hagen Deike (nagios@samurai.inka.de)
+
+Checks If at least one defined process Is running.
+  </description>
+  <named
+    name="h"
+    helpstring="Help"
+    type="simple"
+    required="false" 
+  />
+  <named
+    name="info"
+    helpstring="Returns a list of all processes by ID and name"
+    type="simple"
+    required="false"
+  />
+  <unnamed
+    name="process"
+    helpstring="The process to watch"
+    many="false"
+    required="true"
+  />
+  <named
+    name="host"
+    helpstring="Defines the netbios name of the system to monitor"
+    type="string"
+    required="false"
+  />
+  <example>
+Example: check_process.wsf /info
+         Will return a list of all processes that are running.
+         The output will look As follows:
+         
+         ID     Process
+         -------------------------------
+         0      System Idle Process
+         4      System
+         1312   smss.exe
+         1392   csrss.exe
+         1416   winlogon.exe
+         1460   services.exe
+         1472   lsass.exe
+         1688   svchost.exe
+         [...]
+         
+         To use the plugin you need the string Or the ID that Is returned.
+         In this Case If you wish To monitor the winlogon.exe process you
+         use this command
+         
+         check_process.wsf winlogon.exe
+
+         Please notice that the String Is Case sensitive
+  </example>
+</runtime>
+<script language="VBScript">
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Const's and Var's
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'Cons for return val's
+Const intOK = 0
+Const intWarning = 1
+Const intCritical = 2
+Const intUnknown = 3
+
+' Cons for FSO
+Const ForReading = 1
+Const ForWriting = 2
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Help
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+If Wscript.Arguments.Named.Exists("host") Then
+	strComputer = Wscript.Arguments.Named("host")
+Else
+	strComputer = "."
+End If
+
+If Wscript.Arguments.Named.Exists("info") Then
+	Set objWMIService = GetObject("winmgmts:" & "{impersonationLevel=impersonate}!\\"& strComputer &"\root\cimv2")
+	Set colProcesses = objWMIService.ExecQuery("Select * from Win32_Process")
+
+	Wscript.Echo Vbcrlf &" ID"& vbTab &"Process"
+	Wscript.Echo "------------------------------------------------------------"
+	For Each objProcess In colProcesses 
+		Wscript.Echo " "& objProcess.ProcessID & Vbtab & objProcess.Name
+	Next
+	Wscript.Quit(intUnknown)
+End If
+
+If Wscript.Arguments.Named.Exists("h") Or Wscript.Arguments.Unnamed.Count <= 0 Or Wscript.Arguments.Unnamed.Count > 1 Then
+	Wscript.Echo "Plugin help screen:"
+      Wscript.Arguments.ShowUsage()
+      Wscript.Quit(intUnknown)
+End If
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Main
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+'Set objDictionary = CreateObject("Scripting.Dictionary")
+Set objWMIService = GetObject("winmgmts:" & "{impersonationLevel=impersonate}!\\"& strComputer &"\root\cimv2")
+Set colProcesses = objWMIService.ExecQuery("Select * from Win32_Process")
+
+intProcCounter = 0
+For Each objProcess In colProcesses 
+	'	objDictionary.Add objProcess.ProcessID, objProcess.Name 
+	'	Wscript.Echo " "& objProcess.ProcessID & Vbtab & objProcess.Name
+
+	If objProcess.Name = Wscript.Arguments.Unnamed.Item(0) Then
+		intProcCounter = intProcCounter + 1
+	End If
+
+Next
+If intProcCounter > 0 Then
+	Wscript.Echo "There are "& intProcCounter &" "& Wscript.Arguments.Unnamed.Item(0) &" processes running."
+	Wscript.Quit(intOK)
+End If
+
+Wscript.Echo "No processes were found."
+Wscript.Quit(intCritical)
+	
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+</script>
+</job>

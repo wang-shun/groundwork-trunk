@@ -1,0 +1,37 @@
+*** noma_2.0.3/share/Makefile.in.orig	Mon Nov 21 03:25:24 2011
+--- noma_2.0.3/share/Makefile.in	Wed Aug 29 16:51:50 2012
+***************
+*** 1,6 ****
+--- 1,7 ----
+  SUBST = @abs_top_builddir@/subst.sh
+  INSTALL=@INSTALL@
+  INSTALLOPTS=@INSTALLOPTS@
++ PUBLIC_MODE = -m 644
+  datarootdir = @datarootdir@
+  sysconfdir = @prefix@/etc
+  prefix = @prefix@
+***************
+*** 19,29 ****
+  
+  install: noma
+  	$(INSTALL) $(INSTALLOPTS) -d $(RELDIR)
+! 	$(INSTALL) $(INSTALLOPTS) -t $(RELDIR) $(FILES)
+  	for subdir in $(SUBDIRS); \
+  	do \
+  		$(INSTALL) $(INSTALLOPTS) -d $(RELDIR)/$$subdir; \
+! 		$(INSTALL) $(INSTALLOPTS) -t $(RELDIR)/$$subdir $$subdir/*; \
+  	done
+  
+  .PHONY: install
+--- 20,30 ----
+  
+  install: noma
+  	$(INSTALL) $(INSTALLOPTS) -d $(RELDIR)
+! 	$(INSTALL) $(INSTALLOPTS) $(PUBLIC_MODE) -t $(RELDIR) $(FILES)
+  	for subdir in $(SUBDIRS); \
+  	do \
+  		$(INSTALL) $(INSTALLOPTS) -d $(RELDIR)/$$subdir; \
+! 		$(INSTALL) $(INSTALLOPTS) $(PUBLIC_MODE) -t $(RELDIR)/$$subdir $$subdir/*; \
+  	done
+  
+  .PHONY: install

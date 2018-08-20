@@ -1,0 +1,53 @@
+--- /usr/local/groundwork/common/bin/sendEmail	2016-05-03 01:37:49.000000000 -0700
++++ sendEmail	2016-06-13 13:09:14.000000000 -0700
+@@ -130,6 +130,9 @@
+ if ($@) { $conf{'tls_client'} = 0; }
+ else    { $conf{'tls_client'} = 1; }
+ 
++# We need symbols imported from IO::Socket::SSL so we get access to SSL_VERIFY_PEER in Perl's strict mode.
++use IO::Socket::SSL;
++
+ 
+ 
+ 
+@@ -1903,9 +1906,37 @@
+     if ($conf{'tls_server'} == 1 and $conf{'tls_client'} == 1 and $opt{'tls'} =~ /^(yes|auto)$/) {
+         printmsg("DEBUG => Starting TLS", 2);
+         if (SMTPchat('STARTTLS')) { quit($conf{'error'}, 1); }
+-        if (! IO::Socket::SSL->start_SSL($SERVER, SSL_version => 'SSLv3 TLSv1')) {
+-            quit("ERROR => TLS setup failed: " . IO::Socket::SSL::errstr(), 1);
+-        }
++	if (
++	    # Use of SSLv3 here is highly questionable, as it's now known to be insecure.
++	    # In fact, TLSv1 isn't necessarily so great, either (it's possibly subject to the
++	    # POODLE v2 vulnerability, depending on the implementation).  TLSv12 (or later,
++	    # if someday available) would be better.
++	    #
++	    # The SSL_ca_path is where you should be parking certificates for use by this script.
++	    # If you have some other favorite directory for this particular application, specify
++	    # that path instead.
++	    #
++	    # Also, the cipher list (SSL_cipher_list value) used by this call perhaps ought
++	    # to be verified.  (A simple RC4 cipher is now considered to be insecure.)  But
++	    # perhaps the best choice in that regard is to upgrade the IO::Socket::SSL package
++	    # to its current release and use whatever default cipher list is specified there,
++	    # as that has more likely undergone some appropriate scrutiny than whatever
++	    # investigation we might do on our own.
++	    #
++	    # Finally, if you're using certificates, you might want SSL_check_crl => 1 as well,
++	    # though that can perhaps be more easily managed by simply removing any compromised
++	    # certificates from the local SSL_ca_path directory instead of adding a revocation
++	    # list file to that directory.
++	    !IO::Socket::SSL->start_SSL(
++		$SERVER,
++		SSL_version     => 'TLSv12', # SSL_version => 'SSLv3:TLSv1' is possible but insecure
++		SSL_verify_mode => SSL_VERIFY_PEER,
++		SSL_ca_path     => '/usr/local/groundwork/common/openssl/certs'
++	    )
++	  )
++	{
++	    quit( "ERROR => TLS setup failed: " . IO::Socket::SSL::errstr(), 1 );
++	}
+         printmsg("DEBUG => TLS: Using cipher: ". $SERVER->get_cipher(), 3);
+         printmsg("DEBUG => TLS session initialized :)", 1);
+         

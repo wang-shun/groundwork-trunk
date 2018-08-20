@@ -1,0 +1,81 @@
+<rant>
+
+I'm trying to fill in the Test Plan and Test Report documents,
+based on the Mirantis-provided templates for these documents.
+Some issues have come up in this effort, which I want to comment on.
+
+First, the document templates have messy formatting.  I cleaned up
+the formatting in both documents before attempting to fill in any
+GroundWork-specific material.  The tables no longer overflow the
+text-box on each page, and cleaned-up paragraph and text styles
+are used consistently throughout.
+
+Second, the fonts in the document templates indicate strongly
+that these templates originated on a Windows system.  I don't
+touch Windows if I can help it, and I don't see why they should use
+Windows-specific fonts.  I therefore fiddled with the fonts a bit and
+eiminated any that I could not also support on a Linux system without
+concerns about both availability and licensing.  Ultimately, I will
+check in the Test Plan and Test Report into the Github repository
+for our plugin, and alongside them will be a README.testdocs file
+that describes the font usage within the documents, and how to
+obtain and install the necessary fonts on a Linux machine.
+
+Linux, of course, is where we're developing and maintaining the
+plugin, and it makes sense to maintain the documentation right along
+with the plugin code.  But Linux, of course, doesn't run Microsoft
+Office.  So the documents have been edited using LibreOffice,
+and I am storing the official GroundWork copies of these documents
+in its native .odt format so as not to lose any of the carefully
+improved formatting.  LibreOffice easily produces PDF output,
+which is probably all you care about in the end anyway.
+
+Now, as for the content of these documents.
+
+You present a table of "Testing tools recommended by Mirantis".
+I'm coming at this as a competent programmer who knows nothing
+about Mirantis OpenStack.  In reading that table, I see that you
+have hyperlinks to certain tools, but those links do not provide
+useful guidance.  For instance, the "OSTF" link points to
+https://github.com/openstack/fuel-ostf/tree/master/fuel_health/tests
+.
+
+I find the Test Plan structure rather confusing.  You want Functional
+Testing and you want System Testing, but nowhere do you talk about
+what the purpose of each type of testing is, so we plugin developers
+can immediately see which category a given test is supposed to
+fit into.  In fact, from reading only the Test Plan, I can't tell
+at all what aspect it is by which you intend to distinguish these
+two categories.
+
+Also, the Test Plan lists a lot of possible tests, and the linked-to
+docs give hints as to how to run such tests, but nowhere do I see
+so far about how to actually *write* such tests and install them
+into the testing infrastructure, for a new plugin.  Is that not the
+point of a plugin Test Plan?  The template doc needs strong hints
+about where to find such information.  You can't claim that getting a
+new plugin validated involves throwing together some documentation,
+without also stating clearly that a substantial amount of work has
+to be done beforehand to actually *implement* such tests!  I don't
+expect you to pull complete external manuals into this document,
+but one or two examples would be a good idea to get the developer
+started.
+
+Also note that under "Testing tools recommended by Mirantis", the
+"Tempest" link leads to a MOS-Tempest-Runner page that says in part:
+
+    WARNING: Use mos-tempest-runner to run Tempest against PRODUCTION
+    OpenStack clouds at own risk!  These scripts may break the
+    OpenStack cloud!  Pay attention that mos-tempest-runner was
+    initially designed to run Tempest on CI and test OpenStack
+    environments!
+
+Well, that's not very encouraging.  If you're going to recommend
+that plugin developers spend time developing tests, shouldn't
+they be targeting safe tools that can be used to diagnose
+production problems, so as not to waste effort?  And for that
+matter, wouldn't it perhaps be better to have the link point
+to Tempest itself (like https://github.com/openstack/tempest or
+https://pypi.python.org/pypi/Tempest), not some ancillary tool?
+
+</rant>

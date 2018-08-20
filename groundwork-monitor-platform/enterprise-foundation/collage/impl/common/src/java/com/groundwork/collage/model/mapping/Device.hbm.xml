@@ -1,0 +1,148 @@
+<?xml version="1.0"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Inc. info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-->
+<!DOCTYPE hibernate-mapping PUBLIC
+	"-//Hibernate/Hibernate Mapping DTD 2.0//EN"
+	"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd" >
+	
+<hibernate-mapping default-lazy="false" >
+<!-- 
+	Created by the Middlegen Hibernate plugin 2.1
+
+	http://boss.bekk.no/boss/middlegen/
+	http://www.hibernate.org/
+-->
+
+<class 
+	name="com.groundwork.collage.model.impl.Device" 
+	table="Device"
+>
+
+	<id
+		name="deviceId"
+		type="java.lang.Integer"
+		column="DeviceID"
+	>
+		<generator class="native">
+            <param name="sequence">device_deviceid_seq</param>
+         </generator>
+	</id>
+	
+	<property
+		name="identification"
+		type="java.lang.String"
+		column="Identification"
+		not-null="true"
+		unique="true"
+		length="128"
+	/>	
+
+	<property
+		name="displayName"
+		type="java.lang.String"
+		column="DisplayName"
+		length="254"
+	/>
+	
+	<property
+		name="description"
+		type="java.lang.String"
+		column="DESCRIPTION"
+		length="254"
+	/>
+
+	<!-- Associations -->
+  
+	<!-- bi-directional one-to-many association to Host -->
+	<set
+		name="hosts"
+		lazy="true"
+		inverse="true"
+		cascade="all"
+	>
+		<key>
+			<column name="DeviceID" />
+		</key>
+		<one-to-many 
+			class="com.groundwork.collage.model.impl.Host"
+		/>
+	</set>
+
+	<!-- 
+		bi-directional many-to-many parent/child relationship between devices 
+		Note that the 'child' side is the 'inverse' side of the relationship;
+		in hibernate terms, this means that in order to persist the relationship, 
+		the parent side has to be saved
+	-->
+	<set 
+		name="parents"
+		table = "DeviceParent"
+		lazy="false"
+		cascade="none" 
+		inverse="true"
+	>
+		<key column="DeviceID" />
+		<many-to-many class="com.groundwork.collage.model.impl.Device" column="ParentID" />
+	</set>
+		
+	<set 
+		name="children"
+		table = "DeviceParent"
+		lazy="false"
+		cascade="none"
+	>
+		<key column="ParentID" />
+		<many-to-many class="com.groundwork.collage.model.impl.Device" column="DeviceID" />
+	</set>
+ 
+		
+	<!-- 
+		uni-directional many-to-many association, 
+	-->
+	<set 
+		name="monitorServers"
+		table = "MonitorList"
+		lazy="true"
+		cascade="save-update"
+		inverse="false"
+	>
+		<key column="DeviceID" />
+		<many-to-many class="com.groundwork.collage.model.impl.MonitorServer" column="MonitorServerID" />
+	</set>	
+
+	<!-- 
+		EntityProperty holds the PropertyValues of multiple tables, and hence it
+		is important that the 'where' clause accurately represent the EntityTypeID of the
+		DEVICE entity in the EntityType table
+	-->
+    <set
+        name="propertyValues"
+        lazy="false"
+        inverse="true"
+        cascade="all,delete-orphan"
+        where="EntityTypeID = 4"
+    >
+        <key>
+            <column name="ObjectID" />
+        </key>
+        <one-to-many 
+            class="com.groundwork.collage.model.impl.EntityPropertyValue"
+        />
+    </set>	
+</class>
+</hibernate-mapping>

@@ -1,0 +1,710 @@
+================================================================
+Notes on the Nagios 4.3.1 Release
+================================================================
+
+March 20, 2017
+
+----------------------------------------------------------------
+
+To build Nagios 4.3.1 here at GroundWork for development testing,
+use the sibling Makefile.  It contains all the build instructions for
+splaying out the upstream distribution, then patching, configuring,
+compiling, and installing the software.  The installation process will
+install header files in /usr/local/groundwork/common/include/nagios/
+for use in building Bronx.
+
+Here in this README, we describe issues that drive the build process
+for both this Nagios release and our patches for it.
+
+----------------------------------------------------------------
+
+Before we go deploying Nagios 4.3.1 in production, we should recognize
+that it might contain certain known bugs.  Look here for a current list:
+
+    https://github.com/NagiosEnterprises/nagioscore/issues?q=is%3Aopen+is%3Aissue+label%3Abug
+
+In particular, these issues might be of concern to GroundWork customers:
+
+    https://github.com/NagiosEnterprises/nagioscore/issues/87
+	Implied inheritance for contacts/contact_groups does not work
+	when service objects have contacts or contact_groups defined
+
+    https://github.com/NagiosEnterprises/nagioscore/issues/128
+	when HOST is UP after UNREACHABLE, eventhandler is not executed
+
+    https://github.com/NagiosEnterprises/nagioscore/issues/307
+	Bug: Downtime Comments are duplicated through Nagios reload
+
+And here is a list of all current open issues:
+
+    https://github.com/NagiosEnterprises/nagioscore/issues
+
+That list includes these issues which might well be bugs but have not
+yet been tagged as such:
+
+    https://github.com/NagiosEnterprises/nagioscore/issues/23
+	HOST max_check_attempts set to 1 goes SOFT and then HARD, extra
+	check is performed
+
+    https://github.com/NagiosEnterprises/nagioscore/issues/125
+	corewindow parameter can be used to perform Malicious URL Redirect
+
+    https://github.com/NagiosEnterprises/nagioscore/issues/143
+	status.cgi high CPU utilization in nagios-4.1.1
+
+    https://github.com/NagiosEnterprises/nagioscore/issues/271
+	Host count makes status.cgi use high cpu
+
+    https://github.com/NagiosEnterprises/nagioscore/issues/282
+	Clear Flapping State when disabling flapping detection
+
+    https://github.com/NagiosEnterprises/nagioscore/issues/311
+	use_syslog doesn't seem to be working for me
+
+which is not to say that this completely covers the waterfront for
+the Nagios 4.3.1 release, since there may be some bugs that have been
+addressed and closed but not yet incorporated into a public Nagios
+release.
+
+----------------------------------------------------------------
+
+There have been some complaints in the Nagios forums about the amount
+of time it takes for Nagios to come back up and be fully running when
+it digests a very large configuration.  On the other hand, our testing
+for circular dependencies (with results shown below) indicates that
+Nagios 4.2.4 is amazingly fast.  A configuration of 10,000 hosts and
+100,000 services, with 8000 host dependencies, takes under 2 seconds to
+run a pre-flight check.  So I'm not worried about the overall startup
+performance.  (I haven't tested timing for service dependencies.)
+
+----------------------------------------------------------------
+
+For generating future patches, note that we should always run the
+nagios-X.X.X/indent-all.sh script (found within the Nagios release
+itself) on our modified files before generating patch files.  This
+presupposes that you have the "astyle" program installed on your machine
+(http://astyle.sourceforge.net/).  This is the source-code formatter
+used by the Nagios project, so we should follow their conventions in
+case we want to submit any of our patches back to the project.
+
+----------------------------------------------------------------
+
+Whenever we need to patch Nagios, the status of all our patches for
+a given release must be reflected in our GWiki "Nagios patches" page
+(http://gwiki/index.php/Nagios_patches), in the section for that Nagios
+release, in the order they should be applied.
+
+----------------------------------------------------------------
+
+Nagios 4 claims to have overhauled dependency checking in a manner that
+reduces it from O(n^^2) complexity to something around O(n) complexity.
+That would mean that the circular-dependency patch we applied to Nagios 3
+releases is no longer necessary.  That patch no longer applies directly
+to the Nagios 4 code, so we are dropping it at this time.
+
+To verify that's the right decision, I used our test tool that generates
+configurations with arbitrary numbers of hosts, services, and circular
+and non-circular host dependencies (generate_config) to verify claims
+of reasonable startup performance at very high numbers of dependencies.
+Timings for various builds of Nagios are shown below.  The results are
+dramatic:  Nagios 4.2.4 beats even our patched version of Nagios 3.5.1
+by a considerable factor.
+
+In the following tests, we generate a configuration with some number of
+hosts, services, non-circular dependencies, and circular dependencies
+that take a reasonably long time to analyze on an unpatched Nagios 3.2.3
+release.  The tests have been run multiple times to check the variation
+in execution times.  Note that the execution times exhibit unexpected
+and counterintuitive dependency on the relative numbers of hosts and host
+dependencies.  For instance, observe that a configuration with more hosts
+and services but the same number of non-circular dependencies actually
+executes far faster, using the old unpatched or patched algorithm.
+
+usage:  generate_config #hosts #services #non-circ-host-deps #circ-host-deps
+
+./generate_config 1000 5000 6000 0
+
+    # Unpatched Nagios 3.2.3 release:
+    time ./nagios_3.2.3_unpatched -v sample_nagios.cfg
+    83.127u 0.021s 1:23.39 99.7%    0+0k 0+0io 0pf+0w
+    82.722u 0.024s 1:23.05 99.6%    0+0k 0+0io 0pf+0w
+    82.668u 0.026s 1:23.00 99.6%    0+0k 0+0io 0pf+0w
+    83.063u 0.024s 1:23.92 98.9%    0+0k 0+0io 0pf+0w
+
+    # Patched Nagios 3.5.1 release:
+    time ./nagios_3.5.1_patched -v sample_nagios.cfg
+    0.808u 0.015s 0:00.83 97.5%     0+0k 0+0io 0pf+0w
+    0.763u 0.017s 0:00.78 98.7%     0+0k 0+0io 0pf+0w
+    0.775u 0.016s 0:00.79 98.7%     0+0k 0+0io 0pf+0w
+    0.793u 0.015s 0:00.81 98.7%     0+0k 0+0io 0pf+0w
+
+    # Unpatched Nagios 4.2.4 release:
+    time ./nagios_4.2.4_unpatched -v sample_nagios.cfg
+    0.138u 0.017s 0:00.15 93.3%     0+0k 0+0io 0pf+0w
+    0.136u 0.010s 0:00.14 100.0%    0+0k 0+0io 0pf+0w
+    0.168u 0.013s 0:00.18 94.4%     0+0k 0+0io 0pf+0w
+    0.145u 0.012s 0:00.16 93.7%     0+0k 0+0io 0pf+0w
+
+./generate_config 1000 5000 8000 0
+
+    # Unpatched Nagios 3.2.3 release:
+    time ./nagios_3.2.3_unpatched -v sample_nagios.cfg
+    325.232u 0.065s 5:26.88 99.5%   0+0k 0+0io 0pf+0w
+    338.128u 0.072s 5:39.83 99.5%   0+0k 0+0io 0pf+0w
+    336.501u 0.053s 5:37.95 99.5%   0+0k 0+0io 0pf+0w
+    331.612u 0.059s 5:33.22 99.5%   0+0k 0+0io 0pf+0w
+
+    # Patched Nagios 3.5.1 release:
+    time ./nagios_3.5.1_patched -v sample_nagios.cfg
+    1.713u 0.013s 0:01.72 100.0%    0+0k 0+0io 0pf+0w
+    1.738u 0.012s 0:01.75 99.4%     0+0k 0+0io 0pf+0w
+    1.713u 0.014s 0:01.73 99.4%     0+0k 0+0io 0pf+0w
+    1.715u 0.022s 0:01.75 98.8%     0+0k 0+0io 0pf+0w
+
+    # Unpatched Nagios 4.2.4 release:
+    time ./nagios_4.2.4_unpatched -v sample_nagios.cfg
+    0.182u 0.014s 0:00.19 100.0%    0+0k 0+0io 0pf+0w
+    0.188u 0.016s 0:00.21 90.4%     0+0k 0+0io 0pf+0w
+    0.183u 0.010s 0:00.19 100.0%    0+0k 0+0io 0pf+0w
+    0.187u 0.011s 0:00.19 100.0%    0+0k 0+0io 0pf+0w
+
+./generate_config 2000 8000 6000 0
+
+    # Unpatched Nagios 3.2.3 release:
+    time ./nagios_3.2.3_unpatched -v sample_nagios.cfg
+    10.548u 0.027s 0:10.59 99.7%    0+0k 0+0io 0pf+0w
+    10.672u 0.023s 0:10.71 99.8%    0+0k 0+0io 0pf+0w
+    10.652u 0.028s 0:10.70 99.7%    0+0k 0+0io 0pf+0w
+    10.890u 0.022s 0:10.95 99.6%    0+0k 0+0io 0pf+0w
+
+    # Patched Nagios 3.5.1 release:
+    time ./nagios_3.5.1_patched -v sample_nagios.cfg
+    0.619u 0.020s 0:00.64 98.4%     0+0k 0+0io 0pf+0w
+    0.625u 0.023s 0:00.65 98.4%     0+0k 0+0io 0pf+0w
+    0.605u 0.029s 0:00.63 98.4%     0+0k 0+0io 0pf+0w
+    0.639u 0.028s 0:00.67 97.0%     0+0k 0+0io 0pf+0w
+
+    # Unpatched Nagios 4.2.4 release:
+    time ./nagios_4.2.4_unpatched -v sample_nagios.cfg
+    0.218u 0.013s 0:00.23 95.6%     0+0k 0+0io 0pf+0w
+    0.206u 0.020s 0:00.22 100.0%    0+0k 0+0io 0pf+0w
+    0.190u 0.014s 0:00.25 80.0%     0+0k 0+0io 0pf+0w
+    0.204u 0.016s 0:00.22 95.4%     0+0k 0+0io 0pf+0w
+
+./generate_config 2000 8000 8000 0
+
+    # Unpatched Nagios 3.2.3 release:
+    time ./nagios_3.2.3_unpatched -v sample_nagios.cfg
+    45.967u 0.029s 0:47.00 97.8%    0+0k 0+0io 0pf+0w
+    48.435u 0.024s 0:48.64 99.6%    0+0k 0+0io 0pf+0w
+    46.013u 0.023s 0:46.16 99.7%    0+0k 0+0io 0pf+0w
+    53.957u 0.033s 0:54.87 98.3%    0+0k 0+0io 0pf+0w
+
+    # Patched Nagios 3.5.1 release:
+    time ./nagios_3.5.1_patched -v sample_nagios.cfg
+    0.867u 0.018s 0:00.88 98.8%     0+0k 0+0io 0pf+0w
+    0.864u 0.017s 0:00.88 98.8%     0+0k 0+0io 0pf+0w
+    0.860u 0.023s 0:00.88 100.0%    0+0k 0+0io 0pf+0w
+    0.884u 0.019s 0:00.90 98.8%     0+0k 0+0io 0pf+0w
+
+    # Unpatched Nagios 4.2.4 release:
+    time ./nagios_4.2.4_unpatched -v sample_nagios.cfg
+    0.218u 0.021s 0:00.24 95.8%     0+0k 0+0io 0pf+0w
+    0.225u 0.020s 0:00.24 100.0%    0+0k 0+0io 0pf+0w
+    0.229u 0.018s 0:00.24 95.8%     0+0k 0+0io 0pf+0w
+    0.225u 0.022s 0:00.24 100.0%    0+0k 0+0io 0pf+0w
+
+./generate_config 2000 8000 14000 0
+
+    # Unpatched Nagios 3.2.3 release:
+    time ./nagios_3.2.3_unpatched -v sample_nagios.cfg
+    4111.342u 0.646s 1:08:53.54 99.4%       0+0k 0+0io 0pf+0w
+
+    # Patched Nagios 3.5.1 release:
+    time ./nagios_3.5.1_patched -v sample_nagios.cfg
+    3.440u 0.023s 0:03.47 99.7%     0+0k 0+0io 0pf+0w
+
+    # Unpatched Nagios 4.2.4 release:
+    time ./nagios_4.2.4_unpatched -v sample_nagios.cfg
+    0.311u 0.015s 0:00.33 96.9%     0+0k 0+0io 0pf+0w
+
+./generate_config 2000 8000 14000 1
+
+    # These tests are run just to prove that each test environment really
+    # is capable of detecting circular dependencies.  We have selected out
+    # the found-circular-dependency messages to display here.
+
+    # Unpatched Nagios 3.2.3 release:
+    time ./nagios_3.2.3_unpatched -v sample_nagios.cfg
+    Error: A circular execution dependency (which could result in a deadlock) exists for host 'host-1945'!
+    Error: A circular execution dependency (which could result in a deadlock) exists for host 'host-1922'!
+    3605.144u 0.599s 1:00:25.79 99.4%       0+0k 200+0io 1pf+0w
+
+    # Patched Nagios 3.5.1 release:
+    time ./nagios_3.5.1_patched -v sample_nagios.cfg
+    Error: A circular execution dependency (which could result in a deadlock) exists for host 'host-1945'!
+    Error: A circular execution dependency (which could result in a deadlock) exists for host 'host-1922'!
+    3.363u 0.026s 0:03.46 97.6%     0+0k 1680+0io 8pf+0w
+
+    # Unpatched Nagios 4.2.4 release:
+    time ./nagios_4.2.4_unpatched -v sample_nagios.cfg
+    Error: Circular notification dependency detected for hosts 'host-1945' and 'host-1922'
+    Error: Circular execution dependency detected for hosts 'host-1945' and 'host-1922'
+    0.271u 0.022s 0:00.34 85.2%     0+0k 1600+0io 7pf+0w
+
+----------------------------------------------------------------
+
+The patches here have been developed against the Nagios 4.3.1 release.
+They apply without any errors (fuzz, offsets, or outright rejection)
+in the 4.3.1 release, in the following order:
+
+    % cd nagios-4.3.1
+    % patch -p1 -b < ../patches/nagios-4.3.1-non_static_logging.patch
+    patching file base/logging.c
+    patching file include/logging.h
+    % patch -p1 -b < ../patches/nagios-4.3.1-check_result_list.patch
+    patching file include/config.h.in
+    patching file include/objects.h
+    patching file include/nagios.h
+    patching file base/checks.c
+    patching file base/utils.c
+    % patch -p1 -b < ../patches/nagios-4.3.1-cgi_refresh.patch
+    patching file cgi/extinfo.c
+    patching file cgi/outages.c
+    patching file cgi/status.c
+    patching file cgi/statusmap.c
+    patching file cgi/tac.c
+    % patch -p1 -b < ../patches/nagios-4.3.1-Makefile.in.statuswml2.patch
+    patching file cgi/Makefile.in
+    % patch -p1 -b < ../patches/nagios-4.3.1-no_deprecation_warnings.patch
+    patching file base/config.c
+    patching file xdata/xodtemplate.c
+    % patch -p1 -b < ../patches/nagios-4.3.1-groundwork_paths.patch
+    patching file include/locations.h.in
+    patching file configure
+    patching file Makefile.in
+    % patch -p1 -b < ../patches/nagios-4.3.1-traceroute_cgi_perl.patch
+    patching file contrib/traceroute.cgi
+    % patch -p1 -b < ../patches/nagios-4.3.1-no_update_check.patch
+    patching file base/utils.c
+    patching file include/defaults.h
+    % patch -p1 -b < ../patches/nagios-4.3.1-no_nagios_php.patch
+    patching file html/Makefile.in
+    % patch -p1 -b < ../patches/nagios-4.3.1-no_tour.patch
+    patching file cgi/extinfo.c
+    patching file cgi/status.c
+    patching file cgi/tac.c
+
+
+We have ordered the patch-application sequence so any patches which
+we could/should release publicly come first (although that no longer
+applies to any of the patches we apply).  That way, they can be provided
+in unaltered form to the upstream developers with line numbers that will
+reflect the virgin files those developers will expect to start with.
+
+Summarizing the above:  to eliminate patch messages about patch hunks being
+applied at some number of lines offset from where the patch file says they
+should go, and thereby minimize the chance of a patch not being applied
+correctly, the Nagios 4.3.1 patches should be applied in this order:
+
+    cd nagios-4.3.1
+    patch -p1 -b < /path-to/nagios-4.3.1-non_static_logging.patch
+    patch -p1 -b < /path-to/nagios-4.3.1-check_result_list.patch
+    patch -p1 -b < /path-to/nagios-4.3.1-cgi_refresh.patch
+    patch -p1 -b < /path-to/nagios-4.3.1-Makefile.in.statuswml2.patch
+    patch -p1 -b < /path-to/nagios-4.3.1-no_deprecation_warnings.patch
+    patch -p1 -b < /path-to/nagios-4.3.1-groundwork_paths.patch
+    patch -p1 -b < /path-to/nagios-4.3.1-traceroute_cgi_perl.patch
+    patch -p1 -b < /path-to/nagios-4.3.1-no_update_check.patch
+    patch -p1 -b < /path-to/nagios-4.3.1-no_nagios_php.patch
+    patch -p1 -b < /path-to/nagios-4.3.1-no_tour.patch
+
+Here is an illustration of the commands one might use for testing.
+This listing is just for expository purposes here.  In practice, it's
+better to control patch application through the sibling Makefile.
+
+    cd nagios-4.3.1
+    patch -p1 -b < ../nagios-4.3.1-non_static_logging.patch
+    patch -p1 -b < ../nagios-4.3.1-check_result_list.patch
+    patch -p1 -b < ../nagios-4.3.1-cgi_refresh.patch
+    patch -p1 -b < ../nagios-4.3.1-Makefile.in.statuswml2.patch
+    patch -p1 -b < ../nagios-4.3.1-no_deprecation_warnings.patch
+    patch -p1 -b < ../nagios-4.3.1-groundwork_paths.patch
+    patch -p1 -b < ../nagios-4.3.1-traceroute_cgi_perl.patch
+    patch -p1 -b < ../nagios-4.3.1-no_update_check.patch
+    patch -p1 -b < ../nagios-4.3.1-no_nagios_php.patch
+    patch -p1 -b < ../nagios-4.3.1-no_tour.patch
+
+The commands above are suitable for use in the nagios-4.3.1/ directory
+where the Nagios source code has been untarred (the -p1 option shown
+reflects this location of the files to patch relative to the pathnames
+in the patches).
+
+Here's the current status of these patches:
+
+    nagios-4.3.1-non_static_logging.patch
+	This patch patch applies exactly.  It is directly applicable
+	to this release, and is needed to support Bronx.  If at some
+	point in the future Bronx is so significantly changed that it
+	no longer operates within the Nagios main process, perhaps this
+	patch can simply be dropped.
+
+    nagios-4.3.1-check_result_list.patch
+	This patch replaces nagios-3.5.0-mutex_check_result_fixes.patch
+	that we applied to Nagios 3.5.1.  It is more comprehensive in
+	the changes it makes to the Nagios code, having to pull in a
+	bunch of code from Nagios 3.5.1 and modify it in certain ways
+	to operate in the Nagios 4.3.1 context.
+
+    nagios-4.3.1-cgi_refresh.patch
+        This patch applies exactly.  It modifies Nagios CGI programs so
+        they operate smoothy in the GroundWork context.
+
+    nagios-4.3.1-Makefile.in.statuswml2.patch
+        This patch applies exactly.  It requires the companion
+        cgi/statuswml2.c program specific to this Nagios release.
+
+    nagios-4.3.1-no_deprecation_warnings.patch
+	This patch applies exactly.  It suppresses various deprecation
+	warnings, including these which are visible in pre-flight results.
+	The purpose is to not worry our customers about stuff which
+	still works as-is and in any case will need to be handled by
+	Monarch instead of customer action, to modify the actions taken
+	to generate Nagios config files.
+
+	Here are some example warning messages we are suppressing:
+
+	    Warning: sleep_time is deprecated and will be removed.
+	    Warning: command_check_interval is deprecated and will be removed. Commands are always handled on arrival
+	    WARNING: Extinfo objects are deprecated and will be removed in future versions
+
+	The following objects, configuration variables, and object
+	attributes are now deprecated:
+
+	    extinfo objects "hostextinfo" and "serviceextinfo" are still
+	    supported in Nagios 4.3.1, but that support will disappear
+	    in a future version; fold the attributes in these objects
+	    into their respective parent host and service objects
+
+	    auth_file                       (now just completely ignored)
+	    command_check_interval          (now just completely ignored)
+	    enable_embedded_perl            (now just completely ignored)
+	    enable_failure_prediction       (now just completely ignored)
+	    external_command_buffer_slots   (now just completely ignored)
+	    p1_file                         (now just completely ignored)
+	    sleep_time                      (now just completely ignored)
+	    use_embedded_perl_implicitly    (now just completely ignored)
+
+	    hourly_value    (still supported in Nagios 4.3.1, but that support
+			    will disappear in a future version [probably 5.0.0];
+			    use "importance" for this same value instead)
+	    minimum_value   (still supported in Nagios 4.3.1, but that support
+			    will disappear in a future version [probably 5.0.0];
+			    use "minimum_importance" for this same value instead)
+
+	The following config options are supposedly deprecated
+	according to the What's New documentation, but not according
+	to the code that processes these config options.  However, the
+	What's New documentation is simply wrong, since we do still see
+	EVENT_CHECK_REAPER events scheduled in the code for recurring
+	execution.  (This controls reaping of files in the check
+	result queue directory, but in the native Nagios 4.3.1 code,
+	it no longer also looks for check results in an internal list.
+	However, we have hijacked these events for our own purposes in
+	processing all pending Bronx results in the main Nagios thread
+	on a regular basis, in much the same way as happened in earlier
+	Nagios releases.  We also reference the recovered data structure
+	that is shared between Bronx and Nagios upon shutdown, to spill
+	out any still-pending Bronx check results into a file, to have
+	them picked up again upon Nagios restart so no internally-queued
+	data is ever lost provided we don't have a hard crash.	It is
+	these reaper events that will cause the saved data to be picked
+	up and processed when Nagios starts up again.)
+
+	    check_result_reaper_frequency
+	    max_check_result_reaper_time
+
+    nagios-4.3.1-groundwork_paths.patch
+	This patch applies exactly.  It modifies varios build components
+	to reflect certain pathnames as they apply in the GroundWork
+	context, that are not otherwise set up correctly for us using
+	./configure options.
+
+    nagios-4.3.1-traceroute_cgi_perl.patch
+	This patch applies exactly.  It converts contrib/traceroute.cgi
+	to live in the GroundWork Monitor context.
+
+    nagios-4.3.1-no_update_check.patch
+	This patch applies exactly.  It has been updated from previous
+	releases to reflect changes in the underlying code in the new
+	Nagios release.  The present construction of this patch depends
+	on the nagios-4.3.1-check_result_list.patch patch having been
+	previously applied, to establish correct context for one hunk.
+
+    nagios-4.3.1-no_nagios_php.patch
+	This patch applies exactly.  It suppresses the installation of
+	certain PHP files that we have no use for in the GroundWork
+	context.  This avoids possible security holes in the queries
+	that said PHP scripting performs, avoids the PHP code checking
+	for upstream updates, and avoids certain advertising by the
+	nagios.com site that makes no sense for GroundWork customers.
+
+    nagios-4.3.1-no_tour.patch
+	This patch applies exactly.  It suppresses links to embedded
+	videos in several CGI pages.  Those videos are somewhat cheesy
+	explanations of very limited depth about how to use certain
+	Nagios CGI screens.  As a practical matter, the videos are
+	mostly a marketing lure for Nagios Enterprises, so they don't
+	make sense in the GroundWork context.
+
+In addition to the patches described, the cgi/statuswml2.c file stored here
+should be placed in the nagios-4.3.1/cgi/ directory before the build.
+That placement is also handled by the sibling Makefile.
+
+----------------------------------------------------------------
+
+The top-level Nagios-distribution Makefile has a bug:  "make contrib"
+believes that the "contrib" directory satisfies the make target by
+merely existing.  This bug should be reported upstream; the make target
+should probably be renamed to "contribs", and named as such in the simple
+"make none" output.
+
+Also, there should be an "install-contribs" target in the top-level
+Makefile that installs the contribs stuff with "cd contrib; make install",
+without needing to manually chdir to the contrib directory and run
+"make install" there.
+
+These issues have been worked around in the sibling Makefile.
+
+----------------------------------------------------------------
+
+There are a few new CGIs provided in this Nagios release, relative to
+what GroundWork has seen before.  I haven't yet seen any documentation on
+what these CGIs do, though I do have some evidence that they support the
+Nagios PHP code (which we don't use) and perhaps some of the other CGIs.
+Running them yields some limited information about what they're for.
+Here we list only top-level queries; there are also a number of parameters
+that can be applied to these queries.
+
+    nagios/sbin/archivejson.cgi
+	Runs certain queries:
+	    alertcount         Return the number of alerts
+	    alertlist          Return a list of alerts
+	    notificationcount  Return the number of notifications
+	    notificationlist   Return a list of notifications
+	    statechangelist    Return a list of state changes
+	    availability       Return an availability report
+
+    nagios/sbin/objectjson.cgi
+	Runs certain queries:
+	    hostcount               Return the number of hosts
+	    hostlist                Return a list of hosts
+	    host                    Return the configuration for a single host
+	    hostgroupcount          Return the number of host groups
+	    hostgrouplist           Return a list of host groups
+	    hostgroup               Return the configuration for a single hostgroup
+	    servicecount            Return a list of services
+	    servicelist             Return a list of services
+	    service                 Return the configuration for a single service
+	    servicegroupcount       Return the number of service groups
+	    servicegrouplist        Return a list of service groups
+	    servicegroup            Return the configuration for a single servicegroup
+	    contactcount            Return the number of contacts
+	    contactlist             Return a list of contacts
+	    contact                 Return the configuration for a single contact
+	    contactgroupcount       Return the number of contact groups
+	    contactgrouplist        Return a list of contact groups
+	    contactgroup            Return the configuration for a single contactgroup
+	    timeperiodcount         Return the number of time periods
+	    timeperiodlist          Return a list of time periods
+	    timeperiod              Return the configuration for a single timeperiod
+	    commandcount            Return the number of commands
+	    commandlist             Return a list of commands
+	    command                 Return the configuration for a single command
+	    servicedependencycount  Return the number of service dependencies
+	    servicedependencylist   Return a list of service dependencies
+	    serviceescalationcount  Return the number of service escalations
+	    serviceescalationlist   Return a list of service escalations
+	    hostdependencycount     Return the number of host dependencies
+	    hostdependencylist      Return a list of host dependencies
+	    hostescalationcount     Return the number of host escalations
+	    hostescalationlist      Return a list of host escalations
+
+    nagios/sbin/statusjson.cgi
+	Runs certain queries:
+	    hostcount        Return the number of hosts in each state
+	    hostlist         Return a list of hosts and their current status
+	    host             Return the status of a single host.
+	    servicecount     Return the number of services in each state
+	    servicelist      Return a list of services and their current status
+	    service          Return the status of a single service
+	    commentcount     Return the number of comments
+	    commentlist      Return a list of comments
+	    comment          Return a single comment
+	    downtimecount    Return the number of downtimes
+	    downtimelist     Return a list of downtimes
+	    downtime         Return a single downtime
+	    programstatus    Return the Nagios Core program status
+	    performancedata  Return the Nagios Core performance data
+
+Since they yield results in JSON instead of HTML, we should decide whether
+access to these CGIs should be made available directly through Apache
+and not just through the GroundWork Monitor UI (in support of other
+CGIs), with some sort of appropriate authentication and authorization
+controls applied.
+
+----------------------------------------------------------------
+
+The nagios/bin/worker-ping program is new with Nagios 4.2.4.  But it's
+off in a subdirectory of the source code, as though it's only there
+as a template for other workers.  (See the nagios-4.3.1/worker/ping/
+directory.)  So we don't expect to see it in our build of Nagios 4.3.1 for
+the GWMEE 7.1.2 release.  If we did include this program in the product,
+we would want to take out the references to www.nagios.org from the
+worker/ping/worker-ping.c code before compiling.
+
+If this program were actually important to distribute, the top-level
+Nagios-provided Makefile ought to have a "make install-workers" target
+to descend into the worker/ directory and thence into the worker/ping/
+directory and "make install" there.
+
+----------------------------------------------------------------
+
+For providing Nagios 4.3.1 as a patch to GWMEE releases before 7.1.2,
+we will want to include our current updated copies of the following
+files in the patch, outside of the 26 directories and 409 files in the
+/usr/local/groundwork/nagios/ file tree that are being created by the
+"make install" target in our build Makefile for the Nagios release itself.
+(There will be some adjustments to these numbers given that the BitRock
+build process sometimes splits a compiled program into a wrapper and a
+separate hidden binary file.)
+
+    /usr/local/groundwork/common/lib/libbronx.so
+    /usr/local/groundwork/core/monarch/lib/MonarchForms.pm
+    /usr/local/groundwork/core/monarch/lib/MonarchStorProc.pm
+
+----------------------------------------------------------------
+
+There are a number of Nagios configuration variables that are new with
+the Nagios 4.3.1 release, and that Monarch in GWMEE 7.1.1 and previous
+releases does not yet support.  Here are some of them:
+
+    check_for_updates	(should we check for new Nagios releases?)
+    bare_update_check	(report current version and new installs)
+    query_socket	(path to and including the nagios.qh socket;
+			in the GroundWork context, it should default to
+			/usr/local/groundwork/nagios/var/spool/nagios.qh
+			in correspondence with the command_file setting)
+
+There are also some Nagios configuration variables that may have been
+supported for a long time in older Nagios releases, but that we never
+provided support for in Monarch.  Here are some of them:
+
+    time_change_threshold   (This option determines when Nagios will
+			    react to detected forward jumps in system
+			    time.  If the system time jumps by this number
+			    of seconds while Nagios is operating in its
+			    main event loop, Nagios will make internal
+			    adjustments to adapt to the sudden shift.
+			    Normally, this is left undefined, which
+			    means an internal default value is used.
+			    [Make sure this variable works both with and
+			    without a value defined in Monarch.])
+
+For the GWMEE 7.1.2 release, we'll need to run a thorough scan to find all
+such variables, and add them into Monarch configuration screens as needed.
+(We may well just skip support for some of them.)  See this overview:
+
+    https://assets.nagios.com/downloads/nagioscore/docs/nagioscore/4/en/whatsnew.html
+
+Also see https://github.com/NagiosEnterprises/nagioscore/issues/213 and
+http://tracker.nagios.org/view.php?id=0000607 for these undocumented
+cgi.cfg options:
+
+     New cgi.cfg options were added a while back to allow contactgroup
+     names to authorize against the cgis. Documentation for these changes
+     should be updated:
+
+     authorized_contactgroup_for_all_hosts=
+     authorized_contactgroup_for_all_services=
+     authorized_contactgroup_for_system_information=
+     authorized_contactgroup_for_configuration_information=
+     authorized_contactgroup_for_all_host_commands=
+     authorized_contactgroup_for_all_service_commands=
+     authorized_contactgroup_for_system_commands=
+     authorized_contactgroup_for_read_only= 
+
+That might be an easier mechanism for certain customers to use than trying
+to edit the individual CGI-access fields via some add-on post-Commit
+scripting.
+
+----------------------------------------------------------------
+
+While testing our local build of Nagios 4.3.1, we get alerts of the
+following form:
+
+    [1484946999] SERVICE ALERT: localhost;local_process_nagios;CRITICAL;
+	SOFT;1;NAGIOS CRITICAL: Could not locate a running Nagios process!
+
+Such alerts are generated in our test setup because we're not running
+a BitRock-compiled .nagios.bin program.  The command that generates the
+service-check result is:
+
+    $USER1$/check_nagios -F /usr/local/groundwork/nagios/var/status.log -e 5 -C bin/.nagios.bin
+
+which is clearly looking for a .nagios.bin binary, not the "nagios"
+binary that is produced by our local build of Nagios.  This should not
+be a problem once we have BitRock provide the compiled program.
+
+----------------------------------------------------------------
+
+Nagios 4 changes from Nagios 3
+
+By default, a Nagios 4 build replaces several of the CGI programs with
+newer alternate versions that were not present in Nagios 3.  These new
+versions cause difficulties in the GroundWork context, wherein we don't
+generally support having scripting rooted directly at the base of our URL
+namespace.  Until and unless we work out how to support these alternates,
+via some combination of Nagios code changes and Apache httpd.conf changes,
+we disable the alternates and revert back to using the original versions.
+See the -DLEGACY_GRAPHICAL_CGIS setting in the Makefile for more detail.
+
+----------------------------------------------------------------
+
+Nagios 4.3.1 changes from Nagios 4.2.4
+
+The upgraded version of Nagios includes a number of modifications that
+are documented in the new distribution's Changelog file.  Here are the
+issues that will most affect our use of the software.
+
+Support for the nagios_check_command option for CGIs has been removed.
+We haven't supported it in the Monarch UI since Nagios 1.x, so there's
+no tragedy there.  However, in GWMEE 7.1.1, we are still emitting it
+into our cgi.cfg file because we still have it in our monarch database.
+This doesn't cause any problems with the Nagios 4.3.1 CGIs because they
+simply ignore any options they're not looking for.  We can fully drop
+support via the Monarch seed data and migration script in the GWMEE
+7.1.2 release.
+
+Support for a new tac_cgi_hard_only option for CGIs has been added.
+Here's the description.
+# SHOW ONLY HARD STATES IS TACTICAL OVERVIEW
+# This option controls whether only HARD states are counted on the
+# Tactical Overview, or if both HARD and SOFT states are counted.
+# Set to 1 to show only HARD states. Defaults to 0 (HARD+SOFT).
+We won't add this in a patch for GWMEE 7.1.1, since the CGIs work
+without having this option defined, but we should add support for it in
+GWMEE 7.1.2.
+
+Nagios 4.3.X adds a few more deprecated-option notices (this time, for
+normal_check_interval and retry_check_interval (or normal_retry_interval;
+the deprecation code is confused on this point, as I have reported
+upstream in https://support.nagios.com/forum/viewtopic.php?f=34&t=42888),
+which are now renamed to check_interval and retry_interval).  We'll need
+to sweep through all deprecated options for the GWMEE 7.1.2 release and
+rename the affected variables as the deprecation warnings recommend.
+Also see if we support either a retry_check_interval or a retry_interval
+for a host, as we do for a service.  (See what gets saved in the generated
+nagios/etc/ files, not just what's in the Monarch UI and database.)
+
+----------------------------------------------------------------

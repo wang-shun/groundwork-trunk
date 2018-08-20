@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+
+<!--
+Copyright 2007 GroundWork Open Source, Inc. ("GroundWork")  
+All rights reserved. This program is free software; you can redistribute it
+and/or modify it under the terms of the GNU General Public License version 2
+as published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU General Public License for 
+more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
+-->
+
+<!--
+	Spring assembly for Syslog specific adapters to normalize messages into the Collage backend.
+	This spring assembly needs to be referenced in the adapter.properties files
+	that is used by the listener service. 
+-->
+
+<beans>
+
+<!--
+ List all the BeanID that have implemented the initialize method. The bean Id's defined as a comma
+ separated list will be called during the loading of the assembly
+-->
+
+<bean id="SyslogAdapterProperties" class="com.groundwork.feeder.adapter.impl.AdapterProperties">
+	<constructor-arg type="java.lang.String"><value>adapter.syslog</value></constructor-arg>
+  </bean>
+
+<bean id="adapter.syslog" singleton="false"
+       class="com.groundwork.feeder.adapter.impl.Syslog" />
+       
+</beans>

@@ -1,0 +1,87 @@
+---
+- hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    servername: "{{ ansible_fqdn }}"
+    jossoservername: "localhost:8888"
+    redirect: true
+    secure_enabled: "true"
+    dual_jboss: false
+    frontend_jboss_port: 8080
+    backend_jboss_port: 8080
+    protocol: https
+    proxy_port: 443
+    db_host: localhost
+    use_cname: false
+    create_certs: true
+    cert: false
+    cacert: false
+    caname: groundwork-ca
+    java_keystore_path: /usr/local/groundwork/java/jre/lib/security/cacerts
+    java_keystore_pass: changeit
+    grafana_installed: false
+    openssl_csr_path: /usr/local/groundwork/tmp/{{ servername }}.csr
+    openssl_cert_path: /usr/local/groundwork/common/openssl/certs/{{ servername }}.pem
+    apache_cert_link: /usr/local/groundwork/apache2/conf/server.crt
+    openssl_key_path: /usr/local/groundwork/common/openssl/private/{{ servername }}.key
+    apache_key_link: /usr/local/groundwork/apache2/conf/server.key
+    openssl_cacert_path: /usr/local/groundwork/common/openssl/certs/{{caname}}.pem
+    apache_cacert_link: /usr/local/groundwork/apache2/conf/server-ca.crt
+    openssl_cakey_path: /usr/local/groundwork/common/openssl/private/{{caname}}.key
+  tasks:
+  - name: gather facts
+    setup:
+      filter: ansible_*
+    tags:
+      - checks
+  - name: check cert
+    stat:
+      path: "{{openssl_cert_path}}"
+    register: cert_path
+    tags:
+      - checks
+      - fs
+  - set_fact:
+      cert: true
+    when: cert_path.stat.isreg is defined and cert_path.stat.isreg
+    tags:
+      - checks
+      - fs
+  - name: check cacert
+    stat:
+      path: "{{openssl_cacert_path}}"
+    register: cacert_path
+    tags:
+      - checks
+      - fs
+  - set_fact:
+      cacert: true
+    when: cacert_path.stat.isreg is defined and cacert_path.stat.isreg
+    tags:
+      - checks
+      - fs
+  - name: check {{openssl_cert_path}}
+    openssl_certificate:
+      path: "{{openssl_cert_path}}"
+      privatekey_path: "{{openssl_key_path}}"
+      provider: assertonly
+      subject_alt_name: "DNS:{{servername}}"
+      has_expired: no
+      valid_in: 2592000
+    when: cert == True
+    tags:
+      - checks
+      - certs
+  - name: check {openssl_cacert_path}}
+    openssl_certificate:
+      path: "{{openssl_cacert_path}}"
+      privatekey_path: "{{openssl_cakey_path}}"
+      provider: assertonly
+      has_expired: no
+      valid_in: 2592000
+    when: cacert == True
+    tags:
+      - checks
+      - certs
+    

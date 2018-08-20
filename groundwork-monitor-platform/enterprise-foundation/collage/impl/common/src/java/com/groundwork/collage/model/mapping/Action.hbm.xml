@@ -1,0 +1,109 @@
+<?xml version="1.0"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Inc. info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-->
+<!DOCTYPE hibernate-mapping PUBLIC
+    "-//Hibernate/Hibernate Mapping DTD 2.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd" >
+    
+<hibernate-mapping default-lazy="false" >
+
+<class 
+    name="com.groundwork.collage.model.impl.Action" 
+    table="Action"
+>
+
+    <id
+        name="actionId"
+        type="java.lang.Integer"
+        column="ActionID"
+    >
+        <generator class="native">
+            <param name="sequence">action_actionid_seq</param>
+         </generator>
+    </id>
+
+    <property
+        name="name"
+        type="java.lang.String"
+        column="Name"
+        not-null="true"
+        length="256"
+    />
+    <property
+        name="description"
+        type="java.lang.String"
+        column="Description"
+        length="512"
+    />
+  
+	<many-to-one
+		name="actionType"
+		class="com.groundwork.collage.model.impl.ActionType"
+		not-null="true"
+		cascade="save-update"
+	>
+		<column name="ActionTypeID" />
+	</many-to-one>
+	
+	<!-- one-to-many action properties-->
+	<bag
+		name="actionProperties"
+		lazy="true"
+		inverse="true"
+		cascade="all"
+	>
+		<key>
+			<column name="ActionID" />
+		</key>
+		
+		<one-to-many 
+			class="com.groundwork.collage.model.impl.ActionProperty"
+		/>
+	</bag>	
+	
+	<!-- one-to-many action parameters-->
+	<bag
+		name="actionParameters"
+		lazy="true"
+		inverse="true"
+		cascade="all"
+		order-by="actionParameterId asc"
+	>
+		<key>
+			<column name="ActionID" />
+		</key>
+		
+		<one-to-many 
+			class="com.groundwork.collage.model.impl.ActionParameter"
+		/>
+	</bag>	
+	
+	<!-- many-to-many application types -->
+    <bag
+        name="applicationTypes"
+        table = "ApplicationAction"
+        lazy="true"
+        cascade="none"
+    >
+        <key column="ActionID" />
+      
+        <many-to-many class="com.groundwork.collage.model.impl.ApplicationType" column="ApplicationTypeID" />
+    </bag>    
+    		
+</class>
+</hibernate-mapping>

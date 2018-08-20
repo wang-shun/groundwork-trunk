@@ -1,0 +1,4193 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+#
+# process_service_perfdata_file
+#
+# Process Service Performance Data File
+#
+# Copyright 2007-2018 GroundWork Open Source, Inc. (GroundWork)
+# All rights reserved. This program is free software; you can redistribute
+# it and/or modify it under the terms of the GNU General Public License
+# version 2 as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+#
+# Revision History
+# 16-Aug-2005 Peter Loh
+#	Original version.
+# 23-Dec-2005 Peter Loh
+#	* Added capability to use Label macros in RRD create.
+#	* Also allowed more flexible perfdata. OK if warn,crit,max,min are missing.
+# 22-Jan-2006 Peter Loh
+#	* Modified to use database for host,service,rrdfile. Required for Status Viewer integration.
+# 06-Mar-2007 Peter Loh
+#	* Added ability to extract a list of labels from perf data and use in DS definition for RRD creation.
+# 13-Nov-2007 Roger Ruttimann
+#	* Added post to Foundation for performance data.
+# 24-Apr-2008 Anonymous
+#	* Patched to strip out redundant and unhandled whitespace in definitions.
+# 19-Jun-2008 Thomas Stocking
+#	* Added substitution of illegal chars for RRD DS names, limited DS name length to 19 chars.
+#	* Changed Foundation post to include service description in performance label.
+# 08-Jan-2009 Thomas Stocking
+#	* Added code to post the perf data scraped out of status text to Foundation.
+#	* Added LWP timeout in case Foundation fails to accept post.
+# 03-Feb-2009 Mark Carey
+#	* Applied patch from Jurgen Lesney that corrects a greedy regex match
+#	  when more than one perfdata value is returned
+#	* Fixed perl shebang.
+# 31-Mar-2009 Glenn Herteg
+#	* Script overhauled to consolidate database accesses, thereby significantly
+#	  improving the system loading and performance.
+#	* Implemented creating and updating of RRD files through a shared libary
+#	  instead of forking off a separate process for every such action, to dramatically
+#	  cut down the overhead of such external data storage.
+#	* Improved error handling, particularly the logging of database errors and of
+#	  RRD command errors.
+#	* Improved failure detection in the submission of results to Foundation.
+#	* Removed `date` invocations from within the main loop, to stop excessive forking.
+#	* The foundation_http_submission_timeout is now a named value, suitable for on-site
+#	  configuration if need be; in a future version of this script with a separate
+#	  config file, this would be an obvious candidate option for placing in the
+#	  external config file.
+#	* Fixed the matching of service regex's to guarantee that the expression associated
+#	  with a specific host is matched instead of a wildcarded host, if both matches
+#	  are present.  In particular, we now adhere to a strict interpretation of the
+#	  monarch.performanceconfig.service_regx field, so when it is set to 1, the
+#	  monarch.performanceconfig.service field is treated ONLY as a pattern, and
+#	  never initially as a literal-match string.  This logic now matches the
+#	  documentation, and fixes some obscure situations in which a wildcarded-host
+#	  service pattern might be inappropriately matched as a literal string before
+#	  any service pattern matches for the specific host are even attempted.
+#	* Improved parsing of labels in performance data.
+#	* Process multiple $LISTSTART$...$LISTEND$ templates in the same source string
+#	  independently, as seems to make sense, rather than forcing the first template
+#	  found within these markers to be used for all subsequent instances.
+#	* Added an optional --version argument.
+#	* Implemented the usage message.
+#	* Fixed the signal handling so the script will properly exit upon receiving a
+#	  SIGTERM from nagios.
+#	* perltidy'd the entire script.
+# 14-Apr-2009 Thomas Stocking
+# 	* Added processing for rrdtool graphing commands and custom commands to sync to
+#	  Foundation database for version 6.x.
+# 18-Apr-2009 Thomas Stocking
+#	* Changed to daemon format, and switched input file name to allow for memory-resident operation.
+#	  This mode allows us to keep the data we send and compare to existing data before sending it again.
+#	  That will make the load on Foundation less.
+# 27-Apr-2009 Glenn Herteg
+#	* Quick workaround (work in progress) to fix a problem with performanceconfig content;
+#	  needs further refinement before public release.
+# 06-Jun-2009 Glenn Herteg
+#	* Fix a bug in the finding of the default RRD graph command.
+# 12-Jun-2009 Thomas Stocking
+#	* Change the substitution routine for custom rrdtool graph commands.
+# 04-Jul-2009 Thomas Stocking
+#	* Fix for ds_source_N order bug in custom rrdtool graph commands.
+# 08-Jul-2009 Thomas Stocking
+#	* Enhanced parsing of host and service names for custom rrdtool graph commnand.
+# 11-Jul-2009 Thomas Stocking
+#	* Bug fix for host and service name processing enhancement.
+# 24-Jul-2009 Glenn Herteg
+#	* Make shutdown more graceful, to avoid interrupting RRD file access.
+# 07-Aug-2009 Glenn Herteg
+#	* Improved the efficiency of collecting service XML fragments.
+#	* Provided a default DEFAULT rrdgraphcommand, in case the performanceconfig table
+#	  doesn't have one available.
+#	* Use RRDs::info when configured to use the shared library, now that it provides the necessary data.
+#	* Use Perl's built-in chown and chmod functions instead of forking external processes.
+# 01-Sep-2009 Glenn Herteg
+#	* Don't send an invalid RRD graph command to Foundation.
+# 03-Sep-2009 Glenn Herteg
+#	* Changed the name of this script and associated artifacts to avoid confusion with
+#	  the old non-daemon version, especially at intermediate points during upgrades.
+# 18-Oct-2009 Glenn Herteg
+#	* Fixed the number of iterations of trying to connect to Foundation.
+#	* Applied a socket send timeout on direct writes to Foundation (GWMON-7407).
+# 26-Oct-2009 Glenn Herteg
+#	* Implemented our standard protocol for daemon feeder handshaking with commit operations.
+# 05-May-2010 Glenn Herteg
+#	* Split out config parameters into a separate config file.
+#	* Added support for the RemoteRRDCommand setting.
+# 17-May-2010 Glenn Herteg
+#	* Blank any existing RRDPath and RRDCommand values whenever RemoteRRDCommand is sent, and vice versa.
+# 25-May-2010 Glenn Herteg
+#	* Support the new XML facility for posting performance data to Foundation.
+# 08-Sep-2010 Glenn Herteg
+#	* Use separate options for selecting use of the RRD shared library for different purposes.
+# 10-Sep-2010 Glenn Herteg
+#	* Overhauled the options for sending data to Foundation, to support standby servers
+#	  and to allow much greater flexibility in the handling of performance data.
+#	* Provided error checking and limited recovery on the writes to Foundation databases.
+# 16-Dec-2010 Glenn Herteg
+#	* Support UTF-8 messages to Foundation.
+# 12-Jul-2011 Glenn Herteg
+#	* Attach severity tags to more log messages.
+#	* Modify certain log messages surrounding synchronization with external commit operations.
+#	* Automatically turn on $debug_warnings if $debug_minimal is true, to redirect STDERR
+#	  to the log file and capture any Perl messages should the script die unexpectedly.
+#	* Support more than 26 vname definitions generated for one check result graph command in a
+#	  $LISTSTART$ ... $LISTEND$ sequence.  Note that we currently only use 14 distinct colors.
+#	* Cleaned up progressive matching of performance data.
+#	* Record a warning condition if we see duplicate performance metric labels in a single check result.
+#	* Record a warning condition if we see an empty performance metric label.
+#	* Record a warning condition if we see invalid performance metric labels with no following data.
+#	* Send a SYSTEM log message to Foundation at the end of each processing cycle during which
+#	  either a warning or error condition arose, listing the counts of all types of errors and
+#	  warnings that occurred.
+#	* Ignore SIGPIPE signals so the script is not abruptly terminated due to outside action.
+#	* Properly reference the Data::Dumper package.
+# 20-Jul-2011 Glenn Herteg
+#	* Clarified error messages for bad perf data.
+# 12-Aug-2011 Glenn Herteg
+#	* Provide the (currently script-configurable) ability to log what the script is doing when
+#	  it receives a termination signal, to aid in evolving the robustness of shutdown handling.
+#	* Allow the script to terminate quickly upon receipt of a termination signal if it is in
+#	  the middle of writing data to Foundation (which can otherwise take quite a long time).
+# 19-Aug-2011 Glenn Herteg
+#	* Put the SYSTEM log message to Foundation at the end of each processing cycle under control
+#	  of the emit_status_message configuration option.
+#	* Pull the spill_current_action option out into the config file.
+# 05-Nov-2011 Glenn Herteg
+#	* Ported to support PostgreSQL.
+# 19-Nov-2011 Glenn Herteg
+#	* Fixed a bug in the (deprecated) HTTP method of posting performance data to Foundation.
+# 12-Jan-2012 Glenn Herteg
+#	* Reverted the sequencing of automatically generated RRD graph data source names to be
+#	  strictly alphabetic, starting with single-character lowercase characters as originally
+#	  used, but now with an extension to allow multi-character names if you have more than 26
+#	  data sources.
+#	* Properly XMLify certain values sent to Foundation.
+# 13-Feb-2012 Glenn Herteg
+#	* Properly quote certain values sent to the database.
+#	* Fix $RRDNAME$ substitutions to be consistent about translation of spaces to underscores.
+#	* Extend the timeout processing surrounding socket writes, to handle the possibility that
+#	  the SO_SNDTIMEO socket option by itself is insufficient to generate an application-level
+#	  timeout (the Perl I/O library might simply restart an interrupted write() call with any
+#	  data still unsent).
+#	* Fix the handling of buffered XML data for remote RRD hosts so we don't try to reference
+#	  data structures which have yet not been created (due to prior errors).
+#	* Fixed a rare but possible infinite loop.
+# 16-Feb-2012 Glenn Herteg
+#	* Comment on some code for possible further revision.
+# 17-Feb-2012 Glenn Herteg
+#	* Repair alarm processing on sending Command XML to Foundation.
+# 17-Jun-2012 Glenn Herteg
+#	* Modify ds_source processing to allow references to more than 10 data sources to be
+#	  substituted into an RRD graph command.  The new formulation means the references
+#	  must be wrapped in colons, as will be the case in an ordinary reference such as:
+#	      DEF:cc="rrd_source":ds_source_8:AVERAGE
+# 24-Jun-2012 Glenn Herteg
+#	* Support more than one input file.  This forces an incompatible change in the content
+#	  of the associated perfdata.properties configuration file.
+# 19-Jul-2012 Glenn Herteg
+#	* Improve error messages when RRD create failures and unusual RRD update failures occur
+#	  (list the actual failing command), to make it easy to debug the problem.
+# 12-Sep-2012 Glenn Herteg
+#	* Improve alarm handling during socket sends.
+# 30-Aug-2013 Glenn Herteg
+#	* Require perfdata_source names to be Foundation Application Type names.
+# 25-Nov-2014 Glenn Herteg
+#	* Support $LABELLIST$ substitution in RRD update commands when status text parsing is in effect.
+# 02-Dec-2014 Glenn Herteg
+#	* Support split (primary and secondary) daemons.
+# 24-Dec-2014 Glenn Herteg
+#	* Fix operation as a primary daemon.  Pay attention to the configured write_to_rrds flag
+#	  and ignore the configured process_rrd_updates flag in that mode,
+# 25-Dec-2014 Glenn Herteg
+#	* Improve operational logging.
+# 03-Feb-2015 Glenn Herteg
+#	* Fix certain error message quoting to properly print host and service names.
+# 18-Mar-2015 Glenn Herteg
+#	* Allow colons in RRD filenames to be handled correctly when substituted into RRD graph commands.
+# 15-Sep-2016 Glenn Herteg
+#	* Fix obsolete construction to pass muster with Perl 5.24.0.
+# 15-Mar-2017 Glenn Herteg
+#	* Fix %perfdata_sources boundary cases.
+# 19-Mar-2017 Glenn Herteg
+#	* Control behavior when sending to Foundation and it is unavailable.  Fix coding bugs
+#	  in failures to send data via the XML socket.  Pull in certain custom modifications.
+# 21-Mar-2017 Glenn Herteg
+#	* Fixed labels sent to Foundation via REST API.
+# 26-Mar-2017 Glenn Herteg
+#	* Prevent running as root.  Exit if the seek file cannot be opened for writing.  Support
+#	  a rest_api_timeout option for application-specific tuning of REST-call timeouts, and a
+#	  force_crl_check option for HTTPS REST calls.  Also make signal handling during REST
+#	  calls configurable, via a new die_fast_if_rest_call_interrupted option.  Print out
+#	  a basic processing-rate statistic at the end of each input file.
+# 18-May-2018 Glenn Herteg
+#	* Extend the support for writing to the Foundation REST API to allow multiple targets.
+#	* Do a better job of reporting a bad configuration.
+# 09-Jun-2018 Glenn Herteg
+#	* Cleanly close all REST connections when one of them cannot be opened.
+
+# STILL TO DO:
+# (*) Someday, do all the usual make_daemon() stuff:  chdir to /, release from the controlling
+#     terminal, etc., unless a command-line flag is given to remain in interactive mode.
+# (*) Run some tests to see how much overhead is being invoked by constantly constructing and
+#     tearing down socket connections to the various Foundation databases, rather than having
+#     long-lifetime connections available to send lots of packets on.
+# (*) Change all logging in this script to use our nascent standard GW::Logger or
+#     GroundWork::Logger package, after such a package becomes a part of the base product,
+#     and drop the corresponding logging function definitions here.
+# (*) Change XML writes to Foundation in this script to use our nascent standard GW::Foundation
+#     or GroundWork::Foundation package, after such a package becomes a part of the base product,
+#     and drop the corresponding message construction and sending functions here.  Also, compare
+#     the code here to that package, and see if the package should be generalized in some way
+#     (such as dying quickly upon receipt of a termination signal).
+# (*) See if $SIG{__WARN__} or $SIG{__DIE__} or "use warnings" (in either its simple or
+#     sophisticated forms, beyond what "perl -w" does) or perhaps just an END block can be
+#     used to intercept Perl run-time conditions that would ordinarily cause the script to
+#     exit abnormally, and to get a message out to the Event Console that we have encountered
+#     trouble in some unanticipated form.
+# (*) We currently allow this script to die more rapidly in certain circumstances than would
+#     otherwise be the case, by having the termination signal immediately interrupt the normal
+#     flow of operation during i/o to Foundation.  Look at other forms of i/o to see if we
+#     might need similar treatment in those cases.
+# (*) Use foundation/feeder/fping_process.pl as a possible model for allowing a termination
+#     signal to be recognized immediately if we are in the middle of certain database-access
+#     operations.
+# (*) (This is not actually important in a practical sense, since no perfdata from Foundation
+#     will ever have status text to parse, and no such service should be so configured.
+#     FIX MAJOR:  We should at least emit one error message per run if we do encounter such setup.)
+#     Disable parsing status text as a regular expression when operating as a secondary daemon,
+#     since there is never any status text at hand from data written by the Foundation perfdata
+#     topic consumer.
+
+# BE SURE TO KEEP THIS UP-TO-DATE!
+my $VERSION        = '5.27 (June 9, 2018)';
+my $COPYRIGHT_YEAR = "2018";
+
+use strict;
+
+use Config;
+use Time::Local;
+use Time::HiRes;
+use DBI;
+use URI;
+use LWP;
+use CollageQuery;
+use RRDs;
+use IO::Socket;
+use Sys::Hostname;
+use TypedConfig;
+
+use Data::Dumper;
+$Data::Dumper::Indent   = 1;
+$Data::Dumper::Sortkeys = 1;
+
+my $start_time = Time::HiRes::time();
+
+####################################################################
+# Configuration Parameters
+####################################################################
+
+my $default_config_file = '/usr/local/groundwork/config/perfdata.properties';
+
+my $debug_config   = 0;  # if set, spill out certain data about config-file processing to STDOUT
+my $debug_warnings = 0;  # if set, redirect STDERR to the log file; useful for capturing Perl warnings
+my $log_as_utf8    = 0;  # Set to 0 to log Foundation messages as ISO-8859-1, to 1 to log as UTF-8.
+
+# Possible $debug_level values:
+# 0 = no info of any kind printed, except for startup/shutdown messages and major errors
+# 1 = print just error info and summary statistical data
+# 2 = also print basic debug info
+# 3 = print detailed debug info
+my $debug_level = undef;
+
+my $merge_perfdata_sources             = undef;  # Primary daemon should merge data-source lists in config file.
+my $write_to_rrds                      = undef;  # Primary daemon should write perfdata to RRD files.
+my $write_to_rest                      = undef;  # Primary daemon should write perfdata to REST API.
+my $enable_secondary_daemon            = undef;  # Enable a secondary daemon, run under gwservices.
+
+my $process_rrd_updates                = undef;  # Create and update RRD files (0 = no, 1 = yes)
+my $prioritize_data_saving             = undef;  # Block if sending to Foundation fails (0 = no, 1 = yes)
+my $max_foundation_send_attempts       = undef;  # If prioritize_data_saving, how many attempts to send before exiting
+my $foundation_send_failure_delay      = undef;  # If prioritize_data_saving, how long between attempts to send, in seconds
+my $post_performance_using_xml         = undef;  # Use the XML API instead of HTTP (0 = no, 1 = yes)
+my $max_performance_xml_bundle_size    = undef;  # Loose max number of data points to bundle in a single call
+my $max_bulk_send                      = undef;  # Max number of items sent to Foundation in a single packet
+my $foundation_http_submission_timeout = undef;  # specified in seconds
+my $socket_send_timeout                = undef;  # seconds; to address GWMON-7407; set to 0 to disable
+
+my $post_to_tsdb                       = undef;  # post data to tsdb
+my $tsdb_source                        = undef;  # hostname of tsdb source host
+my $tsdb_host                          = undef;  # hostname of tsdb target host
+my $tsdb_sec_host                      = undef;  # hostname of secondary tsdb target host
+my $tsdb_port                          = undef;  # port number of tsdb target host
+my $tsdb_sec_port                      = undef;  # port number of secondary tsdb target host
+my $post_tholds                        = undef;  # toggle for posting tholds to tsdb
+my $post_minmax                        = undef;  # toggle for posting minmax values to tsdb
+my $tsdb_graph_command                 = undef;
+my $tsdb_socket                        = undef;
+my $shutdown_tsdb_socket               = 0;
+
+# Specify whether to use a shared library to implement RRD file access,
+# or to fork an external process for such work (the legacy implementation).
+# Set to 1 (recommended) for high performance, to 0 only as an emergency fallback
+# or for special purposes.
+my $use_shared_rrd_module_for_create = undef;
+my $use_shared_rrd_module_for_update = undef;
+my $use_shared_rrd_module_for_info   = undef;
+
+my $rrdtool                     = undef;
+my %service_perfdata_files      = ();
+my $source_selection_model      = undef;
+my $seek_file_update_interval   = 0;
+my $update_seek_file_on_failure = undef;
+my $primary_debuglog            = undef;
+my $secondary_debuglog          = undef;
+my $debuglog                    = undef;
+
+# The wait time between cycles of the process_service_perfdata_file script,
+# which runs as a daemon.  Specified in seconds.
+my $loop_wait_time = undef;
+
+# Whether to emit a log message to Foundation at the end of every processing
+# cycle where errors or warnings were detected.
+my $emit_status_message = undef;
+
+# Specify whether to log messages that tell exactly what the script is doing
+# at the moment that a termination signal is received.
+my $spill_current_action = undef;
+
+# Where to post performance data, if the HTTP API is used.  We don't bother to
+# include this in the configuration file because the value is not expected to
+# change in general, and using the HTTP API is now strongly deprecated.
+my $target_performance_post_url = 'http://localhost:8080/foundation-webapp/performanceDataPost';
+
+# --------------------------------------------------------------------------------
+# Options for sending performance data to Foundation via the Foundation REST API.
+# --------------------------------------------------------------------------------
+
+# The application name by which the process_service_perfdata_file process
+# will be known to the Foundation REST API.
+my $rest_api_requestor = undef;
+
+# Where to find credentials for accessing the Foundation REST API.
+my @ws_client_config_files = ();
+
+# The application-specific override for the default GW::RAPID REST call timeout.
+my $rest_api_timeout = undef;
+
+# Whether to demand a Certificate Revocation List file be present if HTTPS is used
+# for REST calls to Foundation.
+my $force_crl_check = undef;
+
+# Whether to die immediately if we receive a termination signal while in the middle
+# of a Foundation REST call.
+my $die_fast_if_rest_call_interrupted = undef;
+
+my $rest_bundle_size     = undef;  # Typical number of perfdata entries to send in each bundle.  This is NOT the minimum size ...
+my $max_rest_bundle_size = undef;  # ... but this is the maximum size.  ??? seems to work reasonably well in testing.
+
+# Application-level logging configuration, for that portion of the logging
+# which is currently handled by the Log4perl package.
+my $log4perl_config = undef;
+
+####################################################################
+# Working variables and definitions
+####################################################################
+
+my $run_as_secondary_daemon = 0;
+
+my @rest_apis = ();
+
+my %valid_app_type           = ();
+my %perfdata_sources         = ();
+my %primary_perfdata_sources = ();
+my @perfdata_source_names    = ();
+my $source_index             = 0;
+
+# This hash is used as temporary scaffolding (an emulation of a package instance)
+# until we convert to using an external package for sending messages to Foundation.
+my %foundation = ();
+
+my $foundation_msg_count = 0;
+
+my %foundation_hosts = ();
+my %local_RRD_hosts  = ();
+my %remote_RRD_hosts = ();
+my %perf_data_hosts  = ();
+
+my $process_foundation_db_updates = 0;  # Post performance data to some Foundation database(s)?
+my $have_parent_hosts             = 0;  # Do we have any parent databases we need to send to?
+
+# Global Variables and hashes
+# Store the metadata for each host and service, so we can tell when it changes.
+my %current_metadata = ();
+my %pending_metadata = ();
+
+# Record whether we have sent RemoteRRDCommand data to each parent host,
+# so we guarantee we send it exactly once per invocation of this script
+# (the first time some incoming data is seen for a given host/service).
+my %sent_to_parent         = ();
+my %pending_send_to_parent = ();
+
+# and a hash for each metadata set to compare
+my %metaset = ();
+
+my %service_config      = ();
+my %service_regx_config = ();
+my %host_service_id     = ();
+
+my $debug_minimal = undef;
+my $debug_basic   = undef;
+my $debug_maximal = undef;
+
+my $rrdgraphcommand       = undef;
+my $rrdcreate_count       = 0;
+my $rrdcreate_failures    = 0;
+my $rrdupdate_count       = 0;
+my $rrdupdate_failures    = 0;
+my $loop_services_count   = 0;
+my $total_services_count  = 0;
+my $in_critical_region    = 0;
+my %ERRORS                = ( 'UNKNOWN', '-1', 'OK', '0', 'WARNING', '1', 'CRITICAL', '2' );
+my $status_message        = undef;
+my $logtime               = '';
+my @performance_xml       = ();
+my @rest_perfdata         = ();
+
+my ( $dbname, $dbhost, $dbuser, $dbpass, $dbtype );
+my $dbh   = undef;
+my $sth   = undef;
+my $query = undef;
+
+my ($nagios_uid, $nagios_gid);
+
+my %warnings = ();
+my %errors   = ();
+
+# We use warning/error constants defined here rather than individual strings scattered
+# throughout the code, to guarantee consistent spelling of identical class instances.
+# However, because we are using these as hash keys, we need to call them as functions
+# so they are not themselves interpreted as unquoted strings.
+use constant CONFIGURATION_FAILURE     => 'configuration failure';
+use constant DATA_FILE_FAILURE         => 'data file failure';
+use constant DB_CONNECTION_FAILURE     => 'DB connection failure';
+use constant DB_DATA_FAILURE           => 'DB data failure';
+use constant DB_QUERY_FAILURE          => 'DB query failure';
+use constant FOUNDATION_UPDATE_FAILURE => 'Foundation update failure';
+use constant LOG_FILE_FAILURE          => 'log file failure';
+use constant OPENTSDB_INSERT_FAILURE   => 'OpenTSDB insert failure';
+use constant OPENTSDB_SOCKET_FAILURE   => 'OpenTSDB socket failure';
+use constant PERF_DATA_FAILURE         => 'performance data failure';
+use constant RRD_COMMAND_FAILURE       => 'RRD command failure';
+use constant RRD_CREATE_FAILURE        => 'RRD create failure';
+use constant RRD_EXTEND_FAILURE        => 'RRD extend failure';
+use constant RRD_INFO_FAILURE          => 'RRD info failure';
+use constant RRD_UPDATE_FAILURE        => 'RRD update failure';
+
+my $external_shutdown_requested = 0;
+our $shutdown_requested = 0;
+my $current_action = 'Starting up.';
+
+use constant ERROR_STATUS    => 0;
+use constant STOP_STATUS     => 1;
+use constant RESTART_STATUS  => 2;
+use constant CONTINUE_STATUS => 3;
+
+#-------------------------------------------------------------------
+# Constants stolen from GW::Foundation.
+# FIX LATER:  Drop this when we call an external package.
+#-------------------------------------------------------------------
+
+# Severity codes:
+use constant SEVERITY_OK       => 'OK';
+use constant SEVERITY_WARNING  => 'WARNING';
+use constant SEVERITY_CRITICAL => 'CRITICAL';
+use constant SEVERITY_UNKNOWN  => 'UNKNOWN';
+
+# Application types:
+use constant APP_SYSTEM   => 'SYSTEM';
+use constant APP_NAGIOS   => 'NAGIOS';
+use constant APP_SNMPTRAP => 'SNMPTRAP';
+use constant APP_SYSLOG   => 'SYSLOG';
+
+####################################################################
+# Program
+####################################################################
+
+# Here is the entire substance of this script, in a one-liner:
+exit ((main() == ERROR_STATUS) ? 1 : 0);
+
+####################################################################
+# Supporting subroutines
+####################################################################
+
+sub freeze_logtime {
+    $logtime = '[' . ( scalar localtime ) . '] ';
+}
+
+sub log_message {
+    print LOG @_, "\n";
+}
+
+sub log_timed_message {
+    freeze_logtime();
+    print LOG $logtime, @_, "\n";
+}
+
+sub log_shutdown {
+    log_timed_message "=== Shutdown requested; terminating (process $$). ===";
+}
+
+sub log_progress_before_shutdown {
+    log_timed_message "STATS:  Received "
+      . ( $external_shutdown_requested ? 'external' : 'internal' )
+      . " shutdown signal after $loop_services_count services (this loop), $total_services_count services (total); aborting!";
+}
+
+sub print_usage {
+    print "Performance Data Handler script for Nagios V2 and V3.\n";
+    print "Copyright (c) 2007-$COPYRIGHT_YEAR GroundWork Open Source, Inc.  All Rights Reserved.\n";
+    print "\n";
+    print "Usage:  process_service_perfdata_file [-s]\n";
+    print "        process_service_perfdata_file [--version]\n";
+    print "\n";
+    print "For operation as a primary daemon, no arguments are specified.\n";
+    print "The -s option specifies operating as a secondary daemon.\n";
+}
+
+sub is_valid_ip_address {
+    my $address = shift;
+    return 0 if not defined $address;
+    return 0 if $address !~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+    return 0 if $1 > 255 || $2 > 255 || $3 > 255 || $4 > 255;
+    return 1;
+}
+
+sub is_valid_hostname {
+    my $name = shift;
+    return 0 if not defined $name;
+    return 0 if $name eq '';
+    return 0 if $name =~ /[^-.a-zA-Z0-9]/;
+    return 0 if $name =~ /^[-.]/;
+    return 0 if $name =~ /[-.]$/;
+    return 0 if $name =~ /\.-/;
+    return 0 if $name =~ /-\./;
+    return 0 if $name =~ /\.\./;
+    return 1;
+}
+
+sub is_valid_port {
+    my $port = shift;
+    return 0 if not defined $port;
+    return 0 if $port eq '';
+    return 0 if $port =~ /\D/;
+    return 0 if $port < 1024 || $port > 65535;
+    return 1;
+}
+
+sub is_valid_boolean {
+    my $boolean = shift;
+    return 0 if not defined $boolean;
+    return 0 if $boolean eq '';
+    return 0 if $boolean =~ /\D/;
+    return 0 if $boolean > 1;
+    return 1;
+}
+
+sub fetch_valid_app_types {
+    my ( $f_dbname, $f_dbhost, $f_dbuser, $f_dbpass, $f_dbtype ) = CollageQuery::readGroundworkDBConfig('collage');
+    if ( !defined($f_dbname) or !defined($f_dbhost) or !defined($f_dbuser) or !defined($f_dbpass) ) {
+	++$errors{ CONFIGURATION_FAILURE() };
+	die "Error:  Cannot read Foundation database parameters.\n";
+    }
+
+    my $dsn = '';
+    if ( defined($f_dbtype) && $f_dbtype eq 'postgresql' ) {
+	$dsn = "DBI:Pg:dbname=$f_dbname;host=$f_dbhost";
+    }
+    else {
+	$dsn = "DBI:mysql:database=$f_dbname;host=$f_dbhost";
+    }
+    my $f_dbh = DBI->connect( $dsn, $f_dbuser, $f_dbpass, { 'AutoCommit' => 1 } );
+    if ( !$f_dbh ) {
+	my $errstr = $DBI::errstr;
+	chomp $errstr;
+	++$errors{ DB_CONNECTION_FAILURE() };
+	die "ERROR:  Cannot connect to database $f_dbname:\n$errstr\n";
+    }
+
+    my $f_query = "SELECT name FROM applicationtype";
+    my $f_sth   = $f_dbh->prepare($f_query);
+    if ( !$f_sth->execute() ) {
+	my $errstr = $f_sth->errstr;
+	chomp $errstr;
+	++$errors{ DB_QUERY_FAILURE() };
+	$f_sth->finish();
+	$f_dbh->disconnect();
+	die "Error:  Cannot read Foundation application type names:\n$errstr\n";
+    }
+    my @values = ();
+    while ( @values = $f_sth->fetchrow_array() ) {
+	$valid_app_type{ $values[0] } = 1;
+    }
+    $f_sth->finish();
+    $f_dbh->disconnect();
+}
+
+# Find out the name and address of the GroundWork Monitor server as known by Foundation.
+# Return undef values if we can't figure it out.
+sub foundation_host {
+    my $rest_api       = shift;
+    my $hostname       = `/bin/hostname`;
+    my $long_hostname  = `/bin/hostname -f`;
+    my $short_hostname = `/bin/hostname -s`;
+    my @hostnames      = ();
+    chomp $hostname       if $hostname;
+    chomp $long_hostname  if $long_hostname;
+    chomp $short_hostname if $short_hostname;
+    push @hostnames, $hostname       if $hostname;
+    push @hostnames, $long_hostname  if $long_hostname;
+    push @hostnames, $short_hostname if $short_hostname;
+    my %outcome;
+    my %results;
+
+    if (@hostnames) {
+	my %unique = ();
+	@unique{@hostnames} = (undef) x @hostnames;
+	@hostnames = keys %unique;
+	if ( $rest_api->get_hosts( \@hostnames, { depth => 'shallow' }, \%outcome, \%results ) ) {
+	    if (%results) {
+		my $host    = ( sort keys %results )[0];
+		my $address = $results{$host}{deviceIdentification};
+		return $host, $address;
+	    }
+	}
+    }
+    if ( $rest_api->get_hosts( ['localhost'], { depth => 'shallow' }, \%outcome, \%results ) ) {
+	if (%results) {
+	    my $host    = ( keys %results )[0];
+	    my $address = $results{$host}{deviceIdentification};
+	    return $host, $address;
+	}
+    }
+    return undef, undef;
+}
+
+# FIX MAJOR:  Test to see the downstream effect of using Zulu time here, as it
+# pertains to timestamps that might show up in Status Viewer and Event Console.
+# See also this same routine in the MonarchFoundationSync.pm code.
+#
+# Here are the accepted REST formats of possible interest to us:
+# "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+# "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+# For simplicity, so as not to need fiddling with the local timezone,
+# we simply choose the latter (Zulu time), and ignore any sub-second values.
+sub get_current_rest_time {
+    my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) = gmtime(time);
+    return sprintf( "%04d-%02d-%02dT%02d:%02d:%02d.000Z", $year + 1900, $mon + 1, $mday, $hour, $min, $sec );
+}
+
+sub log_bad_configuration {
+    my $message = shift;
+
+    # That internal correction prevents the performance data processing from misbehaving.
+    # Still, this is a bad configuration.  So we need to complain so it gets corrected.
+    require GW::RAPID;
+    require MonarchFoundationREST;
+
+    my $logger = FoundationREST->initialize_logger( \*STDERR, 0, $log4perl_config,
+	$run_as_secondary_daemon ? 'Nagios.Perfdata.Secondary.Feeder.GW.RAPID' : 'Nagios.Perfdata.Primary.Feeder.GW.RAPID' );
+    if ( not $logger ) {
+	die "ERROR:  Cannot initialize the logger for the Foundation REST API; exiting.\n";
+    }
+    my %rest_api_options = (
+	timeout         => $rest_api_timeout,
+	force_crl_check => $force_crl_check
+    );
+    $rest_api_options{interruptible} = undef unless $die_fast_if_rest_call_interrupted;
+    foreach my $ws_client_config_file (@ws_client_config_files) {
+	my $rest_api = FoundationREST->initialize_rest_api( \*STDERR, $rest_api_requestor, $ws_client_config_file, $logger, \%rest_api_options );
+	if ( not $rest_api ) {
+	    die "ERROR:  Cannot connect to the Foundation REST API ($ws_client_config_file); exiting.\n";
+	}
+
+	# Send an event to Foundation complaining of the misconfiguration.
+	my ( $groundwork_host, $remote_host ) = foundation_host($rest_api);
+	my $change_time = get_current_rest_time();
+	my @events      = (
+	    {
+		host              => $groundwork_host,
+		consolidationName => 'SYSTEM',
+		appType           => 'SYSTEM',
+		monitorServer     => 'localhost',
+		device            => $remote_host,
+		severity          => 'CRITICAL',
+		monitorStatus     => 'CRITICAL',
+		textMessage       => $message,
+		reportDate        => $change_time
+	    }
+	);
+
+	my %outcome;
+	my @results;
+
+	if ( not $rest_api->create_events( \@events, {}, \%outcome, \@results ) ) {
+	    FoundationREST->log_outcome( \*STDERR, \%outcome, 'logging perfdata-processor misconfiguration' ) if $debug_basic;
+	    FoundationREST->log_results( \*STDERR, \@results, 'logging perfdata-processor misconfiguration' ) if $debug_basic;
+	    print STDERR "ERROR:  Failed to log perfdata-processor misconfiguration to Foundation ($ws_client_config_file).\n";
+	}
+
+	FoundationREST->terminate_rest_api( \$rest_api );
+    }
+}
+
+sub read_config_file {
+    my $perfdata_config_file = shift;
+    eval {
+	my $config = TypedConfig->new ($perfdata_config_file);
+
+	$debug_level                        = $config->get_number('debug_level');
+	$merge_perfdata_sources             = $config->get_boolean('merge_perfdata_sources');
+	$write_to_rrds                      = $config->get_boolean('write_to_rrds');
+	$write_to_rest                      = $config->get_boolean('write_to_rest');
+	$enable_secondary_daemon            = $config->get_boolean('enable_secondary_daemon');
+	$process_rrd_updates                = $config->get_boolean('process_rrd_updates');
+	$prioritize_data_saving             = $config->get_boolean('prioritize_data_saving');
+	$max_foundation_send_attempts       = $config->get_integer('max_foundation_send_attempts');
+	$foundation_send_failure_delay      = $config->get_number('foundation_send_failure_delay');
+	$post_performance_using_xml         = $config->get_boolean('post_performance_using_xml');
+	$max_performance_xml_bundle_size    = $config->get_number('max_performance_xml_bundle_size');
+	$max_bulk_send                      = $config->get_number('max_bulk_send');
+	$foundation_http_submission_timeout = $config->get_number('foundation_http_submission_timeout');
+	$socket_send_timeout                = $config->get_number('socket_send_timeout');
+	$use_shared_rrd_module_for_create   = $config->get_boolean('use_shared_rrd_module_for_create');
+	$use_shared_rrd_module_for_update   = $config->get_boolean('use_shared_rrd_module_for_update');
+	$use_shared_rrd_module_for_info     = $config->get_boolean('use_shared_rrd_module_for_info');
+	$rrdtool                            = $config->get_scalar('rrdtool');
+	$source_selection_model             = $config->get_scalar('source_selection_model');
+	$seek_file_update_interval          = $config->get_number('seek_file_update_interval');
+	$update_seek_file_on_failure        = $config->get_boolean('update_seek_file_on_failure');
+	$primary_debuglog                   = $config->get_scalar('primary_debuglog');
+	$secondary_debuglog                 = $config->get_scalar('secondary_debuglog');
+	$loop_wait_time                     = $config->get_number('loop_wait_time');
+	$emit_status_message                = $config->get_boolean('emit_status_message');
+	$spill_current_action               = $config->get_boolean('spill_current_action');
+	$rest_api_requestor                 = $config->get_scalar('rest_api_requestor');
+	@ws_client_config_files             = $config->get_array('ws_client_config_file');
+	$rest_api_timeout                   = $config->get_integer('rest_api_timeout');
+	$force_crl_check                    = $config->get_boolean('force_crl_check');
+	$die_fast_if_rest_call_interrupted  = $config->get_boolean('die_fast_if_rest_call_interrupted');
+	$rest_bundle_size                   = $config->get_number('rest_bundle_size');
+	$max_rest_bundle_size               = $config->get_number('max_rest_bundle_size');
+	$log4perl_config                    = $config->get_scalar('log4perl_config');
+
+	# This call is reasonably likely to produce just a shortname already, but we force the issue to be sure.
+	my $simple_hostname = Sys::Hostname::hostname();
+	( my $short_hostname = $simple_hostname ) =~ s/\..*//;    # force into shortname form
+
+	# We customize the requestor name so the Foundation that we connect to can readily
+	# distinguish which connections are coming from which servers.  That may not matter
+	# in normal operation, but it might help when diagnosing connection problems.
+	$rest_api_requestor =~ s/\s+$//;
+	$rest_api_requestor = "Nagios performance data feeder" if not $rest_api_requestor;
+	$rest_api_requestor .= " on $short_hostname";
+
+	$post_to_tsdb = $config->get_boolean('post_to_tsdb');
+	if ($post_to_tsdb) {
+	    $tsdb_source   = $config->get_scalar('tsdb_source');
+	    $tsdb_host     = $config->get_scalar('tsdb_host');
+	    $tsdb_sec_host = $config->get_scalar('tsdb_sec_host');
+	    $tsdb_port     = $config->get_integer('tsdb_port');
+	    $tsdb_sec_port = $config->get_scalar('tsdb_sec_port');
+	    $post_tholds   = $config->get_boolean('post_tholds');
+	    $post_minmax   = $config->get_boolean('post_minmax');
+	    if ( $tsdb_sec_host && $tsdb_sec_port !~ /^\d+$/ ) {
+		++$errors{ CONFIGURATION_FAILURE() };
+		die "ERROR:  if tsdb_sec_host is defined, tsdb_sec_port must be an integer\n";
+	    }
+	}
+
+	if ( $max_foundation_send_attempts < 1 || $max_foundation_send_attempts > 100_000_000 ) {
+	    ++$errors{ CONFIGURATION_FAILURE() };
+	    die "ERROR:  max_foundation_send_attempts must be between 1 and 100000000, inclusive\n";
+	}
+
+	if ( $foundation_send_failure_delay < 1 || $foundation_send_failure_delay > 1000 ) {
+	    ++$errors{ CONFIGURATION_FAILURE() };
+	    die "ERROR:  foundation_send_failure_delay must be between 1 and 1000, inclusive\n";
+	}
+
+	$debuglog = $run_as_secondary_daemon ? $secondary_debuglog : $primary_debuglog;
+
+	my %primary_perfdata_files_hash = $config->get_hash('primary_perfdata_files');
+	print Data::Dumper->Dump( [ \%primary_perfdata_files_hash ], [qw(\%primary_perfdata_files_hash)] ) if $debug_config;
+
+	if ( !defined( $primary_perfdata_files_hash{'perfdata_source'} ) ) {
+	    ++$errors{ CONFIGURATION_FAILURE() };
+	    die "ERROR:  no <perfdata_source> sections are provided within <primary_perfdata_files>\n";
+	}
+
+	@primary_perfdata_sources{ keys %{ $primary_perfdata_files_hash{'perfdata_source'} } } = (1) x scalar keys %{ $primary_perfdata_files_hash{'perfdata_source'} };
+
+	my %service_perfdata_files_hash = $config->get_hash('service_perfdata_files');
+	print Data::Dumper->Dump( [ \%service_perfdata_files_hash ], [qw(\%service_perfdata_files_hash)] ) if $debug_config;
+
+	# We only need <service_perfdata_files> entries if the secondary daemon is supposed to do useful work with such entries.
+	if ( !defined( $service_perfdata_files_hash{'perfdata_source'} ) && $enable_secondary_daemon && $run_as_secondary_daemon ) {
+	    ++$errors{ CONFIGURATION_FAILURE() };
+	    die "ERROR:  no <perfdata_source> sections are provided within <service_perfdata_files>\n";
+	}
+
+	if (   defined( $service_perfdata_files_hash{'perfdata_source'} )
+	    && !$merge_perfdata_sources
+	    && !$enable_secondary_daemon
+	    && $run_as_secondary_daemon )
+	{
+	    ## If we have <service_perfdata_files> <perfdata_source> sections but neither the primary or secondary perfdata
+	    ## processor daemon will handle them, the configuration is inconsistent (Foundation will write files, but the
+	    ## perfdata processor daemons will never pick them up).  At a minimum, we need to warn the administrators of this
+	    ## situation, as it can lead to infinite filesystem growth (there will be no consumer of such files).
+	    ++$errors{ CONFIGURATION_FAILURE() };
+
+	    ## If Foundation is not responsive when the secondary perfdata daemon finds this condition,
+	    ## this attempt to log will kill the secondary daemon, and we'll start all over.  This will
+	    ## guarantee that eventually the condition will be properly reported.
+	    log_bad_configuration( 'The performance data processor is misconfigured.'
+		  . '  <service_perfdata_files> contains active <perfdata_source> sections,'
+		  . ' but enable_secondary_daemon is disabled in the config/perfdata.properties file.' );
+	}
+
+	if ( $merge_perfdata_sources && $enable_secondary_daemon && $run_as_secondary_daemon ) {
+	    ## If both $merge_perfdata_sources and $enable_secondary_daemon are set, the configuration
+	    ## is inconsistent (both primary and secondary daemons cannot process the same data).  To
+	    ## avoid locking up the system due to this confusion, we therefore disable the secondary
+	    ## daemon, and allow the primary daemon to take over all duties.
+	    $enable_secondary_daemon = 0;
+	    ++$errors{ CONFIGURATION_FAILURE() };
+
+	    ## If Foundation is not responsive when the secondary perfdata daemon finds this condition,
+	    ## this attempt to log will kill the secondary daemon, and we'll start all over.  This will
+	    ## guarantee that eventually the condition will be properly reported.
+	    log_bad_configuration( 'The performance data processor is misconfigured.'
+		  . '  Both merge_perfdata_sources and enable_secondary_daemon are enabled in the config/perfdata.properties file.' );
+	}
+
+	if ($run_as_secondary_daemon) {
+	    %perfdata_sources =
+	      defined( $service_perfdata_files_hash{'perfdata_source'} )
+	      ? %{ $service_perfdata_files_hash{'perfdata_source'} }
+	      : ();
+	}
+	elsif ($merge_perfdata_sources) {
+	    %perfdata_sources =
+	      defined( $service_perfdata_files_hash{'perfdata_source'} )
+	      ? %{ $service_perfdata_files_hash{'perfdata_source'} }
+	      : ();
+	    @perfdata_sources{ keys %{ $primary_perfdata_files_hash{'perfdata_source'} } } =
+	      values %{ $primary_perfdata_files_hash{'perfdata_source'} };
+	}
+	else {
+	    %perfdata_sources = %{ $primary_perfdata_files_hash{'perfdata_source'} };
+	}
+	print Data::Dumper->Dump( [ \%perfdata_sources ], [qw(\%perfdata_sources)] ) if $debug_config;
+
+	@perfdata_source_names = keys %perfdata_sources;
+	if ( not @perfdata_source_names and not $run_as_secondary_daemon ) {
+	    ++$errors{ CONFIGURATION_FAILURE() };
+	    die "ERROR:  no <perfdata_source SOURCE> sources are defined\n";
+	}
+	foreach my $source (@perfdata_source_names) {
+	    if ( ref $perfdata_sources{$source} ne 'HASH' ) {
+		++$errors{ CONFIGURATION_FAILURE() };
+		if ( ref $perfdata_sources{$source} eq 'ARRAY' ) {
+		    die "ERROR:  <perfdata_source $source> is specified more than once\n";
+		}
+		die "ERROR:  <perfdata_source $source> is misconfigured\n";
+	    }
+
+	    ## Case-insensitivity of the Foundation application type is only being provided here as a nod to
+	    ## older releases, in which we used "Nagios" as a <perfdata_source> name instead of "NAGIOS",
+	    ## in the perfdata.properties file.  But this kind of acceptance of arbitrary capitalization is
+	    ## capricious and ugly, and likely to cause some level of confusion, so I'd rather take it out,
+	    ## just requiring an exact string match to an existing Foundation application type name.
+	    if ( $source =~ /[^A-Z]/ ) {
+		my $original_source = $source;
+		$source = "\U$source\E";
+		if ( exists $perfdata_sources{$source} ) {
+		    die "ERROR:  <perfdata_source $source> is specified as both $original_source and $source.\n";
+		}
+		$perfdata_sources{$source} = delete $perfdata_sources{$original_source};
+	    }
+
+	    if ( not $valid_app_type{$source} ) {
+		++$errors{ CONFIGURATION_FAILURE() };
+		die "ERROR:  <perfdata_source $source> is not a valid Foundation application type name\n";
+	    }
+	    if ( not $perfdata_sources{$source}{perfdata_file} ) {
+		++$errors{ CONFIGURATION_FAILURE() };
+		die "ERROR:  no perfdata_file path is specified for <perfdata_source $source>\n";
+	    }
+	    if ( not $perfdata_sources{$source}{seek_file} ) {
+		++$errors{ CONFIGURATION_FAILURE() };
+		die "ERROR:  no seek_file path is specified for <perfdata_source $source>\n";
+	    }
+	}
+
+	if ($seek_file_update_interval < 0) {
+	    ++$errors{CONFIGURATION_FAILURE()};
+	    die "ERROR:  seek_file_update_interval must be 0 (disabled) or a positive integer\n";
+	}
+
+	my %foundation_hash = $config->get_hash ('foundation');
+	print Data::Dumper->Dump([\%foundation_hash], [qw(\%foundation_hash)]) if $debug_config;
+
+	%foundation_hosts = %{$foundation_hash{'foundation_host'}};
+	print Data::Dumper->Dump([\%foundation_hosts], [qw(\%foundation_hosts)]) if $debug_config;
+
+	my @foundation_hosts = ();
+	foreach my $foundation_host (keys %foundation_hosts) {
+	    print "foundation.foundation_host = $foundation_host\n" if $debug_config;
+	    my $foundation_port = $foundation_hosts{$foundation_host}{'foundation_port'};
+	    my $child_host      = $foundation_hosts{$foundation_host}{'child_host'};
+	    my $send_RRD_data   = $foundation_hosts{$foundation_host}{'send_RRD_data'};
+	    my $send_perf_data  = $foundation_hosts{$foundation_host}{'send_perf_data'};
+
+	    # foundation_host must be non-empty, and a valid IP address or qualified/unqualified hostname
+	    if (!is_valid_ip_address($foundation_host) && !is_valid_hostname($foundation_host)) {
+		++$errors{CONFIGURATION_FAILURE()};
+		die "ERROR:  foundation_host \"$foundation_host\" is not a valid IP address or hostname\n";
+	    }
+	    # foundation_port must be numeric, between 1024 and 65536
+	    if (!is_valid_port($foundation_port)) {
+		++$errors{CONFIGURATION_FAILURE()};
+		die "ERROR:  foundation_host \"$foundation_host\" foundation_port \"$foundation_port\" is not a valid port number\n";
+	    }
+	    # child_host must be empty, a valid IP address, or a valid qualified or unqualified hostname;
+	    #     the specified value must not be localhost or 127.0.0.1
+	    if (defined($child_host) && $child_host ne '') {
+		if (!is_valid_ip_address($child_host) && !is_valid_hostname($child_host)) {
+		    ++$errors{CONFIGURATION_FAILURE()};
+		    die "ERROR:  foundation_host \"$foundation_host\" child_host \"$child_host\" is not a valid IP address or hostname\n";
+		}
+		if ($child_host eq 'localhost' || $child_host eq '127.0.0.1') {
+		    ++$errors{CONFIGURATION_FAILURE()};
+		    die "ERROR:  foundation_host \"$foundation_host\" child_host \"$child_host\" cannot be localhost or 127.0.0.1\n";
+		}
+	    }
+	    # send_RRD_data must be true or false (however that appears here)
+	    if (!is_valid_boolean($send_RRD_data)) {
+		++$errors{CONFIGURATION_FAILURE()};
+		die "ERROR:  foundation_host \"$foundation_host\" send_RRD_data \"$send_RRD_data\" is not a valid boolean value\n";
+	    }
+	    # send_perf_data must be true or false (however that appears here)
+	    if (!is_valid_boolean($send_perf_data)) {
+		++$errors{CONFIGURATION_FAILURE()};
+		die "ERROR:  foundation_host \"$foundation_host\" send_perf_data \"$send_perf_data\" is not a valid boolean value\n";
+	    }
+
+	    if (defined($foundation_port) && defined($child_host) && defined($send_RRD_data) && defined($send_perf_data)) {
+		if ($debug_config) {
+		    print "$foundation_host foundation_port is $foundation_port\n";
+		    print "$foundation_host child_host      is $child_host\n";
+		    print "$foundation_host send_RRD_data   is $send_RRD_data\n";
+		    print "$foundation_host send_perf_data  is $send_perf_data\n";
+		}
+		if ($child_host eq '' && !$send_RRD_data) {
+		    ++$errors{CONFIGURATION_FAILURE()};
+		    die "ERROR:  foundation_host \"$foundation_host\" must have send_RRD_data = true, because child_host is an empty string\n";
+		}
+		push @foundation_hosts, $foundation_host;
+		if ($send_RRD_data) {
+		    if ($child_host eq '') {
+			$local_RRD_hosts{$foundation_host} = $foundation_hosts{$foundation_host};
+		    }
+		    else {
+			$remote_RRD_hosts{$foundation_host} = $foundation_hosts{$foundation_host};
+		    }
+		}
+		if ($send_perf_data) {
+		    $perf_data_hosts{$foundation_host} = $foundation_hosts{$foundation_host};
+		}
+	    }
+	    else {
+		print "ERROR:  foundation_host $foundation_host is not completely specified\n";
+		print "        (it requires foundation_port, child_host, send_RRD_data, and\n";
+		print "        send_perf_data fields to be established).\n";
+		++$errors{CONFIGURATION_FAILURE()};
+		die "ERROR:  foundation_host $foundation_host is not completely specified\n";
+	    }
+	}
+	$have_parent_hosts = 1             if %remote_RRD_hosts;
+	$process_foundation_db_updates = 1 if %perf_data_hosts;
+
+	if (scalar @foundation_hosts == 0) {
+	    print "ERROR:  No complete <foundation_host> entries are defined in $perfdata_config_file\n";
+	    # We sleep as a courtesy so we don't get into a rapid loop whereby some
+	    # watchdog process tries to restart us immediately after this failure.
+	    sleep 60;
+	    ++$errors{CONFIGURATION_FAILURE()};
+	    die "Exiting!\n";
+	}
+
+	# The logic below for determining which @service_xml messages have been sent to the local
+	# Foundation currently depends on knowing we have exactly one such Foundation configured.
+	# If we ever generalize this, that logic will need to be extended.
+	if (keys(%local_RRD_hosts) != 1) {
+	    print "ERROR:  Exactly one <foundation_host> entry must have an empty string for child_host.\n";
+	    sleep 60;
+	    ++$errors{CONFIGURATION_FAILURE()};
+	    die "Exiting!\n";
+	}
+
+	print Data::Dumper->Dump([\@foundation_hosts], [qw(\@foundation_hosts)]) if $debug_config;
+
+	# FIX LATER:  Drop this when we convert to using an external package.
+	#
+	# Here we construct an emulation of a GW::Foundation package instance, to make later calls to routines
+	# stolen from that package easier to convert to actual package calls in a future version of this script.
+	#
+	# Note that the context of sending messages to Foundation from this script may be much more complex than
+	# for almost any other application, because we might have data on multiple Foundation databases in the
+	# configuration file, and we might want to send messages to more than one of them.
+	$foundation{foundation_host} = $_ for keys %local_RRD_hosts;
+	$foundation{foundation_port} = $local_RRD_hosts{$_}{'foundation_port'} for keys %local_RRD_hosts;
+	if ($foundation{foundation_host} =~ /\.\d+$/) {
+	    ## Host as multiple components, and last is all digits, so it looks like an IP address.
+	    $foundation{monitor_server_ip_address} = $foundation{foundation_host};
+	    my $ipaddr = inet_aton( $foundation{monitor_server_ip_address} );
+	    my $hostname = defined($ipaddr) ? gethostbyaddr( $ipaddr, AF_INET ) : undef;
+	    $foundation{monitor_server_hostname} = defined($hostname) ? $hostname : 'unknown host';
+	}
+	else {
+	    ## Looks like an actual hostname.
+	    $foundation{monitor_server_hostname} = $foundation{foundation_host};
+	    my $ipaddr = gethostbyname( $foundation{monitor_server_hostname} );
+	    $foundation{monitor_server_ip_address} = defined($ipaddr) ? inet_ntoa($ipaddr) : 'unknown addr';
+	}
+	$foundation{socket_send_timeout} = $socket_send_timeout;
+
+	$debug_minimal = ( $debug_level >= 1 );
+	$debug_basic   = ( $debug_level >= 2 );
+	$debug_maximal = ( $debug_level >= 3 );
+
+	# If we want any reasonable level of log data, then we will want to capture any Perl execution
+	# errors in the log.  This means that such messages won't appear in the terminal window if this
+	# program is run interactively with minimal debugging enabled, but that is a relatively rare
+	# situation.  It's better to capture unexpected errors the first time they appear in the field.
+	$debug_warnings = 1 if $debug_minimal;
+    };
+    if ($@) {
+	chomp $@;
+	$@ =~ s/^ERROR:\s+//i;
+	++$errors{CONFIGURATION_FAILURE()};
+	die "Error:  Cannot read config file $perfdata_config_file ($@)\n";
+    }
+}
+
+sub main {
+    if ( scalar(@ARGV) == 1 ) {
+	if ( $ARGV[0] eq '--version' ) {
+	    print "Version:  $VERSION\n";
+	    return STOP_STATUS;
+	}
+	if ( $ARGV[0] eq '-s' ) {
+	    $run_as_secondary_daemon = 1;
+	    shift @ARGV;
+	}
+    }
+
+    if ( scalar(@ARGV) ) {
+	print_usage();
+	return ERROR_STATUS;
+    }
+
+    # We need to prohibit executing as root (say, for a manual debugging run), so
+    # we don't create files that won't be modifiable later on when this script is
+    # run in its usual mode as an ordinary user ("nagios").  We purposely delay
+    # this test until after simple actions of the script, so we can at least show
+    # the version and command-usage messages without difficulty.  This test is not
+    # a complete solution to the problem of accidentally running as root, because
+    # the launch_perf_data_processing script will open the log file and redirect
+    # the output streams to that file before this process starts running.  So if
+    # the launch script is itself run as root, the log file may already be opened
+    # with root ownership by the time we get here, which we cannot do much about
+    # now.  But we can at least provide our part of the necessary barrier.
+    if ($> == 0) { 
+	(my $program = $0) =~ s<.*/><>;
+	print "ERROR:  You cannot run $program as root.\n";
+	return ERROR_STATUS;
+    }
+
+    eval {
+	fetch_valid_app_types();
+	read_config_file($default_config_file);
+    };
+    if ($@) {
+	print $@;
+	## We'd like to send_process_status(); here, but without a clean read of the configuration
+	## file, we won't have initialized our values for knowing where to send the status message.
+	return ERROR_STATUS;
+    }
+
+    if ( !open( LOG, '>>', $debuglog ) ) {
+	print "Cannot open the debug file $debuglog ($!); aborting!\n";
+	++$errors{LOG_FILE_FAILURE()};
+	send_process_status();
+	return ERROR_STATUS;
+    }
+    LOG->autoflush(1);
+
+    if ($debug_warnings) {
+	# If requested (only), we re-open the STDERR stream as a duplicate of the
+	# logfile stream, to capture any output written to STDERR (from, say, any
+	# Perl warnings generated by poor coding).
+	if (! open (STDERR, '>>&LOG')) {
+	    log_timed_message "ERROR:  Can't redirect STDERR to '$debuglog': $!";
+	    ++$errors{LOG_FILE_FAILURE()};
+	}
+	else {
+	    # Autoflush the error output on every single write, to avoid problems
+	    # with block i/o and badly interleaved output lines on LOG and STDERR.
+	    STDERR->autoflush(1);
+	}
+    }
+
+    log_timed_message "=== Starting up (process $$). ===";
+
+    if ($run_as_secondary_daemon) {
+	log_timed_message "Running as a secondary daemon.";
+
+	if ($enable_secondary_daemon) {
+	    $write_to_rest = 0;
+	}
+	else {
+	    ## There is nothing to do here.  We sleep rather than die immediately, partly to
+	    ## limit the growth of the log file if retries were to happen frequently, and partly
+	    ## because we want the script to be normally up and running if this is the expected
+	    ## configuration (so "service groundwork status gwservices" doesn't think this
+	    ## component is broken).  (It might still occasionally be seen to be briefly down
+	    ## because of an intentional sleep in the supervise run script before script startup,
+	    ## to prevent tight start/stop loops should some other type of failure occur.)
+	    ##
+	    $current_action = 'Sleeping forever as the Secondary perfdata daemon.';
+	    log_timed_message "Sleeping forever, because the secondary daemon is disabled ...";
+	    eval {
+		local $SIG{INT}  = \&die_on_exit_signal;
+		local $SIG{QUIT} = \&die_on_exit_signal;
+		local $SIG{TERM} = \&die_on_exit_signal;
+		die "Shutdown requested.\n" if $shutdown_requested;    # handle race condition
+		sleep 100_000_000;
+	    };
+	    if ($@) {
+		chomp $@;
+		log_timed_message $@;
+	    }
+	    log_timed_message "Exiting.";
+	    exit 1;
+	}
+    }
+    else {
+	## The process_rrd_updates flag is externally configured, but its value applies only to the
+	## Secondary daemon.  The Primary daemon uses the write_to_rrds flag instead.  The code
+	## still uses the single internal $process_rrd_updates variable to control the detailed
+	## logic, no matter which copy of the daemon is running, so we set that here in this case.
+	$process_rrd_updates = $write_to_rrds;
+
+	if ($write_to_rest) {
+	    require GW::RAPID;
+	    require MonarchFoundationREST;
+
+	    my $logger = FoundationREST->initialize_logger( \*LOG, 0, $log4perl_config, 'Nagios.Perfdata.Primary.Feeder.GW.RAPID' );
+	    if (not $logger) {
+		log_timed_message "ERROR:  Cannot initialize the logger for the Foundation REST API; exiting.";
+		exit 1;
+	    }
+	    my %rest_api_options = (
+		timeout         => $rest_api_timeout,
+		force_crl_check => $force_crl_check
+	    );
+	    $rest_api_options{interruptible} = undef unless $die_fast_if_rest_call_interrupted;
+	    foreach my $ws_client_config_file (@ws_client_config_files) {
+		my $rest_api = FoundationREST->initialize_rest_api( \*LOG, $rest_api_requestor, $ws_client_config_file, $logger, \%rest_api_options );
+		if (not $rest_api) {
+		    log_timed_message "ERROR:  Cannot connect to the Foundation REST API ($ws_client_config_file); exiting.";
+		    foreach my $rest_api (@rest_apis) {
+			FoundationREST->terminate_rest_api( \$rest_api );
+		    }
+		    exit 1;
+		}
+		push @rest_apis, $rest_api;
+	    }
+	}
+    }
+
+    # Set up to handle broken pipe errors, so this process does not abruptly die without logging
+    # anything as to the circumstances that caused its downfall.  (The default SIGPIPE action is to
+    # terminate the process.)  This has to be done in conjunction with later code that will cleanly
+    # process an EPIPE return code from a socket write.
+    #
+    # Ignoring SIGPIPE turns SIGPIPE signals generated when we write to sockets already closed by the
+    # server into EPIPE errors returned from the write operations.  Note that because of the manner in
+    # which sockets work (data transfer is mediated by the kernel, introducing asynchronicity into the
+    # transport), a closed socket typically will not be seen by the sending application as an error
+    # code until the *second* write following the closure of the socket by the receiving end.  The
+    # first write after the socket is closed on the reading side succeeds, because at that point the
+    # process just writes to the kernel, and that succeeds, and the write returns to the caller.  It
+    # is only then that the kernel tries to communicate with the other side, the transfer fails, and
+    # the socket is marked locally as being remotely closed.  A second write at that time then fails,
+    # because the socket closure is now immediately apparent when the application tries to transfer
+    # data to the kernel buffer.  This means that late-occurring closures on the reading side might
+    # not be seen on the writing side as a data-transfer failure, even in the close() return code when
+    # the socket is closed after the last write operation.  The only way to fully close the loop at
+    # the application level so the application can be assured that full data transfer did occur is
+    # for the receiving application to push an application-level acknowledgement back to the original
+    # sender.  And currently, our Foundation socket API does not do so.
+    $SIG{PIPE} = 'IGNORE';
+
+    my $daemon_status = synchronized_daemon();
+
+    if ($write_to_rest) {
+	foreach my $rest_api (@rest_apis) {
+	    FoundationREST->terminate_rest_api( \$rest_api );
+	}
+    }
+
+    close LOG;
+
+    return $daemon_status;
+}
+
+sub synchronized_daemon {
+    my $commit_lock;
+    my $errors;
+
+    # We catch SIGTERM, SIGINT, and SIGQUIT so we can stop when Nagios stops, or when we are asked nicely.
+    local $SIG{INT}  = \&handle_exit_signal;
+    local $SIG{QUIT} = \&handle_exit_signal;
+    local $SIG{TERM} = \&handle_exit_signal;
+
+    use MonarchLocks;
+
+    $current_action = 'Waiting for in-progress file to disappear before daemon loop.';
+    if ( !Locks->wait_for_file_to_disappear( $Locks::in_progress_file, \&log_timed_message, \$shutdown_requested ) ) {
+	log_shutdown();
+	return STOP_STATUS;
+    }
+
+    $current_action = 'Opening and locking commit lock file before daemon loop.';
+    while (1) {
+	$errors = Locks->open_and_lock( \*commit_lock, $Locks::commit_lock_file, $Locks::SHARED, $Locks::NON_BLOCKING );
+	last if !@$errors;
+	for (@$errors) {
+	    log_message($_);
+	}
+	sleep 30;
+	if ($shutdown_requested) {
+	    log_shutdown();
+	    return STOP_STATUS;
+	}
+    }
+    $current_action = 'Initializing feeder.';
+
+    my ( $dev, $ino, $mode, $nlink, $uid, $gid, $rdev, $size, $atime, $mtime, @rest ) = stat( \*commit_lock );
+    my $initial_mtime = $mtime;
+
+    my $init_status = initialize_feeder();
+
+    Locks->close_and_unlock( \*commit_lock );
+
+    if ($init_status != CONTINUE_STATUS) {
+	log_timed_message("=== Initialization failed; will exit (process $$). ===");
+	send_process_status();
+	return $init_status;
+    }
+
+    $current_action = 'In daemon loop.';
+    while (1) {
+	if ($shutdown_requested) {
+	    flush_pending_output();
+	    log_shutdown();
+	    return STOP_STATUS;
+	}
+
+	$current_action = 'Waiting for in-progress file to disappear within daemon loop.';
+	if ( !Locks->wait_for_file_to_disappear( $Locks::in_progress_file, \&log_timed_message, \$shutdown_requested ) ) {
+	    flush_pending_output();
+	    log_shutdown();
+	    return STOP_STATUS;
+	}
+
+	$current_action = 'Opening and locking commit lock file within daemon loop.';
+	while (1) {
+	    $errors = Locks->open_and_lock( \*commit_lock, $Locks::commit_lock_file, $Locks::SHARED, $Locks::NON_BLOCKING );
+	    last if !@$errors;
+	    for (@$errors) {
+		log_message($_);
+	    }
+	    sleep 30;
+	    if ($shutdown_requested) {
+		flush_pending_output();
+		log_shutdown();
+		return STOP_STATUS;
+	    }
+	}
+	$current_action = 'Checking whether a Commit has occurred.';
+
+	( $dev, $ino, $mode, $nlink, $uid, $gid, $rdev, $size, $atime, $mtime, @rest ) = stat( \*commit_lock );
+	if ( $mtime != $initial_mtime ) {
+	    Locks->close_and_unlock( \*commit_lock );
+	    flush_pending_output();
+	    log_timed_message("=== A commit has occurred; will exit to start over and re-initialize (process $$). ===");
+	    return RESTART_STATUS;
+	}
+
+	$current_action = 'Performing feeder cycle actions.';
+	my $cycle_status = perform_feeder_cycle_actions();
+
+	$current_action = 'Unlocking the commit lock file.';
+	Locks->close_and_unlock( \*commit_lock );
+
+	$current_action = 'Sending process status.';
+	## Sending involves more writing to Foundation, so if we have already been requested
+	## to shut down, we don't bother, so as not to delay the shutdown any further.
+	send_process_status() if not $shutdown_requested;
+
+	if ($cycle_status != CONTINUE_STATUS) {
+	    flush_pending_output();
+	    log_timed_message("=== Cycle status is not to continue; will exit (process $$). ===");
+	    return $cycle_status;
+	}
+
+	if ($shutdown_requested) {
+	    flush_pending_output();
+	    log_shutdown();
+	    return STOP_STATUS;
+	}
+
+	$current_action = 'Sleeping until the next cycle boundary.';
+	# Sleep until the next cycle boundary.
+	sleep $loop_wait_time;
+    }
+}
+
+sub flush_pending_output {
+    ## This daemon has no pending output kept across processing cycles.
+}
+
+# Note:  This signal handling does not attempt to interrupt out of potential infinite hangs when writing to
+# Foundation via the LWP::UserAgent mechanism.  We used to have signal handling that attempted to do so,
+# but it was complicated by eval{} processing within that module that would catch a die() from within the
+# signal handler.  For the moment, we are instead going to depend on the $foundation_http_submission_timeout
+# setting to kick us out of such a condition.  If we find that does not always work, we may need to
+# revisit the signal handling scheme here, and mark a special "to be forcibly interrupted" region within
+# an eval{} when sending data via that channel.  Hopefully the need for that will go away anyway, with
+# the LWP::UserAgent mechanism replaced by an ordinary web service to which we can write in bulk, and for
+# which timeouts will be handled by the $socket_send_timeout used for other commmunication with Foundation.
+
+sub handle_exit_signal {
+    my $signame = shift;
+    $external_shutdown_requested = 1;
+    $shutdown_requested          = 1;
+
+    # For developer or on-site debugging only.
+    #
+    # In the general case, we don't want to spill out these messages at this time,
+    # because of the potential for receiving a signal while we are already in the
+    # middle of logging a message.  (We are not guaranteed that the logging routines
+    # are properly re-entrant.)  Still, in some circumstances it can be very helpful
+    # to find out exactly what the system is doing when a signal is received, if it
+    # does not respond soon to the $shutdown_requested flag we set here.
+    if ($spill_current_action) {
+	log_timed_message "NOTICE:  Received SIG$signame while current action is:";
+	log_timed_message "         $current_action";
+    }
+}
+
+# For use only in long-running code sequences that need to be interrupted so they
+# complete quickly if a signal comes in.  Run such code within an eval{}; that will
+# catch the die() here.  Establish this signal handler as a local $SIG{TERM} value
+# within the eval{}; statement:
+#     local $SIG{TERM} = \&die_on_exit_signal;
+#     die "Shutdown requested.\n" if $shutdown_requested;  # handle race condition
+# and then be sure to test $shutdown_requested and/or $@ after the eval{}; to see
+# if the code got interrupted, so you don't misinterpret whatever inconsistent state
+# it may have left behind.
+sub die_on_exit_signal {
+    my $signame = shift;
+    handle_exit_signal $signame;
+    die "Caught a SIG$signame signal.\n";
+}
+
+# For use only in conjunction with eval{}; in code that expects to sometimes receive
+# certain signals, such as an explicitly enabled SIGALRM, that you want to interrupt
+# a particular action but that you don't want to terminate the entire process.
+sub die_on_signal {
+    my $signame = shift;
+    die "Caught a SIG$signame signal.\n";
+}
+
+# The $in_critical_region flag was previously used to mark code segments that should not be interrupted
+# by a signal handler (typically so that files being written would not be corrupted).  It remains for
+# historical interest, since our present signal handler no longer tries to asynchronously interrupt
+# any ongoing operations, relying instead on synchronous recognition of the shutdown request by the
+# application code.
+
+sub enter_critical_region {
+    $in_critical_region = 1;
+}
+
+sub exit_critical_region {
+    $in_critical_region = 0;
+}
+
+sub initialize_feeder {
+    my $successful = 1;
+
+    ($nagios_uid, $nagios_gid) = (getpwnam('nagios'))[2,3];
+
+    $dbh   = undef;
+    $sth   = undef;
+    $query = undef;
+
+    ( $dbname, $dbhost, $dbuser, $dbpass, $dbtype ) = CollageQuery::readGroundworkDBConfig('monarch');
+    if ( !defined($dbname) or !defined($dbhost) or !defined($dbuser) or !defined($dbpass) ) {
+	my $database_name = defined($dbname) ? $dbname : 'monarch';
+	log_timed_message "ERROR:  Cannot read the \"$database_name\" database configuration.";
+	++$errors{CONFIGURATION_FAILURE()};
+	$successful = 0;
+    }
+
+    return $successful ? CONTINUE_STATUS : ERROR_STATUS;
+}
+
+# The list of available sources is considered to be arranged in a ring, accessed in a
+# round-robin fashion.  When asking for the next available source (that is, the next one
+# ready to be processed), there are several possible models for how to look.  In each
+# model, we want to run through the sources in the ring, starting with the source after
+# the one you last processed in this or the previous cycle.
+#
+# (*) In the process_each_ready model, the routine will look at each next element in
+#     the ring to see if that data source is ready to process, and it will return an
+#     undef when it finds an element it has already examined in this cycle.  That is, it
+#     will run at most one circuit of the ring per cycle.  In this model, a given source
+#     would be processed at most once in a given cycle, and each source would be given
+#     only one chance to be ready for consideration to be processed during each cycle.
+#
+# (*) In the process_every_ready model, the routine would look at each next element only
+#     if it has not already been processed in this cycle, and return an undef when it runs
+#     a full circuit around the ring and finds no ready sources that have not already
+#     been processed in this cycle.  In this model, a given source would be processed
+#     at most once in a given cycle, but every source might be given multiple chances
+#     to be ready for processing during each cycle.
+#
+# (*) In the process_all_ready model, the routine that returns the next available source
+#     will always look internally at each next element in the ring to see if that data
+#     source is ready to process, and should only return an undef if it has made one
+#     complete circuit around the ring during a given request for the next available
+#     source and found no sources to be ready.  In this model, the searches over a given
+#     cycle could run an arbitrarily large number of circuits of the ring, provided there
+#     is always at least one data source ready.  A given source could be processed more
+#     than once in a given cycle, and every source might be given multiple chances to
+#     be ready for processing during each cycle.
+#
+# The source-selection model is set via the configuration file.  The process_every_ready
+# model will be the usual choice, being the standard setting in our shipped distribution.
+
+# Our use of a round-robin selection of performance data sources is supposed to provide a
+# measure of robustness, namely that if we have trouble with one input file, it doesn't
+# constantly block other input files from being read and processed.  This means we need
+# to keep track across processing cycles of the last file that was processed, so we start
+# with some other file on the next processing cycle.
+
+sub initialize_source_list {
+    if ( $source_selection_model eq 'process_each_ready' ) {
+	$perfdata_sources{$_}{checked} = 0 foreach @perfdata_source_names;
+    }
+    elsif ( $source_selection_model eq 'process_every_ready' ) {
+	$perfdata_sources{$_}{ready} = 0 foreach @perfdata_source_names;
+    }
+}
+
+sub next_round_robin_source {
+    $source_index = 0 if $source_index >= @perfdata_source_names;
+    return $perfdata_source_names[$source_index++];
+}
+
+sub next_available_source {
+    $current_action = 'Finding next available source.';
+    if ( $source_selection_model eq 'process_each_ready' ) {
+	while ( my $source = next_round_robin_source() ) {
+	    return undef if $perfdata_sources{$source}{checked};
+	    $perfdata_sources{$source}{checked} = 1;
+	    return $source if -f $perfdata_sources{$source}{perfdata_file};
+	}
+    }
+    elsif ( $source_selection_model eq 'process_every_ready' ) {
+	my $source_count = @perfdata_source_names;
+	while ( my $source = next_round_robin_source() ) {
+	    return undef if $source_count-- == 0;
+	    next if $perfdata_sources{$source}{ready};
+	    if ( -f $perfdata_sources{$source}{perfdata_file} ) {
+		$perfdata_sources{$source}{ready} = 1;
+		return $source;
+	    }
+	}
+    }
+    elsif ( $source_selection_model eq 'process_all_ready' ) {
+	my $source_count = @perfdata_source_names;
+	while ( my $source = next_round_robin_source() ) {
+	    return undef   if $source_count-- == 0;
+	    return $source if -f $perfdata_sources{$source}{perfdata_file};
+	}
+    }
+    return undef;
+}
+
+sub perform_feeder_cycle_actions {
+    $loop_services_count = 0;
+
+    # Re-open the log file, to switch to a new file in case the old one got logrotated.
+    # And then we need to redirect STDERR again if we did before, to make sure it is still
+    # tied in to the same log file.
+    close LOG;
+    if ( !open( LOG, '>>', $debuglog ) ) {
+	## FIX LATER:  We cannot log this error message, because we just closed the log file and can't
+	## re-open it.  So where this message will end up is anyone's guess, but hopefully it will end
+	## up in the old log file because we previously redirected STDERR there.  Failing that, maybe we
+	## should re-jigger this code to first open the new logfile under a different file descriptor,
+	## and if that works, swap the file descriptors and close the old logfile.  If opening the new
+	## logfile fails, we would still have the old logfile available to log this failure into.
+	print STDERR "ERROR:  Cannot re-open the debug file $debuglog ($!); aborting!\n";
+	++$errors{LOG_FILE_FAILURE()};
+	return ERROR_STATUS;
+    }
+    LOG->autoflush(1);
+
+    if ($debug_warnings) {
+	# If requested (only), we re-open the STDERR stream as a duplicate of the
+	# logfile stream, to capture any output written to STDERR (from, say, any
+	# Perl warnings generated by poor coding).
+	if (! open (STDERR, '>>&LOG')) {
+	    log_timed_message "ERROR:  Can't redirect STDERR to '$debuglog': $!";
+	    ++$errors{LOG_FILE_FAILURE()};
+	}
+	else {
+	    # Autoflush the error output on every single write, to avoid problems
+	    # with block i/o and badly interleaved output lines on LOG and STDERR.
+	    STDERR->autoflush(1);
+	}
+    }
+
+    log_timed_message '--- Execution loop starting. ---' if $debug_minimal;
+
+    # FIX LATER:  Perhaps change the exception handling in this loop so on ordinary errors that
+    # relate to just one input file, we continue processing with the next iteration of the loop
+    # instead of aborting out of the entire routine, so a problem with one input file (except for a
+    # shutdown request) does not prevent other input files from being processed in the same cycle.
+
+    my $cycle_initialized = 0;
+    initialize_source_list();
+    while ( my $source = next_available_source() ) {
+	if ( not $cycle_initialized ) {
+	    my $outcome = initialize_cycle();
+	    if ( $outcome != CONTINUE_STATUS ) {
+		finalize_cycle();
+		return $outcome;
+	    }
+	    $cycle_initialized = 1;
+	}
+	my $outcome = process_one_file( $source, $perfdata_sources{$source}{perfdata_file}, $perfdata_sources{$source}{seek_file} );
+	if ( $outcome != CONTINUE_STATUS ) {
+	    finalize_cycle();
+	    return $outcome;
+	}
+    }
+
+    finalize_cycle();
+    return CONTINUE_STATUS;
+}
+
+sub initialize_cycle {
+    if ($post_to_tsdb) {
+	$current_action = 'Opening tsdb socket.';
+
+	$tsdb_socket = IO::Socket::INET->new(
+	    PeerAddr => $tsdb_host,
+	    PeerPort => $tsdb_port,
+	    Proto    => 'tcp',
+	    Type     => SOCK_STREAM
+	);
+
+	if ( !$tsdb_socket ) {
+	    log_message "ERROR:  Cannot open OpenTSDB connection $tsdb_host:$tsdb_port; aborting!";
+	    $current_action = 'Sending process status.';
+	    send_process_status();
+	    return ERROR_STATUS;
+	}
+	else {
+	    log_message "DEBUG:  Opened socket to $tsdb_host:$tsdb_port OpenTSDB." if $debug_maximal;
+	    $tsdb_socket->autoflush(1);
+	    if ( not $tsdb_socket->sockopt( SO_SNDTIMEO, pack( 'L!L!', $socket_send_timeout, 0 ) ) ) {
+		log_message "ERROR:  Could not set send timeout on socket to $tsdb_host:$tsdb_port OpenTSDB." if $debug_minimal;
+		++$errors{ OPENTSDB_SOCKET_FAILURE() };
+		close($tsdb_socket);
+		$tsdb_socket    = undef;
+		$current_action = 'Sending process status.';
+		send_process_status();
+		return ERROR_STATUS;
+	    }
+	}
+    }
+
+    $current_action = 'Opening database connection.';
+
+    my $dsn = '';
+    if ( defined($dbtype) && $dbtype eq 'postgresql' ) {
+	$dsn = "DBI:Pg:dbname=$dbname;host=$dbhost";
+    }
+    else {
+	$dsn = "DBI:mysql:database=$dbname;host=$dbhost";
+    }
+    $dbh = DBI->connect( $dsn, $dbuser, $dbpass, { 'AutoCommit' => 1 } );
+    if (!$dbh) {
+	log_message "ERROR:  Cannot connect to database $dbname: ", $DBI::errstr;
+	++$errors{DB_CONNECTION_FAILURE()};
+	return ERROR_STATUS;
+    }
+
+    $current_action = 'Initializing processing cycle.';
+
+    # Prepare for processing individual metrics, by coalescing almost all the
+    # database activity into one large, efficient query at the start of execution.
+    %service_config      = ();
+    %service_regx_config = ();
+
+    # Subsidiary order by service (within common host) establishes a canonical
+    # sorting of service regex patterns, to resolve which one to use (the first
+    # in this sequence, for a given host) if several match a given service.
+
+    # First find the default RRD Graph command and assign it.
+    $rrdgraphcommand = undef;
+    $query = "SELECT * FROM performanceconfig where type='nagios' and enable='1' and service = 'DEFAULT'";
+    $sth   = $dbh->prepare($query);
+    if ( !$sth->execute() ) {
+	log_message $sth->errstr;
+	++$errors{DB_QUERY_FAILURE()};
+	$sth->finish();
+	$dbh->disconnect();
+	$dbh = undef;
+	return ERROR_STATUS;
+    }
+    while ( my $row = $sth->fetchrow_hashref() ) {
+	$rrdgraphcommand = $$row{graphcgi};
+	last;
+    }
+    $sth->finish();
+
+    # Provide a default for the DEFAULT, just in case ...
+    if ( !defined($rrdgraphcommand) ) {
+	$rrdgraphcommand = 'rrdtool graph - $LISTSTART$ DEF:$DEFLABEL#$:AVERAGE CDEF:cdef$CDEFLABEL#$=$CDEFLABEL#$ LINE2:$CDEFLABEL#$$COLORLABEL#$:$DSLABEL#$ GPRINT:$CDEFLABEL#$:MIN:min=%.2lf GPRINT:$CDEFLABEL#$:AVERAGE:avg=%.2lf GPRINT:$CDEFLABEL#$:MAX:max=%.2lf  $LISTEND$  -c BACK#FFFFFF -c CANVAS#FFFFFF -c GRID#C0C0C0 -c MGRID#404040 -c ARROW#FFFFFF -Y --height 120';
+    }
+
+    $query = "SELECT * FROM performanceconfig where type='nagios' and enable='1' ORDER BY host, service";
+    $sth   = $dbh->prepare($query);
+    if ( !$sth->execute() ) {
+	log_message $sth->errstr;
+	++$errors{DB_QUERY_FAILURE()};
+	$sth->finish();
+	$dbh->disconnect();
+	$dbh = undef;
+	return ERROR_STATUS;
+    }
+    while ( my $row = $sth->fetchrow_hashref() ) {
+	my $host    = $$row{host};
+	my $service = $$row{service};
+	# FIX LATER:  In this section of code, there are a couple of places where it may abort due to
+	# bad user input.  In a future version, we should perhaps take the time to analyze the logic
+	# flow and instead of dying in the event of these error conditions, just back out any external
+	# state changes made before the bad data was detected, and continue to run with all the rest
+	# of the good data.  Or avoid making those external state changes until we have performed all
+	# the validity checks and we know the data is good for external consumption.
+	if ( defined($service) && $service ) {
+	    my $service_hashref = {};
+	    if ( defined( $$row{service_regx} ) && $$row{service_regx} == 1 ) {
+		## Here we need an array rather than a hash at the service level, to
+		## preserve the sequencing of the regex's as read from the database.
+		push @{ $service_regx_config{$host} }, $service_hashref;
+		$service_hashref->{service} = $$row{service};
+		eval {
+		    $service_hashref->{serviceregx} = qr/$$row{service}/;
+		};
+		if ($@) {
+		    chomp $@;
+		    log_timed_message "ERROR:  Bad regular expression found in performanceconfig data:";
+		    log_timed_message $@;
+		    log_timed_message "Bad regex is for host \"$host\" service \"$service\" label \"$$row{label}\"";
+		    log_timed_message "Bad regex is: $$row{service}";
+		    log_timed_message "FATAL:  Aborting due to this regex error!";
+		    ++$errors{CONFIGURATION_FAILURE()};
+		    if ($write_to_rest) {
+			foreach my $rest_api (@rest_apis) {
+			    FoundationREST->terminate_rest_api( \$rest_api );
+			}
+		    }
+		    exit 1;
+		}
+	    }
+	    else {
+		$service_config{$service}{$host} = $service_hashref;
+	    }
+	    $service_hashref->{rrdname}         = $$row{rrdname};
+	    $service_hashref->{rrdcreatestring} = $$row{rrdcreatestring};
+	    $service_hashref->{rrdupdatestring} = $$row{rrdupdatestring};
+	    $service_hashref->{perfidstring}    = $$row{perfidstring};
+	    $service_hashref->{configlabel}     = $$row{label};
+
+	    # Set up the custom graph command if there is one
+	    if ( defined( $$row{graphcgi} ) && ( $$row{graphcgi} =~ /rrdtool\s+graph/ ) ) {
+		$service_hashref->{rrdgraphcommand} = $$row{graphcgi};
+	    }
+	    else {
+		## Otherwise use the default graphing command
+		$service_hashref->{rrdgraphcommand} = $rrdgraphcommand;
+	    }
+	    if ( defined( $$row{parseregx} ) && $$row{parseregx} ) {
+		eval {
+		    $service_hashref->{parseregx} = qr/$$row{parseregx}/;
+		};
+		if ($@) {
+		    chomp $@;
+		    log_timed_message "ERROR:  Bad regular expression found in performanceconfig data:";
+		    log_timed_message $@;
+		    log_timed_message "Bad regex is for host \"$host\" service \"$service\" label \"$$row{label}\"";
+		    log_timed_message "Bad regex is: $$row{parseregx}";
+		    log_timed_message "FATAL:  Aborting due to this regex error!";
+		    ++$errors{CONFIGURATION_FAILURE()};
+		    if ($write_to_rest) {
+			foreach my $rest_api (@rest_apis) {
+			    FoundationREST->terminate_rest_api( \$rest_api );
+			}
+		    }
+		    exit 1;
+		}
+		$service_hashref->{parseregx_first} = $$row{parseregx_first};
+	    }
+	    if ($debug_maximal) {
+		log_message 'DEBUG:  Using RRDtool graph command template:';
+		log_message $service_hashref->{rrdgraphcommand};
+	    }
+	}
+    }
+    $sth->finish();
+
+    #Prepare for later checking whether the host_service table is properly populated.
+    %host_service_id = ();
+    $query           = "SELECT hs.host_service_id, hs.host, hs.service, dt.location FROM host_service as hs, datatype as dt "
+      . "WHERE dt.type='RRD' AND hs.datatype_id=dt.datatype_id";
+    $sth = $dbh->prepare($query);
+    if ( !$sth->execute() ) {
+	log_message $sth->errstr;
+	++$errors{DB_QUERY_FAILURE()};
+	$sth->finish();
+	$dbh->disconnect();
+	$dbh = undef;
+	return ERROR_STATUS;
+    }
+    while ( my $row = $sth->fetchrow_hashref() ) {
+	$host_service_id{ $$row{host} }{ $$row{service} }{ $$row{location} } = $$row{host_service_id};
+    }
+    $sth->finish();
+
+    return CONTINUE_STATUS;
+}
+
+sub finalize_cycle {
+    if ($tsdb_socket) {
+	$current_action = 'Closing tsdb connection.';
+	if ($shutdown_tsdb_socket) {
+	    ## I don't know why Kevin thought it necessary to shutdown the socket before closing it;
+	    ## thus this action is now controlled by the $shutdown_tsdb_socket flag instead of being
+	    ## executed unconditionally.  As of this writing, I see no valid reason to set that flag
+	    ## to a true value.  See Stevens, UNIX Network Programming, 3/e, Volume 1.  -- GH
+	    my $status = shutdown( $tsdb_socket, 2 );
+	    if ( not $status ) {
+		log_timed_message "ERROR:  Cannot shutdown tsdb socket cleanly ($!).";
+	    ++$warnings{ OPENTSDB_SOCKET_FAILURE() };
+	    }
+	}
+
+	# Perl 5.22 supposedly changes the way close() returns status values, at least in some
+	# situations.  If this code persists into such an environment, check it out in some detail.
+	#
+	# Note that the close() call should return immediately, even if some sent data remains in the
+	# kernel's TCP buffer and has not yet been sent to the remote side, or if data has been sent but
+	# not yet received at the application level by the remote program.  See the discussion of the
+	# SO_LINGER option in Stevens for details.  Thus a true $status here is not fully indicative of
+	# having successfully transferred all of the data.
+	#
+	# FIX MINOR:  This close() might restart a write from the Perl i/o buffering layer, if it sees that
+	# not all the buffered data got written out previously, thus perhaps leading to another hang, this
+	# one not timed out with an alarm.  We might need to use the :unix I/O layer on the open() call
+	# (unbuffered i/o), or syswrite() and our own interrupted-system-call and partial-write handling,
+	# to prevent that.  Or perhaps just pop all I/O layers before closing the socket (we would need to
+	# experiment to see if that would work).  We at least log a message before closing the socket, so
+	# there is some evidence in the log as to what is going on if it hangs in the close().
+	#
+	log_timed_message "DEBUG:  Closing TSDB socket." if $debug_basic;
+	my $status = close($tsdb_socket);
+	if ( not $status ) {
+	    log_timed_message "ERROR:  Cannot close tsdb socket cleanly ($!).";
+	    ++$warnings{ OPENTSDB_SOCKET_FAILURE() };
+	}
+	$tsdb_socket = undef;
+    }
+
+    $current_action = 'Closing database connection.';
+    $dbh->disconnect() if $dbh;
+    $dbh = undef;
+}
+
+sub update_seek_file {
+    my $fh        = shift;
+    my $device    = shift;
+    my $inode     = shift;
+    my $seek_file = shift;
+    my $outcome   = 1;
+
+    my $file_pos = tell($fh);
+    if ( open( SEEK, '>', $seek_file ) ) {
+	log_timed_message "DEBUG:  Writing to seek position file $seek_file -- position $file_pos" if $debug_maximal;
+	print SEEK "$file_pos\n$device\n$inode\n" or $outcome = 0;
+	close(SEEK) or $outcome = 0;
+	log_timed_message "ERROR:  Unable to write to seek position file $seek_file ($!)." if not $outcome;
+    }
+    else {
+	log_timed_message "ERROR:  Unable to open seek position file $seek_file ($!).";
+	$outcome = 0;
+    }
+    return $outcome;
+}
+
+sub process_one_file {
+    my $source                = shift;
+    my $service_perfdata_file = shift;
+    my $perfdata_seek_file    = shift;
+
+    my $attempt;
+
+    # Accumulate XML for updating Foundation arrays.
+    my @service_xml    = ();
+    my %remote_rrd_xml = ();
+
+    my %active_local_RRD_hosts  = map { $_ => 1 } keys %local_RRD_hosts;
+    my %active_remote_RRD_hosts = map { $_ => 1 } keys %remote_RRD_hosts;
+    my %active_perf_data_hosts  = map { $_ => 1 } keys %perf_data_hosts;
+
+    # We store the device and inode numbers in the seek file as well as the position to which we have
+    # previously read, so we can tell if the seek file really still refers to the same data file.
+
+    my $datafile_device = -1;
+    my $datafile_inode  = -1;
+    my @seek_pos        = ( 0, $datafile_device, $datafile_inode );    # seek position, ...
+
+    if ( !open( DATA, '<', $service_perfdata_file ) ) {
+	## We shouldn't have gotten here if the file is not ready and openable, so this is a processing error.
+	log_timed_message "ERROR:  Cannot open service performance data file $service_perfdata_file ($!).";
+	++$errors{DATA_FILE_FAILURE()};
+	return ERROR_STATUS;
+    }
+
+    my ( $dev, $ino, $mode, $nlink, $uid, $gid, $rdev, $size, @rest ) = stat(DATA);
+    $datafile_device = $dev;
+    $datafile_inode  = $ino;
+    if ( not defined $datafile_inode ) {
+	my $status = "$!";
+	close(DATA);
+	log_timed_message "ERROR:  Unable to stat data file $service_perfdata_file ($status).";
+	++$errors{DATA_FILE_FAILURE()};
+	return ERROR_STATUS;
+    }
+
+    # Try to open the seek file.  If this open fails, we will default to reading from the beginning
+    # of the data file, because most likely, this is simply a new data file that we never wrote a
+    # seek file for.  We use the (possibly missing) device and inode numbers as well to detect a
+    # different data file now in use.  Note that there is an open hole here -- if the data file was
+    # rolled since the last time we read it, there may be some unprocessed messages at the end of the
+    # old data file that will now never be read and processed.
+
+    if ( open( SEEK, '<', $perfdata_seek_file ) ) {
+	chomp( @seek_pos = <SEEK> );
+	close(SEEK);
+
+	# Provide default values if the file is empty or doesn't (yet) include the device/inode numbers.
+	# (device == -1 && inode == -1) means we assume the same $service_perfdata_file file is still in play.
+	$seek_pos[0] = 0  if ( !defined( $seek_pos[0] ) || $seek_pos[0] !~ /\d/ );    # default seek position
+	$seek_pos[1] = -1 if ( !defined( $seek_pos[1] ) || $seek_pos[1] !~ /\d/ );    # default device number
+	$seek_pos[2] = -1 if ( !defined( $seek_pos[2] ) || $seek_pos[2] !~ /\d/ );    # default inode number
+
+	# If the seek file is empty, there is no need to seek ...
+	if ( $seek_pos[0] != 0 ) {
+	    ## Compare seek position to actual file size.  If the file size is smaller
+	    ## then we just start from the beginning; i.e., the file was rotated, etc.,
+	    ## even if it somehow still has the same device and inode numbers.
+	    if (   ( $seek_pos[1] == -1 || $seek_pos[1] == $datafile_device )
+		&& ( $seek_pos[2] == -1 || $seek_pos[2] == $datafile_inode )
+		&& $seek_pos[0] <= $size )
+	    {
+		## We have sometimes found supposedly invalid lines in the input file, which are
+		## coming about because of a bad initial seek position despite our apparently using
+		## the correct means to sense the current position when we update the seek file.
+		## (We have observed this effect to happen occasionally under Perl 5.8.9, running
+		## under CentOS release 6.5.  Whether it also happens under Perl 5.24.0 or later
+		## remains to be seen.  Possibly the fact that we generally ask the daemon to stop
+		## using polite signal handling might have something to do with the unexpected
+		## behavior, although actual application handling of the signal other than flagging
+		## the fact that it was received is synchronous with the rest of its actions, so
+		## that aspect should not be at fault.)  Logging the position we find when we start
+		## up might help debug the problem.
+		log_timed_message "STATS:  Starting at position $seek_pos[0] in the input file.";
+		seek( DATA, $seek_pos[0], 0 );
+	    }
+	}
+    }
+    else {
+	$seek_pos[0] = 0;
+    }
+    $seek_pos[1] = $datafile_device;
+    $seek_pos[2] = $datafile_inode;
+
+    $current_action = "Reading $source perfdata file.";
+    my $file_services_count = 0;
+    my $line_count          = 0;
+    my $file_line_count     = 0;
+    my $file_start_time     = Time::HiRes::time();
+
+    while ( my $line = <DATA> ) {
+	## If we update the seek file, we do so BEFORE we process this line of data.  That means that if we
+	## exit this routine before this line is fully processed, it won't be re-read in a later cycle.  Too
+	## bad; data is just not that valuable.  More important is that if we exited this routine because the
+	## line was somehow bad, we should skip it in the next cycle so we don't get stuck at this point.
+	++$line_count;
+	++$file_line_count;
+	if ( $seek_file_update_interval and $line_count >= $seek_file_update_interval ) {
+	    my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+	    $shutdown_requested = 1 if $update_seek_file_on_failure and not $outcome;
+	    $line_count = 0;
+	}
+
+	if ($shutdown_requested) {
+	    log_progress_before_shutdown();
+	    log_shutdown();
+	    if ( $update_seek_file_on_failure and $line_count > 0 ) {
+		my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+	    }
+	    close DATA;
+	    return STOP_STATUS;
+	}
+
+	$current_action = "Processing line in $source perfdata file.";
+
+	my ( $lastcheck, $host, $svcdesc, $statustext, $perfdata ) = ();
+	my ( $rrdname, $rrdcreatestring, $rrdupdatestring, $perfidstring, $parseregx, $parseregx_first, $configlabel, $rrdgraphcommand ) =
+	  ();
+
+	chomp $line;
+	my @fieldvalues = split /\t/, $line;
+	if ( $fieldvalues[0] !~ /^\d+$/ ) {    # First field is timestamp and must be all digits.
+	    if ($debug_minimal) {
+		log_message '---------------------------------------------------------------------';
+		log_message 'Skipping invalid line: ', $line;
+	    }
+	    next;
+	}
+	$lastcheck  = $fieldvalues[0];
+	$host       = $fieldvalues[1];
+	$svcdesc    = $fieldvalues[2];
+	$statustext = $fieldvalues[3];
+	$perfdata   = $fieldvalues[4] || '';
+	$file_services_count++;
+	$loop_services_count++;
+	$total_services_count++;
+	if ($debug_maximal) {
+	    log_message '---------------------------------------------------------------------';
+	    log_timed_message "\n Host: $host\n Svcdesc: $svcdesc\n Lastcheck: $lastcheck\n Statustext: $statustext\n Perfdata:$perfdata";
+	}
+
+	# Here we try to avoid auto-vivification, which might confuse the calculation.
+	my $service_hashref = undef;
+	if ( exists $service_config{$svcdesc} and exists $service_config{$svcdesc}{$host} ) {
+	    $service_hashref = $service_config{$svcdesc}{$host};
+	}
+	elsif ( exists $service_config{$svcdesc} and exists $service_config{$svcdesc}{'*'} ) {
+	    $service_hashref = $service_config{$svcdesc}{'*'};
+	}
+	else {
+	    log_message "DEBUG:  No exact service name \"$svcdesc\". Looking for service pattern matches." if $debug_basic;
+	    $service_hashref = find_service_hashref( $svcdesc, $host ) || find_service_hashref( $svcdesc, '*' );
+	}
+	if ( defined $service_hashref ) {
+	    $rrdname         = $service_hashref->{rrdname};
+	    $rrdcreatestring = $service_hashref->{rrdcreatestring};
+	    $rrdupdatestring = $service_hashref->{rrdupdatestring};
+	    $perfidstring    = $service_hashref->{perfidstring};
+	    $configlabel     = $service_hashref->{configlabel};
+	    $rrdgraphcommand = $service_hashref->{rrdgraphcommand};
+	    if ( defined( $service_hashref->{parseregx} ) && $service_hashref->{parseregx} ) {
+		$parseregx       = $service_hashref->{parseregx};
+		$parseregx_first = $service_hashref->{parseregx_first};
+	    }
+	}
+	else {
+	    log_message "DEBUG:  No literal or pattern match for host \"$host\", service \"$svcdesc\" in performanceconfig table." if $debug_basic;
+	    next;
+	}
+
+	if ( $process_rrd_updates and ( !defined($rrdupdatestring) or !$rrdupdatestring ) ) {
+	    log_message "DEBUG:  No rrdupdatestring for host \"$host\", service \"$svcdesc\" matched row in performanceconfig table." if $debug_basic;
+	    ## Not only do we not update an RRD file in this case, we also don't forward this performance data to Foundation.
+	    next;
+	}
+
+	if ( !defined($perfdata) and ( !defined($parseregx) or $parseregx eq qr// ) ) {
+	    if ($debug_basic) {
+		log_message 'DEBUG:  No performance data or status text regular expression defined in performanceconfig table match ',
+		  "for host \"$host\", service \"$svcdesc\".";
+	    }
+	    next;
+	}
+
+	my %macros = (
+	    '\$RRDTOOL\$'     => $rrdtool,
+	    '\$RRDNAME\$'     => $rrdname,
+	    '\$LASTCHECK\$'   => $lastcheck,
+	    '\$HOST\$'        => $host,
+	    '\$SERVICETEXT\$' => $statustext,
+	    '\$SERVICE\$'     => $svcdesc
+	);
+
+	# Expected perfdata formats:
+	#	  label=value[UnitOfMeasurement];[warn];[crit];[min];[max]
+	#	'label'=value[UnitOfMeasurement];[warn];[crit];[min];[max]
+	# where label can contain space and "=" characters iff it is quoted,
+	# and there may be multiple metric strings like the ones shown above,
+	# separated by whitespace.  Note that the Nagios plug-in development guidelines
+	# (http://nagiosplug.sourceforge.net/developer-guidelines.html#AEN203) say that
+	# a label may contain any characters, including a quote; an internal quote must
+	# be doubled to escape it (distinguish it from the trailing quote).
+	# warn, crit, min or max may be null (for example, if the threshold is not defined
+	# or min and max do not apply). Trailing unfilled semicolons can be dropped.
+
+	my @foundation_labels = ();
+	my @rrd_labels        = ();
+	my @values            = ();
+	my @warns             = ();
+	my @crits             = ();
+	my @mins              = ();
+	my @maxs              = ();
+
+	if ( defined($perfdata) and ( !defined($parseregx_first) or !$parseregx_first ) ) {
+	    my %ds_label = ();
+
+	    # trim spaces
+	    $perfdata =~ s/^\s+//;
+	    $perfdata =~ s/\s+$//;
+
+	    # Note:  An unaltered Nagios 3.0.6 implementation retains a single-quote character in the
+	    # configured set of illegal macro output characters, which now (due to a bug fix within Nagios)
+	    # for the first time causes Nagios to strip single quotes from performance data just before
+	    # the performance data is written to the performance data file.  Unfortunately, that situation
+	    # breaks the longstanding conventions for how metric labels containing spaces, quotes, and equal
+	    # signs are to be presented, namely that such labels must be enclosed in single quotes and
+	    # embedded single quotes must be doubled.  Trying to patch that situation here would make it
+	    # quite difficult to reliably parse arbitrarily-formatted input.  So the current code here is
+	    # set up to handle Nagios 2 standards, with the understanding that the problem must be fixed
+	    # upstream, either by removing the single-quote character from the configured set of illegal
+	    # macro output characters, or by modifying the Nagios code either so a single-quote character
+	    # is automatically removed from the set of illegal characters when processing performance data,
+	    # or so performance data is not even subject to this kind of filtering.
+	    #
+	    # Since the value is not optional, the $val_pat pattern is now constructed to insist on at least one
+	    # digit being present, whether before an optional decimal point or after an explicit decimal point.
+	    my $unquoted_label_pattern = '[^= \']+';
+	    my $quoted_label_pattern   = '\'(?:[^\']|\'\')+\'';
+	    my $val_pat                = '-?(?:(?:\d+(?:\.\d*)?)|\.\d+)[%\w]*';
+	    ## This loop relies on the /g modifier to grab successive metrics, and
+	    ## the later testing also depends on the /c modifier to be present here.
+	    ## To be clear, the /g modifier forces the match to start at pos($perfdata),
+	    ## and saves pos($perfdata) at the end of the match.  The \G assertion, in
+	    ## contrast, if used at the beginning of a pattern, simply forces the match
+	    ## to be anchored at pos($perfdata).
+	    while ( $perfdata =~ /\G($unquoted_label_pattern|$quoted_label_pattern)=($val_pat)(?:;(\S*))?\s*/gco ) {
+		my $label = $1;
+		my $value = $2;
+		my $other = $3;
+		### print "---- \$1 = $1\n";
+		### print "---- \$2 = $2\n";
+		### print "---- \$3 = $3\n";
+
+		# Note:  warn and crit can be in "range" format, and so are not necessarily
+		# just simple numbers.  See the Nagios plug-in development guidelines
+		# (http://nagiosplug.sourceforge.net/developer-guidelines.html#THRESHOLDFORMAT).
+		my ( $warn, $crit, $min, $max ) = split( /;/o, $other ) if defined $other;
+
+		## Remove any enclosing quotes.
+		$label =~ s/'(.*)'/$1/;
+		## Un-double any embedded quotes.
+		$label =~ s/''/'/go;
+
+		## This partial clean-up so far is all we need for use with Foundation.
+		push @foundation_labels, $label;
+
+		## Handle "/" characters in performance data that are invalid in rrdtool DS names.
+		if ( $label =~ m:^/: ) {
+		    if ( $label =~ m:/\w+: ) {
+			## We have a /mount point, most likely. Replace "/" with "_" throughout.
+			$label =~ s:/:_:go;
+		    }
+		    else {
+			## We have just "/". Replace it with the word "root".
+			$label =~ s:/:root:o;
+		    }
+		}
+
+		## An RRD Data Source-name must be 1 to 19 characters long, using only the characters
+		## [a-zA-Z0-9_].  So we modify the incoming label to conform to that construction.
+		$label =~ tr/ /_/s;
+		$label =~ tr/a-zA-Z0-9_//cd;
+
+		## If we need to truncate, we use the leading characters; this is a change (Mar 31 2009)
+		## from the previous release of this script, which used the trailing characters instead.
+		if ( length($label) > 19 ) {
+		    $label = substr( $label, 0, 19 );
+		}
+		if ($ds_label{$label}) {
+		    log_message "WARNING:  Duplicate RRD DS label \"$label\" in \"$perfdata\" for host \"$host\" service \"$svcdesc\"." if $debug_minimal;
+		    ++$warnings{PERF_DATA_FAILURE()};
+		}
+		$ds_label{$label} = 1;
+
+		# Convert Strings to Numbers, so we get decent values to pump into the
+		# database and into RRD graphs.
+		# This also ends up trimming trailing zeroes after the decimal point,
+		# and even the decimal point itself if the number is an exact integer.
+		# Note that this might not create sensible warn and crit values if they
+		# were not supplied in the performance data.
+		foreach my $val ( \$value, \$warn, \$crit, \$min, \$max ) {
+		    $$val = 0 if ( !defined($$val) or $$val eq '' );
+		    ### print "------ in perfdata '$perfdata':  $$val => ";
+		    unless ( $$val eq 'U' ) {
+			$$val =~ s/[^-.0-9].*//;
+			$$val = $$val + 0;
+		    }
+		    ### print "$$val\n";
+		}
+
+		# Push the values
+		push @rrd_labels, $label;
+		push @values,     $value;
+		push @warns,      $warn;
+		push @crits,      $crit;
+		push @mins,       $min;
+		push @maxs,       $max;
+		log_message "DEBUG:  Adding label=$label,value=$value,warn=$warn,crit=$crit,min=$min,max=$max for host \"$host\", service \"$svcdesc\"." if $debug_basic;
+
+		if ($post_to_tsdb) {
+		    ## All the data is nice and neat now, send it to opentsdb.
+		    ## FIX LATER:  Provide batch processing to reduce communication overhead.
+		    my $previous_action = $current_action;
+		    $current_action = 'Writing to TSDB.';
+
+		    if ( not tsdbwrite( $source, $lastcheck, $host, $svcdesc, $label, $value, $warn, $crit, $min, $max ) ) {
+			++$errors{ OPENTSDB_INSERT_FAILURE() };
+			## Force an abort up the call chain.
+			$shutdown_requested = 1;
+		    }
+
+		    # KDS Added this to enable testing on a second server, sends the same data as the fist.
+		    #    if ( $tsdb_sec_host && $tsdb_sec_port ) {
+		    #       if (
+		    #           not tsdbwrite(
+		    #               $tsdb_sec_host, $tsdb_sec_port, $source, $lastcheck, $host,
+		    #               $svcdesc, $label, $value, $warn, $crit, $min, $max
+		    #           )
+		    #         )
+		    #       {
+		    #           ++$errors{ OPENTSDB_INSERT_FAILURE() };
+		    #           ## Force an abort up the call chain.
+		    #           $shutdown_requested = 1;
+		    #       }
+		    #    }
+
+		    # Add graph references to Foundation for status viewer; this only works for the local Foundation.
+		    #
+		    # FIX LATER:
+		    # 1. Use rest not XML for posting graph references.
+		    # 2. Communicate with a remote target system.
+		    # 3. RRD requires two functions for this for remote and non remote RRDS TSDB
+		    #    is inherently a network resource so one will suffice.
+		    # 4. Perhaps keep some record of what graph commands have been written to Foundation
+		    #    during the running lifetime of this script, to prevent sending the same commands
+		    #    over and over and over and over.
+		    #
+		    $tsdb_graph_command = "exec_tsdbgraph.pl $source;$tsdb_host;$tsdb_port;$host;$svcdesc;$label";
+
+		    # push XML to @service_xml it will get written later
+		    push @service_xml, add_service_xml( $host, $svcdesc, $label, "norrdfile", $tsdb_graph_command );
+
+		    if ($shutdown_requested) {
+			log_progress_before_shutdown();
+			log_shutdown();
+			if ( $update_seek_file_on_failure and $line_count > 0 ) {
+			    my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+			}
+			close DATA;
+			return STOP_STATUS;
+		    }
+
+		    $current_action = $previous_action;
+		}
+	    }
+	    if ( $perfdata =~ /\G(.+)/go ) {
+		## There was something left after our parsing above, but there shouldn't be.
+		## Let's tell somebody about it, so it can get fixed upstream.
+		my $excess = $1;
+		if ( $excess =~ /^(?:'')?=/ ) {
+		    log_message "WARNING:  Invalid perfdata format (empty label) in \"$perfdata\" for host \"$host\" service \"$svcdesc\"." if $debug_minimal;
+		}
+		elsif ( $excess =~ /^($unquoted_label_pattern|$quoted_label_pattern)=;/ ) {
+		    log_message "WARNING:  Invalid perfdata format (empty value) in \"$excess\" for host \"$host\" service \"$svcdesc\"." if $debug_minimal;
+		}
+		else {
+		    log_message "WARNING:  Invalid perfdata format (excess text: \"$excess\") in \"$perfdata\" for host \"$host\" service \"$svcdesc\"." if $debug_minimal;
+		}
+		++$warnings{PERF_DATA_FAILURE()};
+	    }
+	    elsif ( not @values ) {
+		log_message "DEBUG:  No perfdata is present for host \"$host\" service \"$svcdesc\"." if $debug_basic;
+		## It's not a crime to not include performance data in a plugin result, so we don't report it as a warning here.
+	    }
+	    ## We process what we can of what was provided.  If we have nothing in hand, move on.
+	    next if not @values;
+	}
+	elsif ( defined($parseregx) and $parseregx ) {
+	    $_      = $statustext;
+	    @values = /$parseregx/;    # @values is same as array of $1,$2,$3,...
+	    if ( $#values < 0 ) {
+		log_message "DEBUG:  No match in status text for host \"$host\" service \"$svcdesc\", for regular expression: $parseregx" if $debug_basic;
+		next;
+	    }
+	    else {
+		log_message "DEBUG:  Match in status text for host \"$host\" service \"$svcdesc\", for regular expression: $parseregx" if $debug_basic;
+	    }
+	}
+
+	if ($process_rrd_updates) {
+	    $current_action = 'Processing RRD creates and updates.';
+	    ## Check to see if the RRD already exists. If not, create it.
+	    my $rrdfilename = replace_macros( "$rrdname", \%macros, \@rrd_labels );
+	    $rrdfilename =~ s/\s/_/go;
+	    ## We need to make the following %macros adjustment if we expect any '$RRDNAME$'
+	    ## references in the RRD create and update commands to end up with the same replacement
+	    ## value that we have just made a local adjustment for (space => underscore).
+	    $macros{'\$RRDNAME\$'} = $rrdfilename;
+	    if ( !stat($rrdfilename) ) {
+		my $failure_flag = 0;
+
+		my $rrdcommand = replace_macros( $rrdcreatestring, \%macros, \@rrd_labels, \@values, \@warns, \@crits, \@mins, \@maxs );
+		log_message "DEBUG:  For host \"$host\" service \"$svcdesc\", create RRD command: ", $rrdcommand if $debug_maximal;
+		if ($use_shared_rrd_module_for_create) {
+		    ## Drop possible i/o redirection, which is useless in this context.
+		    $rrdcommand =~ s/\s2>&1//;
+		    my @command_args = command_arguments($rrdcommand);
+		    ## Drop the shell command.
+		    shift @command_args;
+		    ## Drop the RRD command.
+		    my $action_type = shift @command_args;
+		    if ( $action_type eq 'create' ) {
+			enter_critical_region();
+			RRDs::create(@command_args);
+			my $ERR = RRDs::error;
+			exit_critical_region();
+			if ($ERR) {
+			    if ($debug_minimal) {
+				log_message "ERROR:  For host \"$host\" service \"$svcdesc\", failed RRD create command: ", $ERR;
+				log_message "  Failed command was:  $rrdcommand";
+			    }
+			    ++$errors{RRD_CREATE_FAILURE()};
+			    $failure_flag = 1;
+			}
+			if ($shutdown_requested) {
+			    log_progress_before_shutdown();
+			    log_shutdown();
+			    if ( $update_seek_file_on_failure and $line_count > 0 ) {
+				my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+			    }
+			    close DATA;
+			    return STOP_STATUS;
+			}
+		    }
+		    else {
+			log_message "ERROR:  For host \"$host\" service \"$svcdesc\", invalid RRD create command: ", $rrdcommand if $debug_minimal;
+			++$errors{RRD_CREATE_FAILURE()};
+			$failure_flag = 1;
+		    }
+		}
+		else {
+		    ## Ensure that we can capture all the error output from the command.
+		    $rrdcommand .= ' 2>&1' if ( $rrdcommand !~ /\s2>&1/ );
+		    enter_critical_region();
+		    my @lines = qx($rrdcommand);
+		    if ( $? != 0 ) {
+			$status_message = wait_status_message($?);
+			log_message "ERROR:  For host \"$host\" service \"$svcdesc\", RRD create of $rrdfilename failed with $status_message:\n@lines" if $debug_minimal;
+			++$errors{RRD_CREATE_FAILURE()};
+			$failure_flag = 1;
+		    }
+		    else {
+			log_message "DEBUG:  For host \"$host\" service \"$svcdesc\", RRD create command output: @lines" if $debug_basic;
+		    }
+		    exit_critical_region();
+		    if ($shutdown_requested) {
+			log_progress_before_shutdown();
+			log_shutdown();
+			if ( $update_seek_file_on_failure and $line_count > 0 ) {
+			    my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+			}
+			close DATA;
+			return STOP_STATUS;
+		    }
+		}
+
+		# We proceed with the chown and chmod even if the RRD create failed,
+		# in case these commands might clean up old badness.
+
+		if ( !chown( $nagios_uid, $nagios_gid, $rrdfilename ) ) {
+		    log_message "ERROR:  chown of $rrdfilename failed: $!" if $debug_minimal;
+		    ++$errors{RRD_CREATE_FAILURE()};
+		    $failure_flag = 1;
+		}
+
+		# Apply g+w permission, in particular.
+		if ( !chmod( 0664, $rrdfilename )) {
+		    log_message "ERROR:  chmod of $rrdfilename failed: $!" if $debug_minimal;
+		    ++$errors{RRD_CREATE_FAILURE()};
+		    $failure_flag = 1;
+		}
+
+		if ($failure_flag) {
+		    $rrdcreate_failures++;
+		}
+		else {
+		    $rrdcreate_count++;
+		}
+	    }
+
+	    # FIX MAJOR:  When is $configlabel forwarded to Foundation?  $VALUE1$ of $MAX1$ won't really
+	    # be of use if the label is only frozen and sent to Foundation at RRD creation time.  (That is
+	    # effectively the case for populating the label in the monarch.host_service table.)  And if
+	    # we do re-send the label if it changes, that could force an expensive update of other data
+	    # that hasn't really changed, on a regular basis.  Perhaps we need to filter what we send
+	    # to Foundation, and only send the particular fields that have actually changed.  For now,
+	    # we are holding back the enablement of this facility until we resolve such issues.  When
+	    # we do enable it, it might be done under control of a $enable_dynamic_labels configuration
+	    # option.  And there might be two such options, one for complete dynamism, and one for just
+	    # basic substitutions.  The reason for options is to control the performance hit incurred by
+	    # the processing, sending, and storage of complex labels.
+	    #
+	    # Allow some substitutions in the string used to label the graph in Status Viewer.  This
+	    # is mostly useful for $HOST$ and $SERVICE$ substitutions.  Still, there's nothing to stop
+	    # you if you want to be more creative.  You could use "$SERVICE$ - $VALUE2$ of $MAX2$",
+	    # for instance, provided that your plugin actually returns a useful max value in its
+	    # performance data, to provide an instant notion of the last known state of the second
+	    # performance metric without needing to view the graph.
+	    ## $configlabel = replace_macros( "$configlabel", \%macros, \@rrd_labels, \@values, \@warns, \@crits, \@mins, \@maxs );
+
+	    # Insert into Status Viewer graph config database.  Check create even if RRD exists.
+	    createsvdb( $host, $svcdesc, "RRD", $configlabel, $rrdfilename );
+
+	    # Assemble graphing command for inserting into Foundation database.
+	    $rrdgraphcommand = replace_graphing_macros( $rrdgraphcommand, $rrdfilename ,\%macros );
+	    if ($shutdown_requested) {
+		log_progress_before_shutdown();
+		log_shutdown();
+		if ( $update_seek_file_on_failure and $line_count > 0 ) {
+		    my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+		}
+		close DATA;
+		return STOP_STATUS;
+	    }
+	    if ($rrdgraphcommand ne '') {
+		log_message "DEBUG:  For host \"$host\" service \"$svcdesc\", graph RRD command: ", $rrdgraphcommand if $debug_maximal;
+
+		my $meta = \%{ $current_metadata{$host}{$svcdesc} };
+		my $cmd = $meta->{'rrdgraphcommand'};
+		my $fil = $meta->{'rrdfilename'};
+		my $lab = $meta->{'configlabel'};
+
+		# Determine if we already sent the exact same metadata to Foundation
+		if (    defined($cmd) and $rrdgraphcommand eq $cmd
+		    and defined($fil) and     $rrdfilename eq $fil
+		    and defined($lab) and     $configlabel eq $lab)
+		{
+		    log_message "DEBUG:  Nothing changed for host \"$host\" service \"$svcdesc\"." if $debug_maximal;
+		}
+		else {
+		    $meta->{'rrdgraphcommand'} = $rrdgraphcommand;
+		    $meta->{'rrdfilename'}     = $rrdfilename;
+		    $meta->{'configlabel'}     = $configlabel;
+		    $pending_metadata{$host}{$svcdesc} = 1;
+		    if ($debug_maximal) {
+			log_message 'DEBUG:  New Service:';
+			log_message $rrdgraphcommand;
+			log_message $rrdfilename;
+			log_message $configlabel;
+		    }
+
+		    # Now we have all the data needed to push this update to Foundation.
+		    # For now just add it to the array as XML.
+		    push @service_xml, add_service_xml( $host, $svcdesc, $configlabel, $rrdfilename, $rrdgraphcommand );
+		}
+		if ($have_parent_hosts) {
+		    foreach my $foundation_host (keys %remote_RRD_hosts) {
+			# The odd ordering of hash indexes in the %sent_to_parent hash chain is intended
+			# to cut down on memory space, by making the high-cardinality key last (and thus
+			# reducing the number of intermediate hashes, and the memory overhead for them).
+			# Given how this hash chain is used, there is no change in functionality.
+			if (!$sent_to_parent{$foundation_host}{$svcdesc}{$host}) {
+			    my $child_host = $remote_RRD_hosts{$foundation_host}{'child_host'};
+			    push @{ $remote_rrd_xml{$foundation_host} }, add_remote_rrd_xml( $host, $svcdesc, $configlabel, $child_host );
+			    $sent_to_parent{$foundation_host}{$svcdesc}{$host} = 1;
+			    $pending_send_to_parent{$foundation_host}{$svcdesc}{$host} = 1;
+			}
+		    }
+		}
+	    }
+
+	    # Look to see if we are using parsed-out status data as perf data (application of /$parseregx/ above
+	    # to populate @values), in which case we have no labels, so create them from the RRD DS names.
+	    if ( defined($parseregx) and $parseregx and ( $#rrd_labels < 0 ) ) {
+		## Look for DS names in rrdcreate string, e.g., $RRDTOOL$ create $RRDNAME$ DS:pct_used:GAUGE:600:0:100
+		while ( $rrdcreatestring =~ m/\sDS:(\w+)/g ) {
+		    my $synth_label = $1;
+		    log_message "Label \"$synth_label\" found in RRD create string for host \"$host\" service \"$svcdesc\":\n    $rrdcreatestring" if $debug_maximal;
+		    push @rrd_labels, $synth_label;
+		}
+	    }
+
+	    my $rrdcommand = replace_macros( $rrdupdatestring, \%macros, \@rrd_labels, \@values, \@warns, \@crits, \@mins, \@maxs );
+	    log_message "DEBUG:  For host \"$host\" service \"$svcdesc\", update RRD command: ", $rrdcommand if $debug_maximal;
+	    if ($use_shared_rrd_module_for_update) {
+		## Drop possible i/o redirection, which is useless in this context.
+		$rrdcommand =~ s/\s2>&1//;
+		my @command_args = command_arguments($rrdcommand);
+		## Drop the shell command.
+		shift @command_args;
+		## Drop the RRD command.
+		my $action_type = shift @command_args;
+		if ( $action_type eq 'update' ) {
+		    enter_critical_region();
+		    RRDs::update(@command_args);
+		    my $ERR = RRDs::error;
+		    exit_critical_region();
+		    if ($ERR) {
+			if ($debug_minimal) {
+			    log_message "ERROR:  For host \"$host\" service \"$svcdesc\", failed RRD update command: ", $ERR;
+			    # We filter out the most common failure mode, as it's really
+			    # terribly uninteresting and would just clog up the log file.
+			    log_message "  Failed command was:  $rrdcommand" if $ERR !~ /\(minimum one second step\)$/;
+			}
+			++$errors{RRD_UPDATE_FAILURE()};
+			$rrdupdate_failures++;
+		    }
+		    else {
+			$rrdupdate_count++;
+		    }
+		    if ($shutdown_requested) {
+			log_progress_before_shutdown();
+			log_shutdown();
+			if ( $update_seek_file_on_failure and $line_count > 0 ) {
+			    my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+			}
+			close DATA;
+			return STOP_STATUS;
+		    }
+		}
+		else {
+		    log_message "ERROR:  For host \"$host\" service \"$svcdesc\", invalid RRD update command: ", $rrdcommand if $debug_minimal;
+		    ++$errors{RRD_UPDATE_FAILURE()};
+		    $rrdupdate_failures++;
+		}
+	    }
+	    else {
+		## Ensure that we can capture all the error output from the command.
+		$rrdcommand .= ' 2>&1' if ( $rrdcommand !~ /\s2>&1/ );
+		enter_critical_region();
+		my @lines = qx($rrdcommand);
+		if ( $? != 0 ) {
+		    $status_message = wait_status_message($?);
+		    log_message "ERROR:  For host \"$host\" service \"$svcdesc\", RRD update of $rrdfilename failed with $status_message:\n@lines" if $debug_minimal;
+		    ++$errors{RRD_UPDATE_FAILURE()};
+		    $rrdupdate_failures++;
+		}
+		else {
+		    log_message "For host \"$host\" service \"$svcdesc\", RRD update returns:\n@lines" if $debug_basic;
+		    $rrdupdate_count++;
+		}
+		exit_critical_region();
+		if ($shutdown_requested) {
+		    log_progress_before_shutdown();
+		    log_shutdown();
+		    if ( $update_seek_file_on_failure and $line_count > 0 ) {
+			my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+		    }
+		    close DATA;
+		    return STOP_STATUS;
+		}
+	    }
+	}
+
+	# Only write data to REST if it's from Nagios, not from CloudHub (which already went through REST).
+	if ( $write_to_rest && $primary_perfdata_sources{$source} ) {
+	    $current_action = 'Processing Foundation DB updates via REST API.';
+
+	    # Look to see if we are using parsed-out status data as perf data (application of /$parseregx/ above
+	    ## to populate @values), in which case we have no labels, so create them from the RRD DS names.
+	    if ( defined($parseregx) and $parseregx and ( $#foundation_labels < 0 ) ) {
+		## Look for DS names in rrdcreate string, e.g., $RRDTOOL$ create $RRDNAME$ DS:pct_used:GAUGE:600:0:100
+		while ( $rrdcreatestring =~ m/\sDS:(\w+)/g ) {
+		    my $synth_label = $1;
+		    log_message "Label \"$synth_label\" found in RRD create string for host \"$host\" service \"$svcdesc\":\n    $rrdcreatestring" if $debug_maximal;
+		    push @foundation_labels, $synth_label;
+		}
+	    }
+
+	    # FIX MAJOR:  Test some services that have no available warning/critical values; should these situations generate errors?
+	    # $rest_bundle_size = 1;
+
+	    if (@foundation_labels < @values) {
+		log_timed_message "NOTICE:  host \"$host\" service \"$svcdesc\" has insufficient perfdata labels; perfdata will not be saved" if $debug_minimal;
+	    }
+	    else {
+		for ( my $i = 0 ; $i < @values ; ++$i ) {
+		    push @rest_perfdata,
+		      {
+			appType     => $source,
+			serverName  => $host,
+			serviceName => $svcdesc,
+			serverTime  => $lastcheck,
+			label       => $svcdesc . '_' . $foundation_labels[$i],
+			value       => $values[$i],
+			warning     => $warns[$i],
+			critical    => $crits[$i]
+		      };
+		}
+		if ( @rest_perfdata >= $rest_bundle_size ) {
+		    foreach my $this_rest_api (@rest_apis) {
+			my $foundation_host = $this_rest_api->{hostname};
+			for ( $attempt = 0 ; ++$attempt <= $max_foundation_send_attempts ; ) {
+			    my %outcome;
+			    my @results;
+			    last if $this_rest_api->create_performance_data( \@rest_perfdata, {}, \%outcome, \@results );
+			    FoundationREST->log_outcome( \*LOG, \%outcome, 'creating performance data' ) if $debug_minimal;
+			    FoundationREST->log_results( \*LOG, \@results, 'creating performance data' ) if $debug_basic;
+			    if ($prioritize_data_saving) {
+				log_timed_message
+				  "ERROR:  Cannot write perf data to Foundation on host $foundation_host (attempt $attempt of $max_foundation_send_attempts; "
+				  . ( $attempt < $max_foundation_send_attempts ? 'will sleep and retry).' : 'no more retries).' );
+				last if $shutdown_requested;
+				sleep $foundation_send_failure_delay;
+				last if $shutdown_requested;
+			    }
+			    else {
+				++$errors{ FOUNDATION_UPDATE_FAILURE() };
+				log_timed_message "ERROR:  Cannot write perf data to Foundation on host $foundation_host; will skip for now.";
+				last;
+			    }
+			}
+			if ( $attempt > $max_foundation_send_attempts ) {
+			    ++$errors{ FOUNDATION_UPDATE_FAILURE() };
+			    ## See later notes for comparable logic.
+			    log_timed_message "FATAL:  max_foundation_send_attempts exceeded for sending to Foundation host $foundation_host; will exit now";
+			    $shutdown_requested = 1;
+			}
+			last if $shutdown_requested;
+		    }
+		    @rest_perfdata = ();
+		    if ($shutdown_requested) {
+			log_progress_before_shutdown();
+			log_shutdown();
+			## FIX MINOR:  We may wish to generalize this to use a separate $update_seek_file_on_rest_failure option instead.
+			if ( $update_seek_file_on_failure and $line_count > 0 ) {
+			    my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+			}
+			close DATA;
+			return STOP_STATUS;
+		    }
+		}
+	    }
+	}
+
+	#
+	# Post data to some Foundation database(s)
+	#
+	if ($process_foundation_db_updates) {
+	    $current_action = 'Processing Foundation DB updates via XML socket.';
+
+	    # Look to see if we are using parsed-out status data as perf data (application of /$parseregx/ above
+	    # to populate @values), in which case we have no labels, so create them from the RRD DS names.
+	    if ( defined($parseregx) and $parseregx and ( $#foundation_labels < 0 ) ) {
+		## Look for DS names in rrdcreate string, e.g., $RRDTOOL$ create $RRDNAME$ DS:pct_used:GAUGE:600:0:100
+		while ( $rrdcreatestring =~ m/\sDS:(\w+)/g ) {
+		    my $synth_label = $1;
+		    log_message "Label \"$synth_label\" found in RRD create string for host \"$host\" service \"$svcdesc\":\n    $rrdcreatestring" if $debug_maximal;
+		    push @foundation_labels, $synth_label;
+		}
+	    }
+
+	    $current_action = 'Pushing performance data to Foundation.';
+	    foundation_post_perf( $lastcheck, $host, $svcdesc, \@foundation_labels, \@values );
+	    if ( @performance_xml >= $max_performance_xml_bundle_size ) {
+		my $performance_xml = join( '', @performance_xml );
+		foreach my $foundation_host ( keys %active_perf_data_hosts ) {
+		    for ( $attempt = 0 ; ++$attempt <= $max_foundation_send_attempts ; ) {
+			last if write_command_xml( $foundation_host, $perf_data_hosts{$foundation_host}{'foundation_port'}, 'MODIFY', $source, $performance_xml );
+			if ($prioritize_data_saving) {
+			    log_timed_message
+			      "ERROR:  Cannot write perf data to Foundation on host $foundation_host (attempt $attempt of $max_foundation_send_attempts; "
+			      . ( $attempt < $max_foundation_send_attempts ? 'will sleep and retry).' : 'no more retries).' );
+			    last if $shutdown_requested;
+			    sleep $foundation_send_failure_delay;
+			    last if $shutdown_requested;
+			}
+			else {
+			    ++$errors{ FOUNDATION_UPDATE_FAILURE() };
+			    log_timed_message "ERROR:  Cannot write perf data to Foundation on host $foundation_host; will skip for now.";
+			    ## We used to remove this $foundation_host from further consideration in this
+			    ## processing cycle, so as not to repeatedly stall briefly on one down target when
+			    ## other targets are still available.  But we eventually realized that one cycle
+			    ## could be processing a large input file.  In that case, we generally don't want
+			    ## to prevent writing all further data from this file to this $foundation_host,
+			    ## simply because of some possibly-transient failure to send one small set of data.
+			    ## That failure might be due to a brief network outage, or to the target just being
+			    ## down temporarily.  Neither situation is just cause for total eviction.  The
+			    ## downside here is that we will continue to try writing to the unavailable target,
+			    ## which will slow down perf-data processing to some degree (though not block it
+			    ## completely) until the target is once again available.
+			    ## delete $active_perf_data_hosts{$foundation_host};
+			    last;
+			}
+		    }
+		    if ( $attempt > $max_foundation_send_attempts ) {
+			++$errors{ FOUNDATION_UPDATE_FAILURE() };
+			## We now force the perf-daemon to die, which will take it completely out of commission for
+			## a brief period (typically up to 5 minutes, until it is restarted by Nagios).  It will
+			## then start up again and pick up roughly where it left off.  The main reason to force a
+			## daemon restart is to refresh all settings within this script and its connections to the
+			## outside world, in case there is some sort of unknown coding or system failure that only
+			## a restart will cure.  The idea is to have the system self-heal and stay running without
+			## requiring administrator intervention, in the presence of unexpected circumstances.  Alas,
+			## since Foundation is not available, we probably cannot send an event that would appear in
+			## the Event Console and make this hiccup more visible.  But we do record the reason for the
+			## failure so there will be forensic evidence for later diagnosis as to what happened.
+			log_timed_message "FATAL:  max_foundation_send_attempts exceeded for sending to Foundation host $foundation_host; will exit now";
+			$shutdown_requested = 1;
+		    }
+		    last if $shutdown_requested;
+		}
+		@performance_xml = ();
+	    }
+	    if ($shutdown_requested) {
+		log_progress_before_shutdown();
+		log_shutdown();
+		if ( $update_seek_file_on_failure and $line_count > 0 ) {
+		    my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+		}
+		close DATA;
+		return STOP_STATUS;
+	    }
+	}
+
+	#
+	# Batch Update of RRD properties to Foundation if needed
+	#
+	$current_action = 'Pushing local RRD properties to Foundation if needed.';
+	if ( @service_xml >= $max_bulk_send ) {
+	    my $service_xml = join('', @service_xml);
+	    foreach my $foundation_host ( keys %active_local_RRD_hosts ) {
+		for ( $attempt = 0 ; ++$attempt <= $max_foundation_send_attempts ; ) {
+		    last if write_command_xml( $foundation_host, $local_RRD_hosts{$foundation_host}{'foundation_port'}, 'MODIFY', $source, $service_xml );
+		    if ($prioritize_data_saving) {
+			log_timed_message
+			  "ERROR:  Cannot write local RRD data to Foundation on host $foundation_host (attempt $attempt of $max_foundation_send_attempts; "
+			  . ( $attempt < $max_foundation_send_attempts ? 'will sleep and retry).' : 'no more retries).' );
+			last if $shutdown_requested;
+			sleep $foundation_send_failure_delay;
+			last if $shutdown_requested;
+		    }
+		    else {
+			++$errors{ FOUNDATION_UPDATE_FAILURE() };
+			log_timed_message "ERROR:  Cannot write local RRD data to Foundation on host $foundation_host; will skip for now.";
+			## See earlier notes for comparable logic.
+			## delete $active_local_RRD_hosts{$foundation_host};
+			## Important data did not get sent in this pass; drop it now so it will be regenerated and re-sent in some later pass.
+			foreach my $h ( keys %pending_metadata ) {
+			    foreach my $s ( keys %{ $pending_metadata{$h} } ) {
+				delete $current_metadata{$h}{$s};
+			    }
+			}
+			last;
+		    }
+		}
+		if ( $attempt > $max_foundation_send_attempts ) {
+		    ++$errors{ FOUNDATION_UPDATE_FAILURE() };
+		    ## See earlier notes for comparable logic.
+		    log_timed_message "FATAL:  max_foundation_send_attempts exceeded for sending to Foundation host $foundation_host; will exit now";
+		    $shutdown_requested = 1;
+		}
+		last if $shutdown_requested;
+	    }
+	    @service_xml      = ();
+	    %pending_metadata = ();
+	}
+	if ($shutdown_requested) {
+	    log_progress_before_shutdown();
+	    log_shutdown();
+	    if ( $update_seek_file_on_failure and $line_count > 0 ) {
+		my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+	    }
+	    close DATA;
+	    return STOP_STATUS;
+	}
+	$current_action = 'Pushing remote RRD properties to Foundation if needed.';
+	foreach my $foundation_host (keys %active_remote_RRD_hosts) {
+	    if ( defined( $remote_rrd_xml{$foundation_host} ) && @{ $remote_rrd_xml{$foundation_host} } >= $max_bulk_send ) {
+		for ( $attempt = 0 ; ++$attempt <= $max_foundation_send_attempts ; ) {
+		    last if write_command_xml( $foundation_host, $remote_RRD_hosts{$foundation_host}{'foundation_port'}, 'MODIFY', $source, join( '', @{ $remote_rrd_xml{$foundation_host} } ) );
+		    if ($prioritize_data_saving) {
+			log_timed_message
+			  "ERROR:  Cannot write remote RRD data to Foundation on host $foundation_host (attempt $attempt of $max_foundation_send_attempts; "
+			  . ( $attempt < $max_foundation_send_attempts ? 'will sleep and retry).' : 'no more retries).' );
+			last if $shutdown_requested;
+			sleep $foundation_send_failure_delay;
+			last if $shutdown_requested;
+		    }
+		    else {
+			++$errors{ FOUNDATION_UPDATE_FAILURE() };
+			log_timed_message "ERROR:  Cannot write remote RRD data to Foundation on host $foundation_host; will skip for now.";
+			## See earlier notes for comparable logic.
+			## delete $active_remote_RRD_hosts{$foundation_host};
+			## Important data did not get sent in this pass; drop it now so it will be regenerated and re-sent in some later pass.
+			foreach my $s ( keys %{ $pending_send_to_parent{$foundation_host} } ) {
+			    foreach my $h ( keys %{ $pending_send_to_parent{$foundation_host}{$s} } ) {
+				delete $sent_to_parent{$foundation_host}{$s}{$h};
+			    }
+			}
+			last;
+		    }
+		}
+		if ( $attempt > $max_foundation_send_attempts ) {
+		    ++$errors{ FOUNDATION_UPDATE_FAILURE() };
+		    ## See earlier notes for comparable logic.
+		    log_timed_message "FATAL:  max_foundation_send_attempts exceeded for sending to Foundation host $foundation_host; will exit now";
+		    $shutdown_requested = 1;
+		}
+		@{ $remote_rrd_xml{$foundation_host} } = ();
+		delete $pending_send_to_parent{$foundation_host};
+	    }
+	    last if $shutdown_requested;
+	}
+	if ($shutdown_requested) {
+	    log_progress_before_shutdown();
+	    log_shutdown();
+	    if ( $update_seek_file_on_failure and $line_count > 0 ) {
+		my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+	    }
+	    close DATA;
+	    return STOP_STATUS;
+	}
+
+	if ($debug_basic) {
+	    my $time_so_far = sprintf( '%0.3f', ( Time::HiRes::time() - $start_time ) );
+	    log_message 'STATS:  Elapsed Execution Time = ', $time_so_far, ' seconds';
+	}
+
+	$current_action = "Reading $source perfdata file.";
+    } # End read loop for DATA
+
+    $current_action = "Cleanup after reading $source perfdata file.";
+
+    if (@rest_perfdata) {
+	$current_action = 'Pushing performance data to Foundation via REST API (whatever is left).';
+	foreach my $this_rest_api (@rest_apis) {
+	    my $foundation_host = $this_rest_api->{hostname};
+	    for ( $attempt = 0 ; ++$attempt <= $max_foundation_send_attempts ; ) {
+		my %outcome;
+		my @results;
+		last if $this_rest_api->create_performance_data( \@rest_perfdata, {}, \%outcome, \@results );
+		FoundationREST->log_outcome( \*LOG, \%outcome, 'creating performance data' ) if $debug_minimal;
+		FoundationREST->log_results( \*LOG, \@results, 'creating performance data' ) if $debug_basic;
+		if ($prioritize_data_saving) {
+		    log_timed_message
+		      "ERROR:  Cannot write perf data to Foundation on host $foundation_host (attempt $attempt of $max_foundation_send_attempts; "
+		      . ( $attempt < $max_foundation_send_attempts ? 'will sleep and retry).' : 'no more retries).' );
+		    last if $shutdown_requested;
+		    sleep $foundation_send_failure_delay;
+		    last if $shutdown_requested;
+		}
+		else {
+		    ++$errors{ FOUNDATION_UPDATE_FAILURE() };
+		    log_timed_message "ERROR:  Cannot write perf data to Foundation on host $foundation_host; will skip for now.";
+		    last;
+		}
+	    }
+	    if ( $attempt > $max_foundation_send_attempts ) {
+		++$errors{ FOUNDATION_UPDATE_FAILURE() };
+		## See earlier notes for comparable logic.
+		log_timed_message "FATAL:  max_foundation_send_attempts exceeded for sending to Foundation host $foundation_host; will exit now";
+		$shutdown_requested = 1;
+	    }
+	    last if $shutdown_requested;
+	}
+	@rest_perfdata = ();
+	if ($shutdown_requested) {
+	    log_progress_before_shutdown();
+	    log_shutdown();
+	    ## FIX MINOR:  We may wish to generalize this to use a separate $update_seek_file_on_rest_failure option instead.
+	    if ( $update_seek_file_on_failure and $line_count > 0 ) {
+		my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+	    }
+	    close DATA;
+	    return STOP_STATUS;
+	}
+    }
+
+    #
+    # Batch Update of RRD properties and performance data to Foundation (clean up what's left)
+    #
+    if ( @service_xml > 0 ) {
+	$current_action = 'Pushing local RRD properties to Foundation (whatever is left).';
+	my $service_xml = join('', @service_xml);
+	foreach my $foundation_host ( keys %active_local_RRD_hosts ) {
+	    for ( $attempt = 0 ; ++$attempt <= $max_foundation_send_attempts ; ) {
+		last if write_command_xml( $foundation_host, $local_RRD_hosts{$foundation_host}{'foundation_port'}, 'MODIFY', $source, $service_xml );
+		if ($prioritize_data_saving) {
+		    log_timed_message
+		      "ERROR:  Cannot write local RRD data to Foundation on host $foundation_host (attempt $attempt of $max_foundation_send_attempts; "
+		      . ( $attempt < $max_foundation_send_attempts ? 'will sleep and retry).' : 'no more retries).' );
+		    last if $shutdown_requested;
+		    sleep $foundation_send_failure_delay;
+		    last if $shutdown_requested;
+		}
+		else {
+		    ++$errors{ FOUNDATION_UPDATE_FAILURE() };
+		    log_timed_message "ERROR:  Cannot write local RRD data to Foundation on host $foundation_host; will skip for now.";
+		    ## See earlier notes for comparable logic.
+		    ## delete $active_local_RRD_hosts{$foundation_host};
+		    ## Important data did not get sent in this pass; drop it now so it will be regenerated and re-sent in some later pass.
+		    foreach my $h ( keys %pending_metadata ) {
+			foreach my $s ( keys %{ $pending_metadata{$h} } ) {
+			    delete $current_metadata{$h}{$s};
+			}
+		    }
+		    last;
+		}
+	    }
+	    if ( $attempt > $max_foundation_send_attempts ) {
+		++$errors{ FOUNDATION_UPDATE_FAILURE() };
+		## See earlier notes for comparable logic.
+		log_timed_message "FATAL:  max_foundation_send_attempts exceeded for sending to Foundation host $foundation_host; will exit now";
+		$shutdown_requested = 1;
+	    }
+	    last if $shutdown_requested;
+	}
+	@service_xml      = ();
+	%pending_metadata = ();
+	if ($shutdown_requested) {
+	    log_progress_before_shutdown();
+	    log_shutdown();
+	    if ( $update_seek_file_on_failure and $line_count > 0 ) {
+		my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+	    }
+	    close DATA;
+	    return STOP_STATUS;
+	}
+    }
+
+    $current_action = 'Pushing remote RRD properties to Foundation if needed (whatever is left).';
+    foreach my $foundation_host (keys %active_remote_RRD_hosts) {
+	if ( defined( $remote_rrd_xml{$foundation_host} ) && @{ $remote_rrd_xml{$foundation_host} } > 0 ) {
+	    for ( $attempt = 0 ; ++$attempt <= $max_foundation_send_attempts ; ) {
+		last if write_command_xml( $foundation_host, $remote_RRD_hosts{$foundation_host}{'foundation_port'}, 'MODIFY', $source, join( '', @{ $remote_rrd_xml{$foundation_host} } ) );
+		if ($prioritize_data_saving) {
+		    log_timed_message
+		      "ERROR:  Cannot write remote RRD data to Foundation on host $foundation_host (attempt $attempt of $max_foundation_send_attempts; "
+		      . ( $attempt < $max_foundation_send_attempts ? 'will sleep and retry).' : 'no more retries).' );
+		    last if $shutdown_requested;
+		    sleep $foundation_send_failure_delay;
+		    last if $shutdown_requested;
+		}
+		else {
+		    ++$errors{ FOUNDATION_UPDATE_FAILURE() };
+		    log_timed_message "ERROR:  Cannot write remote RRD data to Foundation on host $foundation_host; will skip for now.";
+		    ## See earlier notes for comparable logic.
+		    ## delete $active_remote_RRD_hosts{$foundation_host};
+		    ## Important data did not get sent in this pass; drop it now so it will be regenerated and re-sent in some later pass.
+		    foreach my $s ( keys %{ $pending_send_to_parent{$foundation_host} } ) {
+			foreach my $h ( keys %{ $pending_send_to_parent{$foundation_host}{$s} } ) {
+			    delete $sent_to_parent{$foundation_host}{$s}{$h};
+			}
+		    }
+		    last;
+		}
+	    }
+	    if ( $attempt > $max_foundation_send_attempts ) {
+		++$errors{ FOUNDATION_UPDATE_FAILURE() };
+		## See earlier notes for comparable logic.
+		log_timed_message "FATAL:  max_foundation_send_attempts exceeded for sending to Foundation host $foundation_host; will exit now";
+		$shutdown_requested = 1;
+	    }
+	    @{ $remote_rrd_xml{$foundation_host} } = ();
+	    delete $pending_send_to_parent{$foundation_host};
+	}
+	last if $shutdown_requested;
+    }
+    if ($shutdown_requested) {
+	log_progress_before_shutdown();
+	log_shutdown();
+	if ( $update_seek_file_on_failure and $line_count > 0 ) {
+	    my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+	}
+	close DATA;
+	return STOP_STATUS;
+    }
+
+    if ( @performance_xml > 0 ) {
+	$current_action = 'Pushing performance data to Foundation via XML socket (whatever is left).';
+	my $performance_xml = join('', @performance_xml);
+	foreach my $foundation_host ( keys %active_perf_data_hosts ) {
+	    for ( $attempt = 0 ; ++$attempt <= $max_foundation_send_attempts ; ) {
+		last if write_command_xml( $foundation_host, $perf_data_hosts{$foundation_host}{'foundation_port'}, 'MODIFY', $source, $performance_xml );
+		if ($prioritize_data_saving) {
+		    log_timed_message
+		      "ERROR:  Cannot write perf data to Foundation on host $foundation_host (attempt $attempt of $max_foundation_send_attempts; "
+		      . ( $attempt < $max_foundation_send_attempts ? 'will sleep and retry).' : 'no more retries).' );
+		    last if $shutdown_requested;
+		    sleep $foundation_send_failure_delay;
+		    last if $shutdown_requested;
+		}
+		else {
+		    ++$errors{ FOUNDATION_UPDATE_FAILURE() };
+		    log_timed_message "ERROR:  Cannot write perf data to Foundation on host $foundation_host; will skip for now.";
+		    ## See earlier notes for comparable logic.
+		    ## delete $active_perf_data_hosts{$foundation_host};
+		    last;
+		}
+	    }
+	    if ( $attempt > $max_foundation_send_attempts ) {
+		++$errors{ FOUNDATION_UPDATE_FAILURE() };
+		## See earlier notes for comparable logic.
+		log_timed_message "FATAL:  max_foundation_send_attempts exceeded for sending to Foundation host $foundation_host; will exit now";
+		$shutdown_requested = 1;
+	    }
+	    last if $shutdown_requested;
+	}
+	@performance_xml = ();
+	if ($shutdown_requested) {
+	    log_progress_before_shutdown();
+	    log_shutdown();
+	    if ( $update_seek_file_on_failure and $line_count > 0 ) {
+		my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+	    }
+	    close DATA;
+	    return STOP_STATUS;
+	}
+    }
+
+    my $file_end_time = Time::HiRes::time();
+
+    # Currently, we expect (eof DATA) to always be true when we get here.  This generalization, though,
+    # allows for calmly aborting out of the main while(<DATA>) loop early in some future version of this
+    # script, if that ever turns out to be useful (say, to limit the amount of time spent on any one input
+    # file, allowing the daemon to switch between multiple input files without necessarily fully completing
+    # each file before processing some data from a file from some other input source).
+    if ( eof DATA ) {
+	## We are done processing the input, and as the reader, it's our responsibility to clean it up.
+	## We intentionally only delete the seek file if the input file it refers to successfully goes
+	## away, so we don't re-read the same input file from the start if it sticks around.
+	unlink($service_perfdata_file) and unlink($perfdata_seek_file);
+    }
+    else {
+	my $outcome = update_seek_file( \*DATA, $seek_pos[1], $seek_pos[2], $perfdata_seek_file );
+	$shutdown_requested = 1 if $update_seek_file_on_failure and not $outcome;
+    }
+    close DATA;
+
+    if ($debug_minimal) {
+	$current_action = "Reporting statistics for $source performance data.";
+	my $time_so_far   = sprintf( '%0.3f', ( Time::HiRes::time() - $start_time ) );
+	my $file_time     = $file_end_time - $file_start_time;
+	my $one_file_rate = ( $file_line_count && ( $file_time > 0 ) ) ? sprintf( '%0.3f', $file_line_count / ( $file_time / 60 ) ) : '';
+
+	log_message '****************************************************************************' if $debug_basic;
+	my $tmpstring = join( '',
+	    "STATS:  Execution Time = $time_so_far seconds"
+	      . ( $one_file_rate ? "; $file_line_count rows in last file segment processed at $one_file_rate rows per minute" : '' ) . "\n",
+	    "Services (in this loop, for $source data) = $file_services_count;",
+	    " Services (total so far) = $total_services_count.\n",
+	    "Cumulative counts (for this whole run so far): ",
+	    " RRD Creates = $rrdcreate_count, Failures = $rrdcreate_failures;",
+	    " RRD Updates = $rrdupdate_count, Failures = $rrdupdate_failures" );
+	log_timed_message $tmpstring;
+	log_message '****************************************************************************' if $debug_basic;
+    }
+
+    return CONTINUE_STATUS;
+}
+
+sub send_process_status {
+    if ($emit_status_message and (%errors or %warnings)) {
+	my @message = ();
+
+	if (%errors) {
+	    my $count = 0;
+	    my @e = ();
+	    $count += $errors{$_} for keys %errors;
+	    push @e, "$errors{$_} $_" . ( $errors{$_} == 1 ? '' : 's' ) for sort keys %errors;
+	    push @message, 'Error'.($count == 1 ? '' : 's').' (' . join( ',', @e ) . ')';
+	}
+	if (%warnings) {
+	    my $count = 0;
+	    my @w = ();
+	    $count += $warnings{$_} for keys %warnings;
+	    push @w, "$warnings{$_} $_" . ( $warnings{$_} == 1 ? '' : 's' ) for sort keys %warnings;
+	    push @message, 'Warning'.($count == 1 ? '' : 's').' (' . join( ',', @w ) . ')';
+	}
+	my $message = join( ' and ', @message ) . ' from performance data processing.';
+
+	# FIX LATER:  convert this to calling an external package routine
+	my $errors = send_log_message( \%foundation, %errors ? SEVERITY_CRITICAL : SEVERITY_WARNING, APP_SYSTEM, $message );
+	log_timed_message @$errors if $errors;
+    }
+
+    %warnings = ();
+    %errors   = ();
+}
+
+# See the Config(3pm) man page for details of this magic formulation.
+sub system_signal_name {
+    my $signal_number = shift;
+    my %sig_num;
+    my @sig_name;
+
+    unless ( $Config{sig_name} && $Config{sig_num} ) {
+	return undef;
+    }
+
+    my @names = split ' ', $Config{sig_name};
+    @sig_num{@names} = split ' ', $Config{sig_num};
+    foreach (@names) {
+	$sig_name[ $sig_num{$_} ] ||= $_;
+    }
+
+    return $sig_name[$signal_number] || undef;
+}
+
+sub wait_status_message {
+    my $wait_status   = shift;
+    my $exit_status   = $wait_status >> 8;
+    my $signal_number = $wait_status & 0x7F;
+    my $dumped_core   = $wait_status & 0x80;
+    my $signal_name   = system_signal_name($signal_number) || "$signal_number is unknown";
+    my $message = "exit status $exit_status" . ( $signal_number ? " (signal $signal_name)" : '' ) . ( $dumped_core ? ' (with core dump)' : '' );
+    return $message;
+}
+
+sub find_service_hashref {
+    my $svcdesc          = shift;
+    my $host             = shift;
+    my $returned_hashref = undef;
+    my $service_patterns_arrayref;
+
+    if ( !exists $service_regx_config{$host} ) {
+	return $returned_hashref;
+    }
+    $service_patterns_arrayref = $service_regx_config{$host};
+
+    for my $svc_hashref ( @{$service_patterns_arrayref} ) {
+	if ( $svcdesc =~ /$svc_hashref->{serviceregx}/ ) {
+	    ## Check to see if more than one pattern matches.
+	    if ( defined $returned_hashref ) {
+		log_message "NOTICE:  Multiple service pattern matches. Pattern /$svc_hashref->{serviceregx}/ for host '$host' also matches. Ignored.";
+		next;
+	    }
+	    $returned_hashref = $svc_hashref;
+	    if ($debug_maximal) {
+		log_message "DEBUG:  '$svcdesc' matches database service pattern /$svc_hashref->{serviceregx}/ for host '$host'. Using this entry.";
+	    }
+	    else {
+		## Don't bother checking for multiple service pattern matches.
+		return $returned_hashref;
+	    }
+	}
+    }
+    return $returned_hashref;
+}
+
+# Subroutine to replace macros in the rrdtool graph command.
+sub replace_graphing_macros {
+    my $customgraph_command = shift;
+    my $file                = shift;
+    my $macros_ref          = shift;
+    ## FIX LATER:  There is an excessive amount of color duplication here.  We could use additional visibly distinct colors.
+    my @colors = (
+	'#000000','#C05599','#E092E3','#6F76C4','#9BAEFF','#818181','#C0C0C0','#8BA016','#D3DB00','#64A2B8','#8DD9E0','#7E87B7','#F3B50F','#EB6232',
+	'#000000','#C05599','#E092E3','#6F76C4','#9BAEFF','#818181','#C0C0C0','#8BA016','#D3DB00','#64A2B8','#8DD9E0','#7E87B7','#F3B50F','#EB6232',
+	'#000000','#C05599','#E092E3','#6F76C4','#9BAEFF','#818181','#C0C0C0','#8BA016','#D3DB00','#64A2B8','#8DD9E0','#7E87B7','#F3B50F','#EB6232',
+	'#000000','#C05599','#E092E3','#6F76C4','#9BAEFF','#818181','#C0C0C0','#8BA016','#D3DB00','#64A2B8','#8DD9E0','#7E87B7','#F3B50F','#EB6232',
+	'#000000','#C05599','#E092E3','#6F76C4','#9BAEFF','#818181','#C0C0C0','#8BA016','#D3DB00','#64A2B8','#8DD9E0','#7E87B7','#F3B50F','#EB6232',
+	'#000000','#C05599','#E092E3','#6F76C4','#9BAEFF','#818181','#C0C0C0','#8BA016','#D3DB00','#64A2B8','#8DD9E0','#7E87B7','#F3B50F','#EB6232',
+	'#000000','#C05599','#E092E3','#6F76C4','#9BAEFF','#818181','#C0C0C0','#8BA016','#D3DB00','#64A2B8','#8DD9E0','#7E87B7','#F3B50F','#EB6232',
+	'#000000','#C05599','#E092E3','#6F76C4','#9BAEFF','#818181','#C0C0C0','#8BA016','#D3DB00','#64A2B8','#8DD9E0','#7E87B7','#F3B50F','#EB6232',
+	'#000000','#C05599','#E092E3','#6F76C4','#9BAEFF','#818181','#C0C0C0','#8BA016','#D3DB00','#64A2B8','#8DD9E0','#7E87B7','#F3B50F','#EB6232',
+	'#000000','#C05599','#E092E3','#6F76C4','#9BAEFF','#818181','#C0C0C0','#8BA016','#D3DB00','#64A2B8','#8DD9E0','#7E87B7','#F3B50F','#EB6232',
+	'#000000','#C05599','#E092E3','#6F76C4','#9BAEFF','#818181','#C0C0C0','#8BA016','#D3DB00','#64A2B8','#8DD9E0','#7E87B7','#F3B50F','#EB6232',
+	'#000000','#C05599','#E092E3','#6F76C4','#9BAEFF','#818181','#C0C0C0','#8BA016','#D3DB00','#64A2B8','#8DD9E0','#7E87B7','#F3B50F','#EB6232',
+	'#000000','#C05599','#E092E3','#6F76C4','#9BAEFF','#818181','#C0C0C0','#8BA016','#D3DB00','#64A2B8','#8DD9E0','#3366FF','#33CC00','#FF0033'
+    );
+
+    # Assemble graphing command for inserting into Foundation database.
+    # We have to do an rrdtool info command to get the requisite data.
+    # This construction depends on having a recently patched rrdtool
+    # ( http://oss.oetiker.ch/rrdtool-trac/ticket/231 ) installed.
+
+    my $info;
+    my @info;
+    my $ERR;
+    enter_critical_region();
+    if ($use_shared_rrd_module_for_info) {
+	# $info is a hashref here.
+	$info = RRDs::info($file);
+	$ERR = RRDs::error;
+    }
+    else {
+	if ( not @info = qx($rrdtool info $file 2>&1) ) {
+	    log_message 'ERROR:  Cannot execute raw rrdtool info command on file: ', $file;
+	    ++$errors{RRD_INFO_FAILURE()};
+	}
+    }
+    exit_critical_region();
+    if ($use_shared_rrd_module_for_info && $ERR) {
+	log_message 'ERROR:  Failed RRD info command: ', $ERR;
+	++$errors{RRD_INFO_FAILURE()};
+	return '';
+    }
+    if ($shutdown_requested) {
+	return '';
+    }
+    ## We have to trap the DS names in a list ordered by DS sequence number for the custom graph command.
+    my @ds_list = ();
+    if ($use_shared_rrd_module_for_info) {
+	foreach my $in (keys %$info) {
+	    if ( $in =~ /^ds\[(\S+)\]\.index$/ ) {
+		$ds_list[ $$info{$in} ] = $1;
+	    }
+	}
+    }
+    else {
+	foreach my $in ( @info ) {
+	    if ( $in =~ /^ds\[(\S+)\]\.index = (\d+)/ ) {
+		$ds_list[$2] = $1;
+	    }
+	}
+    }
+    if ( not @ds_list ) {
+	log_message 'ERROR:  Invalid RRD (no data sources) -- Try to repair or delete and allow system to re-create RRD: ', $file;
+	++$errors{RRD_INFO_FAILURE()};
+	return '';
+    }
+
+    # replace the string rrd_source with the RRD file, making sure the filename always ends up safely quoted
+    (my $sanitized_file = $file) =~ s/:/\\:/g;
+    my $lead;
+    my $trail;
+    $customgraph_command =~ s/(?<=\s)(\S*)rrd_source(\S*)(?=\s)/
+	($lead = $1, $trail = $2, $lead =~ m{"} && $trail =~ m{"})
+	? "$lead$sanitized_file$trail" : "$lead\"$sanitized_file\"$trail"
+    /eg;
+
+    # get rid of those pesky backslashes and newlines, but preserve the whitespace (word separator) aspect of a newline ...
+    $customgraph_command =~ s/\\\s//g;
+    $customgraph_command =~ s/\n/ /g;
+    $customgraph_command =~ s/\r//g;
+
+    # and the single quotes that get in the way ...
+    $customgraph_command =~ s/^'//;
+    $customgraph_command =~ s/'$//;
+
+    # Handle the List Cases for vname parameters.  This version supports a near-infinite number
+    # of data sources, with backward compatibility to the original code that just used single
+    # lowercase letters.  Of course, if you actually try to show them all as separate values in
+    # the graph, that can create a crowded and confused picture, especially because we currently
+    # have lots of color duplication in the @colors array above.  Perhaps a more practical
+    # use for a large number of data sources is so they can be combined into fewer but more
+    # meaningful metrics displayed in the graph.  The data-source naming sequence is "a", "b",
+    # ..., "z", "aa", "ab", ..., "az", "ba", "bb", and so forth.
+    #
+    # Take care of listed DEFs, CDEFs, LINEs, AREAs, PRINTs, GPRINTs, and STACKs.
+    # Note that this current logic only handles one $LISTSTART$ ... $LISTEND$ pair
+    # in the command; we might want to generalize that in some future release.
+    if ( $customgraph_command =~ /\$LISTSTART\$(.*?)\$LISTEND\$/ ) {
+	my $tmpstring1 = $1 . ' ';
+	my $tmpstring2 = '';
+	for ( my ($j, $vname) = (0, 'a') ; $j < @ds_list ; ++$j, ++$vname) {
+	    ## Handle the list case.  We default the color to magenta if we run
+	    ## past the end of the @colors array, simply to avoid dying here.
+	    my $color      = pop( @colors ) || '#FF00FF';
+	    my $tmpstring3 = "$vname=$file:$ds_list[$j]";
+	    my $tmpstring4 = $tmpstring1;
+	    $tmpstring4 =~ s/\$DEFLABEL\#\$/$tmpstring3/g;
+	    $tmpstring4 =~ s/\$CDEFLABEL\#\$/$vname/g;
+	    $tmpstring4 =~ s/\$DSLABEL\#\$/$ds_list[$j]/g;
+	    $tmpstring4 =~ s/\$COLORLABEL\#\$/$color/g;
+	    $tmpstring2 .= $tmpstring4;
+	}
+	$customgraph_command =~ s/\$LISTSTART\$.*\$LISTEND\$/$tmpstring2/;
+    }
+
+    # Simple case of direct substitution of numbered ds_source_n
+    # replace the string ds_source_(number) with the DS number we found
+    for ( my $j = 0 ; $j < @ds_list ; $j++ ) {
+	## Replace the string ds_source_(number) with the DS number we found.
+	## Bounding punctuation is used to avoid confusion of ds_source_1 and
+	## ds_source_10 strings.  (Alternatively, we could count down instead of
+	## up, and effectively do this without forcing the bounding punctuation.)
+	my $ds_name = 'ds_source_' . "$j";
+	$customgraph_command =~ s/:$ds_name:/:$ds_list[$j]:/g;
+    }
+
+    # In case we need to show the service name or host name in a GPRINT,
+    # substitute service for SERVICE and host for HOST
+    foreach my $macro ( keys %$macros_ref ) {
+	if ($macro =~ /SERVICE/) {
+	    if (not ($macro =~ /SERVICETEXT/)) {
+		$customgraph_command =~ s/SERVICE/$$macros_ref{$macro}/g;
+	    }
+	} elsif ($macro =~ /HOST/) {
+	    $customgraph_command =~ s/HOST/$$macros_ref{$macro}/g;
+	}
+    }
+
+    return $customgraph_command;
+}
+
+sub replace_macros {
+    my $string     = shift;
+    my $macros_ref = shift;
+    my $labels_ref = shift;
+    my $values_ref = shift;
+    my $warns_ref  = shift;
+    my $crits_ref  = shift;
+    my $mins_ref   = shift;
+    my $maxs_ref   = shift;
+    my $i;
+
+    $string =~ s/\s+/ /g;
+
+    ## RRDNAME may contain other macros, i.e., $HOST$, $SERVICE$, so substitute this first.
+    $string =~ s/\$RRDNAME\$/$$macros_ref{'\$RRDNAME\$'}/g;
+
+    ## Process LIST macros
+
+    # Substitute LABELLIST with colon-separated labels, i.e., $LABELLIST$ => label1:label2:label3
+    if ( $string =~ /\$LABELLIST\$/ ) {
+	my $list = join( ':', @$labels_ref );
+	$string =~ s/\$LABELLIST\$/$list/g;
+    }
+
+    # Substitute VALUELIST with semicolon separated labels, i.e., $VALUELIST$ => 1:2:3
+    if ( $string =~ /\$VALUELIST\$/ ) {
+	my $list = join( ':', @$values_ref );
+	$string =~ s/\$VALUELIST\$/$list/g;
+    }
+
+    # Substitute LISTSTART-LISTEND macros, i.e.,
+    # $LISTSTART$DS:$LABEL#$:GAUGE:900:U:U$LISTEND$ => DS:label1:GAUGE:900:U:U DS:label2:GAUGE:900:U:U DS:label3:GAUGE:900:U:U
+    my $list = undef;
+    while ( $string =~ /\$LISTSTART\$(.*?)\$LISTEND\$/ ) {
+	log_message 'DEBUG:  Found LISTSTART ... LISTEND in ', $string if $debug_maximal;
+	my $template = $1;
+	if ( $template =~ /\$LABEL\#\$/ ) {
+	    log_message 'DEBUG:  Found LABEL# in ', $template if $debug_maximal;
+	    ## We process the template substitutions one-by-one with respect to the available labels,
+	    ## rather than first concatenating a number of copies of the template corresponding to
+	    ## the number of available labels, under the assumption that the template might contain
+	    ## multiple instances of "$LABEL#$" that all need to be substituted with the same label.
+	    my $substituted;
+	    my @strings = ();
+	    foreach my $label (@$labels_ref) {
+		( $substituted = $template ) =~ s/\$LABEL\#\$/$label/g;
+		push @strings, $substituted;
+	    }
+	    $list = join( ' ', @strings );
+	}
+	else {
+	    log_message 'WARNING:  Found no LABEL# reference inside LISTSTART ... LISTEND, in ', $template if $debug_basic;
+	    $list = $template;
+	}
+	$string =~ s/\$LISTSTART\$(?:.*?)\$LISTEND\$/$list/;
+	log_message 'DEBUG:  Resetting string to ', $string if $debug_maximal;
+    }
+
+    foreach my $macro ( keys %$macros_ref ) {
+	$string =~ s/$macro/$$macros_ref{$macro}/g;
+    }
+
+    if (defined $labels_ref) {
+	$i = 1;
+	foreach my $label (@$labels_ref) {
+	    $string =~ s/\$LABEL$i\$/$label/g;
+	    $i++;
+	}
+    }
+
+    if (defined $values_ref) {
+	$i = 1;
+	foreach my $value (@$values_ref) {
+	    $string =~ s/\$VALUE$i\$/$value/g;
+	    $i++;
+	}
+    }
+
+    if (defined $warns_ref) {
+	$i = 1;
+	foreach my $warn (@$warns_ref) {
+	    $string =~ s/\$WARN$i\$/$warn/g;
+	    $i++;
+	}
+    }
+
+    if (defined $crits_ref) {
+	$i = 1;
+	foreach my $crit (@$crits_ref) {
+	    $string =~ s/\$CRIT$i\$/$crit/g;
+	    $i++;
+	}
+    }
+
+    if (defined $mins_ref) {
+	$i = 1;
+	foreach my $min (@$mins_ref) {
+	    $string =~ s/\$MIN$i\$/$min/g;
+	    $i++;
+	}
+    }
+
+    if (defined $maxs_ref) {
+	$i = 1;
+	foreach my $max (@$maxs_ref) {
+	    $string =~ s/\$MAX$i\$/$max/g;
+	    $i++;
+	}
+    }
+
+    return $string;
+}
+
+#
+# Subroutine to create an entry in the datatype and host_service tables for each RRD created.
+#
+sub createsvdb {
+    my $previous_action = $current_action;
+    $current_action = 'Creating svdb entry.';
+    ## ($host,$svcdesc,'RRD',$configlabel,$rrdfilename);   # Call sub to insert into Status Viewer graph config database
+    my $host        = shift;
+    my $service     = shift;
+    my $type        = shift;
+    my $configlabel = shift;
+    my $rrdfilename = shift;
+    my $query       = undef;
+    my $sth         = undef;
+    my $id          = undef;
+
+    if ( defined $host_service_id{$host}{$service}{$rrdfilename} ) {
+	log_message "DEBUG:  Table host_service, host=$host, service=$service already has an existing entry for location $rrdfilename.",
+	  ' New entry not added.' if $debug_maximal;
+	$current_action = $previous_action;
+	return;
+    }
+
+    $query = "INSERT INTO datatype (type,location) VALUES('$type','$rrdfilename')";
+    log_message 'DEBUG:  SQL = ', $query if $debug_maximal;
+    $sth = $dbh->prepare($query);
+    if ( !( $sth->execute() ) ) {
+	log_message $sth->errstr if $debug_minimal;
+	$current_action = $previous_action;
+	return;
+    }
+    $sth->finish();
+
+    $query = "SELECT datatype_id FROM datatype WHERE type='$type' AND location='$rrdfilename'";
+    log_message 'DEBUG:  SQL = ', $query if $debug_maximal;
+    $sth = $dbh->prepare($query);
+    if ( !( $sth->execute() ) ) {
+	log_message $sth->errstr if $debug_minimal;
+	$current_action = $previous_action;
+	return;
+    }
+    $id = undef;
+    while ( my $row = $sth->fetchrow_hashref() ) {
+	$id = $$row{datatype_id};
+    }
+    $sth->finish();
+    if ( !defined $id ) {
+	log_message "DEBUG:  No datatype_id found for type $type, location $rrdfilename. Possible error on insert into datatype table."
+	  if $debug_minimal;
+	++$warnings{DB_DATA_FAILURE()};
+	$current_action = $previous_action;
+	return;
+    }
+
+    my $quoted_configlabel = $dbh->quote($configlabel);
+    $query = "INSERT INTO host_service (host,service,label,dataname,datatype_id) VALUES('$host','$service',$quoted_configlabel,'','$id')";
+    log_message 'DEBUG:  SQL = ', $query if $debug_maximal;
+    $sth = $dbh->prepare($query);
+    if ( !( $sth->execute() ) ) {
+	log_message $sth->errstr if $debug_minimal;
+	$current_action = $previous_action;
+	return;
+    }
+    $sth->finish();
+
+    $host_service_id{$host}{$service}{$rrdfilename} = $id;
+
+    log_message 'DEBUG:  Successfully inserted entry into datatype and host_service tables.' if $debug_maximal;
+    $current_action = $previous_action;
+    return;
+}
+
+# Chop up a string containing all the command-invocation arguments as it would be seen by a spawning shell,
+# into just its individual arguments, in exactly the same way that the shell would have done so.  Actually,
+# all we handle here is quoting and escaping such quotes, not filename globbing, subshell invocation, pipes,
+# additional commands in a list, shell variable interpolation, etc.)
+sub command_arguments {
+    my $arg_string = shift;
+    my @arguments  = ();
+
+    # Samples of shell handling of quote and escape characters:
+    #
+    # $ echo 'foo\'
+    # foo\
+    # $ echo 'foo\''bar'
+    # foo\bar
+    # $ echo 'foo\"bar'
+    # foo\"bar
+    # $ echo 'foo\\bar'
+    # foo\\bar
+    # $ echo "foo\'bar"
+    # foo\'bar
+    # $ echo "foo\"bar"
+    # foo"bar
+    # $ echo "foo\\bar"
+    # foo\bar
+    # $ echo foo\bar
+    # foobar
+    # $ echo foo\'bar
+    # foo'bar
+    # $ echo foo\"bar
+    # foo"bar
+    # $ echo foo\\bar
+    # foo\bar
+
+    $arg_string =~ s/^\s+//;
+
+    my $have_arg = 0;
+    my $arg      = '';
+    my $piece;
+    while ( $arg_string =~ /^./ ) {
+	if ( $arg_string =~ /^'([^']*)'/gco ) {
+	    $arg .= $1;
+	    $have_arg = 1;
+	}
+	elsif ( $arg_string =~ /^"([^"\\]*(?:(?:\\"|\\\\|\\)*[^"\\]*)*)"/gco ) {
+	    $piece = $1;
+	    ## substitute both \" -> " and \\ -> \ at the same time, left-to-right
+	    $piece =~ s:\\(["\\]):$1:g;
+	    $arg .= $piece;
+	    $have_arg = 1;
+	}
+	elsif ( $arg_string =~ /^\\(.)/gco ) {
+	    $arg .= $1;
+	    $have_arg = 1;
+	}
+	elsif ( $arg_string =~ /^([^'"\\ ]+)/gco ) {
+	    $arg .= $1;
+	    $have_arg = 1;
+	}
+	elsif ( $arg_string =~ /^\s+/gco ) {
+	    push @arguments, $arg;
+	    $have_arg = 0;
+	    $arg      = '';
+	}
+	elsif ( $arg_string =~ /(.+)/gco ) {
+	    ## Illegal argument construction (likely, unbalanced quotes).
+	    ## Let's just bail and drop the rest of the line.
+	    log_message 'ERROR:  RRD command error, starting here: ', $1 if $debug_minimal;
+	    ++$errors{RRD_COMMAND_FAILURE()};
+	    last;
+	}
+	## remove the matched part from $arg_string
+	$arg_string = substr( $arg_string, pos($arg_string) );
+    }
+    if ($have_arg) {
+	push @arguments, $arg;
+    }
+
+    return @arguments;
+}
+
+# Deal with possible XML-syntax characters within attribute values by encoding them using
+# standard entity references.  For details on the need for and use of such entities, see:
+# http://www.w3.org/TR/2006/REC-xml11-20060816/#entproc
+# http://www.w3.org/TR/2006/REC-xml11-20060816/#intern-replacement
+# http://www.w3.org/TR/2006/REC-xml11-20060816/#sec-predefined-ent
+sub xmlify {
+    my $string = shift;
+
+    if (defined $string) {
+	## In some contexts (not here), the following filtering may be useful,
+	## in addition to the actual XMLification transforms.
+	## $string =~ s/\n/ /g;
+	## $string =~ s/<br>/ /ig;
+
+	$string =~ s/&/&amp;/g;
+	$string =~ s/"/&quot;/g;
+	$string =~ s/'/&apos;/g;
+	$string =~ s/</&lt;/g;
+	$string =~ s/>/&gt;/g;
+    }
+
+    return $string;
+}
+
+sub foundation_post_perf {
+    my $previous_action = $current_action;
+    $current_action = $post_performance_using_xml ? 'Queueing XML data for posting to Foundation.' : 'Posting data to Foundation via URL.';
+    my $lastchecktime   = shift;
+    my $host            = shift;
+    my $service         = shift;
+    my $label_array_ref = shift;  #reference to ds label=>value
+    my $value_array_ref = shift;  #reference to ds label=>value
+
+    my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) = localtime($lastchecktime);
+    my $startdate = sprintf '%04d-%02d-%02d %02d:%02d:%02d', $year + 1900, $mon + 1, $mday, $hour, $min, $sec;
+    log_message 'DEBUG:  Posting data to Foundation' if $debug_basic;
+    my $performancedatalabel = undef;
+    my $performancevalue     = undef;
+    my @xml_string = ();
+    my %tmphash = ();
+    my $i       = 0;
+
+    foreach my $label ( @{$label_array_ref} ) {
+	if ($shutdown_requested) {
+	    $current_action = $previous_action;
+	    return;
+	}
+	$performancedatalabel = $service . '_' . $label;
+	$performancevalue     = ${$value_array_ref}[$i];
+	if ($debug_maximal) {
+	    log_message "\tperformancedatalabel=", $performancedatalabel;
+	    log_message "\tperformancevalue=",     $performancevalue;
+	}
+	$i++;
+
+	if ($post_performance_using_xml) {
+	    # <PerformanceData
+	    #	hostname="localhost"
+	    #	servicedescription="icmp_ping"
+	    #	performancedatalabel="ResponseTime"
+	    #	performancevalue="3.0"
+	    #	checkdate="2010-05-01 12:12:13"
+	    # />
+	    #
+	    # Yes, this is somewhat ugly, but it linearizes what would otherwise be O(n^^2)
+	    # concatentation complexity if we just used implicit concatenation within a single string.
+	    # And efficiency is what we're all about by using the XML web service instead of the HTTP API.
+	    #
+	    # We xmlify() stuff because, for instance, a performance data label might contain arbitrary
+	    # characters we're not expecting.  We don't want them to break the validity of our XML string;
+	    # better safe than sorry.
+	    @xml_string = ();
+	    push @xml_string,
+		'<PerformanceData hostname="', xmlify($host),
+		'" servicedescription="',      xmlify($service),
+		'" performancedatalabel="',    xmlify($performancedatalabel),
+		'" performancevalue="',        xmlify($performancevalue),
+		'" checkdate="',               $startdate,
+		'" />',                        "\n";
+	    push @performance_xml, join('', @xml_string);
+	}
+	else {
+	    # http://rmsvf18:8080/foundation-webapp/performanceDataPost
+	    #	?hostname=localhost
+	    #	&servicedescription=icmp_ping
+	    #	&performancedatalabel=ResponseTime
+	    #	&performancevalue=5.0
+	    #	&checkdate=2006-09-17%2012:12:13
+
+	    $tmphash{'performancedatalabel'} = $performancedatalabel;
+	    $tmphash{'performancevalue'}     = $performancevalue;
+	    my $url = URI->new($target_performance_post_url);
+	    $url->query_form( 'hostname' => $host, 'servicedescription' => $service, 'checkdate' => $startdate, %tmphash );
+	    my $browser = LWP::UserAgent->new;
+	    $browser->timeout($foundation_http_submission_timeout);
+	    ## We don't apply any critical-region protection here to delay the recognition of a
+	    ## shutdown request, because unlike the RRD file i/o elsewhere in this script, which
+	    ## we don't want to be at all interruptible lest it possibly corrupt a file, this
+	    ## network i/o is considered to be interruptible.  It is up to the server to adapt
+	    ## if because of that it receives an incomplete request.
+	    my $response = $browser->get($url);
+
+	    # A good result should contain this output:
+	    # out.println('<HTML><HEAD>Performance Servlet</HEAD><BODY><H1>Performance Data Added</BODY></HTML>');
+
+	    # $response->is_success just indicates whether the HTTP transfer succeeded, not
+	    # whether or not the application at the other end worked.  So we must test both.
+	    if ( !$response->is_success ) {
+		log_message "\tFoundation Error: ", $response->status_line if $debug_minimal;
+		$current_action = $previous_action;
+		return;
+	    }
+	    elsif ( $response->content !~ /Performance Data Added/ ) {
+		log_message "\tFoundation Error: ", $response->content if $debug_minimal;
+		$current_action = $previous_action;
+		return;
+	    }
+	}
+    }
+
+    $current_action = $previous_action;
+    return;
+}
+
+sub add_service_xml {
+    ## We don't xmlify fields that we don't expect to ever contain any troublesome characters,
+    ## to avoid wasting precious CPU resources.
+    my $host            = $_[0];
+    my $svcdesc         = $_[1];
+    my $configlabel     = xmlify( $_[2] );
+    my $rrdname         = $_[3];
+    my $rrdgraphcommand = xmlify( $_[4] );
+
+    return
+      "<Service Host='$host' ServiceDescription='$svcdesc' RRDLabel='$configlabel' RRDPath='$rrdname' RRDCommand='$rrdgraphcommand' RemoteRRDCommand=' ' />\n";
+}
+
+sub add_remote_rrd_xml {
+    ## We don't xmlify fields that we don't expect to ever contain any troublesome characters,
+    ## to avoid wasting precious CPU resources.
+    my $host        = $_[0];
+    my $svcdesc     = $_[1];
+    my $configlabel = xmlify( $_[2] );
+    my $child_host  = $_[3];
+
+    return "<Service Host='$host' ServiceDescription='$svcdesc' RRDLabel='$configlabel' RRDPath=' ' RRDCommand=' ' RemoteRRDCommand='$child_host' />\n";
+}
+
+sub write_command_xml {
+    my $previous_action = $current_action;
+    $current_action = 'Writing command XML to Foundation socket.';
+    my $target_host = shift;
+    my $target_port = shift;
+    my $action      = shift;
+    my $app_type    = shift;
+    my $xml_string  = shift;
+    if ( $xml_string eq '' ) {    # Nothing to do ...
+	$current_action = $previous_action;
+	return 1;
+    }
+    my $status = 1;
+    my $socket = undef;
+
+    # The nested eval{};s and the multiple alarm(0); calls protect against race conditions amongst
+    # all the possible signals and timings we might encounter.
+    eval {
+	## We assume no enclosing code has an alarm in play, so we don't bother to save any existing alarm timeout
+	## here before we establish our own timeout below, nor to replace any remaining interval after our interlude.
+	local $SIG{ALRM} = \&die_on_signal;
+
+	# Possibly, the need for special signal handling here has been moderated by our checking of
+	# $shutdown_requested in every iteration of the loops in which write_command_xml() is called, so we
+	# could avoid this complexity.  But inasmuch as socket writing can take an indeterminate amount of
+	# time, we implement the special handling anyway.  Foundation must be (and is) equipped to handle any
+	# partial XML packets that may appear, and to handle client disconnection in the middle of sending.
+	eval {
+	    local $SIG{INT}  = \&die_on_exit_signal;
+	    local $SIG{QUIT} = \&die_on_exit_signal;
+	    local $SIG{TERM} = \&die_on_exit_signal;
+	    die "Shutdown requested.\n" if $shutdown_requested;  # handle race condition
+
+	    # An alarm interval which is twice the configured SO_SNDTIMEO socket option timeout seems safe.
+	    # It should allow the configured timeout to take precedence, and only serve as a fallback if
+	    # that turns out to be inadequate.
+	    alarm($socket_send_timeout * 2);
+
+	    # Open connection to Foundation (or not).
+	    my $max_connect_attempts = 3;
+	    for ( my $i = 0 ; $i <= $max_connect_attempts ; $i++ ) {
+		if ( $i == $max_connect_attempts ) {
+		    alarm(0);
+		    ++$errors{ FOUNDATION_UPDATE_FAILURE() };
+		    log_message "ERROR:  Could not connect to $target_host:$target_port ($!)" if $debug_minimal;
+		    $status = 0;
+		    ## A "return" here returns from the nested eval{}, not the enclosing sub{}.
+		    return;  # no listener socket available; let the caller decide how to proceed
+		}
+		else {
+		    $socket = IO::Socket::INET->new(
+			PeerAddr => $target_host,
+			PeerPort => $target_port,
+			Proto    => 'tcp',
+			Type     => SOCK_STREAM
+		    );
+		    if ($socket) {
+			log_message "DEBUG:  Opened socket to $target_host Foundation." if $debug_maximal;
+			$socket->autoflush();
+			last if $socket->sockopt(SO_SNDTIMEO, pack('L!L!', $socket_send_timeout, 0));
+			log_message "ERROR:  Could not set send timeout on socket to $target_host Foundation." if $debug_minimal;
+			close($socket);
+			$socket = undef;  # subject to race condition during interrupt, but still appropriate
+		    }
+		    ## We can no longer "sleep 1;" here because this block is wrapped in alarm() processing.
+		    ## So we need to invoke a different type of delay that doesn't use SIGALRM.  A system timer
+		    ## accessed by POSIX::RT::Timer would be another possibility, though if we were willing to
+		    ## use that package, we would probably replace the alarm() processing, not the sleep().
+		    select undef, undef, undef, 1;
+		}
+	    }
+	    $foundation_msg_count++;
+	    my $xml_out =
+qq(<Adapter Session='$foundation_msg_count' AdapterType='SystemAdmin'>
+<Command Action='$action' ApplicationType='$app_type'>
+$xml_string
+</Command>
+</Adapter>
+);
+	    print LOG $xml_out if $debug_maximal && !$log_as_utf8;
+	    utf8::encode($xml_out);
+	    $status = 0 if not print $socket $xml_out;
+	    print LOG $xml_out if $debug_maximal && $log_as_utf8;
+	    $status = 0 if not print $socket '<SERVICE-MAINTENANCE command="close" />';
+	    print LOG "<SERVICE-MAINTENANCE command=\"close\" />\n" if $debug_maximal;
+	    $status = 0 if not close $socket;
+	    log_message "ERROR:  Could not write to $target_host:$target_port ($!)" if $debug_basic and not $status;
+	};
+	alarm(0);
+	if ($@) {
+	    chomp $@;
+	    die "$@\n";
+	}
+    };
+    if ($@) {
+	++$errors{ FOUNDATION_UPDATE_FAILURE() };
+	## We tag this as an ERROR instead of a NOTICE, even if the cause of the exception was a polite
+	## shutdown request, because the intended command probably didn't get out to Foundation.
+	chomp $@;
+	log_timed_message "ERROR:  While writing command XML to $target_host Foundation:  $@";
+	## FIX MINOR:  This close() might restart a write from the Perl i/o buffering layer, if it sees that
+	## not all the buffered data got written out previously, thus perhaps leading to another hang, this
+	## one not timed out with an alarm.  We might need to use the :unix I/O layer on the open() call
+	## (unbuffered i/o), or syswrite() and our own interrupted-system-call and partial-write handling,
+	## to prevent that.  Or perhaps just pop all I/O layers before closing the socket (we would need to
+	## experiment to see if that would work).  We at least logged a message before we close the socket,
+	## so there is some evidence in the log as to what is going on if it hangs in the close().
+	close $socket if defined $socket;  # avoid a possible resource leak
+	$status = 0;
+    }
+
+    $current_action = $previous_action;
+    return $status;
+}
+
+#-------------------------------------------------------------------
+# Code stolen from GW::Foundation and then locally (heavily) modified.
+# FIX LATER:  Make sure that GW::Foundation is upgraded to look at the
+# return value from printing to and closing a socket in send_xml_messages(),
+# and to otherwise incorporate fixes we've made here.
+# FIX LATER:  Drop this, along with add_service_xml(), add_remote_rrd_xml(),
+# and write_command_xml() above, when we call an external package.
+# FIX LATER:  Make sure that GW::Foundation is upgraded to perform signal
+# handling similar to how we have modified the stolen code here.
+#-------------------------------------------------------------------
+
+# Internal routine only.
+sub time_text {
+    my $timestamp = shift;
+    if ( $timestamp <= 0 ) {
+	return 'none';
+    }
+    else {
+	my ( $seconds, $minutes, $hours, $day_of_month, $month, $year, $wday, $yday, $isdst ) = localtime($timestamp);
+	return sprintf "%04d-%02d-%02d %02d:%02d:%02d", $year + 1900, $month + 1, $day_of_month, $hours, $minutes, $seconds;
+    }
+}
+
+sub send_xml_messages {
+    my $previous_action = $current_action;
+    $current_action = 'Sending XML to Foundation.';
+    my $self         = $_[0];    # implicit argument
+    my $xml_messages = $_[1];    # required argument
+
+    # We do this final encapsulation and join work outside of the period when the socket
+    # is open, to limit the time that Foundation has to wonder what's happening with it
+    # and possibly time out and unceremoniously close it from the other end.
+    my $full_message = join( "\n", @$xml_messages, '<SERVICE-MAINTENANCE command="close" />' );
+
+    my $status = 1;
+    my $socket = undef;
+
+    # The nested eval{};s and the multiple alarm(0); calls protect against race conditions amongst
+    # all the possible signals and timings we might encounter.
+    eval {
+	## We assume no enclosing code has an alarm in play, so we don't bother to save any existing alarm timeout
+	## here before we establish our own timeout below, nor to replace any remaining interval after our interlude.
+	local $SIG{ALRM} = \&die_on_signal;
+
+	eval {
+	    local $SIG{INT}  = \&die_on_exit_signal;
+	    local $SIG{QUIT} = \&die_on_exit_signal;
+	    local $SIG{TERM} = \&die_on_exit_signal;
+	    die "Shutdown requested.\n" if $shutdown_requested;  # handle race condition
+
+	    # An alarm interval which is twice the configured SO_SNDTIMEO socket option timeout seems safe.
+	    # It should allow the configured timeout to take precedence, and only serve as a fallback if
+	    # that turns out to be inadequate.
+	    alarm($self->{socket_send_timeout} * 2);
+
+	    # We now impose an absolute timeout on the sending of the XML messages, because we don't necessarily
+	    # trust that the SO_SNDTIMEO option alone will do the trick.  That option operates at a low level,
+	    # and just interrupts the low-level i/o call, telling the calling code that the operation has taken
+	    # too long and that a partial (or no) write has taken place so far.  The Perl I/O library is free
+	    # to restart the intended i/o at that point, to still try to get all the data transferred, which
+	    # would not achieve our intended application-level effect of ensuring that we abort the entire i/o
+	    # action if it takes too long.
+
+	    $socket = IO::Socket::INET->new(
+		PeerAddr => $self->{foundation_host},
+		PeerPort => $self->{foundation_port},
+		Proto    => 'tcp',
+		Type     => SOCK_STREAM
+	    );
+	    if ( !$socket ) {
+		alarm(0);
+		$current_action = $previous_action;
+		die "Cannot send message to Foundation on $self->{foundation_host}:  cannot open TCP socket $self->{foundation_port} ($!).\n";
+	    }
+	    if ( !$socket->sockopt( SO_SNDTIMEO, pack( 'L!L!', $self->{socket_send_timeout}, 0 ) ) ) {
+		alarm(0);
+		close($socket);
+		$current_action = $previous_action;
+		die "Cannot send message to Foundation on $self->{foundation_host}:  cannot set send timeout on socket ($!).\n";
+	    }
+	    $status = 0 if not print $socket $full_message;
+	    $status = 0 if not close $socket;
+	};
+	alarm(0);
+	if ($@) {
+	    chomp $@;
+	    die "$@\n";
+	}
+    };
+    if (my $exception = $@) {
+	chomp $exception;
+	log_timed_message "ERROR:  While writing message XML to $self->{foundation_host} Foundation:  $exception";
+	## FIX MINOR:  This close() might restart a write from the Perl i/o buffering layer, if it sees that
+	## not all the buffered data got written out previously, thus perhaps leading to another hang, this
+	## one not timed out with an alarm.  We might need to use the :unix discipline on the open() call
+	## (unbuffered i/o), or syswrite() and our own interrupted-system-call and partial-write handling,
+	## to prevent that.  Or perhaps just pop all I/O layers before closing the socket (we would need to
+	## experiment to see if that would work).  We at least logged a message before we close the socket,
+	## so there is some evidence in the log as to what is going on if it hangs in the close().
+	close $socket if defined $socket;  # avoid a possible resource leak
+	$current_action = $previous_action;
+	## We tag this as an ERROR instead of a NOTICE, even if the cause of the exception was a polite
+	## shutdown request, because the intended message probably didn't get out to Foundation.
+	## We avoid returning the same error message we already just printed out, as that would
+	## be redundant, though we really have nothing more to add in another message.
+	return ["ERROR:  Send to Foundation probably failed."];
+    }
+
+    $current_action = $previous_action;
+
+    # The lack of an error message being produced here does not necessarily mean that the
+    # message was actually delivered.  See our earlier comments on SIGPIPE handling.
+    return ($status ? undef : ["ERROR:  Cannot send message to Foundation on $self->{foundation_host}:  write failed."]);
+}
+
+sub send_log_message {
+    my $previous_action = $current_action;
+    $current_action = 'Sending log message to Foundation.';
+    my $self     = $_[0];       # implicit argument
+    my $severity = $_[1];       # required argument, one of SEVERITY_OK, SEVERITY_WARNING, SEVERITY_CRITICAL, SEVERITY_UNKNOWN
+    my $apptype  = $_[2];       # required argument (string; Application Type [e.g., APP_SYSTEM, APP_NAGIOS, APP_SNMPTRAP, APP_SYSLOG])
+    my @message  = @_[3..$#_];  # required argument(s)
+
+    my $message = join('', @message);
+
+    $message =~ s/\n/ /g;
+    $message =~ s/<br>/ /ig;
+    $message =~ s/&/&amp;/g;
+    $message =~ s/"/&quot;/g;
+    $message =~ s/'/&#39;/g;    # &apos; is the XML entity, but historically it's not also an HTML entity and IE won't interpret it
+    $message =~ s/</&lt;/g;
+    $message =~ s/>/&gt;/g;
+
+    my @xml_message = ();
+
+    # Our working assumptions, set up elsewhere:
+    #
+    #   In the GWCollageDB.ConsolidationCriteria table:
+    #   +-------------------------+--------+------------------------------------------------------------------+
+    #   | ConsolidationCriteriaID | Name   | Criteria                                                         |
+    #   +-------------------------+--------+------------------------------------------------------------------+
+    #   |                       2 | SYSTEM | OperationStatus;Device;MonitorStatus;ApplicationType;TextMessage |
+    #   +-------------------------+--------+------------------------------------------------------------------+
+
+    push @xml_message, '<GENERICLOG consolidation="SYSTEM" ';                       # Standard consolidation setup is enabled.
+    push @xml_message, "ApplicationType=\"$apptype\" ";                             # Classification of the calling application.
+    push @xml_message, "MonitorServerName=\"$self->{monitor_server_hostname}\" ";
+
+    # Device should always be IP everywhere (FIX LATER:  not sure what that means)
+    push @xml_message, "Device=\"$self->{monitor_server_ip_address}\" ";
+
+    push @xml_message, "Severity=\"$severity\" ";
+    push @xml_message, "MonitorStatus=\"$severity\" ";
+    push @xml_message, "ReportDate=\"" . time_text(time) . "\" ";                   # set ReportDate to current local time
+    push @xml_message, "TextMessage=\"$message\" ";
+    push @xml_message, "/>";
+
+    my $xml_message = join( '', @xml_message );
+
+    my @xml_messages = ();
+    push @xml_messages, $xml_message;
+
+    my $errors = send_xml_messages($self, \@xml_messages);
+
+    $current_action = $previous_action;
+    return $errors;
+}
+
+sub tsdbwrite {
+    ## To-Dos
+    ## Review Metric/Tag schema in accordance with http://opentsdb.net/docs/build/html/user_guide/writing.html
+    ## E.G. VEMA service names tags are much more regular and lend themselves to tagification beyond what can be done in nagios.
+    my $source_app = shift;
+    my $timestamp  = shift;
+    my $host       = shift;
+    my $service    = shift;
+    my $label      = shift;
+    my $value      = shift;
+    my $warn       = shift;
+    my $crit       = shift;
+    my $min        = shift;
+    my $max        = shift;
+
+    my @tsdb_metrics = ();
+
+    my %tsdb_metric = (
+	'App'       => $source_app,
+	'Type'      => "value",
+	'Label'     => $label,
+	'Value'     => $value,
+	'Host'      => $host,
+	'Timestamp' => $timestamp,
+	'Service'   => $service
+    );
+    push @tsdb_metrics, \%tsdb_metric;
+
+    if ( $warn && $post_tholds ) {
+	my %tsdb_metric = (
+	    'App'       => $source_app,
+	    'Type'      => "thold-w",
+	    'Label'     => $label,
+	    'Value'     => $warn,
+	    'Host'      => $host,
+	    'Timestamp' => $timestamp,
+	    'Service'   => $service
+	);
+	push @tsdb_metrics, \%tsdb_metric;
+    }
+    if ( $crit && $post_tholds ) {
+	my %tsdb_metric = (
+	    'App'       => $source_app,
+	    'Type'      => "thold-c",
+	    'Label'     => $label,
+	    'Value'     => $crit,
+	    'Host'      => $host,
+	    'Timestamp' => $timestamp,
+	    'Service'   => $service
+	);
+	push @tsdb_metrics, \%tsdb_metric;
+    }
+    if ( $min && $post_minmax ) {
+	my %tsdb_metric = (
+	    'App'       => $source_app,
+	    'Type'      => "minimum",
+	    'Label'     => $label,
+	    'Value'     => $min,
+	    'Host'      => $host,
+	    'Timestamp' => $timestamp,
+	    'Service'   => $service
+	);
+	push @tsdb_metrics, \%tsdb_metric;
+    }
+    if ( $max && $post_minmax ) {
+	my %tsdb_metric = (
+	    'App'       => $source_app,
+	    'Type'      => "maximmum",
+	    'Label'     => $label,
+	    'Value'     => $max,
+	    'Host'      => $host,
+	    'Timestamp' => $timestamp,
+	    'Service'   => $service
+	);
+	push @tsdb_metrics, \%tsdb_metric;
+    }
+
+    return post_metrics(\@tsdb_metrics);
+}
+
+# FIX LATER:
+# * Use REST http://opentsdb.net/docs/build/html/api_http/put.html
+# * Write a bunch of metrics in one call to this routine, to amortize
+#   the overhead of doing all the work safely.
+sub post_metrics {
+    my $metrics = shift;
+    my $payload;
+    my $message;
+    my @payloads = ();
+    foreach my $metric (@$metrics) {
+	my $metric_name = $metric->{Service};
+	my $source      = $metric->{App};
+	my $host        = $metric->{Host};
+	my $timestamp   = $metric->{Timestamp};
+	my $value       = $metric->{Value};
+	my $label       = $metric->{Label};
+	my $type        = $metric->{Type};
+
+	$source = $tsdb_source . "-" . $source;
+
+	# Note:  The OpenTSDB 2.2 documentation says about what we're doing here:
+	#
+	#     The Telnet method of writing is discouraged as it doesn't
+	#     provide a way of determining which data points failed to write
+	#     due to formatting or storage errors. Instead use the HTTP API.
+	#
+	# So this is just an interim implementation, and we should not expect
+	# to accurately report the success/failure of data written to OpenTSDB.
+
+	$payload = "put $metric_name $timestamp $value source=$source host=$host label=$label valuetype=$type\n";
+	$message = "put $metric_name $timestamp $value source=$source host=$host label=$label valuetype=$type";
+	log_message "queueing $message to $tsdb_host:$tsdb_port" if $debug_basic;
+
+	# FIX LATER:  metric and tag values are only allowed to contain [-_./A-Za-z0-9] and Unicode
+	# letters.  The fact that some Unicode characters are allowed implies that we should really
+	# be encoding the payload as probably UTF-8, which we're not currently doing, for full
+	# compatibility.  See also the $log_as_utf8 flag in the write_command_xml() routine for how
+	# $message above should be treated if we do that.
+	# utf8::encode($payload);
+	push @payloads, $payload;
+    }
+
+    my $outcome;
+    my $status = 1;
+
+    # The nested eval{};s and the alarm(...); calls protect against race conditions
+    # amongst all the possible signals and timings we might encounter.
+    eval {
+	## We assume no enclosing code has an alarm in play, so we don't bother to save any
+	## existing alarm timeout here before we establish our own timeout below, nor to
+	## replace any remaining interval after our interlude.
+	local $SIG{ALRM} = \&die_on_signal;
+
+	eval {
+	    local $SIG{INT}  = \&die_on_exit_signal;
+	    local $SIG{QUIT} = \&die_on_exit_signal;
+	    local $SIG{TERM} = \&die_on_exit_signal;
+	    die "Shutdown requested.\n" if $shutdown_requested;    # handle race condition
+
+	    foreach $payload (@payloads) {
+		## An alarm interval which is twice the configured SO_SNDTIMEO socket option
+		## timeout seems safe.  It should allow the configured timeout to take
+		## precedence, and only serve as a fallback if that turns out to be inadequate.
+		## The alarm must be set for each individual write, so a sequence of writes
+		## which are individually okay doesn't cause the group to fail as a whole.
+		alarm( $socket_send_timeout * 2 );
+
+		# We impose an absolute timeout on the sending of the metric data, because we
+		# don't necessarily trust that the SO_SNDTIMEO option alone will do the trick.
+		# That option operates at a low level, and just interrupts the low-level i/o
+		# call, telling the calling code that the operation has taken too long and that
+		# a partial (or no) write has taken place so far.  The Perl I/O library is free
+		# to restart the intended i/o at that point, to still try to get all the data
+		# transferred, which would not achieve our intended application-level effect of
+		# ensuring that we abort the entire i/o action if it takes too long.
+
+		$outcome = print $tsdb_socket $payload;
+		## FIX MINOR:  If the print fails and we can tell it's just a socket timeout,
+		## then perhaps we could sleep briefly (with "select undef, undef, undef, 1;")
+		## and retry (once for this payload), though perhaps we might need to close and
+		## re-open $tsdb_socket here to make that useful.  Retries if we get an alarm()
+		## timeout are more problematic from the standpoint of the structure of the
+		## nested-eval{} structures.
+		log_timed_message "ERROR:  Cannot send data to OpenTSDB on $tsdb_host:  write failed ($!)." if not $outcome;
+		$status &&= $outcome;
+	    }
+	};
+	alarm(0);
+	if ($@) {
+	    chomp $@;
+	    die "$@\n";
+	}
+    };
+    if ($@) {
+	chomp $@;
+	## We tag this as an ERROR instead of a NOTICE, even if the cause of the exception was a
+	## polite shutdown request, because the intended data probably didn't get out to OpenTSDB.
+	log_timed_message "ERROR:  While writing data to $tsdb_host OpenTSDB:  $@";
+	$status = 0;
+    }
+
+    # The lack of an error status being produced here does not necessarily mean that the data
+    # was actually delivered all the way to the remote OpenTSDB application.  See our earlier
+    # comments on SIGPIPE handling, and also our remarks on Stevens much earlier in this script.
+    return $status;
+}
+
+sub tsdb_graph_command {
+    my $host    = shift;
+    my $service = shift;
+    my $label   = shift;
+    my $command = "$host,$service,$label";
+    log_message "TSDB Command=$command";
+}
+
+# This is not needed when tsdb is in auto-metric mode.
+sub tsdb_metric_exists {
+    my $test = shift;
+    my $url  = "http://$tsdb_host:$tsdb_port/suggest?type=metrics&q";
+    my $list = get $url;
+    die "Couldn't get $url" unless defined $list;
+    my @metrics = split /\,/, $list;
+    foreach (@metrics) {
+	my $metric = $_;
+	$metric =~ s/"//g;
+	$metric =~ s/\[//g;
+	$metric =~ s/\]//g;
+	if ( $metric eq $test ) { return 1 }
+    }
+    return 0;
+}
+
+__END__

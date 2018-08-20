@@ -1,0 +1,18 @@
+--- nedi/html/Reports-Wlan.php.orig	2015-02-28 02:56:03.000000000 -0800
++++ nedi/html/Reports-Wlan.php	2015-03-02 08:51:00.000000000 -0800
+@@ -127,6 +127,7 @@
+ 
+ $query	= GenQuery('nodes','s','mac,oui,firstseen,lastseen,device,ifname,vlanid,nodip,aname',$ord,'',array($in[0]),array($op[0]),array($st[0]),array(),'LEFT JOIN devices USING (device) LEFT JOIN nodarp USING (mac) LEFT JOIN dns USING (nodip)');
+ $res	= DbQuery($query,$link);
++$ap  = array();
+ while( ($n = DbFetchRow($res)) ){
+ 	$nmc["$n[4];;$n[5]"]++;
+ 	if(in_array(substr($n[0],0,8), $wlap,1) ){
+@@ -142,7 +143,6 @@
+ }
+ 
+ $row = 0;
+-$ap  = array();
+ foreach ( array_keys($ap) as $m ){
+ 	if($nmc[$ap[$m]['dv'].';;'.$ap[$m]['if']] > 1 or !$opt){
+ 		if ($row % 2){$bg = "txta"; $bi = "imga";}else{$bg = "txtb"; $bi = "imgb";}

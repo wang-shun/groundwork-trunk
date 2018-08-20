@@ -1,0 +1,60 @@
+--- noma_2.0.3/notifier/noma_daemon.pl.in.orig.2	2017-08-07 10:43:25.447390797 -0700
++++ noma_2.0.3/notifier/noma_daemon.pl.in	2017-08-07 10:43:25.449390893 -0700
+@@ -704,7 +704,8 @@
+                 # DD/MM/YYYY or DD.MM.YYYY for most of the World
+                 # until this is implemented we just use what we were given
+ 		        # TODO do not queue here -> this is the job of the bundler thread
+-			# (this prepareNotification() call is missing the the initial $incident_id parameter, anyway)
++			# (this prepareNotification() call is missing the the initial $incident_id parameter, anyway,
++			# along with a bunch of other parameters)
+                 #$queue{$cmd}->enqueue(prepareNotification($user, $method, $cmd, $dest, $from, $id, $datetime, $check_type, $status,
+                 #        $notification_type, $host, $host_alias, $host_address, $service, $output));
+                 if (suppressionIsActive($cmd, $conf->{methods}->{$cmd}->{suppression}))
+@@ -716,7 +717,7 @@
+ 			$cmd, $dest, $sender, $id, $cmdh{stime}, $cmdh{check_type}, $cmdh{status},
+                         $cmdh{notification_type}, $cmdh{host}, $cmdh{host_alias}, $cmdh{host_address}, 
+ 			$cmdh{hostgroups}, $cmdh{service}, $cmdh{servicegroups}, $cmdh{authors}, $cmdh{comments}, $cmdh{output}, 
+-			$contact->{rule});
++			$contact->{rule}, undef, $cmdh{tmp_commands_id});
+                 }
+             }
+ 
+@@ -1000,7 +1001,7 @@
+                 $cmdh{service},         $cmdh{servicegroups},   $cmdh{check_type},
+                 $cmdh{status},          $cmdh{stime},           $cmdh{notification_type},
+ 		$cmdh{authors},		$cmdh{comments},         $cmdh{output});
+-	  updateDB($sql);
++	  $cmdh{tmp_commands_id} = updateDB($sql, undef, 'id');
+     }
+         return %cmdh;
+     }
+@@ -1116,7 +1117,8 @@
+ {
+ 	my ($incident_id, $user, $method, $short_cmd, $dest, $sender, $id,
+ 	$datetime, $check_type, $status,
+-	$notification_type, $host, $host_alias, $host_address, $hostgroups, $service, $servicegroups, $authors, $comments, $output, $rule, $nodelay) = @_;
++	$notification_type, $host, $host_alias, $host_address, $hostgroups, $service, $servicegroups,
++	$authors, $comments, $output, $rule, $nodelay, $tmp_commands_id) = @_;
+ 
+ 	# start of the notification
+ 	my $start = time();
+@@ -1172,8 +1174,19 @@
+     $delay = 0 unless (defined($delay) and not defined($nodelay));
+ 
+ 	# insert the command into our active notification list
++	# NOTE:  Multiple rows can have the same tmp_commands.external_id
++	# ($incident_id) field here.  The only thing really distinguishing
++	# multiple rows we might get back here is the tmp_commands.id field.
+ 	my $query = sprintf('SELECT \'%s\' AS user,\'%s\' AS method,\'%s\' AS notify_cmd, \'%s\' AS time_string,\'%s\' AS notify_id,\'%s\' AS dest, \'%s\' AS from_user, \'%s\' AS rule, id,(stime+\'%s\') AS stime FROM tmp_commands WHERE external_id = \'%s\'',
+ 		$user, $method, $short_cmd, $datetime, $id, $dest, $sender, $rule, $delay, $incident_id);
++	## This "id=$tmp_commands_id" clause should always be operative, in
++	## order to restrict the number of returned rows to at most one (the
++	## exact one we are interested in, as opposed to several that might
++	## otherwise be returned), to make the [0] subscript below actually
++	## reflect the one row we care about in this pass.  This comparison
++	## makes the legacy checking of the external_id field in the query
++	## WHERE clause superfluous.
++	$query .= " and id = $tmp_commands_id" if defined($tmp_commands_id) and $tmp_commands_id > 0;
+ 	my %dbResult = queryDB($query);
+ 	if (%dbResult) {
+ 	    my $query2 = sprintf('INSERT INTO tmp_active ('.quoteIdentifier('user').', method, notify_cmd, time_string, notify_id, dest, from_user, rule, command_id, stime) VALUES (\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\')',

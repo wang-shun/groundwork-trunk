@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+    "-//Hibernate/Hibernate Mapping DTD 2.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd" >
+    
+<hibernate-mapping default-lazy="false">
+<!-- 
+    Created by the Middlegen Hibernate plugin 2.1
+
+    http://boss.bekk.no/boss/middlegen/
+    http://www.hibernate.org/
+-->
+
+<class 
+    name="com.groundwork.collage.model.impl.Plugin" 
+    table="Plugin"
+>
+
+    <id
+        name="pluginId"
+        type="java.lang.Integer"
+        column="PluginID"
+    >
+       <generator class="native">
+            <param name="sequence">plugin_pluginid_seq</param>
+         </generator>
+    </id>
+
+    <property
+        name="name"
+        type="java.lang.String"
+        column="Name"
+        not-null="true"
+        unique="true"
+        length="128"
+    />
+    <property
+        name="url"
+        type="java.lang.String"
+        column="Url"
+        length="254"
+    />
+    <property
+        name="dependencies"
+        type="java.lang.String"
+        column="Dependencies"
+        length="254"
+    />
+    <property
+        name="lastUpdateTimestamp"
+        type="java.sql.Timestamp"
+        column="LastUpdateTimestamp"
+        not-null="true"
+        length="19"
+    />
+      <property
+        name="checksum"
+        type="java.lang.String"
+        column="CheckSum"
+        length="254"
+    />
+      <property
+        name="lastUpdatedBy"
+        type="java.lang.String"
+        column="LastUpdatedBy"
+        length="254"
+    />
+
+    <!-- Associations -->
+  
+    <!-- bi-directional many-to-one association to PluginPlatform -->
+    <many-to-one
+        name="pluginPlatform"
+        class="com.groundwork.collage.model.impl.PluginPlatform"
+        not-null="true"
+    >
+        <column name="PlatformID" />
+    </many-to-one>
+
+</class>
+</hibernate-mapping>

@@ -1,0 +1,56 @@
+#
+# conditional_filter
+#
+# general conditional-text preprocessor for build-time feature selection
+#
+
+# Copyright 2017 GroundWork Open Source, Inc. ("GroundWork").  All
+# rights reserved.  Use is subject to GroundWork commercial license terms.
+
+#
+# This script supports the following types of preprocessor lines:
+#
+#     %if condition
+#     text to be included if the condition is true
+#     %else
+#     text to be included if the condition is false
+#     %endif
+#
+# where the condition is any expression that can be evaluated by Perl.
+#
+# Currently, we only support one level of conditionality here; we don't
+# support any form of nested conditions.  We also don't yet support an
+# explicit "if not" statement in our preprocessor directives, but that
+# can be handled just as easily with Perl operators.  We do support an
+# if-then-else construction, though.
+#
+
+# Perl filter to process simple conditional statements in files,
+# similar to cpp.  Invoke as:
+#
+#     perl -lns conditional_filter -foo=bar file_to_filter
+#
+# to run the filter with an implicit
+#
+#     $foo = "bar";
+#
+# statement prepended to this code, to help in evaluating the
+# conditions stated in the file_to_filter.
+#
+if (/^\s*%if\s+/) {
+    $conditional = 1;
+    s/\S+//;
+    $output = eval;
+    next;
+}
+elsif (/^\s*%else\s*$/) {
+    $output = !$output;
+    next;
+}
+elsif (/^\s*%endif\s*$/) {
+    $conditional = 0;
+    next;
+}
+else {
+    print if !$conditional || $output;
+}

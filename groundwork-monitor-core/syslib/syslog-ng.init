@@ -1,0 +1,107 @@
+#!/bin/sh
+# Begin $rc_base/init.d/syslog-ng - Syslog-ng loader
+
+# Based on sysklogd script from LFS-3.1 and earlier.
+# Rewritten by Gerard Beekmans  - gerard@linuxfromscratch.org
+
+# Source function library.
+#export PATH=$PATH:/usr/local/groundwork/sbin
+### BEGIN INIT INFO
+# Provides: syslog-ng
+# Required-Start: $local_fs $remote_fs
+# X-UnitedLinux-Should-Start: $named $syslog $time
+# Required-Stop:  $local_fs $remote_fs
+# X-UnitedLinux-Should-Stop: $named $syslog $time # Default-Start:  3 5
+# Default-Stop:   0 1 2 6
+# Short-Description: Groundwork syslog-ng
+# Description:    Starting Groundwork syslog-ng
+### END INIT INFO
+export LD_LIBRARY_PATH=/usr/local/groundwork/lib
+export LD_RUN_PATH=/usr/local/groundwork/lib
+if [ -f /etc/redhat-release  ] ; then
+. /etc/init.d/functions
+
+[ -f /usr/local/groundwork/sbin/syslog-ng ] || exit 0
+
+case "$1" in
+        start)
+                status syslog-ng > /dev/null 2>&1;
+        	if [ $? -eq 0 ] ; then
+			echo -en "syslog-ng already running" 
+                	echo -en '\E[0m'"\033[61G[\033[0m"
+                	echo -e '\E[1;37;31m'"\033[63GFAILED\033[0m" ]
+		else
+                	echo -en "Starting System Log..."
+			/usr/local/groundwork/sbin/syslog-ng > /dev/null 2>&1;
+        			if [ $? -eq 0 ] ; then
+                			echo -en '\E[0m'"\033[61G[\033[0m"
+                			echo -e '\E[1;37;32m'"\033[63GOK\033[0m" ]
+        			else
+                			echo -en '\E[0m'"\033[61G[\033[0m"
+                			echo -e '\E[1;37;31m'"\033[63GFAILED\033[0m" ]
+        			fi
+        	fi
+                ;;
+        stop)
+                echo -en "Stopping System Log..."
+                killproc syslog-ng > /dev/null 2>&1;
+		RETVAL=$?
+        	if [ $RETVAL -eq 0 ] ; then
+                	echo -en '\E[0m'"\033[61G[\033[0m"
+                	echo -e '\E[1;37;32m'"\033[63GOK\033[0m" ]
+        	else
+                	echo -en '\E[0m'"\033[61G[\033[0m"
+                	echo -e '\E[1;37;31m'"\033[63GFAILED\033[0m" ]
+        	fi
+                ;;
+
+        restart)
+                $0 stop
+                sleep 1
+                $0 start
+                ;;
+        status)
+		echo -en "Checking for syslog-ng:"
+                status syslog-ng > /dev/null 2>&1;
+		if [ $? -eq 0  ] ; then
+                        echo -en '\E[0m'"\033[61G[\033[0m"
+                        echo -e  '\E[1;37;32m'"\033[63Grunning\033[0m" ]
+                else
+                        echo -en '\E[0m'"\033[61G[\033[0m"
+                        echo -e  '\E[1;37;31m'"\033[63Gdead\033[0m" ]
+                fi
+                ;;
+             *)
+                echo "Usage: $0 {start|stop|restart|status}"
+                exit 1
+                ;;
+esac
+fi
+if [ -f /etc/SuSE-release  ]; then
+. /etc/rc.status
+# First reset status of this service
+rc_reset
+		case "$1" in
+    	start)
+		echo -n "Starting syslog-ng..."
+		/usr/local/groundwork/sbin/syslog-ng &>/dev/null
+		rc_status -v
+	;;
+	 stop)
+               echo -n "Shutting down syslog-ng..."
+		killproc syslog-ng -15 &>/dev/null
+#		killall -9 syslog-ng &>/dev/null
+		rc_status -v
+        ;;
+	status)
+	echo -n "Checking for syslog-ng:"	
+	rc_status -v
+	;;
+	*)
+        echo "Usage: $0 {start|stop|status}"
+        exit 1
+        ;;
+esac
+rc_exit
+fi
+# End $rc_base/init.d/syslog-ng

@@ -1,0 +1,316 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<ice:inputHidden id="HostGrpStatusPortlet_IpHddn"
+			value="#{hostGroupStatisticsBean.hgHiddenField}"></ice:inputHidden>
+		<!--  error / info message -->
+		<ice:panelGroup rendered="#{statisticsHandler.hgMessage}"
+			id="HostGrpStatusPortlet_panelsGroupError">
+			<ice:column id="HostGrpStatusPortlet_columnError"
+				rendered="#{statisticsHandler.hgError}">
+				<ui:include src="/jsp/error.jspx">
+					<ui:param name="errorMessage"
+						value="#{statisticsHandler.hgErrorMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:column id="HostGrpStatusPortlet_columninfo"
+				rendered="#{statisticsHandler.hgInfo}">
+				<ui:include src="/jsp/info.jspx">
+					<ui:param name="infoMessage"
+						value="#{statisticsHandler.hgInfoMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:commandButton id="frmHostGroupStatusForm_cmdRetryNow"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{statisticsHandler.reloadHGPortlet}">
+			</ice:commandButton>
+		</ice:panelGroup>
+		<ice:panelGroup rendered="#{!statisticsHandler.hgMessage}"
+			id="frmHostGroupStatusForm_panelsgrpError1">
+			<ice:panelGrid id="HostGrpStatusPortlet_PnlgrdMain" columns="2">
+				<ice:panelGrid id="HostGrpStatusPortlet_PnlGrdPieChrt"
+					rowClasses="icePnlGrdRow1,chartcaption" styleClass="icePnlGrd"
+					columns="1" style="margin-right:40px;">
+					<ice:graphicImage 
+						value="#{hostGroupStatisticsBean.hostGroupPieChart}"
+						mimeType="image/png"
+						rendered="#{hostGroupStatisticsBean.filteredHostGroupCount >'0' and hostGroupStatisticsBean.hostGroupPieChart!=null}"></ice:graphicImage>
+					<ice:graphicImage id="imgHostGroupPiechartconnectactive"
+						value="/images/connect_active.gif"
+						rendered="#{hostGroupStatisticsBean.filteredHostGroupCount >'0' and hostGroupStatisticsBean.hostGroupPieChart ==null}"></ice:graphicImage>
+					<ice:graphicImage 
+						url="/images/no_hostgroup.gif"
+						rendered="#{hostGroupStatisticsBean.filteredHostGroupCount le '0'}"></ice:graphicImage>
+					<span> <ice:outputText id="outputtxtfilteredTotal"
+						value="#{message['com_groundwork_portal_statusviewer_filtered_total']}">
+					</ice:outputText> </span>
+				</ice:panelGrid>
+				<ice:panelGrid id="HostGrpStatusPortlet_PnlGrdAll" columns="1">
+					<ice:panelGrid columns="1" columnClasses="padleft19 padbottom4">
+						<ice:column id="pnlgridcolumn1">
+							<ice:outputText id="HostGrpStatusPortlet_TxtHstGpStats" 
+							
+								value="#{message['com_groundwork_statusviewer_monitoring_statistics']}" />
+							<ice:outputText id="HostGrpStatusPortlet_TxtHstGpsVal"
+								value="#{message['com_groundwork_statusviewer_hostgroups']}" />
+						</ice:column>
+					</ice:panelGrid>
+					<ice:dataTable id="tblHostGroupStatistics"
+						styleClass="iceDatTbl_typA"
+						columnClasses="blankClass,padright15 txtright,borderLeftdot status_colhdr"
+						footerClass="iceDatTblFtr_typA"
+						headerClass="iceDatTblColHdr1_typA"
+						rowClasses="iceDatTblRow1_typA,iceDatTblRow2_typA"
+						value="#{hostGroupStatisticsBean.hostGroupCountList}"
+						var="hostgrpstatus">
+						<ice:column id="HostGrpStatusPortlet_column1">
+							<f:facet name="header"
+								style="border-bottom:1px #999999 solid;">
+								<ice:outputText id="HostGrpStatusPortlet_TxtRslts"
+									value="#{message['com_groundwork_statusviewer_results']}">
+								</ice:outputText>
+							</f:facet>
+							<f:facet name="footer">
+								<ice:outputText id="HostGrpStatusPortlet_outTxtEmptyFtr"
+									value=""
+									style="color: #000000; font-size: 10px; font-weight: bold">
+								</ice:outputText>
+							</f:facet>
+							<ice:panelGrid id="HostGrpStatusPortlet_PanelHstStatsTbl"
+								columns="2">
+								<ice:column id="tblhostStatistics_pnlgridcolumn1">
+									<ice:graphicImage id="imghostgroupstatus"
+										value="#{hostgrpstatus.imgsrc}"></ice:graphicImage>
+									<ice:commandLink id="lnkHostGroupStatus"
+										value="#{hostgrpstatus.status}"
+										action="#{hostGroupStatisticsBean.openPopup}"
+										actionListener="#{statisticsHandler.showHostGroups}"
+										rendered="#{hostgrpstatus.total!='0'}">
+										<f:param value="#{hostgrpstatus.status}"
+											name="hostgroupStatus" />
+									</ice:commandLink>
+								</ice:column>
+								<ice:column id="tblhostStatistics_pnlgridcolumn2">
+									<ice:outputText id="outputtxtHostGroupStatus"
+										value="#{hostgrpstatus.status}"
+										rendered="#{hostgrpstatus.total=='0'}">
+									</ice:outputText>
+								</ice:column>
+							</ice:panelGrid>
+						</ice:column>
+						<ice:column id="HostGrpStatusPortlet_column2">
+							<f:facet name="header" class="portlet-section-subheader"
+								style="border-bottom:1px #999999 solid;">
+								<ice:outputText id="HostGrpStatusPortlet_outTxtFiltered"
+									value="#{message['com_groundwork_statusviewer_filtered']}">
+								</ice:outputText>
+							</f:facet>
+							<ice:outputText id="outputtxtFilteredHdr"
+								value="#{hostgrpstatus.filtered}">
+							</ice:outputText>
+							<f:facet name="footer">
+								<ice:outputText id="outputtxtFilteredValue" value=""
+									style="color: #000000; font-size: 10px; font-weight: bold">
+								</ice:outputText>
+							</f:facet>
+
+						</ice:column>
+						<ice:column id="HostGrpStatusPortlet_column3">
+							<f:facet name="header"
+								style="border-bottom:1px #999999 solid;">
+								<ice:outputText id="outputtxtTotalHdr"
+									value="#{message['com_groundwork_statusviewer_total']}">
+								</ice:outputText>
+							</f:facet>
+							<ice:outputText id="outputtxtTotalValue"
+								value="#{hostgrpstatus.total}">
+							</ice:outputText>
+							<f:facet name="footer">
+								<ice:outputText id="outputtxtTotalCountFtr" value=""
+									style="color: #000000; font-size: 10px; font-weight: bold">
+								</ice:outputText>
+							</f:facet>
+						</ice:column>
+					</ice:dataTable>
+				</ice:panelGrid>
+			</ice:panelGrid>
+			<ice:panelPopup id="popupHostGroupStatus" styleClass="icePnlPopTbl"
+				autoPosition="manual" modal="true" visible="#{hostGroupStatisticsBean.visible}"
+				style="z-index:999; top: 25%; left: 400px; height: 200px; position:fixed; background: #FFFFFF;">
+				<f:facet name="header">
+					<ice:panelGrid id="HostGrpStatusPortlet_PopUp_Main"
+						width="400px" cellpadding="0" cellspacing="0" columns="2"
+						columnClasses="txtleft,icePnlPopHdr">
+						<ice:column id="HostGrpStatusPortlet_PopUp_MainCol1">
+							<ice:outputText id="HostGrpStatusPortlet_PopUp_Main_Status"
+								style="font-size:10px;" styleClass="cust_popupHeader_font"
+								value="#{hostGroupStatisticsBean.currentPopstatus}"></ice:outputText>
+						</ice:column>
+						<ice:column id="HostGrpStatusPortlet_PopUp_MainCol2">
+							<div class="cust_poupmodes"><span title="Close Window">
+							<ice:commandButton id="HostGrpStatusPortlet_PopUp_LnkClose"
+								type="button"
+								image="/css/css-images/popup_modeBtn_close.gif"
+								action="#{hostGroupStatisticsBean.closePopup}"
+								actionListener="#{hostGroupStatisticsBean.closeWindow}"
+								title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+								 alt="Close" /> </span></div>
+						</ice:column>
+					</ice:panelGrid>
+
+				</f:facet>
+				<f:facet name="body">
+					<ice:panelGrid id="HostGrpStatusPortlet_PopUp_PanleGrdAll"
+						width="100%" cellpadding="0" cellspacing="0">
+						<ice:panelGrid id="HostGrpStatusPortlet_PopUp_PanleGrdFltrs"
+							columns="1" style="width:100%">
+							<ice:column id="HostGrpStatusPortlet_PopUp_PanleGrdFltrsCol1">
+								<div class="gen_div"><ice:outputText
+									id="HostGrpStatusPortlet_popuptotal_label"
+									value="#{message['com_groundwork_statusviewer_total']} ="
+									style="font-weight: bold"></ice:outputText> <ice:outputText
+									id="HostGrpStatusPortlet_popuptotalcount_label"
+									value="#{hostGroupStatisticsBean.rowCount}"
+									style="font-weight: bold"></ice:outputText></div>
+								<div class="gen_div_right">
+								<span
+									class="iceOutTxt padleft10" style="vertical-align: middle"><ice:outputText
+									id="HostGrpStatusPortlet_popupshow_label"
+									value="#{message['com_groundwork_portal_statusviewer_show']}"></ice:outputText></span>
+								<ice:selectOneMenu
+									id="HostGrpStatusPortlet_PopUp_listHostGroup"
+									value="#{popUpSelectBean.hgSelectValue}"
+									valueChangeListener="#{popUpSelectBean.hgProcessMenuSelection}" style="min-width:150px;">
+									<f:selectItem itemValue="filteredhostgroups"
+										itemLabel="#{message['com_groundwork_portal_statusviewer_filteredhostgroups']}" />
+									<f:selectItem itemValue="allhostgroups"
+										itemLabel="#{message['com_groundwork_portal_statusviewer_allhostgroups']}" />
+								</ice:selectOneMenu>  <span class="iceOutTxt padleft10"> <ice:commandButton value="Apply"
+									id="HostGrpStatusPortlet_PopUp_cmdButtonApply"
+									type="submit"
+									actionListener="#{statisticsHandler.applyHostGroupFilters}">
+								</ice:commandButton></span></div>
+							</ice:column>
+						</ice:panelGrid>
+						<ice:dataTable var="hostgl"
+							id="HostGrpStatusPortlet_PopUp_tblHostGroupList"
+							styleClass="iceDatTbl_typB"
+							rowClasses="iceDatTblRow1_typB,iceDatTblRow2_typB table-alternate"
+							columnClasses="iceDatTblCol1_typB"
+							headerClass="iceDatTblColHdr1_typB"
+							value="#{hostGroupStatisticsBean.hostGroupList}"
+							rows="#{hostGroupStatisticsBean.popupRowSize}"
+							sortColumn="#{hostGroupStatisticsBean.sortColumn}"
+							style="width:100%">
+							<ice:column id="HostStatusPortlet_PopUp_hostgl1">
+								<f:facet name="header">
+									<table border="0" cellspacing="0" cellpadding="0"
+										align="center">
+										<tr>
+											<td><ice:commandSortHeader
+												id="tblhostListDatatable_sortColHeader"
+												columnName="name" arrow="true" actionListener="#{hostGroupStatisticsBean.sort}">
+												<ice:outputText
+													id="HostStatusPortlet_PopUp_outputtxtHostGroupName"
+													value="#{message['com_groundwork_statusviewer_hostgroups']}">
+												</ice:outputText>
+											</ice:commandSortHeader></td><td><ice:graphicImage id="imgsortarrow"
+												value="/images/sort_arrow_up.gif"
+												rendered="#{hostGroupStatisticsBean.sortColumn ==null}"></ice:graphicImage></td>
+										</tr>
+									</table>
+								</f:facet>
+								<ice:outputLink
+									id="HostStatusPortlet_PopUp_lnkHostGroupName"
+									value="#{hostgl.subPageURL}" onclick="blockNavigation();" rendered="#{!empty hostgl.subPageURL}">
+									<ice:outputText id="lnkHostGroupName_txtShowHostGrp"
+										style="color: #5078AA;font-weight:normal;padding-bottom: 9px;"
+										value="#{hostgl.name}" />
+								</ice:outputLink>
+								<ice:outputText id="lnkHostGroupName_txtShowHostGrp"
+										style="font-weight:normal;"
+										value="#{hostgl.name}" rendered="#{empty hostgl.subPageURL}"/>
+							</ice:column>
+						</ice:dataTable>
+						<!-- Paginator with page controls -->
+						<ice:dataPaginator
+							id="HostStatusPortlet_PopUp_hostmodelpopupdatatable"
+							for="HostGrpStatusPortlet_PopUp_tblHostGroupList"
+							paginator="true" fastStep="5" paginatorMaxPages="10"
+							rowsCountVar="rowsCount"
+							displayedRowsCountVar="displayedRowsCount"
+							firstRowIndexVar="firstRowIndex"
+							lastRowIndexVar="lastRowIndex" pageCountVar="pageCount"
+							pageIndexVar="pageIndex" renderFacetsIfSinglePage="false"
+							styleClass="cust_popup_pgr">
+							<ice:outputFormat id="HostGpStatusPortlet_PopUp_PtptFmtPg"
+								style="margin-left:45%" value="{0} of {1}"
+								styleClass="standard">
+								<f:param value="#{pageIndex}" />
+								<f:param value="#{pageCount}" />
+							</ice:outputFormat>
+							<f:facet name="first">
+								<ice:graphicImage id="HostGpStatusPortlet_PopUp_ImgFrstPg"
+									url="/images/arrow-first.gif" style="border:none;"
+									title="First Page" />
+							</f:facet>
+							<f:facet name="last">
+								<ice:graphicImage id="HostGpStatusPortlet_PopUp_ImgLstPg"
+									url="/images/arrow-last.gif" style="border:none;"
+									title="Last Page" />
+							</f:facet>
+							<f:facet name="previous"
+								id="HostGpStatusPortlet_PopUp_ImgPrevPg">
+								<ice:graphicImage url="/images/arrow-previous.gif"
+									style="border:none;" title="Previous Page" />
+							</f:facet>
+							<f:facet name="next">
+								<ice:graphicImage id="HostGpStatusPortlet_PopUp_ImgNxtPg"
+									url="/images/arrow-next.gif" style="border:none;"
+									title="Next Page" />
+							</f:facet>
+							<f:facet name="fastforward">
+								<ice:graphicImage id="HostGpStatusPortlet_PopUp_ImgFstFrwd"
+									url="/images/arrow-ff.gif" style="border:none;"
+									title="Fast Forward" />
+							</f:facet>
+							<f:facet name="fastrewind">
+								<ice:graphicImage
+									id="HostGpStatusPortlet_PopUp_ImgFstBckWrds"
+									url="/images/arrow-fr.gif" style="border:none;"
+									title="Fast Backwards" />
+							</f:facet>
+						</ice:dataPaginator>
+						<div class="gen_div_right"><ice:commandButton
+							id="HostGpStatusPortlet_PopUp_btnCloseWindow"
+							action="#{hostGroupStatisticsBean.closePopup}"
+							actionListener="#{hostGroupStatisticsBean.closeWindow}"
+							title="Close Window"
+							value="#{message['com_groundwork_statusviewer_mobel_popup_close']}" />
+							</div>
+						</ice:panelGrid>
+					</f:facet>
+				</ice:panelPopup>
+			</ice:panelGroup>					
+	</ui:define>
+</ui:composition>

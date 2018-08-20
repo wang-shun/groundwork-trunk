@@ -1,0 +1,137 @@
+<?xml version="1.0"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Inc. info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-->
+<!DOCTYPE hibernate-mapping PUBLIC
+    "-//Hibernate/Hibernate Mapping DTD 2.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd" >
+    
+<hibernate-mapping default-lazy="false" >
+
+<class 
+    name="com.groundwork.collage.model.impl.Category" 
+    table="Category"
+>
+
+    <id
+        name="categoryId"
+        type="java.lang.Integer"
+        column="CategoryID"
+    >
+       <generator class="native">
+            <param name="sequence">category_categoryid_seq</param>
+         </generator>
+    </id>
+
+    <property
+        name="name"
+        type="java.lang.String"
+        column="Name"
+        length="254"
+    />
+    <property
+        name="description"
+        type="java.lang.String"
+        column="Description"
+        length="254"
+    />
+
+    <property
+            name="agentId"
+            type="java.lang.String"
+            column="agentid"
+            length="128"
+            not-null="false"
+            />
+
+    <property
+        name="root"
+        type="java.lang.Boolean"
+        column="Root"
+        not-null="true"
+    />
+
+    <!-- many-to-one ApplicationType -->
+    <many-to-one
+            name="applicationType"
+            class="com.groundwork.collage.model.impl.ApplicationType"
+            not-null="true"
+            cascade="none"
+            fetch="join"
+            >
+        <column name="ApplicationTypeID" />
+    </many-to-one>
+
+     <!-- bi-directional many-to-many parents/children relationship between Categories -->
+	<set 
+		name="parents"
+		table = "CategoryHierarchy"
+		lazy="true"
+		cascade="none" 
+	>
+		<key column="CategoryID" />
+		<many-to-many class="com.groundwork.collage.model.impl.Category" column="ParentID" />
+	</set>
+    <set
+        name="children"
+        table="CategoryHierarchy"
+        lazy="true"
+        cascade="none"
+        inverse="true"
+    >
+        <key column="ParentID"/>
+        <many-to-many class="com.groundwork.collage.model.impl.Category" column="CategoryID"/>
+    </set>
+
+    <!-- many-to-many ancestors relationship between Categories -->
+    <set
+        name="ancestors"
+        table="CategoryAncestry"
+        lazy="true"
+        cascade="none"
+    >
+        <key column="CategoryID" />
+        <many-to-many class="com.groundwork.collage.model.impl.Category" column="AncestorID"/>
+    </set>
+
+    <!-- bi-directional one-to-many to CategoryEntities -->
+    <set
+		name="categoryEntities"
+		lazy="false"
+		inverse="true"
+		cascade="all"
+	>
+		<key>
+			<column name="CategoryID" />
+		</key>
+		<one-to-many 
+			class="com.groundwork.collage.model.impl.CategoryEntity"
+		/>
+	</set>
+	
+    <!-- many-to-one EntityType -->
+      <many-to-one 
+        name="entityType"
+        class="com.groundwork.collage.model.impl.EntityType"
+        not-null="true"
+		cascade="none"  
+      >
+		<column name="EntityTypeID"/>
+	</many-to-one>
+
+</class>
+</hibernate-mapping>

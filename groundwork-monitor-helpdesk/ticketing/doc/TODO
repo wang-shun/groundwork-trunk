@@ -1,0 +1,80 @@
+More stuff that should be done with the Ticketing integration:
+
+(*) When GroundWork packages extra add-on Perl modules as we
+    do for this integration, they should ultimately end up under
+    /usr/local/groundwork/perl/lib/site_perl/5.24.0/ since that would
+    be the proper place for a local add-on.
+
+    The only problem with using
+    /usr/local/groundwork/perl/lib/site_perl/5.24.0/ as the proper place
+    for add-on packages is that we might have conflicts between our own
+    add-on packages which were supplied at different times, that could
+    include different versions of particular Perl (e.g., CPAN) packages.
+    We would need to maintain a separate GroundWork-Perl add-on package
+    that represents the full set of latest-update packages that can
+    serve for all of our add-ons.  By shipping that extra Perl package,
+    we could avoid bundling Perl modules in each separate GroundWork
+    add-on extension.
+
+(*) When I build the Perl modules locally before stuffing them into the
+    RPM build file hierarchy, certain files end up with embedded pathnames
+    that represent my build environment instead of the ultimate target
+    environment.  Currently, when building the Perl packages against Perl
+    5.24.0, the set of files affected is:
+
+    ./perl/lib/perl5/x86_64-linux-thread-multi/auto/ServiceNow/.packlist
+    ./perl/lib/perl5/x86_64-linux-thread-multi/perllocal.pod
+
+    None of these files is critical to operation of the software,
+    but for cleanliness, we ought to either programmatically alter the
+    paths these files contain to represent actual eventual installed
+    locations, or figure out some way to get the build to produce the
+    intended final pathnames to begin with.
+
+(*) Refactor the HelpDesk.pm module and supporting scripts and config
+    files, so the ticketing framework is better separated from the
+    individual customizations for particular ticketing service providers.
+    Then package the framework and the customizations separately.
+
+(*) The twoway_helpdesk.pl script currently takes no notice if a
+    resolved ticket is subsequently re-opened.  This leaves a hole in
+    our monitoring of the ticket status.  We ought to scan for any
+    resolved tickets still in the HelpDeskLookupTable, and if they
+    have been re-opened, adjust their Operation Status within the
+    GroundWork Monitor system.
+
+(*) The code in modules/ServiceNow/HelpDesk.pm needs to be looked at for
+    the wrong-current-configuration-database issue noted in GWMON-9076,
+    as regards its use of "monarch"-database information.  When we
+    resolve that JIRA by renaming the future-configuration database,
+    this script will need to adapt accordingly.
+
+(*) Merge together items related to the $ServiceNow and JIRA ticketing
+    providers.  Pay careful attention to the following files, which
+    might not be part of the original JIRA integration:
+
+	config/console-admin-config.xml
+	config/hostgroup_and_service_to_assignment_group_mapping.conf
+	config/hostgroup_to_category_and_subcategory_mapping.conf
+	config/monarch_group_to_location_mapping.conf
+	config/servicegroup_to_assignment_group_mapping.conf
+
+    Figure out how to select whether or not these config files are paid
+    attention to in a particular deployment.
+
+(*) Figure out whether the oneway and twoway logfiles are to be rotated
+    via logrotate or via internal operations inside the respective
+    processes, and adjust the scripting, config files, and RPM build
+    accordingly.  Possibly, this might depend on whether there might be
+    multiple copies of those processes running concurrently.
+
+(*) Write a create-fresh-helpdeskbridgedb.sql script, mirroring the
+    similar scripts we provide for other databases, to provide a means to
+    easily clean things up in the field when everything gets completely
+    messed up and has to be reset from scratch.
+
+(*) Check the final ownership of the HelpDeskBridgeDB database and its
+    associated objects:  helpdeskconcurrencytable, helpdesklookuptable,
+    helpdeskconcurrencytable_logmessageid_key, helpdesklookuptable_pkey,
+    helpdesklookuptable_ticketstatus, and any other objects.  This is
+    probably easiest to check by examining a text dump of the database.

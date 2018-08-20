@@ -1,0 +1,66 @@
+This document contains notes on the Cacti "nectar" plugin in the context
+of a GroundWork Monitor server installation.
+
+================================================================
+Installation of the Cacti "nectar" plugin
+================================================================
+
+In GroundWork Monitor, to fully enable the Cacti "nectar" plugin, you
+must take certain actions beyond just installing and enabling the plugin
+in Cacti's Console > Plugin Management screen.
+
+Per the "nectar" plugin README file:
+
+    NOTE: You must patch the settings plugin using the attached patch
+
+    NOTE: Using Cacti 0.8.7g with PIA 2.8 requires to replace 
+	  plugins/settings/include/mailer.php with the one found in
+	  nectar/0.8.7g
+
+Here are the commands to take those actions.  This procedure will leave
+clearly labeled backup copies of the files involved, to make it easy to
+reverse these changes if necessary.
+
+    su nagios
+    cd /usr/local/groundwork/cacti/htdocs/plugins/settings/include
+
+    cp -p functions.php functions.php.settings-0.5
+    patch -b -V simple -z .pre_nectar-0.35a -p4 < ../../nectar/0.8.7e/settings_include_functions.php.patch
+
+    mv mailer.php mailer.php.settings-0.5
+    cp -p ../../nectar/0.8.7g/mailer.php mailer.php.nectar-0.35a
+    cp -p mailer.php.nectar-0.35a mailer.php
+
+    exit
+
+Beyond that, PHP must be instructed to read the email message that the
+"nectar" plugin produces to find the recipient information, instead of
+depending on a command-line argument for that address.  Normally, this
+is done with the "sendmail -t" option, and that is part of the default
+setting for PHP.  However, the default path to the sendmail program
+might not be correct for your system.  To check that, use:
+
+    % /usr/local/groundwork/php/bin/php -i | fgrep sendmail_path
+    sendmail_path => /usr/bin/sendmail -t -i  => /usr/bin/sendmail -t -i 
+
+That looks good, except for one important detail.  On at least Red Hat
+Enterprise Linux, CentOS, and Ubuntu, the sendmail program is actually
+installed as /usr/sbin/sendmail instead of /usr/bin/sendmail, so if you
+see the /usr/bin directory listed, the configured default path just
+won't work.  If your system has a similar mismatch, you will need to
+edit the /usr/local/groundwork/php/etc/php.ini file to specify a path
+that works.  For instance, change:
+
+    ; For Unix only.  You may supply arguments as well (default: "sendmail -t -i").
+    ;sendmail_path =
+
+to:
+
+    ; For Unix only.  You may supply arguments as well (default: "sendmail -t -i").
+    sendmail_path = "/usr/sbin/sendmail -t -i"
+
+You should now see the correct path for your system:
+
+    % /usr/local/groundwork/php/bin/php -i | fgrep sendmail_path
+    sendmail_path => /usr/sbin/sendmail -t -i => /usr/sbin/sendmail -t -i
+

@@ -1,0 +1,36 @@
+Bad luck.  Having just the installer emulator script was just fine
+for a build.  Adding the BitRock installer itself adds many bytes:
+
+-rwxr-xr-x 827497515 deployment_scripts/groundworkenterprise-7.1.0-br389-gw2838-linux-64-installer.run
+
+and produces:
+
+    fpb --build .
+    Unexpected error
+    Shell command executed with "1" exit code:
+	rpmbuild -vv --nodeps \
+	    --define "_topdir /home/anon/fuel-plugin-groundwork-monitor/.build/rpm" \
+	    -bb /home/anon/fuel-plugin-groundwork-monitor/.build/rpm/plugin_rpm.spec 
+
+Running that command by hand (since I don't know where fpb redirects
+all the "rpmbuild --vv" debug output), I see at the end:
+
+    + /usr/lib/rpm/brp-strip-comment-note /usr/bin/strip /usr/bin/objdump
+    /usr/bin/strip: error: the input file '/home/anon/fuel-plugin-groundwork-monitor/
+	.build/rpm/BUILDROOT/fuel-plugin-groundwork-monitor-7.1-7.1.0-1.x86_64/
+	var/www/nailgun/plugins/fuel-plugin-groundwork-monitor-7.1/deployment_scripts/
+	groundworkenterprise-7.1.0-br389-gw2838-linux-64-installer.run' has no sections
+    Processing files: fuel-plugin-groundwork-monitor-7.1-7.1.0-1.noarch
+    ...
+    error: Arch dependent binaries in noarch package
+
+    RPM build errors:
+	Arch dependent binaries in noarch package
+
+Well, that's going to make it difficult.  We need some automated way
+from within the "fpb --build" run to remove or comment out this line
+in the specfile:
+
+    BuildArch:      noarch
+
+to allow binary files to be included in the build.

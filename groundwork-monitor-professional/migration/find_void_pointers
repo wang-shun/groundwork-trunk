@@ -1,0 +1,290 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+#
+# find_void_pointers
+#
+
+# Copyright 2012 GroundWork Open Source, Inc. (GroundWork)
+# All rights reserved. This program is free software; you can redistribute
+# it and/or modify it under the terms of the GNU General Public License
+# version 2 as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
+# Note that we must clearly distinguish between null pointers (i.e.,
+# foreign key references using the value NULL, which is an acceptable
+# way to indicate that no foreign key reference is in play) and void
+# pointers (i.e., non-NULL foreign key reference values that do not
+# correspond to any rows in the referenced tables).
+
+# To do:
+# (*) Port this script so it operates with PostgreSQL databases as well.
+
+use strict;
+
+use Getopt::Long qw(:config no_ignore_case auto_version);
+use DBI;
+
+# We use "our" instead of "my" so Getopt::Long auto_version processing can access this value.
+our $VERSION = '1.0.1';
+
+sub print_usage {
+print
+"usage:  find_void_pointers {-c|-f} [-v] datasource
+   or:  find_void_pointers {-c|-f} [-v] -h dbhost -d dbname -u dbuser -p dbpass
+where:  -c          means check (look for orphaned pointers)
+	-f          means fix (delete or nullify orphaned pointers)
+	-v          enables verbose messages
+	datasource  is the name of a data source in db.properties
+	dbhost      is the name of the host running the target database
+	dbname      is the name of the target database
+	dbuser      is the name of a MySQL user that can access the database
+	dbpass      is the password for that MySQL user
+";
+}
+
+my $checkup = undef;
+my $fixup   = undef;
+my $verbose = undef;
+my $dbhost  = undef;
+my $dbname  = undef;
+my $dbuser  = undef;
+my $dbpass  = undef;
+
+# Note that passing a password on the command line is, in general, strongly discouraged,
+# as it can be seen by anyone running a "ps" command.  We only tolerate this design here
+# because this program will only be used on a transient basis during upgrades.
+eval {
+    my $result = GetOptions (
+	'checkup'    => \$checkup,
+	'fixup'      => \$fixup,
+	'verbose'    => \$verbose,
+	'hostname=s' => \$dbhost,
+	'database=s' => \$dbname,
+	'username=s' => \$dbuser,
+	'password:s' => \$dbpass
+    );
+    if (!$result) {
+	print_usage();
+	exit 1;
+    }
+};
+if ($@) {
+    chomp $@;
+    print "FATAL:  Internal error:  $@\n";
+    exit 1;
+}
+
+if (not ($checkup xor $fixup)) {
+    print_usage();
+    exit 1;
+}
+
+my $args = scalar @ARGV;
+if ($args == 1) {
+    my $properties_file = '/usr/local/groundwork/config/db.properties';
+    my $db = $ARGV[0];
+    if ( -e "/usr/local/groundwork/config/db.properties" ) {
+	open( FILE, '<', $properties_file ) or die "ERROR:  Cannot open $properties_file\n";
+	while ( my $line = <FILE> ) {
+	    if ( $line =~ /\s*$db\.dbhost\s*=\s*(\S+)/ )   { $dbhost = $1 }
+	    if ( $line =~ /\s*$db\.database\s*=\s*(\S+)/ ) { $dbname = $1 }
+	    if ( $line =~ /\s*$db\.username\s*=\s*(\S+)/ ) { $dbuser = $1 }
+	    if ( $line =~ /\s*$db\.password\s*=\s*(\S+)/ ) { $dbpass = $1 }
+	}
+	close(FILE);
+    }
+    die "FATAL:  Cannot find the \"$db\" data source in $properties_file\n" if not defined $dbname;
+}
+elsif ($args || !defined($dbhost) || !defined($dbname) || !defined($dbuser) || !defined($dbpass)) {
+    print_usage();
+    exit 1;
+}
+
+##############################################################################
+# Utility Subroutines
+##############################################################################
+
+sub max {
+    my $a = shift;
+    my $b = shift;
+    return $a > $b ? $a : $b;
+}
+
+sub rtrim {
+    my $string = shift;
+    $string =~ s/ +$//;
+    return $string;
+}
+
+##############################################################################
+# Connect to DB
+##############################################################################
+
+my $dsn = "DBI:mysql:database=$dbname;host=$dbhost";
+my $dbh = undef;
+# We turn PrintError off because RaiseError is on and we don't want duplicate messages printed.
+eval { $dbh = DBI->connect( $dsn, $dbuser, $dbpass, { 'RaiseError' => 1, 'PrintError' => 0 } ) };
+if ($@) {
+    print "\nError: connect failed ($@)\n";
+    die;
+}
+
+##############################################################################
+# Analyze database table relationships, and sequence the table names in an
+# order which is safe to dump them in so a restore will never try to create
+# a foreign key reference to a row that doesn't yet exist in the other table.
+##############################################################################
+
+my $warnings = 0;
+eval {
+    my $sth = $dbh->prepare('show tables');
+    $sth->execute;
+    my %tables = ();
+    while ( my @values = $sth->fetchrow_array() ) {
+	$tables{ $values[0] } = 1;
+    }
+    $sth->finish;
+
+    my @references = ();
+
+    # List of tables that are just id-to-id mappings.
+    my %is_associative = ();
+
+    my %in_primary_key = ();
+    my %not_null       = ();
+
+    foreach my $table (sort keys %tables) {
+	my @values  = ();   
+	my @lines   = ();
+	my $sqlstmt = "show create table $table";
+	my $sth     = $dbh->prepare($sqlstmt);
+	$sth->execute;
+	while ( @values = $sth->fetchrow_array() ) {
+	    ## Because a given table can contain multiple foreign key references,
+	    ## we have to split the data we get back into individual lines so we
+	    ## can easily process multiple foreign key references for that table.
+	    push @lines, split(/\n/, $values[1]);
+	}
+	$sth->finish;
+	my $base_table  = undef;
+	my $primary_key = undef;
+	my %fields = ();
+	for (@lines) {
+	    ## The lines we care about look like this:
+	    ##   CREATE TABLE `contact_group` (
+	    if (/CREATE TABLE (`.+`)/) {
+		$base_table = $1;
+		$primary_key = undef;
+	    }
+	    ##   `serviceprofile_id` smallint(4) unsigned NOT NULL,
+	    if (/(`[^` ]+`) .*NOT NULL/) {
+		## print "table $base_table column $1 is NOT NULL\n" if $verbose;
+		$not_null{$base_table}{$1} = 1;
+	    }
+	    if (/PRIMARY KEY\s+\(([^)]+)\)/) {
+		$primary_key = $1;
+		my @key_fields = split(/,/, $1);
+		foreach my $key (@key_fields) {
+		    $in_primary_key{$base_table}{$key} = 1;
+		}
+	    }
+	    if (/^\s*(`[^`]+`) /) {
+		$fields{$1} = 1;
+	    }
+	    ## The lines we care about look like this:
+	    ##   CONSTRAINT `contact_group_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `monarch_groups` (`group_id`) ON DELETE CASCADE,
+	    ## (though perhaps there might not be an ON DELETE clause in a foreign key reference definition).
+	    if (/CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \(([^)]+)\)/) {
+		$primary_key = '*' if not defined $primary_key;
+		my $idx = $1;
+		my $key = $2;
+		my $tbl = $3;
+		my $col = $4;
+		delete $fields{$key};
+		## push @references, "select $primary_key from $base_table where $key not in (select $col from $tbl);\n";
+		push @references, [$primary_key, $base_table, $key, $col, $tbl];
+	    }
+	}
+	## If there are no fields in this table other than foreign key references,
+	## the count it as an associative table.  If we find void pointers in such
+	## a table, then the entire row will be deleted during fixup.  If we find
+	## void pointers in a non-associative table, the void pointers will simply
+	## be nullified, and the rows themselves will be retained.
+	if (!%fields) {
+	    $is_associative{$base_table} = 1;
+	}
+    }
+
+    my $pky_len = 0;
+    my $bst_len = 0;
+    my $key_len = 0;
+    my $col_len = 0;
+    my $tbl_len = 0;
+    my @len = (0) x 5;
+    foreach my $ref (@references) {
+	foreach my $i (0..4) {
+	    $len[$i] = max($len[$i], length($ref->[$i]));
+	}
+    }
+    foreach my $ref (@references) {
+	foreach my $i (0..4) {
+	    $ref->[$i] .= (' ' x ($len[$i] - length($ref->[$i])))
+	}
+    }
+    foreach my $ref (sort { $a->[4] cmp $b->[4] || $a->[3] cmp $b->[3] || $a->[2] cmp $b->[2] } @references) {
+	## Here is where we must distinguish between null and void pointers.
+	my $query = "select ".$ref->[0]." from ".$ref->[1]." where ".$ref->[2]." is not null and ".$ref->[2]." not in (select ".$ref->[3]." from ".$ref->[4].")";
+	## print "$query;\n";
+	my $sth = $dbh->prepare($query);
+	$sth->execute;
+	my %rows = ();
+	while ( my @values = $sth->fetchrow_array() ) {
+	    $rows{ $values[0] } = 1;
+	}
+	$sth->finish;
+	if (%rows) {
+	    ++$warnings if $checkup;
+	    print (($checkup ? "WARNING:  Orphaned rows found" : "NOTICE:  Orphaned rows being cleaned up")." for ".$ref->[2]." in table ".$ref->[1]."\n");
+	    if ($fixup) {
+		my $table  = rtrim($ref->[1]);
+		my $column = rtrim($ref->[2]);
+		my $ref_in_primary_key = $in_primary_key{$table}{$column};
+		my $ref_cannot_be_null = $not_null{$table}{$column};
+		## print "possible associative table:  " .$ref->[1]. ($is_associative{$table} ? " is" : " is not") . " associative; " .$ref->[2]. ($ref_in_primary_key ? " is" : " is not") ." in primary key\n";
+		if ($is_associative{$table} || $ref_in_primary_key || $ref_cannot_be_null) {
+		    $query = "delete from ".$ref->[1]." where ".$ref->[2]." is not null and ".$ref->[2]." not in (select ".$ref->[3]." from ".$ref->[4].")";
+		}
+		else {
+		    $query = "update ".$ref->[1]." set ".$ref->[2]." = null where ".$ref->[2]." is not null and ".$ref->[2]." not in (select ".$ref->[3]." from ".$ref->[4].")";
+		}
+		print "    fixup query:  $query\n" if $verbose;
+		$dbh->do($query);
+	    }
+	}
+	else {
+	    if ($checkup && $verbose) {
+		print ("OKAY:  No orphaned rows found for ".$ref->[2]." in table ".$ref->[1]."\n");
+	    }
+	}
+    }
+
+    $dbh->disconnect();
+};
+if ($@) {
+    chomp $@;
+    my $action = $checkup ? "checkup" : "fixup";
+    print "\nError: database $action failed for the $dbname database on $dbhost ($@)\n";
+    die;
+}
+
+exit ($warnings ? 1 : 0);
+
+__END__

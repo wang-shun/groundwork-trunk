@@ -1,0 +1,60 @@
+<f:view xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html">
+	<h:head />
+	<h:body>
+		<h:outputStylesheet library="css" name="./xmlhttp/css/xp/xp.css" />
+		<br style="line-height: 0.5em" />
+		<h:form id="licform">
+			<h:messages showDetail="false" showSummary="true" layout="table" />
+			<br style="line-height: 0.5em" />
+			<h:panelGrid columns="1" id="panelGridInfo">
+				<h:outputText id="outputTextMessage1"
+					value="The current license for this GWOS Enterprise Edition installation, if any, is shown below."
+					styleClass="text" />
+				<br style="line-height: 0.5em" />
+				<h:outputText id="outputTextMessage3"
+					value="For new installations, please copy and paste the license key into the area below. Your license key was emailed to you following your purchase. If you do not have a license key or are encountering difficulties with your key, please contact us at support@gwos.com."
+					styleClass="text" />
+				<br style="line-height: 0.5em" />
+				<h:outputText id="outputTextMessage4"
+					value="For existing installations, your existing license key has reached the subscription expiration date or you have exceeded the number of devices purchased. Please contact support@gwos.com for assistance."
+					styleClass="text" />
+				<br style="line-height: 0.5em" />
+				<h:outputText id="outputTextMessage5"
+					value="Your Order ID is: #{licenseValidator.licenseKey.orderID}"
+					styleClass="text" />
+				<br style="line-height: 0.5em" />
+				<h:outputText id="outputTextMessage2"
+					value="Your Install ID is: #{licenseValidator.installInfo.installGUID}"
+					styleClass="text" />
+				<br style="line-height: 0.5em" />
+				<h:outputText id="outputMessageDate"
+					value="The current server time is #{licenseValidator.serverTime}. If this time is incorrect, your license key may not be accepted."
+					styleClass="text" />
+				<br style="line-height: 0.5em" />
+			</h:panelGrid>
+
+			<h:panelGrid columns="2" id="licpanel1"
+				style="margin-left:-3px;margin-top:-6px">
+				<h:outputLabel for="keyTxt" value="License Key: " styleClass="text" />
+
+				<h:panelGroup id="output">
+					<h:inputTextarea id="keyTxt" rows="20" cols="100"
+						value="#{licenseValidator.licenseKeyString}" styleClass="text">
+						<f:ajax render="output" />
+					</h:inputTextarea>
+				</h:panelGroup>
+
+				<h:outputLabel for="genCmdBtn" value="" styleClass="text" />
+
+				<h:commandButton id="genCmdBtn" value="Validate License Key"
+					actionListener="#{licenseValidator.createLicenseKeyFile}"
+					styleClass="portlet-form-button">
+					<f:ajax render="@form" />
+				</h:commandButton>
+			</h:panelGrid>
+			<br />
+		</h:form>
+	</h:body>
+</f:view>

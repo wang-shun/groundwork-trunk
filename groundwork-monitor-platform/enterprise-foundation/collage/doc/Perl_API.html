@@ -1,0 +1,235 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"><html lang="en">
+  <head>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2006  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+-->
+<title>Perl API</title>
+    <link rel="stylesheet" type="text/css" href="bookshelf.css">
+  </head>
+  <body>
+<table width="100%" border="0" cellpadding="1" cellspacing="0" class="contentBody" width="875">
+  <tr>
+    <td valign="top">
+    <h1>Perl API</h1>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Contents table -->
+<table width="100%" class="data" cellpadding="5" cellspacing="1">
+  <tr class="tableHeader">
+    <td>Contents</td>
+  </tr>
+  <tr>
+    <td class="tableFill04">Copyright 2005 GroundWork Open Source Solutions, Inc. ("GroundWork").<br>
+    All rights reserved. Use is subject to GroundWork commercial license.<br><br>
+    <ul class="level01">
+      <li><a href="#overview">Perl API Overview</a></li>
+      <li><a href="#candm">Classes and Methods</a></li>
+      <ul class="level02">
+        <li><a href="#collagequery">CollageQuery</a></li>
+        <li><a href="#collagehostgroupquery">CollageHostGroupQuery</a></li>
+        <li><a href="#collagehostquery">CollageHostQuery</a></li>
+        <li><a href="#collageservicequery">CollageServiceQuery</a></li>
+        <li><a href="#collagemonitorserverquery">CollageMonitorServerQuery</a></li>
+        <li><a href="#collageeventquery">CollageEventQuery</a></li>
+      </ul>
+      <li><a href="#sample">Sample Using Collage Query Module</a></li>
+    </ul>
+    </td>
+  </tr>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Overview table -->
+<table width="100%" class="data" cellpadding="5" cellspacing="1">
+  <tr class="tableHeader">
+    <td><a name="overview">Perl API Overview</a></td>
+  </tr>
+  <tr>
+    <td class="tableFill04">The Perl API is a module called CollageQuery that allows a Perl program to retrieve data from Collage. The following classes and methods are available.</td>
+  </tr>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Classes and Methods table -->
+<table width="100%" class="data" cellpadding="5" cellspacing="1">
+  <tr class="tableHeader">
+    <td><a name="candm">Classes and Methods</td>
+  </tr>
+  <tr>
+    <td><a name="collagequery"><h2>CollageQuery</h2></a>
+  <table width="100%" cellpadding="5" cellspacing="1">
+    <tr>
+      <td width="40%" valign="top" class="row1">new</td>
+      <td width="60%" class="row2">Create the CollageQuery object. Required to use any of the following methods.</td>
+    </tr>
+    <tr>
+      <td width="40%" valign="top" class="row1">destroy</td>
+      <td width="60%" class="row2">Destroy's the CollageQuery object.  Should be called when the CollageQuery object is no longer needed.</td>
+    </tr>
+  </table>
+    <a name="collagehostgroupquery"><h2>CollageHostGroupQuery</h2></a>
+  <table width="100%" cellpadding="5" cellspacing="1">
+    <tr>
+      <td width="40%" valign="top" class="row1">getServicesForHostGroup(String hostGroup)</td>
+      <td width="60%" class="row2">Return a reference to a hash host-service-attributes for a designated host group.</td>
+    </tr>
+    <tr>
+      <td width="40%" valign="top" class="row1">getHostsForHostGroup(String hostGroup)</td>
+      <td width="60%" class="row2">Return a reference to a hash of all host names, device name for a designated host group.</td>
+    </tr>
+    <tr>
+      <td width="40%" valign="top" class="row1">getHostGroups()</td>
+      <td width="60%" class="row2">Return a reference to all hostgroup names, descriptions.</td>
+    </tr>
+    <tr>
+      <td width="40%" valign="top" class="row1">getHostGroup(String hgName)</td>
+      <td width="60%" class="row2">Return a hash containing the attributes for a host group.</td>
+    </tr>
+  </table>
+    <a name="collagehostquery"><h2>CollageHostQuery</h2></a>
+  <table width="100%" cellpadding="5" cellspacing="1">
+    <tr>
+      <td width="40%" valign="top" class="row1">getServicesForHost(String host)</td>
+      <td width="60%" class="row2">Return an reference to a hash of all services-attributes for a host.</td>
+    </tr>
+    <tr>
+      <td width="40%" valign="top" class="row1">getHosts()</td>
+      <td width="60%" class="row2">Return a reference to a hash of all host-attributes.</td>
+    </tr>
+    <tr>
+      <td width="40%" valign="top" class="row1">getHostStatusForHost(String host)</td>
+      <td width="60%" class="row2">Return a hash of all the status attributes for a host.</td>
+    </tr>
+    <tr>
+      <td width="40%" valign="top" class="row1">getDeviceForHost(String host)</td>
+      <td width="60%" class="row2">Return a hash of the device attributes for a host.</td>
+    </tr>
+  </table>
+    <a name="collageservicequery"><h2>CollageServiceQuery</h2></a>
+  <table width="100%" cellpadding="5" cellspacing="1">
+    <tr>
+      <td width="40%" valign="top" class="row1">getService(String serviceName, String hostName)</td>
+      <td width="60%" class="row2">Return a hash of service attributes</td>
+    </tr>
+    <tr>
+      <td width="40%" valign="top" class="row1">getServices()</td>
+      <td width="40%" class="row2">Return a reference to a hash of host-service-attributes</td>
+    </tr>
+  </table>
+      <a name="collagemonitorserverquery"><h2>CollageMonitorServerQuery</h2></a>
+  <table width="100%" cellpadding="5" cellspacing="1">
+    <tr>
+      <td width="40%" valign="top" class="row1">getMonitorServers()</td>
+      <td width="60%" class="row2">Return a reference to a hash of monitorserver-attributes.</td>
+    </tr>
+    <tr>
+      <td width="40%" valign="top" class="row1">getHostsForMonitorServer(String MonitorServer)</td>
+      <td width="60%" class="row2">Return a reference to a hash of hosts for a designated monitorserver.</td>
+    </tr>
+    <tr>
+      <td width="40%" valign="top" class="row1">getHostGroupsForMonitorServer(String MonitorServer)</td>
+      <td width="60%" class="row2">Return a reference to a hash of host groups-attributes.</td>
+    </tr>
+  </table>
+    <a name="collageeventquery"><h2>CollageEventQuery</h2></a>
+    Returns a reference to a hash of events with the event ID as primary key and attributes as secondary key. Note: timeField (String) can be FirstInsertDate or LastInsertDate if it's null no range will be applied.<br><br>
+  <table width="100%" cellpadding="5" cellspacing="1">
+    <tr>
+      <td width="100%" valign="top" class="row1" colspan="2">getEventsForDevice(String identification, String timeField, Date fromDate, Date toDate)</td>
+    </tr>
+    <tr>
+      <td width="100%" valign="top" class="row1" colspan="2">getEventsForService(String serviceDescription, String HostName, String timeField, Date fromDate, Date toDate)</td>
+    </tr>
+    <tr>
+      <td width="100%" valign="top" class="row1" colspan="2">getEventsForHost(String HostName, String timeField, Date fromDate, Date toDate)</td>    </tr>
+  </table>
+    </td>
+  </tr>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Sample table -->
+<table width="100%" class="data" cellpadding="5" cellspacing="1">
+  <tr class="tableHeader">
+    <td><a name="sample">Sample Using Collage Query Module</a></td>
+  </tr>
+  <tr>
+    <td>The following code is a sample of using the CollageQuery module.    
+<div class="function">#	Use the CollageQuery module
+use CollageQuery ;
+# 	Declare the CollageQuery object 
+my $t;		
+# 	Create an object and make sure we can connect to Collage
+if ($t=CollageQuery->new()) {
+	print "New CollageQuery object.\n";
+} else  {
+	die "Error: connect to CollageQuery failed!\n";
+}
+# 	Print the attributes for a host group "demo-systems"
+$getparam = "demo-systems";
+#	getHostGroup returns a hash of attributes and values 
+my %hash = $t->getHostGroup($getparam);
+foreach my $key (sort keys %hash) {
+         print "\t$key=$hash{$key}\n";
+}
+# Now print the services and attributes for a host
+$getparam = "demo-host";
+# 	getServicesForHost returns a reference to a hash of service hashes
+my $ref = $t->getServicesForHost($getparam);
+# 	Iterate for each service
+foreach my $service (sort keys %{$ref}) {
+	print "\tService=$service\n";
+#	Now iterate for each attribute.
+ 	foreach my $attribute (sort keys %{$ref->{$service}}) {
+#	print the attribute and attribute value
+	print "\t\t$attribute=".$ref->{$service}->{$attribute}."\n";
+	}
+}
+# Finished so destroy the object
+$t->destroy();
+</div>The samples that use the Perl CollageQuery API are:  
+<table width="100%" cellpadding="5" cellspacing="1">
+    <tr>
+      <td width="40%" valign="top" class="row1">test1.pl</td>
+      <td width="60%" class="row2">This script exercises each method in the API. It is invoked via command line and returns the result to STDOUT.</td>
+    </tr>
+    <tr>
+      <td width="40%" valign="top" class="row1">api_sample2.pl</td>
+      <td width="60%" valign="top" class="row2">This is a CGI program that allows you to select the Collage class and method to test. The drop down selection lists use the API to give you options from the Collage data store. The form will show the results of the query.</td>
+    </tr>
+    <tr>
+      <td width="40%" valign="top" class="row1">api_sample3.pl</td>
+      <td width="60%" valign="top" class="row2">This is a modified version of api_sample2.pl that outputs data in a more user-friendly form.</td>
+    </tr>
+  </table>
+    </td>
+  </tr>
+</table>
+    </td>
+  </tr>
+</table>
+  </body>
+</html>

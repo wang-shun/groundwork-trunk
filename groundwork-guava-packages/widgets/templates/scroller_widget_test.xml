@@ -1,0 +1,82 @@
+<html>
+<head>
+
+<style>
+
+@page { 300px 100px }
+span
+{
+    font:       12px arial;
+    position:   absolute;
+    width:      500;
+    height:     60;
+    top:        0;
+    left:       0;
+    clip:       rect(0 600 200 0);
+}
+
+.colorDiv
+{
+    background: #eeeeee;
+    position:   absolute;
+    width:      500;
+    height:     60;
+    clip:       rect(0 600 60 0);
+}
+</style>
+
+
+<script type="text/javascript">
+
+var interval      = 0;
+var startPosition = 0;
+var topPosition   = 0;
+var endPosition   = 60;
+var speed         = 50;
+
+function scrollit()
+{
+    if (startPosition!=300)
+    {
+        startPosition = startPosition + 1
+	topPosition   = topPosition   - 1
+
+	document.getElementById('display').style.clip="rect(" + (startPosition + 1) + "500" +
+                                                      (startPosition + endPosition) + " 0)";
+
+	document.getElementById('display').style.top = topPosition
+
+	interval = setTimeout("scrollit()",speed)
+    }
+    else
+    {
+        startPosition = 0
+	topPosition   = 0
+	endPosition   = 60
+	interval      = setTimeout("scrollit()",speed)
+    }
+}
+
+function stopinterval()
+{
+    clearTimeout(interval)
+}
+
+</script>
+</head>
+
+<body onload="scrollit()" onunload="stopinterval()">
+
+<div class="colorDiv">
+  <span id="display">
+      Line01 <br />
+      Line02 <br />
+      Line03 <br />
+      Line04 <br />
+      Line05 <br />
+      Line10 <br />
+  </span>
+</div>
+
+</body>
+</html>

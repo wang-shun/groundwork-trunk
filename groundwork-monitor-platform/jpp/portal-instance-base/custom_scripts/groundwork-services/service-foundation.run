@@ -1,0 +1,199 @@
+#!/bin/bash
+
+# Script to run Foundation as a separate JBoss AS service.
+
+# Copyright 2009-2014 GroundWork Open Source, Inc. ("GroundWork")
+# All rights reserved. This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public License version 2
+# as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+# Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
+version="1.0.0";    # 2013-12-16.gherteg - initial version, meeting the needs of GWMEE 7.0.1
+version="2.0.0";    # 2014-04-23.gherteg - revised to meet the needs of GWMEE 7.0.2
+version="2.0.1";    # 2014-04-28.gherteg - extended sleep times to better match external timings
+
+echo " "
+echo "`date`: Starting a separate instance of JBoss Portal Platform to run Foundation."
+
+export GW_HOME=/usr/local/groundwork
+
+# This instance of JBoss AS is for a standalone Foundation.
+foundation_jboss_base_dir=$GW_HOME/foundation/container/jpp2
+
+# This routine encapsulates all the messy details of killing specific processes and
+# waiting for them all to completely die.  MaxTries is used to limit the number of
+# retries.
+#
+# On each iteration after the first, we check whether processes we find on the later
+# iteration are the same ones we found and tried to kill during the previous iteration,
+# and limit our attention to the ones we first tried to kill.  That prevents us from
+# worrying about any kind of mutual suicide pact between sibling service scripts trying
+# to shoot each other's offspring and not allowing anything new to sprout.
+kill_processes() {
+    Process_Type="$1"
+    PS_Command="$2"
+    Max_Tries=10
+    Process_PIDs=(`eval $PS_Command | awk '{print $1}'`)
+    Remaining_PIDs=(${Process_PIDs=[@]})
+
+    signal=TERM
+    for (( i=0 ; i<$Max_Tries; ++i )); do
+	if [ ${#Remaining_PIDs[@]} -eq 0 ]; then
+	    echo "NOTICE:  There is no $Process_Type to kill."
+	    break;
+	fi
+
+	echo "Killing previous copy(ies) of the $Process_Type: PID(s) " ${Remaining_PIDs[@]}
+	kill -$signal ${Remaining_PIDs[@]} >/dev/null 2>&1
+	if [ $i -ge 5 ]; then
+	    signal=KILL
+	fi
+
+	# Sleep a very short while, hopefully not long enough that any of the PIDs we just
+	# killed has had a chance to be reincarnated as some other, unrelated process, so
+	# we don't kill any innocent bystanders.  That danger is partly why we recompute
+	# the set of process IDs to kill during each round of signalling.
+	echo "`date`: Sleeping before checking to see if previous copies of the $Process_Type are down ..."
+	sleep 10
+
+	Process_PIDs=(`eval $PS_Command | awk '{print $1}'`)
+
+	# I would prefer to use an Is_Running hash derived from Process_PIDs to look up
+	# individual PIDs, but convenient associative hashes don't appear until bash
+	# version 4.  We can't yet count on that being supported on a customer machine, so
+	# we go the long route and just iterate through the Process_PIDs array instead.
+	# Since the number of PIDs is expected to be extremely small (mostly just 1), this
+	# is not expected to be a serious performance drag.
+	Still_Running=()
+	for pid_to_kill in "${Remaining_PIDs[@]}"; do
+	    for running_pid in "${Process_PIDs[@]}"; do
+		if [ "$pid_to_kill" = "$running_pid" ]; then
+		    # This is the simple way to append to an array.
+		    # This syntax first appeared in bash 3.1-alpha1.
+		    Still_Running+=($pid_to_kill)
+		    # If we had to worry about supporting an older version of bash,
+		    # this syntax would be appropriate instead.
+		    # Still_Running[${#Still_Running[@]}] = $pid_to_kill
+		    break
+		fi
+	    done
+	done
+
+	Remaining_PIDs=(${Still_Running[@]})
+    done
+}
+
+if [ ! -d $foundation_jboss_base_dir ]; then
+    # There's nothing to do here, so we just remain largely out of the way instead of
+    # having the parent "supervise" trying to rerun this script on a frequent basis.
+    echo "`date`: Sleeping for a day because this system is not configured for a standalone Foundation ..."
+    sleep 86400
+    exit 0
+fi
+
+# If there is a Portal JPP standalone.sh or Portal JPP Java process already running,
+# kill it.  Check both processes, in that order.  Afterward, if we sent a signal to
+# either, then sleep briefly, and restart this script.  (Restarting is the simple
+# means of ensuring that we check again that our attempt to shut down the Portal JPP
+# standalone.sh or Portal JPP Java process succeeded, after a slight delay.) 
+
+killed_procs=no
+
+Portal_Standalone_PIDs=( `ps -C standalone.sh -o pid,comm --no-headers | awk '{print $1}'` ) 
+if [ ${#Portal_Standalone_PIDs[@]} -ne 0 ]; then 
+    # Kill any Portal JPP standalone.sh process.
+    kill_processes "Portal standalone.sh process" 'ps -C standalone.sh -o pid,comm --no-headers'
+    killed_procs=yes
+fi
+
+Portal_Service_PIDs=( `ps -w -w -o pid,args --no-headers -C java | fgrep jpp/standalone | awk '{print $1}'` ) 
+if [ ${#Portal_Service_PIDs[@]} -ne 0 ]; then 
+    # Kill any Portal JPP Java process.
+    kill_processes "Portal Java process" 'ps -w -w -o pid,args --no-headers -C java | fgrep jpp/standalone'
+    killed_procs=yes
+fi
+
+if [ $killed_procs != no ]; then 
+    # Sleep briefly, then restart this script (by exiting, so supervise will start a new
+    # copy).  This allows the next round of testing to recognize any new copies of the
+    # processes we just killed that have shown up while we were doing the killing of the
+    # specified processes.
+    sleep 10
+    echo "After killing unwanted processes, now exiting to initiate retry." 
+    exit 1; 
+fi
+
+# Sleep until the Portal JPP Java process is running, periodically polling for its
+# presence, since all of the war-files to be run in the Foundation JPP Java process
+# depend on the portal (inside the Portal JPP Java process) to be up and running.
+while true; do
+    Portal_Service_PIDs=( `ps -w -w -o pid,args --no-headers -C java | fgrep jpp/standalone | awk '{print $1}'` )
+    if [ ${#Portal_Service_PIDs[@]} -eq 0 ]; then
+	echo "`date`: Sleeping while waiting for the Portal JPP Java process to appear ..."
+	sleep 10;
+    else
+	break;
+    fi
+done
+
+# If the Foundation JPP standalone2.sh process or the Foundation JPP Java process is
+# found to be already running at this point, take the following actions.  Any instance of
+# Foundation JPP so found will have been started by some other instance of this script,
+# and thus is not fit to continue running (since there should only ever be one copy of
+# this script or its replacement processes running at the same time).  So first kill the
+# Portal JPP standalone.sh process, then kill the Portal JPP Java process (both since some
+# of its war-files depend on having Foundation running before they can run, and because
+# doing so will indirectly clean up the Foundation JPP-related marker files [before Portal
+# JPP restarts] so they are known to be gone by the time the Foundation JPP Java process
+# starts again); then kill the Foundation JPP standalone2.sh process, kill any Foundation
+# JPP Java process, sleep briefly, and restart this script.
+
+Foundation_Standalone_PIDs=( `ps -C standalone2.sh -o pid,comm --no-headers | awk '{print $1}'` )
+Foundation_Service_PIDs=( `ps -w -w -o pid,args --no-headers -C java | fgrep jpp2/standalone | awk '{print $1}'` )
+if [ ${#Foundation_Standalone_PIDs[@]} -ne 0 -o ${#Foundation_Service_PIDs[@]} -ne 0 ]; then
+    # First, kill any Portal JPP standalone.sh process.
+    kill_processes "Portal standalone.sh process" 'ps -C standalone.sh -o pid,comm --no-headers'
+
+    # Next, kill any Portal JPP Java process.
+    kill_processes "Portal Java process" 'ps -w -w -o pid,args --no-headers -C java | fgrep jpp/standalone'
+
+    # Next, kill any Foundation JPP standalone2.sh process.
+    kill_processes "Foundation standalone2.sh process" 'ps -C standalone2.sh -o pid,comm --no-headers'
+
+    # Next, kill any Foundation JPP Java process.
+    kill_processes "Foundation Java process" 'ps -w -w -o pid,args --no-headers -C java | fgrep jpp2/standalone'
+
+    # Sleep briefly, then restart this script (by exiting, so supervise will start a new
+    # copy).  This allows the next round of testing to recognize any new copies of the
+    # processes we just killed that have shown up while we were doing the killing of the
+    # specified processes.
+    sleep 10
+    echo "After killing unwanted processes, now exiting to initiate retry."
+    exit 1;
+fi
+
+# GWMON-10930:  Before we start, clean up any mess left over from
+# previous invocations, to avoid a persistent filesystem-space leak.
+echo "`date`: Cleaning up temporary files from previous runs."
+/bin/rm -rf $foundation_jboss_base_dir/standalone/tmp/
+
+# Exec the standalone2.sh script, which will in turn run the Java process of interest.
+# This replaces the run script you are currently reading with the standalone2.sh script,
+# as the process that supervise is actually watching (not the Java process itself).
+echo "`date`: Running the Foundation service."
+cd $foundation_jboss_base_dir/bin
+exec $GW_HOME/common/bin/setuidgid nagios ./standalone2.sh
+
+# We should never get here.  If we do somehow, spend most of the time
+# just sleeping, to avoid wasting time being continuously restarted.
+echo "ERROR:  supervise run script failure; cannot exec the $foundation_jboss_base_dir/bin/standalone2.sh script"
+echo "`date`: Sleeping before exiting to initiate retry."
+sleep 60
+exit 1

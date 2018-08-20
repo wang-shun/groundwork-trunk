@@ -1,0 +1,103 @@
+<div xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:ui="http://java.sun.com/jsf/facelets"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:c="http://java.sun.com/jstl/core">
+<h3><h:outputText
+	value="#{bundle.IDENTITY_MANAGEMENT_ROLE_GW_DASHBOARD_ATTRIBUTES_HEADER}" /></h3>
+<h:panelGrid columns="3">
+	<h:outputText
+		value="#{bundle.IDENTITY_MANAGEMENT_ROLE_DASHBOARD_LINKS_DISABLED}" />
+	<h:selectBooleanCheckbox id="roledashboardLinksDisabled"
+		value="#{createrolemgr.extUIRole.dashboardLinksDisabled}" />
+	<h:outputText value="#{bundle.IDENTITY_MANAGEMENT_ROLE_DASHBOARD_NOTE}" />
+</h:panelGrid>
+
+<h3><h:outputText
+	value="#{bundle.IDENTITY_MANAGEMENT_ROLE_GW_ACTION_PORTLET_HEADER}" /></h3>
+<h:panelGrid columns="2">
+	<h:outputText
+		value="#{bundle.IDENTITY_MANAGEMENT_ROLE_GW_ACTION_PORTLET_ATTRIBUTES_HEADER}" />
+	<h:selectBooleanCheckbox id="enableActions"
+		value="#{createrolemgr.extUIRole.actionsEnabled}" />	
+</h:panelGrid>
+
+<h3><h:outputText
+	value="#{bundle.IDENTITY_MANAGEMENT_ROLE_GW_ATTRIBUTES_HEADER}" /></h3>
+<h:panelGrid columns="2">
+	<h:outputText
+		value="#{bundle.IDENTITY_MANAGEMENT_ROLE_RESTRICTION_TYPE}" />
+	<h:panelGrid columns="2">
+		<h:selectOneRadio id="restrictionradio"
+			value="#{createrolemgr.extUIRole.restrictionType}"
+			layout="pageDirection" onclick="return showHideList('61','create-role-form',this.value);">
+			<f:selectItem itemValue="N" itemLabel="No Restrictions" />
+			<f:selectItem itemValue="P"
+				itemLabel="Visible hostgroups and servicegroups" />
+		</h:selectOneRadio>
+	</h:panelGrid>
+</h:panelGrid> 
+<h:panelGrid columns="2" id="partialList" width="60%" align="center">
+	<h:panelGrid columns="2" id="partialListHGGrid"
+		styleClass="gw-section-header" width="100%" >
+		<h:panelGrid
+			rendered="#{createrolemgr.hgSelectItems != null}" headerClass="portlet-section-header">
+			<f:facet name="header">
+            	<h:outputText value="HostGroups" /> 
+         	</f:facet>
+			
+			<h:selectManyCheckbox id="hgmultiselect"
+				value="#{createrolemgr.extUIRole.hgList}" rendered="true"
+				layout="pageDirection" styleClass="stripeMe">
+				<f:selectItems value="#{createrolemgr.hgSelectItems}"/>
+			</h:selectManyCheckbox>
+		</h:panelGrid>
+		<h:panelGrid
+			rendered="#{createrolemgr.hgSingleSelectItems != null}" headerClass="portlet-section-header">
+			<f:facet name="header">
+            	<h:outputText value="Default"/> 
+         	</f:facet>
+			<h:selectOneRadio id="hgradio"
+				value="#{createrolemgr.extUIRole.defaultHostGroup}" rendered="true"
+				layout="pageDirection" styleClass="stripeMe">
+				<f:selectItems value="#{createrolemgr.hgSingleSelectItems}" />
+			</h:selectOneRadio>
+		</h:panelGrid>
+	</h:panelGrid>
+	<h:panelGrid columns="2" id="partialListSGGrid"
+		styleClass="gw-section-header" width="100%">
+		<h:panelGrid
+			rendered="#{createrolemgr.sgSelectItems != null}" headerClass="portlet-section-header">
+			<f:facet name="header">
+            	<h:outputText value="ServiceGroups" /> 
+         	</f:facet>
+			<h:selectManyCheckbox id="sgmultiselect"
+				value="#{createrolemgr.extUIRole.sgList}" rendered="true"
+				layout="pageDirection" styleClass="stripeMe">
+				<f:selectItems value="#{createrolemgr.sgSelectItems}" />
+			</h:selectManyCheckbox>
+		</h:panelGrid>
+		<h:panelGrid
+			rendered="#{createrolemgr.sgSingleSelectItems != null}" headerClass="portlet-section-header">
+			<f:facet name="header">
+            	<h:outputText value="Default" /> 
+         	</f:facet>
+			<h:selectOneRadio id="sgradio"
+				value="#{createrolemgr.extUIRole.defaultServiceGroup}"
+				rendered="true" layout="pageDirection" styleClass="stripeMe">
+				<f:selectItems value="#{createrolemgr.sgSingleSelectItems}"/>
+			</h:selectOneRadio>
+		</h:panelGrid>
+	</h:panelGrid>
+</h:panelGrid>
+<script  type="text/javascript">
+	onLoadShowHideList('61','create-role-form');
+</script>
+<script type="text/javascript">
+// jQuery.noConflict();
+jQuery(document).ready(function() {
+	jQuery(".stripeMe tr:nth-child(even)").addClass("portlet-section-alternate");
+    jQuery(".stripeMe tr:nth-child(odd)").addClass("portlet-section-body");
+  });
+</script>
+</div>

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2017  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License
+    as published by the Free Software Foundation.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.groundwork</groupId>
+        <artifactId>gw-monitor-apps-pom</artifactId>
+        <version>7.2.2-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>nagvis-fs</artifactId>
+    <version>7.2.2-SNAPSHOT</version>
+    <name>Nagvis FS</name>
+    <description>Groundwork Portal Nagvis FS</description>
+    <packaging>pom</packaging>
+
+    <properties>
+        <nagvis-fs-version>1.7.9r33-GWMON-13153-patch</nagvis-fs-version>
+    </properties>
+
+    <build>
+        <finalName>nagvis-fs</finalName>
+        <plugins>
+            <plugin>
+                <groupId>com.googlecode.maven-download-plugin</groupId>
+                <artifactId>maven-download-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>download-nagvis</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <configuration>
+                            <url>http://morat/webextension-source/nagvis/nagvis-fs-${nagvis-fs-version}.tar.gz</url>
+                            <unpack>false</unpack>
+                            <outputFileName>nagvis-fs.tar.gz</outputFileName>
+                            <outputDirectory>${project.build.directory}</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.6</version>
+                <executions>
+                    <execution>
+                        <id>unzip-navgis</id>
+                        <phase>process-resources</phase>
+                        <configuration>
+                            <tasks>
+                                <echo message="unzipping nagvis" />
+                                <gunzip src="${project.build.directory}/nagvis-fs.tar.gz" dest="${project.build.directory}" />
+                                <untar src="${project.build.directory}/nagvis-fs.tar" dest="${project.build.directory}/${project.build.finalName}" />
+                            </tasks>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

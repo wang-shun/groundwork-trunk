@@ -1,0 +1,685 @@
+# perfdata.properties
+#
+# Copyright 2010-2017 GroundWork Open Source, Inc. ("GroundWork")
+# All rights reserved.  This program is free software; you can
+# redistribute it and/or modify it under the terms of the GNU
+# General Public License version 2 as published by the Free
+# Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301, USA.
+
+######################################################################
+## GroundWork Performance Data Processing Configuration Properties
+######################################################################
+
+# The values specified here are used to control the behavior of the
+# process_service_perfdata_file script.
+
+# Possible debug_level values:
+# 0 = no info of any kind printed, except for startup/shutdown
+#     messages and major errors
+# 1 = print just error info and summary statistical data
+# 2 = also print basic debug info
+# 3 = print detailed debug info
+debug_level = 1
+
+# There are several different patterns for deploying the performance data
+# processor, and corresponding patterns for the settings of these options:
+#
+#     merge_perfdata_sources
+#     write_to_rrds
+#     write_to_rest
+#     enable_secondary_daemon
+#
+# Here we describe the standard patterns for operation on a parent server.
+# Analysis of child-server patterns will follow.
+#
+# Case A:  Performance data is written only locally, to local RRD files.
+#
+# Case B:  Performance data is written both to local RRD files and to
+#          the Foundation REST API, the latter being a gateway to storage
+#          within OpenTSTB.
+#
+# Case C:  Performance data is written only to the Foundation REST API,
+#          as a gateway to storage within OpenTSDB.
+#
+# Case D:  Process no performance data, except to toss some of it away.
+#
+# In all of these cases, there will be two copies of the performance data
+# processor running.  The Primary daemon is run indirectly by Nagios, with
+# no command-line arguments.  The Secondary daemon is run under gwservices,
+# with the "-s" command-line option to tell this copy that it must run in
+# Secondary mode.  The question is, what will these two copies do?
+#
+# Case A:  The Primary daemon reads the Nagios service performance data
+# (only), as configured in the <primary_perfdata_files> section below.
+# It creates RRD files, updates RRD files, and sends information about
+# RRD files and corresponding host-service graph commands to Foundation.
+#
+# In this Case, the Secondary daemon reads all other types of performance
+# data that you want to have written to RRD fles, as configured in the
+# <service_perfdata_files> section below.  Likewise, it creates RRD files,
+# updates RRD files, and sends information about RRD files and corresponding
+# host-service graph commands to Foundation.
+#
+# Case B:  The Primary daemon reads the Nagios service performance data
+# (only), as configured in the <primary_perfdata_files> section below.
+# It creates RRD files, updates RRD files, and sends information about
+# RRD files and corresponding host-service graph commands to Foundation.
+# In this Case, the Primary daemon also sends performance data to the
+# Foundation REST API, to be forwarded on to OpenTSDB.
+#
+# In this Case, the Secondary daemon reads all other types of performance
+# data that you want to have written to RRD fles, as configured in the
+# <service_perfdata_files> section below.  Likewise, it creates RRD
+# files, updates RRD files, and sends information about RRD files and
+# corresponding host-service graph commands to Foundation.  It sends none
+# of this performance data to the Foundation REST API, because it received
+# it all from the upstream Foundation.
+#
+# Case C:  The Primary daemon reads the Nagios service performance data
+# (only), as configured in the <primary_perfdata_files> section below.
+# It creates no RRD files, updates no RRD files, and sends no information
+# about RRD files and corresponding host-service graph commands to
+# Foundation.  In this Case, the Primary daemon sends performance data to
+# the Foundation REST API, to be forwarded on to OpenTSDB.
+#
+# In this Case, the Secondary daemon has nothing to do.  No RRD files are
+# to be managed, so this copy of the daemon will simply sleep forever.
+# It is assumed that all entries in the <service_perfdata_files> section
+# have been commented out so the upstream Foundation performance-data
+# topic consumer knows not to create any perf-data files intended to be
+# consumed by the Secondary daemon of the perfdata processor.  (In this
+# Case, the Secondary daemon of the perfdata processor will take on the
+# duty of verifying that no active <service_perfdata_files> entries exist,
+# and sending an error message to Foundation if it finds any such entries
+# whenever this copy starts up.)
+#
+# Case D:  The Primary daemon reads the Nagios service performance data
+# (only), as configured in the <primary_perfdata_files> section below.
+# But it does nothing useful with that data, just throwing it all away.
+# The Secondary daemon just sleeps, not even bothering to look for any
+# incoming data.
+#
+#                 *    *    *    *    *    *    *
+#
+# Before we get to the configuration settings for each case, here are some
+# notes on the individual options:
+#
+#     The merge_perfdata_sources flag applies only to the Primary daemon.
+#     If true, it processes data from both of the <primary_perfdata_files>
+#     and <service_perfdata_files> sections of the config file.  If false,
+#     it processes only data from the <primary_perfdata_files> section
+#     of the config file.  The Secondary daemon, if enabled via the
+#     enable_secondary_daemon option, only processes data from the
+#     <service_perfdata_files> section of the config file.  Hence you
+#     never want the merge_perfdata_sources and enable_secondary_daemon
+#     flags to both be enabled, since then both Primary and Secondary
+#     daemons would be fighting over the <service_perfdata_files> data.
+#
+#     The write_to_rrds flag applies only to the Primary daeemon, as the
+#     Secondary daemon, if enabled, will always write data to RRD files.
+#     (That is the sole purpose of the Secondary daemon, to handle data
+#     for RRDs.)
+#
+#     The write_to_rest flag applies only to the Primary daemon, as the
+#     Secondary daemon will never write data to the REST API.  (Data for
+#     the Secondary daemon comes from Foundation, so there's no sense in
+#     writing it back to Foundation.)
+#
+#     The enable_secondary_daemon flag specifies whether the Secondary
+#     daemon will perform any useful work.  It will be run regardless
+#     of the setting of this flag, but if the option is disabled, the
+#     Secondary daemon will simply sleep forever.
+#
+# Here are the proper option settings for each of the cases described above.
+# You have a choice for how to process data for Case A, in either of two
+# equivalent modes.
+#
+# Case A, mode 1:  Legacy mode.  Process all performance data, no matter
+# the source, with the Primary daemon.  Write only RRD files, and nothing
+# to the Foundation REST API.
+#
+#     merge_perfdata_sources = true
+#     write_to_rrds = true
+#     write_to_rest = false
+#     enable_secondary_daemon = false
+#
+#     In this configuration pattern, the Primary daemon does all the
+#     work of managing RRD files, whether the data came from NAGIOS
+#     (sensed via a <primary_perfdata_files> entry) or CloudHub (sensed
+#     via <service_perfdata_files> entries).  The Secondary daemon runs
+#     but remains idle.
+#
+# Case A, mode 2:  Split-legacy mode.  Process NAGIOS performance data
+# with the Primary daemon, and everything else with the Secondary daemon.
+# Write only RRD files, and nothing to the Foundation REST API.
+#
+#     merge_perfdata_sources = false
+#     write_to_rrds = true
+#     write_to_rest = false
+#     enable_secondary_daemon = true
+#
+#     In this configuration pattern, the Primary daemon only processes
+#     <primary_perfdata_files> data sources (intended to be just NAGIOS
+#     data).  The Secondary daemon processes all <service_perfdata_files>
+#     data sources (generally, everything else).  Data from Nagios MUST
+#     be processed by the Primary daemon, because it can have special
+#     characteristics (status text parsing, and multiple-data-source RRD
+#     files) that cannot be satisfied by the Secondary daemon processing.
+#
+# Case B:  Completely process NAGIOS performance data with the Primary
+# daemon, writing to both RRDs and REST.  Process everything else with
+# the Secondary daemon, using it to create RRD files for non-NAGIOS
+# performance data.
+#
+#     merge_perfdata_sources = false
+#     write_to_rrds = true
+#     write_to_rest = true
+#     enable_secondary_daemon = true
+#
+#     In this configuration pattern, the Primary daemon only processes
+#     <primary_perfdata_files> data sources (intended to be just NAGIOS
+#     data).  The Secondary daemon processes all <service_perfdata_files>
+#     data sources (generally, everything else).  Data from Nagios MUST
+#     be completely processed by the Primary daemon, because it can have
+#     special characteristics (status text parsing, and multiple-data-source
+#     RRD files) that cannot be satisfied by the Secondary daemon processing.
+#
+# Case C:  Process NAGIOS performance data with the Primary daemon,
+# writing only to REST.  No other performance data gets processed.
+#
+#     merge_perfdata_sources = false
+#     write_to_rrds = false
+#     write_to_rest = true
+#     enable_secondary_daemon = false
+#
+#     In this configuration pattern, the Primary daemon only processes
+#     <primary_perfdata_files> data sources (intended to be just NAGIOS
+#     data).  The Secondary daemon processes nothing.  Data from Nagios
+#     MUST be processed by the Primary daemon, because it can have special
+#     characteristics (status text parsing) that cannot be satisfied by
+#     the Secondary daemon processing.
+#
+#     In this Case, all entries in the <service_perfdata_files> section
+#     below must be commented out (a # character at the beginning of each
+#     line will do this).  That's because said config section is shared
+#     between the perfdata processor and the Foundation performance-data
+#     topic consumer.  Commenting out those entries is necessary to tell
+#     the topic consumer not to write any performance data to files.
+#
+# Case D:  Read and discard NAGIOS performance data with the Primary
+# daemon, so it doesn't accumulate forever.  No other performance data
+# gets processed.
+#
+#     merge_perfdata_sources = false
+#     write_to_rrds = false
+#     write_to_rest = false
+#     enable_secondary_daemon = false
+#
+#     In this configuration pattern, the Primary daemon only processes
+#     <primary_perfdata_files> data sources (intended to be just NAGIOS
+#     data).  The Secondary daemon processes nothing.
+#
+#     In this Case, all entries in the <service_perfdata_files> section
+#     below must be commented out (a # character at the beginning of each
+#     line will do this).  That's because said config section is shared
+#     between the perfdata processor and the Foundation performance-data
+#     topic consumer.  Commenting out those entries is necessary to tell
+#     the topic consumer not to write any performance data to files.
+#
+# Other combinations of these settings are not supported.  Certain
+# possibly-dangerous combinations of settings may be detected and cause
+# both Primary and Secondary daemons to simply sleep, after sending
+# bad-configuration messages to Foundation.
+#
+# FIX MAJOR:  Describe other cases, involving sending data from child
+# servers to a parent server, where the setup on both ends must be
+# considered.
+
+# FIX MAJOR:  Is write_to_rrds just another term for the existing
+# process_rrd_updates option?  Should those two options be combined?
+merge_perfdata_sources = true
+write_to_rrds = true
+write_to_rest = false
+enable_secondary_daemon = false
+
+# Create and update RRD files.  This flag now effectively controls
+# just the operation of the Secondary daemon; the write_to_rrds flag
+# controls the equivalent setting in the Primary daemon.
+# [true/false]
+process_rrd_updates = true
+
+# Control whether perfdata processing will block if the perfdata daemon is
+# configured to write to Foundation but Foundation is unavailable.  Setting this
+# to true will cause the daemon to stall at its current point in the input file
+# until it can forward data to Foundation.  That is the appropriate setting
+# if you will later be using the performance data for reporting purposes, and
+# need the saved data to be complete or nearly so.  Setting this to false will
+# allow the daemon to drop performance data on the floor and not re-try sending
+# it to Foundation if initial sending fails.  Under that condition, the perf
+# daemon will continue with RRD creates/updates or other processing, though it
+# will keep trying to send additional data to Foundation as it works through
+# its input file.  That setting may be acceptable if you can take the attitude
+# about perf data that "there's always more where that came from", are not
+# reliant on performance-data summaries produced from data stored in Foundation,
+# and instead just want best-effort attempts to save the data and are more
+# concerned that RRD graphs are always as up-to-date as is reasonable under
+# trying circumstances, while still trying to recover to normal operation as
+# soon as possible.
+# [true/false]
+prioritize_data_saving = true
+
+# If prioritize_data_saving is true, we need some means to limit how long
+# the perf daemon should continue trying to send each bundle of performance
+# data to Foundation before it finally gives up.  That control is provided by
+# max_foundation_send_attempts, which limits the number of re-try attempts
+# when sending a particular bundle to a particular Foundation host.  If this
+# limit is exceeded, the perf daemon will shut itself down, under the theory
+# that it had best get out of the way, releasing all resources and better
+# allowing the rest of the system to heal itself.  It will be restarted in
+# due course by other system components, at which point it will pick up again
+# from nearly the same place in the same input file.  (A few perf-data entries
+# may be skipped at this point, in order to allow for automatic recovery and
+# continued operation if the input file happens to be corrupted around that
+# point.  For writes to Foundation via the REST API, such localized corruption
+# could, in fact, be the reason for such writes failing, which is why we don't
+# necessarily want to make this value excessively large.)
+#
+# A typical gwservices restart time is perhaps around 4.5 minutes, so setting
+# max_foundation_send_attempts to 20 and foundation_send_failure_delay to 30
+# will allow for a Foundation shutdown, some brief fiddling with the system,
+# and a Foundation startup all without having the perf daemon shut down.
+# [1 .. 100000000]
+max_foundation_send_attempts = 20
+
+# If prioritize_data_saving is true, how long (in seconds) to wait between
+# successive attempts to send each bundle of performance data to Foundation,
+# if the initial sending failed.  This delay prevents pounding Foundation hard
+# when it is probably most under stress, and allows for automated graceful
+# system recovery.  A typical value is 30.
+# [1 .. 1000]
+foundation_send_failure_delay = 30
+
+# Use the newer XML web-service API to post performance data to the
+# Foundation databases configured below.  Highly recommended, for
+# efficiency.  [true/false]
+post_performance_using_xml = true
+
+# How many performance data updates to bundle together in a single
+# message to Foundation, when the XML web-service API is used.  This
+# is a loose limit; it is only checked after adding all the data for
+# a {host, service}, which might contain multiple performance values.
+max_performance_xml_bundle_size = 20
+
+# A limit on the number of items sent to Foundation in a single
+# packet.
+max_bulk_send = 200
+
+# Timeout, specified in seconds, if the older HTTP API is used
+# to post performance data to the Foundation database.
+foundation_http_submission_timeout = 2
+
+# Timeout, specified in seconds, to address GWMON-7407.
+# The usual value is 30; set to 0 to disable.
+socket_send_timeout = 30
+
+# Specify whether to use a shared library to implement RRD file
+# access, or to fork an external process for such work (the legacy
+# implementation).  Set to true (recommended) for high performance,
+# to false only as an emergency fallback or for special purposes.
+# [true/false]
+use_shared_rrd_module_for_create = true
+use_shared_rrd_module_for_update = true
+use_shared_rrd_module_for_info   = true
+
+# Where the rrdtool binary lives.
+rrdtool = /usr/local/groundwork/common/bin/rrdtool
+
+# What files to read for results to be processed.  The perfdata_file paths
+# are defined by external scripts, such as launch_perf_data_processing
+# for the service-perfdata.dat.being_processed pathname, so they cannot
+# be changed here arbitrarily.  The perfdata_source labels must be unique
+# within the <primary_perfdata_files> or <service_perfdata_files> section,
+# and each such label must reflect the name of the Application Type in
+# Foundation for the corresponding data stream.  The seek_file path for
+# each source must also name a unique file, so there is no confusion as to
+# what its contents represent.
+#
+# Each upstream provider is responsible for atomically renaming the file
+# it uses to collect the performance data into the perfdata_file pathname
+# listed here, at a point in time when the upstream provider is no longer
+# writing (and will no longer write, if the rename happens) into that file.
+# That way, there can never be any confusion as to whether the file is
+# ready for processing here.
+
+# These files are output directly by individual applications that produce
+# service data.  This data has not reached Foundation.
+<primary_perfdata_files>
+
+    # Nagios performance data.
+    <perfdata_source NAGIOS>
+	perfdata_file = "/usr/local/groundwork/nagios/var/service-perfdata.dat.being_processed"
+	seek_file     = "/usr/local/groundwork/nagios/var/service-perfdata.dat.seek"
+    </perfdata_source>
+
+</primary_perfdata_files>
+
+# These files are output by a Foundation REST API consumer, feeding
+# off the internal Foundation topic service for performance data.
+<service_perfdata_files>
+
+    # Virtual Environments Monitoring Agent performance data.
+    <perfdata_source VEMA>
+	perfdata_file = "/usr/local/groundwork/core/vema/var/vema-perfdata.dat.being_processed"
+	seek_file     = "/usr/local/groundwork/core/vema/var/vema-perfdata.dat.seek"
+    </perfdata_source>
+
+    # Cloud Hub for Red Hat Virtualization performance data.
+    <perfdata_source CHRHEV>
+	perfdata_file = "/usr/local/groundwork/core/vema/var/chrhev-perfdata.dat.being_processed"
+	seek_file     = "/usr/local/groundwork/core/vema/var/chrhev-perfdata.dat.seek"
+    </perfdata_source>
+
+    # Cloud Hub for Open Stack performance data.
+    <perfdata_source OS>
+	perfdata_file = "/usr/local/groundwork/core/vema/var/os-perfdata.dat.being_processed"
+	seek_file     = "/usr/local/groundwork/core/vema/var/os-perfdata.dat.seek"
+    </perfdata_source>
+
+    # Cloud Hub for Docker performance data.
+    <perfdata_source DOCK>
+	perfdata_file = "/usr/local/groundwork/core/vema/var/dock-perfdata.dat.being_processed"
+	seek_file     = "/usr/local/groundwork/core/vema/var/dock-perfdata.dat.seek"
+    </perfdata_source>
+
+    # Cloud Hub for Open DayLight performance data.
+    <perfdata_source ODL>
+	perfdata_file = "/usr/local/groundwork/core/vema/var/odl-perfdata.dat.being_processed"
+	seek_file     = "/usr/local/groundwork/core/vema/var/odl-perfdata.dat.seek"
+    </perfdata_source>
+
+    # Cloud Hub for Amazon EC2 performance data.
+    <perfdata_source AWS>
+    perfdata_file = "/usr/local/groundwork/core/vema/var/aws-perfdata.dat.being_processed"
+    seek_file     = "/usr/local/groundwork/core/vema/var/aws-perfdata.dat.seek"
+    </perfdata_source>
+
+    # Cloud Hub for NetApp performance data.
+    <perfdata_source NETAPP>
+    perfdata_file = "/usr/local/groundwork/core/vema/var/netapp-perfdata.dat.being_processed"
+    seek_file     = "/usr/local/groundwork/core/vema/var/netapp-perfdata.dat.seek"
+    </perfdata_source>
+
+    # For Cacti feeder metrics
+    <perfdata_source CACTI>
+    perfdata_file = "/usr/local/groundwork/core/vema/var/cactifeeder-perfdata.dat.being_processed"
+    seek_file     = "/usr/local/groundwork/core/vema/var/cactifeeder-perfdata.dat.seek"
+    </perfdata_source>
+
+    # My-Application-Type performance data.
+#    <perfdata_source my_application_type>
+#	perfdata_file = "/usr/local/groundwork/my_app/var/{my_application_type}-perfdata.dat.being_processed"
+#	seek_file     = "/usr/local/groundwork/my_app/var/{my_application_type}-perfdata.dat.seek"
+#    </perfdata_source>
+
+</service_perfdata_files>
+
+# What sequence the perfdata sources should be processed in, within a given
+# processing cycle.  In general, a round-robin check of sources is made to
+# see which of them are ready for processing.  The choices are:
+#
+# process_each_ready   Process sources in order in each cycle, checking
+#                      each at most once per cycle to see if it is ready.
+# process_every_ready  Process as many sources as possible in each cycle,
+#                      but only process each source at most once per cycle.
+# process_all_ready    Keep processing in each cycle until no more sources
+#                      are ready.
+#
+# The usual choice is "process_every_ready", which provides robust behavior
+# while always allowing a brief rest between effective cycles.  More detail
+# on this option is provided in comments in the code, if it matters to anyone.
+source_selection_model = process_every_ready
+
+# How often to update a seek file as the corresponding perfdata file is
+# read.  This many lines of a perfdata file are processed at a time before
+# the corresponding seek file is updated with the current position.  This
+# limits the amount of data that will be reprocessed if the perf script
+# dies catastrophically (without first updating the seek file based on the
+# update_seek_file_on_failure option).  There is a tradeoff here between
+# the i/o needed to update the seek file periodically and the reprocessing
+# of some number of lines from the perfdata file in a (presumably rare)
+# catastrophe-recovery situation.  Setting this value to 0 will disable
+# periodically updating the seek file, which would only be useful in a
+# development situation.
+seek_file_update_interval = 1000
+
+# Whether to update a seek file if a processing failure or termination request
+# is sensed, before the perf script shuts down.  Normally this will be left
+# as "true", so the current line will be skipped when the script starts up
+# again.  (This presumes that the slight possible data loss during an ordinary
+# termination request is tolerable.)  In some debugging situations, or to
+# ensure that the last line of possibly partially-processed data is re-read
+# on startup, you may want to set this to "false", so an input failure can
+# be easily replicated (or that data that was in-progress at the time of a
+# termination request is not lost) by having it be reprocessed on startup.
+update_seek_file_on_failure = true
+
+# Where the log file is to be written, depending on whether the daemon is
+# running in primary or secondary mode.
+primary_debuglog   = /usr/local/groundwork/nagios/var/log/process_service_perfdata_file.log
+secondary_debuglog = /usr/local/groundwork/foundation/container/logs/process_perfdata_files.log
+
+# The wait time between cycles of the process_service_perfdata_file
+# script, which runs as a daemon.  Specified in seconds.
+loop_wait_time = 15
+
+# Whether to emit a log message to Foundation at the end of every processing
+# cycle where errors or warnings were detected.  This is disabled by default
+# because it can generate a large number of messages when the setup is broken.
+# But it can be valuable to provide very visible notice that processing problems
+# are occurring, so you know to look in the debug log for details.  [true/false]
+emit_status_message = false
+
+# Specify whether to log messages that tell exactly what the script is doing
+# at the moment that a termination signal is received.  We don't enable
+# these messages by default because logging i/o routines are not necessarily
+# re-entrant, which could cause difficulties.  But the messages can be enabled
+# during troubleshooting trials to identify which areas of the script need
+# improvement in the speed of handling termination signals.  [true/false]
+spill_current_action = false
+
+# This section contains the configuration for all access to Foundation
+# databases.  It must include one group of lines for the Foundation
+# associated with this server (with the child_host value set to an
+# empty string).  Additional groups of lines are needed for parent
+# servers if you want RRD graphs generated on this child server
+# (where the process_service_perfdata_file script is running) to be
+# integrated into Status Viewer on a parent server, or if you want
+# EPR reports to be created on a server.
+#
+# The foundation_host value, specified inside the angle-brackets, is
+# a qualified or unqualified hostname, or IP address, for a network
+# interface on which the Foundation of the respective standalone,
+# child, parent, parent-standby, or report server can be accessed.
+# Substitute for MYPARENTHOST or MYSTANDBYHOST in the lines below
+# as needed.  The foundation_port is the port number on that network
+# interface through which Foundation can be contacted.
+#
+# The child_host value is a qualified or unqualified hostname, or
+# IP address, of the machine on which the performance data handling
+# script (process_service_perfdata_file) is running, as seen by that
+# particular Foundation server.  The specified value must not be
+# 127.0.0.1 or localhost, and it may be different for access from
+# different Foundation servers (substitute for MYHOST in the lines
+# below as needed).  This value must be left empty for the child
+# (or standalone) server's own Foundation.
+#
+# The send_RRD_data value [true/false] specifies whether this
+# Foundation should receive information about RRD graphs.
+# If child_host is empty, this information will include details
+# on RRD filenames and graph commands, so graphs can be directly
+# generated as needed.  If child_host is non-empty, this information
+# will instead include just the child_host value, so this copy of
+# Foundation will know where to reach to obtain the graph.
+#
+# The send_perf_data value [true/false] specifies whether this
+# Foundation should receive a copy of the detailed performance data.
+# It should be enabled if and only if this Foundation may be used to
+# produce EPR reports.
+#
+# Lines in this section may be commented out with a leading "#"
+# character.  Uncomment and customize groups of lines here as needed.
+<foundation>
+
+    # Local Foundation.  It is not a parent server for this data,
+    # so the child_host is set to an empty string to distinguish
+    # this case.  send_RRD_data must be true for this entry.
+    <foundation_host localhost>
+	foundation_port = 4913
+	child_host      = ""
+	send_RRD_data   = true
+	send_perf_data  = false
+    </foundation_host>
+
+    # Parent-server Foundation, if any.
+#    <foundation_host MYPARENTHOST>
+#	foundation_port = 4913
+#	child_host      = "MYHOST"
+#	send_RRD_data   = true
+#	send_perf_data  = false
+#    </foundation_host>
+
+    # Parent-standby-server Foundation, if any.
+#    <foundation_host MYSTANDBYHOST>
+#	foundation_port = 4913
+#	child_host      = "MYHOST"
+#	send_RRD_data   = true
+#	send_perf_data  = false
+#    </foundation_host>
+
+</foundation>
+
+# ----------------------------------------------------------------
+# Options for sending performance data to Foundation via the
+# Foundation REST API.
+# ----------------------------------------------------------------
+
+# The application name by which the process_service_perfdata_file process
+# will be known to the Foundation REST API.
+rest_api_requestor = "Nagios performance data feeder"
+
+# Where to find credentials for accessing the Foundation REST API.
+ws_client_config_file = "/usr/local/groundwork/config/ws_client.properties"
+
+# Max time to wait for the server to respond to a REST API call before aborting
+# from the client side, specified as integer seconds.  Triggering of the
+# client-side timeout on a REST call may appear as an $outcome{response_status}
+# of "Internal Server Error" even though it's really a client-side issue.
+rest_api_timeout = 60
+
+# Forcing a CRL check means the Perl GW::RAPID package will insist on having
+# a Certificate Revocation List file available if the server is configured
+# to use HTTPS (as specified in the foundation_rest_url setting of the file
+# listed above as the ws_client_config_file option value).  This should be
+# enabled for a properly secure HTTPS setup; you will then need to provide a
+# valid CRL file, even if it doesn't list any revoked certificates, in the
+# /usr/local/groundwork/common/openssl/certs/ directory.  Disabling this is
+# a less-secure setup, as then the HTTPS connection does not protect against
+# a man-in-the-middle attack.  If the server does not use HTTPS, this option
+# has no effect.
+# [true/false]
+force_crl_check = true
+
+# The application implements its own signal handling, which provides for a
+# soft landing if a termination signal like SIGTERM is received.  If the
+# die_fast_if_rest_call_interrupted option is false, that signal handling
+# will be in play during REST calls.  If for some reason that setup causes
+# the application to seemingly ignore termination signals and hang for a long
+# time while in a REST call, the following option can be used to change the
+# normal signal-handling behavior.  Setting die_fast_if_rest_call_interrupted
+# to true will cause the usual application signal handling to be suspended
+# for the duration of individual REST calls, meaning the entire process
+# will die immediately if a termination signal is received at that time.
+# No cleanup will be done, and nothing will be logged to indicate why the
+# process stopped running.  We have not seen a need for this in testing; this
+# option is provided only as a fail-safe capability if we run into problems
+# in the field that cannot otherwise be solved.
+# [true/false]
+die_fast_if_rest_call_interrupted = false
+
+# Typical number of perfdata entries to send in each bundle sent via the
+# REST API, for efficiency.  This is NOT the absolute minimum size, as
+# there may occasionally be smaller bundles sent.
+rest_bundle_size = 100
+
+# Maximum number of messages sent in a bundle via the new REST API.
+# 150 seems to work reasonably well in testing.
+max_rest_bundle_size = 150
+
+# There are six predefined log levels within the Log4perl package:  FATAL,
+# ERROR, WARN, INFO, DEBUG, and TRACE (in descending priority).  We define
+# two custom levels at the application level to form the full useful set:
+# FATAL, ERROR, WARN, NOTICE, STATS, INFO, DEBUG, and TRACE.  To see an
+# individual message appear, your configured logging level here has to at
+# least match the priority of that logging message in the code.
+#
+# WARNING:  Setting this value any higher than "INFO" will generate HUGELY
+# voluminous amounts of data, which will slow down your system and soon fill
+# your disk.  DO NOT DO SO in production for any significant length of time.
+GW_RAPID_primary_log_level   = "WARN"
+GW_RAPID_secondary_log_level = "ERROR"
+
+# Application-level logging configuration, for that portion of the logging
+# which is currently handled by the Log4perl package.
+#
+# As recommended in the Log4perl documentation, we DO NOT try to mirror Perl
+# package names here as logging category names.  A more sensible classification
+# of categories provides more intelligent control across applications.
+log4perl_config = <<EOF
+
+# Use this to send everything from FATAL through the indicated GW_RAPID_xxx_log_level to the specified logfile.
+log4perl.category.Nagios.Perfdata.Primary.Feeder.GW.RAPID   = ${GW_RAPID_primary_log_level},   PrimaryLogfile
+log4perl.category.Nagios.Perfdata.Secondary.Feeder.GW.RAPID = ${GW_RAPID_secondary_log_level}, SecondaryLogfile
+
+# Send all Log4perl lines to the same log file as the rest of this application.
+log4perl.appender.PrimaryLogfile          = Log::Log4perl::Appender::File
+log4perl.appender.PrimaryLogfile.filename = ${primary_debuglog}
+log4perl.appender.PrimaryLogfile.utf8     = 0
+log4perl.appender.PrimaryLogfile.layout   = Log::Log4perl::Layout::PatternLayout
+log4perl.appender.PrimaryLogfile.layout.ConversionPattern = [%d{EEE MMM dd HH:mm:ss yyyy}] %m%n
+
+# Send all Log4perl lines to the same log file as the rest of this application.
+log4perl.appender.SecondaryLogfile          = Log::Log4perl::Appender::File
+log4perl.appender.SecondaryLogfile.filename = ${secondary_debuglog}
+log4perl.appender.SecondaryLogfile.utf8     = 0
+log4perl.appender.SecondaryLogfile.layout   = Log::Log4perl::Layout::PatternLayout
+log4perl.appender.SecondaryLogfile.layout.ConversionPattern = [%d{EEE MMM dd HH:mm:ss yyyy}] %m%n
+
+EOF
+
+# ----------------------------------------------------------------
+# Special options for custom operation of the perfdata daemon.
+#
+# The following options are not supported by GroundWork except in
+# consultation with GroundWork Professional Services.  Leave the
+# post_to_tsdb option set to false.
+# ----------------------------------------------------------------
+
+post_to_tsdb	= false
+tsdb_source	= xxx.xxx.xxx
+tsdb_host	= yyy.yyy.yyy
+tsdb_sec_host	=
+tsdb_port	= 4243
+tsdb_sec_port	=
+post_tholds	= true
+post_minmax	= false
+

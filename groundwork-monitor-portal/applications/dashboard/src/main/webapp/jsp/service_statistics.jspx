@@ -1,0 +1,44 @@
+<f:view xmlns:h="http://java.sun.com/jsf/html"
+        xmlns:f="http://java.sun.com/jsf/core"
+        xmlns:ice="http://www.icesoft.com/icefaces/component">
+        
+<ice:outputDeclaration doctypeRoot="HTML"
+        doctypePublic="-//W3C//DTD HTML 4.01 Transitional//EN"
+        doctypeSystem="http://www.w3.org/TR/html4/loose.dtd" />
+
+    <html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"></meta>
+        <title>Service Statistics</title>
+        <link href="xmlhttp/css/xp/xp.css" rel="stylesheet" type="text/css" />
+    </head>
+    <body>
+        
+<ice:portlet>
+<ice:form partialSubmit="true">
+<h5>
+<ice:outputText value="Host Group Name: #{statisticsBean.hostGroupName}" />
+</h5>
+<br/>
+
+<ice:dataTable frame="statistics"
+                       var="stat"
+                       headerClass="iceDatTblColHdr"
+                       value="#{statisticsBean.serviceProperties}" 
+                       border="1">
+                       
+	<ice:column>
+		<ice:outputText styleClass="iceDatTblCol" value="#{stat.name}"/>
+	</ice:column>
+	<ice:column>
+		<ice:outputText styleClass="iceDatTblCol" value="#{stat.count}"/>
+	</ice:column>
+
+</ice:dataTable>
+
+
+</ice:form>
+</ice:portlet>
+</body>
+</html>
+</f:view>

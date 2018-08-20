@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions targetNamespace="urn:fws"
+	xmlns:fwsmodel="http://model.ws.foundation.groundwork.org"
+	xmlns:apachesoap="http://xml.apache.org/xml-soap" xmlns:impl="urn:fws"
+	xmlns:intf="urn:fws" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/"
+	xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:wsdlsoap="http://schemas.xmlsoap.org/wsdl/soap/"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<!--
+		Collage - The ultimate data integration framework. Copyright (C)
+		2004-2007 GroundWork Open Source Inc. info@groundworkopensource.com
+		This program is free software; you can redistribute it and/or modify
+		it under the terms of version 2 of the GNU General Public License as
+		published by the Free Software Foundation. This program is distributed
+		in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+		even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+		PARTICULAR PURPOSE. See the GNU General Public License for more
+		details. You should have received a copy of the GNU General Public
+		License along with this program; if not, write to the Free Software
+		Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+		USA
+	-->
+	<wsdl:import namespace="urn:fwsmodel"
+		xmlns:fwsmodel="http://model.ws.foundation.groundwork.org" location="../fwsmodel.wsdl" />
+			<!-- location="http://172.28.113.227/fwsmodel.wsdl" /> -->
+	<wsdl:documentation>At runtime, Foundation generates statistics about 
+	the current state of Host/HostGroup and Service/ServiceGroup data. 
+	The web service has several methods to access this runtime data.</wsdl:documentation>
+	<wsdl:message name="getStatisticsResponse">
+		<wsdl:part name="getStatisticsReturn" type="fwsmodel:WSFoundationCollection" />
+		<wsdl:documentation>Returns WSFoundationCollection: collection of Statistics as per the input parameters specified.
+			</wsdl:documentation>
+	</wsdl:message>
+	<wsdl:message name="getStatisticsRequest">
+		<wsdl:documentation>Statistics WS under request message.
+			getStatisticsRequest - Description for parts.
+		</wsdl:documentation>
+		<wsdl:part name="statisticQueryType" type="fwsmodel:StatisticQueryType" />
+		<wsdl:documentation>StatisticQueryType is an enumeration of possible parameters to be used to retrieve Statistics. 
+		Type can be one of-
+		ALL_HOSTS,ALL_SERVICES,HOSTS_FOR_HOSTGROUPID,
+		HOSTS_FOR_HOSTGROUPNAME,SERVICES_FOR_HOSTGROUPID,
+		SERVICES_FOR_HOSTGROUPNAME,TOTALS_FOR_SERVICES_BY_HOSTNAME,
+		 HOSTGROUP_STATE_COUNTS_HOST, HOSTGROUP_STATE_COUNTS_SERVICE,
+		 SERVICEGROUP_STATS_BY_SERVICEGROUPNAME,
+		 SERVICEGROUP_STATS_FOR_ALL_NETWORK ,HOST_LIST, 
+		 SERVICE_ID_LIST</wsdl:documentation>
+		<wsdl:part name="value" type="xsd:string" />
+		<wsdl:documentation>Applicable for types except “ALL_HOSTS,ALL_SERVICES TOTALS_FOR_HOSTS, TOTALS_FOR_SERVICES”.
+		 Specify value as per the StatisticQueryType specified above.</wsdl:documentation>
+		<wsdl:part name="applicationType" type="xsd:string" />
+		<wsdl:documentation>A type of application that has been configured
+				to be monitored through the collage system. E.g NAGIOS
+			</wsdl:documentation>
+	</wsdl:message>
+	<wsdl:message name="getGroupStatisticsResponse">
+		<wsdl:part name="getGroupStatisticsReturn" type="fwsmodel:WSFoundationCollection" />
+		<wsdl:documentation>Returns WSFoundationCollection: collection of Statistics as per the input parameters specified.
+			</wsdl:documentation>
+	</wsdl:message>
+	<wsdl:message name="getGroupStatisticsRequest">
+		<wsdl:documentation>Statistics WS under request message.
+			getGroupStatisticsRequest - Description for parts.
+		</wsdl:documentation>
+		<wsdl:part name="statisticQueryType" type="fwsmodel:StatisticQueryType" />
+		<wsdl:documentation>StatisticQueryType is an enumeration of possible parameters to be used to retrieve Statistics. Type can be one of-
+		HOSTGROUP_STATISTICS_BY_FILTER,SERVICE_STATISTICS_BY_FILTER,SERVICEGROUP_STATISTICS_BY_FILTER</wsdl:documentation>
+		<wsdl:part name="filter" type="fwsmodel:Filter" />
+		<wsdl:documentation>A filter is provided to build the criteria for doing the required queries on the model (Foundation). Filters can be composed with the help of disjunctions (AND) and conjunctions (OR).</wsdl:documentation>
+		<wsdl:part name="groupName" type="xsd:string" />
+		<wsdl:documentation>Valid String Host group or service group name .
+		Note:-for Entire network  groupName should  be null</wsdl:documentation>
+		<wsdl:part name="applicationType" type="xsd:string" />
+		<wsdl:documentation>A type of application that has been configured
+				to be monitored through the collage system. E.g NAGIOS
+			</wsdl:documentation>
+	</wsdl:message>
+	<wsdl:message name="getNagiosStatisticsResponse">
+		<wsdl:part name="getStatisticsReturn" type="fwsmodel:WSFoundationCollection" />
+		<wsdl:documentation>Returns WSFoundationCollection: collection of Statistics as per the input parameters specified.
+			</wsdl:documentation>
+	</wsdl:message>
+	<wsdl:message name="getNagiosStatisticsRequest">
+		<wsdl:documentation>Statistics WS under request message.
+			getNagiosStatisticsRequest - Description for parts.
+			</wsdl:documentation>
+		<wsdl:part name="nagiosStatisticsQueryType" type="fwsmodel:NagiosStatisticQueryType" />
+		<wsdl:documentation>NagiosStatisticQueryType is an enumeration of possible parameters to be used to retrieve Statistics. Type can be one of-
+			HOSTGROUPID,HOSTGROUPNAME,HOSTNAME,HOSTID,SYSTEM,HOSTLIST,SERVICEGROUPNAME 
+
+			</wsdl:documentation>
+		<wsdl:part name="value" type="xsd:string" />
+		<wsdl:documentation>Applicable for all types Specify value as per the NagiosStatisticQueryType  specified above. For example specify values as actual host group Id if type is HOSTGROUPID.
+			</wsdl:documentation>
+	</wsdl:message>
+	<wsdl:message name="getStatisticsByStringResponse">
+		<wsdl:part name="getStatisticsByStringReturn" type="fwsmodel:WSFoundationCollection" />
+		<wsdl:documentation>Returns WSFoundationCollection: collection of Statistics as per the input parameters specified.
+			</wsdl:documentation>
+	</wsdl:message>
+	<wsdl:message name="getStatisticsByStringRequest">
+		<wsdl:documentation>Statistics WS under request message.
+			getStatisticsByStringRequest - Description for parts.
+			</wsdl:documentation>
+		<wsdl:part name="statisticQueryType" type="xsd:string" />
+		<wsdl:documentation>Type is String parameters to be used to retrieve Statistics. Type can be one of-
+ALL_HOSTS,ALL_SERVICES,HOSTS_FOR_HOSTGROUPID,HOSTS_FOR_HOSTGROUPNAME,SERVICES_FOR_HOSTGROUPID,SERVICES_FOR_HOSTGROUPNAME,TOTALS_FOR_SERVICES_BY_HOSTNAME,  HOSTGROUP_STATE_COUNTS_HOST, HOSTGROUP_STATE_COUNTS_SERVICE,SERVICEGROUP_STATS_BY_SERVICEGROUPNAME,SERVICEGROUP_STATS_FOR_ALL_NETWORK ,HOST_LIST, SERVICE_ID_LIST
+
+			</wsdl:documentation>
+		<wsdl:part name="value" type="xsd:string" />
+		<wsdl:documentation>Applicable for types except “ALL_HOSTS, ALL_SERVICES, TOTALS_FOR_HOSTS, and TOTALS_FOR_SERVICES”. Specify value as per the Type specified above. </wsdl:documentation>
+		<wsdl:part name="applicationType" type="xsd:string" />
+		<wsdl:documentation>A type of application that has been configured
+				to be monitored through the collage system. E.g NAGIOS
+			</wsdl:documentation>
+	</wsdl:message>
+	<wsdl:message name="getNagiosStatisticsByStringResponse">
+		<wsdl:part name="getStatisticsByStringReturn" type="fwsmodel:WSFoundationCollection" />
+		<wsdl:documentation>Returns WSFoundationCollection: collection of Statistics as per the input parameters specified.
+			</wsdl:documentation>
+	</wsdl:message>
+	<wsdl:message name="getNagiosStatisticsByStringRequest">
+		<wsdl:documentation>Statistics WS under request message.
+			getStatisticsByStringRequest - Description for parts.
+			</wsdl:documentation>
+		<wsdl:part name="nagiosStatisticsQueryType" type="xsd:string" />
+		<wsdl:documentation>Type is String parameters to be used to retrieve Statistics. Type can be one of-
+HOSTGROUPID,HOSTGROUPNAME,HOSTNAME,HOSTID,SYSTEM,HOSTLIST,SERVICEGROUPNAME 
+
+			</wsdl:documentation>
+		<wsdl:part name="value" type="xsd:string" />
+		<wsdl:documentation>Applicable for all types. Specify value as per the Type String parameter specified above. For example specify values as actual host group Id if type is HOSTGROUPID.
+			</wsdl:documentation>
+	</wsdl:message>
+	<wsdl:message name="getHostAvailabilityForHostgroupRequest">
+		<wsdl:documentation>Statistics WS under request message.
+			getHostAvailabilityForHostgroupRequest - Description for parts.</wsdl:documentation>
+		<wsdl:part name="hostGroupName" type="xsd:string">
+			<wsdl:documentation>Valid String Host group name</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getHostAvailabilityForHostgroupResponse">
+		<wsdl:part name="getHostAvailabilityForHostgroupReturn"
+			type="xsd:double" />
+		<wsdl:documentation>Returns WSFoundationCollection: collection of Statistics as per the input parameters specified.
+			</wsdl:documentation>
+	</wsdl:message>
+	<wsdl:message name="getServiceAvailabilityForHostgroupRequest">
+		<wsdl:documentation>Statistics WS under request message.
+			getServiceAvailabilityForHostgroupRequest - Description for parts.
+			</wsdl:documentation>
+		<wsdl:part name="hostGroupName" type="xsd:string" >
+		<wsdl:documentation>Valid String Host group name</wsdl:documentation>
+	</wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getServiceAvailabilityForHostgroupResponse">
+		<wsdl:part name="getServiceAvailabilityForHostgroupReturn"
+			type="xsd:double" />
+		<wsdl:documentation>Returns WSFoundationCollection: collection of Statistics as per the input parameters specified.</wsdl:documentation>
+	</wsdl:message>
+	<wsdl:message name="WSFoundationException">
+		<wsdl:part name="fault" element="fwsmodel:WSFoundationException" />
+	</wsdl:message>
+	<wsdl:message name="getServiceAvailabilityForServiceGroupRequest">
+		<wsdl:documentation>Statistics WS under request message.
+			getServiceAvailabilityForServiceGroupRequest - Description for parts.</wsdl:documentation>
+		<wsdl:part name="serviceGroupName" type="xsd:string" >
+		<wsdl:documentation>Valid string service group name</wsdl:documentation>
+	</wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getServiceAvailabilityForServiceGroupResponse">
+		<wsdl:part name="getServiceAvailabilityForServiceGroupReturn"
+			type="xsd:double" />
+		<wsdl:documentation>Returns WSFoundationCollection: collection of Statistics as per the input parameters specified.</wsdl:documentation>
+	</wsdl:message>
+	<wsdl:portType name="WSStatistics">
+		<wsdl:operation name="getStatistics"
+			parameterOrder="statisticQueryType value applicationType">
+			<wsdl:documentation>Retrieves current statistics as per the specified type and other parameters.</wsdl:documentation>
+			<wsdl:input message="impl:getStatisticsRequest" name="getStatisticsRequest" />
+			<wsdl:output message="impl:getStatisticsResponse" name="getStatisticsResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+		<wsdl:operation name="getGroupStatistics"
+			parameterOrder="statisticQueryType filter groupName applicationType">
+			<wsdl:documentation>Retrieves current group (host group,service group) statistics as per the specified type and other parameters.</wsdl:documentation>
+			<wsdl:input message="impl:getGroupStatisticsRequest" name="getGroupStatisticsRequest" />
+			<wsdl:output message="impl:getGroupStatisticsResponse"
+				name="getGroupStatisticsResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+		<wsdl:operation name="getNagiosStatistics"
+			parameterOrder="nagiosStatisticsQueryType value">
+			<wsdl:documentation>Retrieves current Nagios statistics as per the specified type and other parameters.</wsdl:documentation>
+			<wsdl:input message="impl:getNagiosStatisticsRequest"
+				name="getNagiosStatisticsRequest" />
+			<wsdl:output message="impl:getNagiosStatisticsResponse"
+				name="getNagiosStatisticsResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+		<wsdl:operation name="getStatisticsByString"
+			parameterOrder="statisticQueryType value applicationType">
+			<wsdl:documentation>Retrieves current statistics as per the specified all String parameters.String parameters specifically used by custom reporting data source.</wsdl:documentation>
+			<wsdl:input message="impl:getStatisticsByStringRequest"
+				name="getStatisticsByStringRequest" />
+			<wsdl:output message="impl:getStatisticsByStringResponse"
+				name="getStatisticsByStringResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+		<wsdl:operation name="getNagiosStatisticsByString"
+			parameterOrder="nagiosStatisticsQueryType value">
+			<wsdl:documentation>Retrieves current Nagios statistics as per the specified  all String parameters. String parameters specifically used by custom reporting data source.</wsdl:documentation>
+			<wsdl:input message="impl:getNagiosStatisticsByStringRequest"
+				name="getNagiosStatisticsByStringRequest" />
+			<wsdl:output message="impl:getNagiosStatisticsByStringResponse"
+				name="getNagiosStatisticsByStringResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+		<wsdl:operation name="getHostAvailabilityForHostgroup"
+			parameterOrder="hostGroupName">
+			<wsdl:documentation>Returns host availability(Percentage of Hosts with status UP) for the Host Group
+
+			</wsdl:documentation>
+			<wsdl:input message="impl:getHostAvailabilityForHostgroupRequest"
+				name="getHostAvailabilityForHostgroupRequest" />
+			<wsdl:output message="impl:getHostAvailabilityForHostgroupResponse"
+				name="getHostAvailabilityForHostgroupResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+		<wsdl:operation name="getServiceAvailabilityForHostgroup"
+			parameterOrder="hostGroupName">
+			<wsdl:documentation>Returns Service availability(Percentage of services with status Ok) for the Host Group
+
+			</wsdl:documentation>
+			<wsdl:input message="impl:getServiceAvailabilityForHostgroupRequest"
+				name="getServiceAvailabilityForHostgroupRequest" />
+			<wsdl:output message="impl:getServiceAvailabilityForHostgroupResponse"
+				name="getServiceAvailabilityForHostgroupResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+		<wsdl:operation name="getServiceAvailabilityForServiceGroup"
+			parameterOrder="serviceGroupName">
+			<wsdl:documentation>Returns Service availability(Percentage of services with status Ok) for the service Group
+
+			</wsdl:documentation>
+			<wsdl:input message="impl:getServiceAvailabilityForServiceGroupRequest"
+				name="getServiceAvailabilityForServiceGroupRequest" />
+			<wsdl:output message="impl:getServiceAvailabilityForServiceGroupResponse"
+				name="getServiceAvailabilityForServiceGroupResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+	</wsdl:portType>
+	<wsdl:binding name="statisticsSoapBinding" type="impl:WSStatistics">
+		<wsdlsoap:binding style="rpc"
+			transport="http://schemas.xmlsoap.org/soap/http" />
+		<wsdl:operation name="getStatistics">
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wsstatistics" />
+			<wsdl:input name="getStatisticsRequest">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+			<wsdl:output name="getStatisticsResponse">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" namespace="urn:fws" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+		<wsdl:operation name="getGroupStatistics">
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wsstatistics" />
+			<wsdl:input name="getGroupStatisticsRequest">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+			<wsdl:output name="getGroupStatisticsResponse">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" namespace="urn:fws" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+		<wsdl:operation name="getNagiosStatistics">
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wsstatistics" />
+			<wsdl:input name="getNagiosStatisticsRequest">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+			<wsdl:output name="getNagiosStatisticsResponse">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" namespace="urn:fws" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+		<wsdl:operation name="getStatisticsByString">
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wsstatistics" />
+			<wsdl:input name="getStatisticsByStringRequest">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+			<wsdl:output name="getStatisticsByStringResponse">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" namespace="urn:fws" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+		<wsdl:operation name="getNagiosStatisticsByString">
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wsstatistics" />
+			<wsdl:input name="getNagiosStatisticsByStringRequest">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+			<wsdl:output name="getNagiosStatisticsByStringResponse">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" namespace="urn:fws" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+		<wsdl:operation name="getHostAvailabilityForHostgroup">
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wsstatistics" />
+			<wsdl:input name="getHostAvailabilityForHostgroupRequest">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+			<wsdl:output name="getHostAvailabilityForHostgroupResponse">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" namespace="urn:fws" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+		<wsdl:operation name="getServiceAvailabilityForHostgroup">
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wsstatistics" />
+			<wsdl:input name="getServiceAvailabilityForHostgroupRequest">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+			<wsdl:output name="getServiceAvailabilityForHostgroupResponse">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" namespace="urn:fws" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+		<wsdl:operation name="getServiceAvailabilityForServiceGroup">
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wsstatistics" />
+			<wsdl:input name="getServiceAvailabilityForServiceGroupRequest">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+			<wsdl:output name="getServiceAvailabilityForServiceGroupResponse">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" namespace="urn:fws" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+	</wsdl:binding>
+	<wsdl:service name="WSStatisticsService">
+		<wsdl:port binding="impl:statisticsSoapBinding" name="statistics">
+			<wsdlsoap:address
+				location="http://localhost:8080/foundation-webapp/services/wsstatistics" />
+		</wsdl:port>
+	</wsdl:service>
+</wsdl:definitions>

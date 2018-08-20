@@ -1,0 +1,99 @@
+--- nagios-3.2.3/base/utils.c.orig	2010-09-21 08:05:31.000000000 -0700
++++ nagios-3.2.3/base/utils.c	2010-11-12 15:19:37.000000000 -0800
+@@ -282,6 +282,10 @@
+ extern int             debug_verbosity;
+ extern unsigned long   max_debug_file_size;
+ 
++#ifdef USE_EVENT_BROKER
++pthread_mutex_t check_result_list_lock = PTHREAD_MUTEX_INITIALIZER;
++#endif
++
+ /* from GNU defines errno as a macro, since it's a per-thread variable */
+ #ifndef errno
+ extern int errno;
+@@ -2544,6 +2548,10 @@
+ int delete_check_result_file(char *fname){
+ 	char *temp_buffer=NULL;
+ 
++	if (! fname) {
++		return OK;
++		}
++
+ 	/* delete the result file */
+ 	unlink(fname);
+ 
+@@ -2562,11 +2570,25 @@
+ check_result *read_check_result(void){
+ 	check_result *first_cr=NULL;
+ 
+-	if(check_result_list==NULL)
+-		return NULL;
++#ifdef USE_EVENT_BROKER
++	/* Acquire the check result list mutex */
++	pthread_mutex_lock(&check_result_list_lock);
++#endif
+ 
++	if(check_result_list==NULL){
++#ifdef USE_EVENT_BROKER
++		/* Relinquish the check result list mutex */
++		pthread_mutex_unlock(&check_result_list_lock);
++#endif
++		return NULL;
++	}
+ 	first_cr=check_result_list;
+ 	check_result_list=check_result_list->next;
++
++#ifdef USE_EVENT_BROKER
++	/* Relinquish the check result list mutex */
++	pthread_mutex_unlock(&check_result_list_lock);
++#endif
+ 	
+ 	return first_cr;
+ 	}
+@@ -2614,6 +2636,10 @@
+ 	if(new_cr==NULL)
+ 		return ERROR;
+ 
++#ifdef USE_EVENT_BROKER
++	/* Acquire the check result list mutex */
++	pthread_mutex_lock(&check_result_list_lock);
++#endif
+ 	/* add to list, sorted by finish time (asc) */
+ 
+ 	/* find insertion point */
+@@ -2640,6 +2666,11 @@
+ 		last_cr->next=new_cr;
+ 		}
+ 
++#ifdef USE_EVENT_BROKER
++	/* Relinquish the check result list mutex */
++	pthread_mutex_unlock(&check_result_list_lock);
++#endif
++
+ 	return OK;
+ 	}
+ 
+@@ -2651,6 +2682,11 @@
+ 	check_result *this_cr=NULL;
+ 	check_result *next_cr=NULL;
+ 
++#ifdef USE_EVENT_BROKER
++	/* Acquire the check result list mutex */
++	pthread_mutex_lock(&check_result_list_lock);
++#endif
++
+ 	for(this_cr=check_result_list;this_cr!=NULL;this_cr=next_cr){
+ 		next_cr=this_cr->next;
+ 		free_check_result(this_cr);
+@@ -2659,6 +2695,11 @@
+ 
+ 	check_result_list=NULL;
+ 
++#ifdef USE_EVENT_BROKER
++	/* Relinquish the check result list mutex */
++	pthread_mutex_unlock(&check_result_list_lock);
++#endif
++
+ 	return OK;
+ 	}
+ 

@@ -1,0 +1,38 @@
+--- cacti/htdocs/lib/ping.php.pre_php56	2017-09-26 20:20:44.000000000 -0700
++++ cacti/htdocs/lib/ping.php	2017-09-27 03:09:16.067089262 -0700
+@@ -189,7 +189,10 @@
+ 					}
+ 
+ 					/* get the socket response */
+-					switch(socket_select($r = array($this->socket), $w = NULL, $f = NULL, $to_sec, $to_usec)) {
++					$r = array($this->socket);
++					$w = NULL;
++					$f = NULL;
++					switch(socket_select($r, $w, $f, $to_sec, $to_usec)) {
+ 					case 2:
+ 						/* connection refused */
+ 						$error = "refused";
+@@ -485,7 +488,10 @@
+ 				socket_write($this->socket, $this->request, $this->request_len);
+ 
+ 				/* get the socket response */
+-				switch(socket_select($r = array($this->socket), $w = NULL, $f = NULL, $to_sec, $to_usec)) {
++				$r = array($this->socket);
++				$w = NULL;
++				$f = NULL;
++				switch(socket_select($r, $w, $f, $to_sec, $to_usec)) {
+ 				case 2:
+ 					/* connection refused */
+ 					$error = "refused";
+@@ -574,7 +580,10 @@
+ 				@socket_connect($this->socket, $host_ip, $this->port);
+ 				socket_set_block($this->socket);
+ 
+-				switch(socket_select($r = array($this->socket), $w = array($this->socket), $f = array($this->socket), $to_sec, $to_usec)){
++				$r = array($this->socket);
++				$w = array($this->socket);
++				$f = array($this->socket);
++				switch(socket_select($r, $w, $f, $to_sec, $to_usec)){
+ 				case 2:
+ 					/* connection refused */
+ 					$this->time = $this->get_time($this->precision);

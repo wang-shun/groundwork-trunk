@@ -1,0 +1,176 @@
+	<foundation-profiler captureMetrics="LOG">
+	
+	<!-- Database to store profiling information -->
+	<profilerDB driver="com.mysql.jdbc.Driver"
+				url="jdbc:mysql://localhost/GWProfilerDB" 
+				login="collage" 
+				password="gwrk"/>
+	
+	<!-- Foundation Database to be profiled -->
+	<foundationDB driver="com.mysql.jdbc.Driver"
+				url="jdbc:mysql://localhost/GWCollageDB" 
+				login="root" 
+				password=""/>
+	
+	<!-- Common message socket to post feeder messages - We may want to move these settings
+	     to each individual message. -->	     
+	<messageSocket server="localhost" port="4913" />
+	
+	<!-- Workload Definitions -->
+	<!-- Note:  All durations are defined in seconds. -->
+	<workloads>
+		<workload name="Http Requests"
+			numBatches="1"
+			interval="15"
+			quantity="1" 
+			distribution="even"
+			enabled="true">
+			<messages>
+				<message 
+					type="org.groundwork.foundation.profiling.messages.HttpRequest" 
+					name="Http Request"
+					url="http://172.28.113.232/monitor/index.php"
+					numRequests="10">
+				</message>		
+			</messages>													      				
+		</workload>
+			
+		<!--  NOTE:  We can only use Web Methods which take all string parameters -->
+		<workload name="WS Methods"
+			numBatches="1"
+			interval="15"
+			quantity="1" 
+			distribution="even"
+			enabled="false">
+			<messages>
+				<message 
+					type="org.groundwork.foundation.profiling.messages.WebServiceCall" 
+					name="WS Event ALL"
+					endpoint="http://localhost:8080/foundation-webapp/services/wsevent"
+					operation="getEventsByString"
+					numConcurrent="1">
+					<parameter name="type" value="ALL"/>
+					<parameter name="value" value=""/>
+					<parameter name="appType" value=""/>
+					<parameter name="startRange" value="2006-11-28 00:00:00"/>
+					<parameter name="endRange" value="2006-11-28 11:59:59"/>
+					<parameter name="sortOrder" value=""/>
+					<parameter name="sortField" value=""/>      
+					<parameter name="firstResult" value="-1"/>
+					<parameter name="maxResults" value="-1"/>	
+				</message>		
+			</messages>													      				
+		</workload>
+
+		<!-- 4.5 - 5.0 comparison workloads -->
+		<workload name="GW Version 4.5 - 100 Host Status, 200 Service Status, 40 Log Messages per minute for 15 minutes" 
+			numBatches="60"
+			interval="15"
+			quantity="1" 
+			distribution="even"
+			enabled="false" >
+			<messages>				
+				<message type="org.groundwork.foundation.profiling.messages.ToggleHostStatusMessage" 
+					name="25-host-status"
+					numHosts="25"
+				 />		
+				<message type="org.groundwork.foundation.profiling.messages.ToggleServiceStatusMessage" 
+					name="50-service-status"
+					numServices="50"
+				 />		
+				<message type="org.groundwork.foundation.profiling.messages.EventMessage" 
+					name="10-event"
+					numDevices="10"
+					consolidation="true"
+				 />					 				 	
+			</messages>
+		</workload>
+		<workload name="GW Version 5.0 - 100 Host Status, 200 Service Status, 40 Log Messages per minute for 15 minutes" 
+			numBatches="60"
+			interval="15"
+			quantity="1" 
+			distribution="even"
+			enabled="false" >
+			<messages>				
+				<message type="org.groundwork.foundation.profiling.messages.ToggleHostStatusMessage" 
+					name="25-host-status"
+					numHosts="25"
+				 />		
+				<message type="org.groundwork.foundation.profiling.messages.ToggleServiceStatusMessage" 
+					name="50-service-status"
+					numServices="50"
+				 />		
+				<message type="org.groundwork.foundation.profiling.messages.EventMessage" 
+					name="10-event"
+					numDevices="10"
+					consolidation="true"
+				 />					 				 	
+			</messages>
+		</workload>		
+		
+		<!--  Host Creation Workloads - For 4.5, we send host status messages to create hosts.
+		      For 5.0 we are sending a HOST message which will create the hosts.  Note:
+		      this test is not apples to apples b/c the HOST_STATUS message also updates
+		      host status and the HOST message does not, but clients like Cadence are using
+		      HOST_STATUS to create the hosts and then sending additional HOST_STATUS messages
+		      to set state for the host. -->
+		<workload name="GW Version 4.5 - Host Creation - 500 Host Status" 
+			numBatches="3"
+			interval="300"
+			quantity="1" 
+			distribution="even"
+			enabled="false" >
+			<messages>				
+				<message type="org.groundwork.foundation.profiling.messages.HostCreateMessage" 
+					name="500-host-status"
+					numHosts="500"
+					version45="true"
+				 />		
+			</messages>
+		</workload>		
+		<workload name="GW Version 5.0 - Host Creation - 500 Service Host Messages" 
+			numBatches="3"
+			interval="30"
+			quantity="1" 
+			distribution="even"
+			enabled="false" >
+			<messages>				
+				<message type="org.groundwork.foundation.profiling.messages.HostCreateMessage" 
+					name="500-host-create"
+					numHosts="500"
+					version45="false"
+				 />		
+			</messages>
+		</workload>		
+		
+		<!--  Log Message Workloads - With Consolidation turned on -->
+		<workload name="GW Version 4.5 - Log Message - 300 Log Messages Per Minute For 2 Minutes" 
+			numBatches="12"
+			interval="10"
+			quantity="1" 
+			distribution="even"
+			enabled="false" >
+			<messages>				
+				<message type="org.groundwork.foundation.profiling.messages.EventMessage" 
+					name="50-event"
+					numDevices="50"
+					consolidation="true"
+				 />	
+			</messages>
+		</workload>		
+		<workload name="GW Version 5.0 - Log Message - 300 Log Messages Per Minute for 2 Minutes" 
+			numBatches="12"
+			interval="10"
+			quantity="1" 
+			distribution="even"
+			enabled="false" >
+			<messages>				
+				<message type="org.groundwork.foundation.profiling.messages.EventMessage" 
+					name="50-event"
+					numDevices="50"
+					consolidation="true"
+				 />			
+			</messages>
+		</workload>						
+	</workloads>
+</foundation-profiler>

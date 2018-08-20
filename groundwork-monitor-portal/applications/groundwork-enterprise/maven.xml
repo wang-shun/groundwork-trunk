@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- Coopyright (C) 2009-2012 GroundWork Open Source, Inc. (GroundWork) All 
+	rights reserved. This program is free software; you can redistribute it and/or 
+	modify it under the terms of the GNU General Public License version 2 as 
+	published by the Free Software Foundation. This program is distributed in 
+	the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the 
+	implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+	See the GNU General Public License for more details. You should have received 
+	a copy of the GNU General Public License along with this program; if not, 
+	write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, 
+	Boston, MA 02110-1301, USA. -->
+
+<project xmlns:ant="jelly:ant" xmlns:j="jelly:core">
+	<goal name="undeploy">
+		<!-- remove deployed war file and configuration -->
+		<delete file="${portal.apps.deploy.root}/${pom.artifactId}.war" />
+	</goal>
+
+	<goal name="ear">
+		<!-- 
+			Get war files that need to be included into the ear file
+			Current set:
+				portal-status-viewer-6.7.war
+				status-restservice-6.7.war
+				
+		 -->
+		<ant:copy todir="application" verbose="true">
+			<fileset
+				file="${maven.repo.local}/${portal.groupid}/wars/${com.gwos.portal.statusviewer.id}-${com.gwos.portal.statusviewer.version}.war" />
+			<fileset
+				file="${maven.repo.local}/${portal.groupid}/wars/${com.gwos.portal.console.id}-${com.gwos.portal.console.version}.war" />
+			<fileset
+				file="${maven.repo.local}/${portal.groupid}/wars/${com.gwos.portal.statusrestservice.id}-${com.gwos.portal.statusviewer.version}.war" />
+		</ant:copy>
+
+		<!--  Build the ear file with all the librbries dependencies -->
+		<attainGoal name="ear:ear" />
+
+		<!-- 
+			application xml and jbos-app are not in the correct spot. Need to be adjusted
+		 -->
+		<mkdir dir="${maven.build.dir}/package" />
+		<unjar
+			src="${maven.build.dir}/${pom.artifactId}-${com.gwos.portal.statusviewer.version}.ear"
+			dest="${maven.build.dir}/package" />
+
+		<ant:copy todir="${maven.build.dir}/package/META-INF"
+			verbose="true">
+			<fileset dir="${maven.build.dir}/package" includes="*.xml" />
+			<fileset dir="${maven.build.dir}/package" includes="MANIFEST.MF" />
+		</ant:copy>
+
+		<delete verbose="true">
+			<fileset dir="${maven.build.dir}/package" includes="*.xml" />
+		</delete>
+
+		<jar
+			destfile="${maven.build.dir}/${pom.artifactId}-${com.gwos.portal.statusviewer.version}.ear"
+			basedir="${maven.build.dir}/package" excludes="**/*.ear" />
+		
+		<delete dir="${maven.build.dir}/package" />
+
+	</goal>
+	
+	<goal name="deploy" description="EAR file doesn't support regular deploy. Call deploy-ear at the end to create the correct archive">
+		
+	</goal>
+
+	<goal name="deploy-ear" prereqs="ear">
+		<mkdir dir="${jboss.as.root}/webapps" />
+		<ant:copy file="${maven.build.dir}/${pom.artifactId}-${com.gwos.portal.statusviewer.version}.ear"
+			todir="${portal.apps.deploy.root}" verbose="true" />
+	</goal>
+</project>

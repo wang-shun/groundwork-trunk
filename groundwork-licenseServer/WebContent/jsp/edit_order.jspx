@@ -1,0 +1,163 @@
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<ice:panelGroup styleClass="panelGroupTop">
+			<ice:messages errorStyle="color:#FF0000;" infoStyle="color:#347C17;"/>
+
+			<ice:panelGroup styleClass="panelGroupMid">
+				<!-- Layout the links and buttons. -->
+				<ice:panelGrid columns="2" styleClass="panelGroupInner"
+					rowClasses="textFieldNameRow">
+					<ice:outputLabel for="editOrderID" value="Order Id : " />
+					<ice:panelGroup>
+
+					<ice:setEventPhase events="ValueChangeEvent"
+                                       phase="INVOKE_APPLICATION"
+                                       >
+						<ice:selectOneMenu id="editOrderID"
+							value="#{OrderManagementBean.orderID}"
+							valueChangeListener="#{OrderManagementBean.orderIdChangeListener}"
+							partialSubmit="true">
+
+							<f:selectItem id="editmenuItemHostAllFilters" itemValue=""
+								itemLabel="Select OrderID" />
+							<f:selectItems id="editmenuItemsOrderIDList"
+								value="#{LicenseManagementBean.orderIDList}" />
+
+						</ice:selectOneMenu>
+						</ice:setEventPhase>
+						<ice:outputText value="(required)" />
+
+					</ice:panelGroup>
+
+					<ice:outputLabel for="editcustFirstTxt"
+						value="Customer FirstName  : " />
+					<ice:panelGroup>
+						<ice:inputText id="editcustFirstTxt" size="25" maxlength="25"
+							value="#{OrderManagementBean.customerFirstName}"
+							styleClass="text" />
+						<ice:outputText value="" />
+					</ice:panelGroup>
+
+					<ice:outputLabel for="editcustLastTxt"
+						value="Customer LastName  : " />
+					<ice:panelGroup>
+						<ice:inputText id="editcustLastTxt" size="25" maxlength="25"
+							value="#{OrderManagementBean.customerLastName}" styleClass="text" />
+						<ice:outputText value="(required)" />
+					</ice:panelGroup>
+
+					<ice:outputLabel for="editcompanyTxt" value="Customer Company  : " />
+					<ice:panelGroup>
+						<ice:inputText id="editcompanyTxt" size="25" maxlength="25"
+							value="#{OrderManagementBean.customerCompany}" styleClass="text" />
+						<ice:outputText value="" />
+					</ice:panelGroup>
+
+					<ice:outputLabel for="editguidTxt" value="Install GUID # : "
+						styleClass="text" />
+					<ice:panelGroup>
+						<ice:inputText id="editguidTxt" size="50" maxlength="50"
+							value="#{OrderManagementBean.bitRockInstallID}" styleClass="text" />
+						<ice:outputText value="" styleClass="text" />
+					</ice:panelGroup>
+
+					<ice:outputLabel for="editproductVersionTxt"
+						value="Product Version : " styleClass="text" />
+					<ice:panelGroup>
+						<ice:inputText id="editproductVersionTxt" size="25" maxlength="25"
+							value="#{OrderManagementBean.productVersion}" styleClass="text" />
+						<ice:outputText value="" styleClass="text" />
+					</ice:panelGroup>
+
+					<ice:outputLabel for="editproductNameTxt" value="Product Name : "
+						styleClass="text" />
+					<ice:panelGroup>
+						<ice:inputText id="editproductNameTxt" size="25" maxlength="25"
+							value="#{OrderManagementBean.productName}" styleClass="text" />
+						<ice:outputText value="" styleClass="text" />
+					</ice:panelGroup>
+
+					<ice:outputLabel for="editskuTxt" value="SKU # : "
+						styleClass="text" />
+					<ice:panelGroup>
+						<ice:inputText id="editskuTxt" size="25" maxlength="25"
+							value="#{OrderManagementBean.sku}" styleClass="text" />
+						<ice:outputText value="" styleClass="text" />
+					</ice:panelGroup>
+
+					<ice:outputLabel for="editslDevTxt" value="SoftLimit Device : "
+						styleClass="text" />
+					<ice:panelGroup>
+						<ice:inputText id="editslDevTxt" size="6" maxlength="6"
+							value="#{OrderManagementBean.softLimitDevice}" styleClass="text" />
+						<ice:outputText value="" styleClass="text" />
+					</ice:panelGroup>
+
+					<ice:outputLabel for="edithlDevTxt" value="HardLimit Device : "
+						styleClass="text" />
+					<ice:panelGroup>
+						<ice:inputText id="edithlDevTxt" size="6" maxlength="6"
+							value="#{OrderManagementBean.hardLimitDevice}" styleClass="text" />
+						<ice:outputText value="" styleClass="text" />
+					</ice:panelGroup>
+
+					<ice:outputLabel for="editstDateTxt" value="Start Date : "
+						styleClass="text" />
+					<ice:panelGroup>
+						<ice:selectInputDate id="editstDateTxt"
+							value="#{OrderManagementBean.startDate}"
+							imageDir="/xmlhttp/css/xp/css-images/" renderAsPopup="true"
+							styleClass="text" />
+						<ice:outputText value="" styleClass="text" />
+					</ice:panelGroup>
+
+					<ice:outputLabel for="editslExpTxt" value="Expiry Date : "
+						styleClass="text" />
+					<ice:panelGroup>
+						<ice:selectInputDate id="editslExpTxt"
+							value="#{OrderManagementBean.expiryDate}"
+							imageDir="/xmlhttp/css/xp/css-images/" renderAsPopup="true"
+							styleClass="text" />
+						<ice:outputText value="" styleClass="text" />
+					</ice:panelGroup>
+
+					<ice:outputLabel for="edithlExpTxt"
+						value="HardLimit Expiry Date : " styleClass="text" />
+					<ice:panelGroup>
+						<ice:selectInputDate id="edithlExpTxt"
+							value="#{OrderManagementBean.hardLimitExpiryDate}"
+							imageDir="/xmlhttp/css/xp/css-images/" renderAsPopup="true"
+							styleClass="text" />
+						<ice:outputText value="" styleClass="text" />
+					</ice:panelGroup>
+
+					<ice:outputLabel for="editnetworkServiceReqdRadio"
+						value="NetworkService Required :" />
+					<ice:panelGroup styleClass="selectionRadioGroup">
+						<ice:selectOneRadio id="editnetworkServiceReqdRadio"
+							value="#{OrderManagementBean.networkServiceReqd}">
+							<f:selectItems id="editnetworkServiceReqdItms"
+								value="#{OrderManagementBean.networkServiceReqdItems}" />
+						</ice:selectOneRadio>
+					</ice:panelGroup>
+
+					<ice:outputLabel for="editgenTxt" value="" styleClass="text" />
+					<ice:panelGroup>
+						<ice:commandButton id="editgenCmdBtn" value="Save Order"
+							actionListener="#{OrderManagementBean.updateOrder}"
+							styleClass="text" />
+
+						<ice:commandButton id="editresetCmdBtn" value="Reset"
+							actionListener="#{OrderManagementBean.reset}" styleClass="text" />
+					</ice:panelGroup>
+				</ice:panelGrid>
+			</ice:panelGroup>
+
+		</ice:panelGroup>
+	</ui:define>
+</ui:composition>

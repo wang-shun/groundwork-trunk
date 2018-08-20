@@ -1,0 +1,113 @@
+#!/bin/bash
+
+# dump_test_database
+#
+# This is a simple tool to support capturing database snapshots for use in later testing.
+
+# Copyright 2014-2015 GroundWork Open Source, Inc. ("GroundWork")
+# All rights reserved.  Use is subject to GroundWork commercial license terms.
+
+# Revision History:
+#
+# 2014-07-10 GH 0.0.0	Original version.
+# 2014-07-11 GH 0.0.1	Add support for archive_gwcollagedb.
+# 2014-12-03 GH 0.0.2	Add support for schema-only and data-only dumps.
+# 2015-03-11 GH 0.0.3	Add support for noma and nedi.  Print the name of the output file.
+# 2015-03-11 GH 0.0.4	Force --if-exists to be used if pg_dump supports it.
+
+print_usage() {
+    echo "usage:  dump_test_database [-e] [-p] [-s|-d] [monarch|gwcollagedb|archive_gwcollagedb|noma|nedi]"
+    echo "where:  -e means suppress use of the --if-exists option"
+    echo "        -p means print the dump command"
+    echo "        -s means dump only the database schema"
+    echo "        -d means dump only the database data"
+    echo "        (specifying neither -s nor -d means dump both schema and data)"
+}
+
+pg_dump=/usr/local/groundwork/postgresql/bin/pg_dump
+
+use_if_exists=1
+if [ $# -gt 1 ]; then
+    if [ "$1" = "-e" ]; then
+	use_if_exists=0
+	shift
+    fi
+fi
+
+# PostgreSQL 9.4 supports a new --if-exists option to add IF EXISTS clauses to DROP commands.
+# This should allow the dump to be used even when similar objects-to-be-created are already
+# missing from the database.  In particular, it allows us to use --clean in a schema-only
+# dump without fear that this will cause a restore of such a dump to fail when applied to
+# a completely empty new database.  If the --if-exists option causes trouble, such as when
+# dumping a PostgreSQL 9.4 database for restoration in a pre-PostgreSQL-9.4 context, use the
+# -e option to this script to suppress use of the pg_dump --if-exists option.
+#
+$pg_dump --help | fgrep -q -e --if-exists
+if [ $use_if_exists -ne 0 -a $? = 0 ]; then
+    if_exists=--if-exists
+else
+    if_exists=
+fi
+
+print_dump_command=0
+if [ $# -gt 1 ]; then
+    if [ "$1" = "-p" ]; then
+	print_dump_command=1
+	shift
+    fi
+fi
+
+clean="--clean"
+constraint=
+extension=
+if [ $# -gt 1 ]; then
+    if [ "$1" = "-s" ]; then
+	if [ -z "$if_exists" ]; then
+	    clean=
+	fi
+	constraint="--schema-only"
+	extension=".schema.sql"
+	shift;
+    elif [ "$1" = "-d" ]; then
+	clean=
+	if_exists=
+	constraint="--data-only"
+	extension=".data.sql"
+	shift;
+    fi
+fi
+
+dbhost=localhost
+
+if [ $# -ne 1 ]; then
+    print_usage
+    exit 1
+elif [ "$1" = 'monarch' ]; then
+    dbname=monarch
+    dbuser=monarch
+elif [ "$1" = 'nedi' ]; then
+    dbhost=`egrep '^\s*dbhost' /usr/local/groundwork/nedi/nedi.conf | awk '{print $2}'`
+    dbname=`egrep '^\s*dbname' /usr/local/groundwork/nedi/nedi.conf | awk '{print $2}'`
+    dbuser=`egrep '^\s*dbuser' /usr/local/groundwork/nedi/nedi.conf | awk '{print $2}'`
+elif [ "$1" = 'gwcollagedb' -o "$1" = 'archive_gwcollagedb' -o "$1" = 'noma' ]; then
+    dbname="$1"
+    # Dump access by postgres is needed because certain internal objects
+    # (such as hibernate_sequence) are owned by postgres, not collage.
+    # dbuser=collage
+    dbuser=postgres
+else
+    print_usage
+    exit 1
+fi
+
+filepath="${dbname}_dump_file$extension"
+
+echo "Dumping to:  $filepath"
+
+if [ $print_dump_command -ne 0 ]; then
+    set -x
+fi
+
+# We used to specify --no-password here, but then we needed to support access
+# by the postgres user, whose password we never want to be stored anywhere.
+$pg_dump --host="$dbhost" --username="$dbuser" --file="$filepath" --format=plain $constraint $clean $if_exists --encoding=LATIN1 "$dbname"

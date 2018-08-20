@@ -1,0 +1,144 @@
+================================================================
+Release notes for the fping feeder module
+================================================================
+
+
+General Notes
+-------------
+
+Version 3.X.X of the fping feeder is for use with GroundWork Monitor 5.2.X
+and below.  Version 4.X.X is for use with GroundWork Monitor 5.3 and above.
+
+
+Upgrade Process
+---------------
+
+The fping feeder module is supplied as an RPM, and in that RPM the config
+file (fping_process.conf) is marked as "it's important to preserve local
+changes".  This causes RPM to treat the file specially, if you use the
+"rpm -U" option to install this package while the previous version
+is still installed.  Rather than the usual action of unconditionally
+overwriting an existing file during the upgrade, RPM will look to see
+if the existing file was modified after it was installed.  If so, the
+existing copy will remain unchanged, and the new copy will instead
+be installed with a special suffix (as fping_process.conf.rpmnew).
+It will then be up to you to run "diff" on the old and new files, to
+migrate all your previous changes into the new file, and finally to
+install it under the standard fping_process.conf name.
+
+In any case, whether this is a fresh install or an upgrade, you should
+review all the config-file options to make sure they are set as desired.
+
+
+Versions 3.1.1 and 4.1.1
+------------------------
+
+Previous versions of the groundwork-fping-feeder package have ignored the
+need for periodic logfile rotation, leaving the generated files to grow
+without bound.  An /etc/logrotate.d/groundwork-fping logrotate configuration
+file is now supplied to plug that hole, properly rotating the logfiles
+produced by this package.  As part of this change, the fping_process.pl
+script is now equipped to handle a SIGHUP signal, telling it to close and
+re-open its logfile handle at the start of the next probing cycle.  That
+is considered a gentler approach than demanding the script be bounced to
+effect the simple switchover.  This signal does not cause the script to
+re-read its configuration file; for that to happen, the script must be
+completely restarted.
+
+Also in these releases, a SIGTERM signal now tells fping_process.pl to
+shut down gracefully at the end of its current cycle, rather than causing
+an immediate termination in the middle of a cycle.  When operating as a
+daemon under control of "supervise", it will be automatically restarted.
+So sending a SIGTERM to the process is now a convenient way to safely have
+the script re-read its configuration file.
+
+Also, uninstalling and upgrading the groundwork-fping-feeder RPM will now
+properly shut down the old supervise and fping_process.pl processes.
+
+
+Versions 3.1.0 and 4.1.0
+------------------------
+
+Because of the new config options described below, the minor version
+number has been rolled, to indicate an incompatibility with the previous
+config files (the new options are required, not optional).  The old
+configuration values at your site will need to be folded into the new
+config file which is supplied with this release.
+
+These versions of the fping feeder module contain the following
+improvements over previous 3.0.X and 4.0.X versions.
+
+(*) Error messages from send_nsca are now captured in the fping.log
+    file, rather than being silently discarded.  Having this output
+    be visible somewhere should make it much, much easier to diagnose
+    problems.  (The exit status from send_nsca was already being captured
+    and reported in previous versions, but all the useful detail about
+    the nature of the failures had been lost.)
+
+(*) Control of intentional delays between sending groups of results to the
+    monitoring server is now brought out into the config file, via the
+    delay_between_sends option.  Tuning this value can help to smooth
+    out spikes in the load, resulting both in better server behavior and
+    less likelihood of being unable to successfully send all the data.
+    There is a balance here between smoothing out the load (and taking
+    somewhat more resources to do so, in forking more child processes to
+    send the data) and introducing latency into the reporting of results.
+
+    As part of this improvement, the shipped initial value of
+    max_hosts_per_send_nsca has been lowered from 500 to 250, as a first
+    step in smoothing out the submission of results.  Customers deploying
+    this new release will want to analyze the size of their site and
+    set both max_hosts_per_send_nsca and delay_between_sends accordingly.
+
+(*) A new capability has been added, that of forcing the results of
+    certain services to be negated as they are reported.  For each such
+    designated service, an OK result is transformed into a CRITICAL
+    result, and a CRITICAL result is transformed into an OK result.
+    This feature can be helpful, for instance, in monitoring the status
+    of a backup network interface with the following characteristic.
+    It should normally be down (meaning the sensed state will usually be
+    CRITICAL), but it should be up in a failover situation (meaning the
+    sensed state will then be OK).  But the CRITICAL state is actually the
+    normal, expected, hoped-for state, while the OK state is considered
+    abnormal, reflecting the fact that a failover has occurred.  Thus,
+    having the fping processing flip the reported state allows downstream
+    alarm processing to better reflect when human attention is needed.
+
+    As part of this setup, the text which is reported for each possible
+    state of a negated service result can be explicitly specified,
+    overriding the text that would normally be reported.  This feature
+    can be used to better reflect the seriousness (or lack thereof)
+    of the reported state result.
+
+(*) More performance data is now published as part of the "fping_process"
+    service check data which is output at the end of each processing cycle.
+    The full set of performance statistics which can now be used for RRD
+    data collection and graphing is now:
+
+	hosts        The total number of hosts processed in this cycle.
+
+	pingtime     The total amount of time (seconds) taken for all
+		     phases of this processing cycle, including querying
+		     the monarch database, probing for host status, and
+		     submitting all the results.
+
+	sends        The number of send operations used in this processing
+		     cycle.  Mostly useful when using NSCA to submit results,
+		     rather than direct writes to the Nagios command pipe.
+
+	submit_time  The amount of time (seconds) used just for the data
+		     submission part of this processing cycle.  Useful both
+		     for debugging and for tuning the max_hosts_per_send_nsca
+		     and delay_between_sends options in the config file.
+
+    These metrics are in addition to the per-host/service ping times
+    which are reported as the "rta" (round-trip average) time for the ping
+    packets, in milliseconds.  (Note that in practice, the value reported
+    for the "rta" metric might not be an average of multiple trips.)
+
+(*) The config file now allows greater control over the amount of
+    debug data logged (lists of IP addresses, hosts, parents, and
+    services), via the new debug_list_detail option.
+
+See comments in the new config file for details on how to set the options
+noted above.

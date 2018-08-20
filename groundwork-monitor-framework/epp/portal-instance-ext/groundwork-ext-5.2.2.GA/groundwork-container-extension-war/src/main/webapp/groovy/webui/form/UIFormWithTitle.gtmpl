@@ -1,0 +1,138 @@
+<% 
+    import org.exoplatform.webui.form.UIFormInputBase;
+    
+    String fieldName; %>
+<div class="UIFormWithTitle $uicomponent.id" onkeypress="javascript:SubmitAction.call(this, event);">
+    <div class="TitleBar"><%=_ctx.appRes(uicomponent.getName() + ".title")%></div>
+    <% uiform.begin() %>
+    <div class="HorizontalLayout">
+        <div class="FormContainer">
+            <table class="UIFormGrid">
+                <% 
+                    for(field in uiform.getChildren()) { 
+                        if(field.isRendered()) {
+                %>
+                            <tr>
+                                <%fieldName = uicomponent.getLabel(field.getName());%>
+                                <%if(field instanceof UIFormInputBase && !fieldName.equals(uicomponent.getId())) { %>                                               
+                                    <td class="FieldLabel">
+                                        <%if(fieldName != null && fieldName.length() > 0) {%> 
+                                            <%=uicomponent.getLabel(field.getName()) %>
+                                        <%}%>
+                                    </td>
+                                    <% if(field instanceof UIFormInputBase && field.isEditable()) { %>
+                                        <td class="FieldComponent"><% uiform.renderField(field) %></td>
+                                    <% }else { %>
+                                        <td class="NonEditableField"><% uiform.renderField(field) %></td>
+                                    <% } %> 
+                                <%} else {%>
+                                    <td class="FieldComponent" colspan="2"><% uiform.renderField(field) %></td>
+                                <%}%>
+                            </tr>
+                <%
+                        }
+                    }
+                %>
+            </table>
+            <%//Rerender this   component with the new structure%>
+            <%// start render action%>
+            <div class="UIAction"> 
+                <% for(action in uicomponent.getActions()) { 
+                         String actionLabel = _ctx.appRes(uicomponent.getName() + ".action." + action) 
+                         String link = uicomponent.event(action); 
+                %>
+                            <a href="javascript:window.scroll(0,0);" onclick="$link" class="ActionButton LightBlueStyle">$actionLabel</a>
+                <%}%>
+            </div>
+            <%// end render action%>
+        </div>
+    </div>
+    
+    
+    
+    <%uiform.end()%>
+    
+    <% if( uicomponent.getName().equals("AddGroup") || uicomponent.getName().equals("EditGroup")) { %>
+    <br/>
+    <div class="TitleBar">Advanced Group Options (Ext) </div>
+        <% uiform.begin() %>
+        <div class="HorizontalLayout">
+            <div class="FormContainer">
+            <table class="UIFormGrid">
+            </table>
+            </div>
+        </div>
+        <%uiform.end()%>
+    </div>
+    
+    <% } //end if AddGroup / EditGroup %>
+    
+</div>
+
+
+<script language="javascript">
+    function SubmitAction(event) {
+        var event = window.event || event;
+        var code;
+        if(event.keyCode) code = event.keyCode;
+        else if (event.which) code = event.which;
+        if(code ==13) {
+            this.onsubmit = function(){ return false; }             
+        }
+    }   
+</script>
+
+
+
+
+
+<div>
+  <p>
+    Received messages:
+    <div id="received_1">
+         
+    </div>
+  </p>
+   
+  <p>
+    Send message:
+    <input type="text" id="msg_1"/> <a href="#" onclick="send_1();">send</a>
+  </p>
+</div>
+
+<script type="text/javascript">
+   
+  Function.prototype.bind = function(object) {
+    var method = this;
+      return function() {
+      method.apply(object, arguments);
+    }
+  }
+   
+  function send_1() {
+    var msg = document.getElementById("msg_1").value;
+    eXo.core.Topic.publish("1", "/demo/org_portlet", msg);
+  }
+   
+  function Listener_1(){
+      
+  }
+   
+  Listener_1.prototype.receiveMsg = function(event) {
+    document.getElementById("received_1").innerHTML = 
+      document.getElementById("received_1").innerHTML + "<br />* " + 
+      event.senderId + ": " + event.message;
+  }
+   
+  function init_1() {
+    var listener_1 = new Listener_1();
+    eXo.core.Topic.subscribe("/demo/gw_portlet", listener_1.receiveMsg.bind(listener_1));
+  }
+   
+  init_1();
+</script>
+
+
+
+
+

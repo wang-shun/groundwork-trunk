@@ -1,0 +1,32 @@
+--- nedi/nodi.conf.orig	2018-04-28 05:19:27.000000000 -0700
++++ nedi/nodi.conf	2018-05-25 16:00:01.847513399 -0700
+@@ -13,7 +13,7 @@
+ uselogin	(User|username|login|(User|Login)\sName)\s?:\s?(\x1b\[[;\?0-9A-Za-z]+)*$
+ 
+ # Location of NeDi
+-nedipath	/var/nedi
++nedipath	/usr/local/groundwork/nedi
+ 
+ # This value needs to be set to the discovery interval in seconds. Make sure it
+ # corresponds to the NeDi crontab entry (e.g. hourly 1 * * *  => 3600).
+@@ -26,15 +26,16 @@
+ 
+ # Points to executable (leave empty to disable graphs)
+ # The "new" option enables some additional styling (will not work with rrdtool <1.4)
+-rrdcmd		rrdtool		new
++rrdcmd		/usr/local/groundwork/common/bin/rrdtool		new
+ 
+ # Choose backend (mysql or Pg)
+-backend		mysql
++backend		Pg
+ 
+ # DB params
+ # Using nedi DB by default, but can be changed to an alternative one (see arpwatch below)
+-dbname		nedi
+-;dbname		nedi_nodes
++# (Modified by GroundWork to use the nedi_nodes database.)
++;dbname		nedi
++dbname		nedi_nodes
+ dbuser		nedi
+ dbpass		dbpa55
+ dbhost		localhost

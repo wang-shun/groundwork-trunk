@@ -1,0 +1,292 @@
+#!/bin/bash
+#
+# bulk delete of devices from NeDi DB
+# for info, refer to command line option -h
+#
+# Till Elsner <elsner@acm.org>
+#
+# Ported to support PostgreSQL as an alternative to MySQL,
+# and to support NeDi 1.0.7, by GroundWork Open Source, Inc.
+#
+
+# These pathnames must be locally adjusted as necessary.
+mysql=mysql
+psql=psql
+
+function usage {
+	echo "Delete multiple devices from NeDi DB"
+	echo "bulkdelete.sh [-u username] [-p password] [-t dbtype] [-H hostname] [-d database] [(-r regexp)|(-e device)]"
+	echo "bulkdelete.sh -h"
+	echo
+	echo -e "-u username\tuser name for database connection"
+	echo -e "-p password\tpassword for database connection"
+	echo -e "-t dbtype\tdatabase type (optional, defaults to 'mysql'; can be 'postgresql')"
+	echo -e "-H hostname\tdatabase host (optional, defaults to 'localhost')"
+	echo -e "-d database\tdatabase to connect to (optional, defaults to 'nedi')"
+	echo -e "-r expression\tmatch devices to be deleted by (case-insensitive) regular expression"
+	echo -e "-e device\tdelete device with exactly matching name"
+	echo -e "-h\t\thelp"
+}
+
+function getDevices {
+	if [ $DBTYPE = mysql ]
+	then
+	    [ "$2" = 'r' ] && OP="REGEXP" || OP="="
+	    $mysql -h "$DBHOST" -u $DBUSER --password=$DBPASS -BN -e "SELECT device FROM devices WHERE device $OP '$1'" $DBNAME
+	fi
+	# psql doesn't allow passing a password on the command line,
+	# for security reasons.  It will prompt for one if necessary.
+	if [ $DBTYPE = postgresql ]
+	then
+	    [ "$2" = 'r' ] && OP="~*" || OP="="
+	    $psql -h "$DBHOST" -U $DBUSER -d $DBNAME -q -t -n -P border=0 -c "SELECT device FROM devices WHERE device $OP '$1'"
+	fi
+}
+
+function deleteDevice {
+	echo "device to delete = '$1'"
+	[ $DBTYPE = mysql ] && \
+	    $mysql -h "$DBHOST" -u $DBUSER --password=$DBPASS -e "DELETE FROM devices    WHERE device   = '$1'" $DBNAME && \
+	    $mysql -h "$DBHOST" -u $DBUSER --password=$DBPASS -e "DELETE FROM interfaces WHERE device   = '$1'" $DBNAME && \
+	    $mysql -h "$DBHOST" -u $DBUSER --password=$DBPASS -e "DELETE FROM modules    WHERE device   = '$1'" $DBNAME && \
+	    $mysql -h "$DBHOST" -u $DBUSER --password=$DBPASS -e "DELETE FROM links      WHERE device   = '$1'" $DBNAME && \
+	    $mysql -h "$DBHOST" -u $DBUSER --password=$DBPASS -e "DELETE FROM links      WHERE neighbor = '$1'" $DBNAME && \
+	    $mysql -h "$DBHOST" -u $DBUSER --password=$DBPASS -e "DELETE FROM configs    WHERE device   = '$1'" $DBNAME && \
+	    $mysql -h "$DBHOST" -u $DBUSER --password=$DBPASS -e "DELETE FROM monitoring WHERE device   = '$1'" $DBNAME && \
+	    $mysql -h "$DBHOST" -u $DBUSER --password=$DBPASS -e "DELETE FROM incidents  WHERE device   = '$1'" $DBNAME && \
+	    $mysql -h "$DBHOST" -u $DBUSER --password=$DBPASS -e "DELETE FROM vlans      WHERE device   = '$1'" $DBNAME && \
+	    $mysql -h "$DBHOST" -u $DBUSER --password=$DBPASS -e "DELETE FROM networks   WHERE device   = '$1'" $DBNAME && \
+	    $mysql -h "$DBHOST" -u $DBUSER --password=$DBPASS -e "DELETE FROM events     WHERE source   = '$1'" $DBNAME && \
+	    $mysql -h "$DBHOST" -u $DBUSER --password=$DBPASS -e "INSERT INTO devdel (device, \`user\`, \`time\`) VALUES ('$1', 'admin', UNIX_TIMESTAMP())" $DBNAME
+	# Partly because we don't want to be prompted multiple times for a password, we run
+	# everything for PostgreSQL deletes in a single go rather than as separate commands.
+	# Also, this makes it easy to wrap everything into a single transcation.
+	[ $DBTYPE = postgresql ] && echo \
+	    "DELETE FROM devices    WHERE device   = '$1';" \
+	    "DELETE FROM interfaces WHERE device   = '$1';" \
+	    "DELETE FROM modules    WHERE device   = '$1';" \
+	    "DELETE FROM links      WHERE device   = '$1';" \
+	    "DELETE FROM links      WHERE neighbor = '$1';" \
+	    "DELETE FROM configs    WHERE device   = '$1';" \
+	    "DELETE FROM monitoring WHERE device   = '$1';" \
+	    "DELETE FROM incidents  WHERE device   = '$1';" \
+	    "DELETE FROM vlans      WHERE device   = '$1';" \
+	    "DELETE FROM networks   WHERE device   = '$1';" \
+	    "DELETE FROM events     WHERE source   = '$1';" \
+	    "INSERT INTO devdel (device, \"user\", \"time\") VALUES ('$1', 'admin', extract(epoch from current_timestamp(0)));" \
+	    | $psql -h "$DBHOST" -U $DBUSER -d $DBNAME --single-transaction -f -
+}
+
+while [ -n "$1" ]
+do
+	case "$1" in
+		-h)
+			usage
+			exit
+			;;
+		-u)
+			shift
+			if [ -z "`echo "$1" | egrep -o "^[-]"`" ]
+			then
+				DBUSER=$1
+			else
+				echo "Expected user name with -u"
+				exit 1
+			fi
+			shift
+			;;
+		-p)
+			shift
+			if [ -z "`echo "$1" | egrep -o "^[-]"`" ]
+			then
+				DBPASS=$1
+			else
+				echo "Expected password with -p"
+				exit 1
+			fi
+			shift
+			;;
+		-t)
+			shift
+			if [ -z "`echo "$1" | egrep -o "^[-]"`" ]
+			then
+				DBTYPE=$1
+			else
+				echo "Expected database type with -t"
+				exit 1
+			fi
+			shift
+			;;
+		-H)
+			shift
+			if [ -z "`echo "$1" | egrep -o "^[-]"`" ]
+			then
+				DBHOST=$1
+			else
+				echo "Expected database hostname with -H"
+				exit 1
+			fi
+			shift
+			;;
+		-d)
+			shift
+			if [ -z "`echo "$1" | egrep -o "^[-]"`" ]
+			then
+				DBNAME=$1
+			else
+				echo "Expected database name with -d"
+				exit 1
+			fi
+			shift
+			;;
+		-r)
+			shift
+			if [ -z "`echo "$1" | egrep -o "^[-]"`" ]
+			then
+				MATCHEXP=$1
+				MATCHTYPE='r'
+			else
+				echo "Expected regualar expression -r"
+				exit 1
+			fi
+			shift
+			;;
+		-e)
+			shift
+			if [ -z "`echo "$1" | egrep -o "^[-]"`" ]
+			then
+				MATCHEXP=$1
+				MATCHTYPE='e'
+			else
+				echo "Expected device name with -e"
+				exit 1
+			fi
+			shift
+			;;
+		*)
+			echo "Unknown parameter $1"
+			exit 1
+			;;
+	esac
+done
+
+if [ -z "$DBTYPE" ]
+then
+	echo -e "Enter database type (mysql or postgresql): \c "
+	read DBTYPE
+	echo
+fi
+if [ -z "$DBTYPE" ]
+then
+	echo "NOTICE:  A MySQL database is being assumed."
+	DBTYPE="mysql"
+	echo
+fi
+if [ "$DBTYPE" != "mysql" -a "$DBTYPE" != "postgresql" ]
+then
+	echo 'ERROR:  Only "mysql" and "postgresql" are supported database types.'
+	exit 1
+fi
+
+if [ -z "$DBHOST" ]
+then
+	echo -e "Enter database hostname: \c "
+	read DBHOST
+	echo
+fi
+if [ -z "$DBHOST" ]
+then
+	echo "NOTICE:  A database on localhost is being assumed."
+	DBHOST="localhost"
+	echo
+fi
+
+if [ -z "$DBUSER" ]
+then
+	echo -e "Enter username for database: \c "
+	read DBUSER
+	echo
+fi
+
+if [ -z "$DBPASS" ]
+then
+	echo -e "Enter password for database user '$DBUSER': \c "
+	stty -echo
+	read DBPASS
+	stty echo
+	echo
+	echo
+fi
+
+[ -z "$DBNAME" ] && DBNAME="nedi"
+
+if [ -z "$MATCHTYPE" ]
+then
+	while [ "$MATCHTYPE" != 'r' -a "$MATCHTYPE" != 'e' ]
+	do
+		echo -e "Match devices names (e)xactly or by (r)egular expression? \c "
+		read -n 1 MATCHTYPE
+		echo
+		echo
+	done
+fi
+
+if [ -z "$MATCHEXP" ]
+then
+	if [ $MATCHTYPE = 'e' ]
+	then
+		echo -e "Delete device: \c "
+	else
+		echo -e "Delete devices matching the following regular expression: \c "
+	fi
+	read MATCHEXP
+fi
+
+if [ $MATCHTYPE = 'e' ]
+then
+	DEVICE=$(getDevices "$MATCHEXP" 'e')
+	[ $? -gt 0 ] && exit 2
+	if [ -z "$DEVICE" ]
+	then
+		echo "Device '$MATCHEXP' not found"
+		exit
+	fi
+	while [ "$DO" != 'y' -a "$DO" != 'n' ]
+	do
+		echo -e "Delete device '$DEVICE'? (y/n) \c "
+		read DO
+	done
+	[ "$DO" = 'y' ] && deleteDevice "$DEVICE"
+else
+	for DEV in $(getDevices "$MATCHEXP" 'r')
+	do
+		[ $? -gt 0 ] && exit 2
+		DEVICES[${#DEVICES[@]}]=$DEV
+	done
+	if [ ${#DEVICES[@]} -eq 0 ]
+	then
+		echo "No devices matching '$MATCHEXP' found"
+		exit
+	fi
+	echo "Devices matching '$MATCHEXP':"
+	i=0
+	while [ $i -lt ${#DEVICES[@]} ]
+	do
+		echo ${DEVICES[$i]}
+		(( i += 1 ))
+	done
+	while [ "$DO" != 'y' -a "$DO" != 'n' ]
+	do
+		echo -e "Delete all matching devices? (y/n) \c "
+		read DO
+	done
+	if [ "$DO" = 'y' ]
+	then
+		i=0
+		while [ $i -lt ${#DEVICES[@]} ]
+		do
+			deleteDevice "${DEVICES[$i]}"
+			(( i += 1 ))
+		done
+	fi
+fi

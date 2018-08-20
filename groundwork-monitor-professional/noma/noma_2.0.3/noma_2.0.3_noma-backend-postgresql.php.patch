@@ -1,0 +1,134 @@
+*** noma_2.0.3/share/inc/noma-backend-postgresql.php.orig	Mon Aug 20 17:53:20 2012
+--- noma_2.0.3/share/inc/noma-backend-postgresql.php	Tue Aug 21 00:06:26 2012
+***************
+*** 0 ****
+--- 1,129 ----
++ <?php
++ 
++ # COPYRIGHT:
++ #
++ # This software is Copyright (c) 2007-2008 NETWAYS GmbH, Christian Doebler
++ #                                <support@netways.de>
++ #
++ # (Except where explicitly superseded by other copyright notices)
++ #
++ #
++ # LICENSE:
++ #
++ # This work is made available to you under the terms of Version 2 of
++ # the GNU General Public License. A copy of that license should have
++ # been provided with this software, but in any event can be snarfed
++ # from http://www.fsf.org.
++ #
++ # This work is distributed in the hope that it will be useful, but
++ # WITHOUT ANY WARRANTY; without even the implied warranty of
++ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ # General Public License for more details.
++ #
++ # You should have received a copy of the GNU General Public License
++ # along with this program; if not, write to the Free Software
++ # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
++ # 02110-1301 or visit their web page on the internet at
++ # http://www.fsf.org.
++ #
++ #
++ # CONTRIBUTION SUBMISSION POLICY:
++ #
++ # (The following paragraph is not intended to limit the rights granted
++ # to you to modify and distribute this software under the terms of
++ # the GNU General Public License and is only of importance to you if
++ # you choose to contribute your changes and enhancements to the
++ # community by submitting them to NETWAYS GmbH.)
++ #
++ # By intentionally submitting any modifications, corrections or
++ # derivatives to this work, or any other work intended for use with
++ # this Software, to NETWAYS GmbH, you confirm that
++ # you are the copyright holder for those contributions and you grant
++ # NETWAYS GmbH a nonexclusive, worldwide, irrevocable,
++ # royalty-free, perpetual, license to use, copy, create derivative
++ # works based on those contributions, and sublicense and distribute
++ # those contributions and any derivatives thereof.
++ #
++ # Nagios and the Nagios logo are registered trademarks of Ethan Galstad.
++ 
++ // There doesn't seem to be any way to capture an error message from a
++ // bad connect attempt to PostgreSQL, other than using an error handler.
++ function trap_error($errno,$errstr,$errfile,$errline) {
++     global $global_error;
++     $global_error = "$errstr at $errfile line $errline";
++ }
++ 
++ /**
++  * queryPostgreSQLDB - queries PostgreSQL db and return result as array
++  *
++  * @param               string          $query                  SQL query to execute
++  * @param               boolean         $return_count   give back number of rows (optional)
++  * @return                                                                      array of result rows
++  */
++ function queryPostgreSQLDB ($query, $return_count = false, $ndo = false) {
++ 
++         // set shortcut to database configuration
++         if (!$ndo) {
++ 		global $sqllog;
++                 global $dbConf;
++         } else {
++                 global $dbNDO;
++ 		global $sqllog;
++                 $dbConf = &$dbNDO;
++         }
++ 
++         // connect to database host
++ 	set_error_handler("trap_error");
++ 	$escape = array('\\' => '\\\\', '\'' => '\\\'');
++ 	$dbhost = strtr( $dbConf['host'],     $escape );
++ 	$dbname = strtr( $dbConf['database'], $escape );
++ 	$dbuser = strtr( $dbConf['user'],     $escape );
++ 	$dbpass = strtr( $dbConf['password'], $escape );
++         if ($dbConf['persistent']) {
++                 $dbh = pg_pconnect("host='$dbhost' dbname='$dbname' user='$dbuser' password='$dbpass'")
++ 			or die("Could not connect to database: $global_error\n");
++         } else {
++                 $dbh = pg_connect("host='$dbhost' dbname='$dbname' user='$dbuser' password='$dbpass'")
++ 			or die("Could not connect to database: $global_error\n");
++         }
++ 	restore_error_handler();
++ 
++         // query database
++ 	// I would prefer to use pg_send_query()/pg_get_result() so we could get back a query-specific
++ 	// handle to pass to pg_result_error($result) (and get perhaps better quality error messages
++ 	// than are produced by pg_last_error($dbh)) if an error occurs, since pg_query() just returns
++ 	// FALSE in that case, leaving nothing to pass to pg_result_error().  But calling those routines
++ 	// can be a bit complex (it has some timing issues; see the doc), so for this first pass we take
++ 	// the easy way out.
++         $result = pg_query($dbh, $query) or die("Could not execute query: " . pg_last_error($dbh));
++ 
++         $count = 0;
++         if ($return_count) {
++                 $count = pg_num_rows($result);
++         }
++ 
++         // initialize result variable
++         $dbResult = array();
++ 
++         // fetch result if it makes sense
++         $queryCmd = strtolower(substr($query, 0, 6));
++         if ($queryCmd == 'select') {
++                 while ($row = pg_fetch_array($result, NULL, PGSQL_ASSOC)) {
++                         $dbResult[] = $row;
++                 }
++                 // free result memory
++                 pg_free_result($result);
++         }
++ 
++         // close database connection if not persistent
++         if (!$dbConf['persistent']) pg_close($dbh);
++ 
++         if ($return_count) {
++                 return array($count, $dbResult);
++         } else {
++                 return $dbResult;
++         }
++ 
++ }
++ 
++ ?>

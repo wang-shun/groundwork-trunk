@@ -1,0 +1,75 @@
+#!/bin/bash -e
+
+# make_staged_db
+# make_shadow_db
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+PATH=/bin:/usr/bin
+
+script=`basename $0`
+if [ $script = make_staged_db ]; then
+    target_path_name=staged_path
+elif [ $script = make_shadow_db ]; then
+    target_path_name=shadow_path
+else
+    echo "ERROR:  $script was invoked under an unexpected name"
+    exit 1
+fi
+
+print_usage() {
+    echo "usage:  $script {dump_command} {$target_path_name} {local_dump_prefix}"
+    echo "where:  local_dump_prefix has the form:"
+    echo "            {source-system-name}.{database-name}"
+}
+
+if [ $# -ne 3 ]; then
+    print_usage
+    exit 1
+fi
+
+dump_command="$1"
+target_path="$2"
+local_dump_prefix="$3"
+
+if [ $script = make_staged_db ]; then
+    if [[ ! ("$target_path" =~ '/staged$') ]]; then
+       echo 'ERROR:  $target_path_name must end in "/staged"'
+       exit 1
+    fi
+else
+    if [[ ! ("$target_path" =~ '/shadow$') ]]; then
+       echo 'ERROR:  $target_path_name must end in "/shadow"'
+       exit 1
+    fi
+fi
+
+# I wish there was a do...while construct in the shell.
+datetime=`/bin/date +%F.%H_%M_%S`
+# Avoid unexpected but maybe possible collisions.
+while [ -f $target_path/$local_dump_prefix.$datetime.tmp ]
+do
+    sleep 2
+    datetime=`/bin/date +%F.%H_%M_%S`
+done
+
+mkdir -p $target_path
+rm -f $target_path/*.tmp $target_path/*.sql
+
+# Bummer:  tcsh would naturally reflect a bad status from the dump portion
+# of a "mysqldump | sed" pipeline, while by default bash ignores that and
+# just reports the status of the sed command (which will generally always
+# be zero).  This makes it impossible to detect fundamental problems with
+# taking the dump.  To get the proper status reported in bash, we must use
+# "set -o pipefail" or ${PIPESTATUS[*}}.  pipefail only became available
+# in bash 3.0, so we need to test on all our supported platforms to see
+# that their versions of bash are sufficiently recent.
+# RHEL4:    bash-3.0-19.3       (pipefail is available)
+# SUSE10:   bash-3.1-24.14      (pipefail is available)
+# Ubuntu8:  bash-3.2.0ubuntu16  (needs verification)
+# Ubuntu9:  bash 4.0.33         (pipefail is available)
+set -o pipefail
+eval $dump_command > $target_path/$local_dump_prefix.$datetime.tmp
+
+mv $target_path/$local_dump_prefix.$datetime.tmp $target_path/$local_dump_prefix.$datetime.sql

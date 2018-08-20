@@ -1,0 +1,74 @@
+<div style="width: 300px;">
+
+<script type="text/javascript">
+<!--
+	dojo.require('dojo.widget.ColorPalette');
+-->
+</script>
+
+<h1>Create A New Dashboard...</h1>
+<hr />
+<table>
+<tr>
+	<td colspan="2" tal:content="structure target:errormsg"></td>
+</tr>
+<tr>
+	<td>
+		<b>Dashboard Name:</b>
+	</td>
+	<td>
+			<input tal:replace="structure target:name" type="text" size="20" />
+	</td>
+</tr>
+
+<tr>
+	<td> 
+		<b>Background Color:</b>
+	</td>
+	<td>
+	<table>
+	<tr>
+		<td><span tal:content="structure target:backgroundcolor">Color</span></td>
+		<td>
+		<a tal:attributes="href string:javascript:dojo.widget.manager.getWidgetById('${self/getIdentifier}__colorswatch').showDialog();">Select Color</a>
+		<div dojoType="ToolbarColorDialog" tal:attributes="id string:${self/getIdentifier}__colorswatch; onSetValue string:addMessage('framework', 'object', [{name: 'identifier', type: 'string', value: '${self/getIdentifier}'}, {name: 'setcolor', type: 'string', value: arguments[1]}]);; sendMessageQueue();">Color Dialog</div>
+		</td>
+	</tr>
+	</table>
+	</td>
+</tr>
+<tr>
+	<td> 
+		<b>Background Image:</b>
+	</td>
+	<td>
+<input tal:replace="structure target:backgroundImageURL" type="text" />
+	</td>
+	<!-- <td>
+	<input tal:replace="structure target:fileBrowse" type="file" value="Ok" /><br />
+	</td> -->
+</tr>
+<tr><td></td>
+	<td><table><tr><td><label><input tal:replace="structure target:repeatX" type="checkbox" /></label> </td><td>Repeat Image Horizontally?
+		</td></tr></table> 
+	</td>
+	</tr>
+	<tr>
+	<td></td>
+	<td><table><tr><td><label><input tal:replace="structure target:repeatY" type="checkbox" /></label></td><td>Repeat Image Vertically?</td></tr></table>
+	</td>
+</tr>
+ 
+<tr>
+	<td>
+	</td>
+	
+	<td align="right">
+	 <table><tr><td><input tal:replace="structure target:submitButton" type="button" value="Ok" /></td>
+	 <td><input tal:replace="structure target:cancel" type="button" value="Cancel" /></td></tr></table>
+		 
+		 
+	</td>
+</tr>
+</table>
+</div>

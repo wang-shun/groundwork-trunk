@@ -1,0 +1,247 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"><html lang="en">  <head><title>GroundWork Foundation Overview</title>
+    <link rel="stylesheet" 
+type="text/css" href="bookshelf.css">
+  </head>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2006  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+-->
+  <body><table border="0" cellpadding="1" cellspacing="0">
+  <tr>
+    <td valign="top">    
+<h1>GroundWork Foundation Overview</h1>
+<!-- Start Contents table -->
+<table width="100%" class="data" cellpadding="5" cellspacing="1">
+  <tr 
+class="tableHeader">
+    <td><h2>Contents</h2></td>
+  </tr>
+  <tr>
+    <td class="tableFill04">
+    <ul class="level01">
+      <li><a 
+href="#overview">GroundWork Foundation Overview</a></li>
+      <li><a href="#collagedataobjects">GroundWork Foundation Data Objects and Attributes</a></li>
+      <li><a href="Java_API.html">GroundWork Foundation Java API</a></li>
+      <li><a href="PHP_API.html">GroundWork Foundation PHP API</a></li>
+      <li><a href="Perl_API.html">GroundWork Foundation Perl API</a></li>
+      <li><a href="Collage_Feeders.html">GroundWork Foundation Feeders</a></li>
+    </ul>    
+    </td>
+  </tr>
+</table>
+<!-- End Contents table -->
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Overview table -->
+<table class="data" cellpadding="5" cellspacing="1">
+  <tr class="tableHeader">
+    <td><a name="overview"><h2>GroundWork Foundation Overview</h2></a></td>
+  </tr>
+  <tr>
+    <td class="tableFill04">
+Welcome to the GroundWork Foundation Developer Toolkit.  This toolkit provides application developers access to the underlying data in the GroundWork Foundation package.  
+Using the toolkit, programmers can use PHP, Perl, Java or third party products to:<br><br>
+    <ul class="level01">
+      <li>Build custom displays of real-time monitoring information.</li>
+      <li>Build custom reports from historical monitoring information.</li>
+      <li>Monitor additional devices or systems by feeding monitoring information into the system.</li>
+      <li>Consolidate information from disparate systems into a single view.</li>      
+      <li>Integrate heterogeneous systems by using GroundWork Foundation as an intermediary system.<br><br></li>
+    </ul>    
+The Developer Tookit includes documentation that describes the available APIs and sample applications.<br><br>
+The toolkit is based on a framework developed by GroundWork Open Source Solutions, called GroundWork Foundation. The intent of GroundWork Foundation is to provide
+a data model that integrates the components of an IT infrastructure that requires monitoring.  Flexible methods of integrating data into the data store
+are provided, allowing different tools, applications and databases to feed data into GroundWork Foundation. GroundWork Foundation will normalize the data so it can be retrieved in a consistent
+manner. GroundWork Foundation then provides various APIs to allow the normalized data to be retrieved.  The GroundWork Foundation package includes Nagios, as the main monitoring
+system, integrated with GroundWork Foundation and a set of applications which use the GroundWork Foundation APIs to present real-time views and reports. An architectural diagram of the
+GroundWork Foundation package is shown below.<br><br>
+    <img src="images/FoundationOverview.jpg" border="0"><br><br>
+Since the Nagios monitoring system is integrated in this package, any information gathered by any Nagios plugin can be integrated into the system.  A Nagios feeder
+takes the information from the Nagios system and inserts it into the GroundWork Foundation database.<br><br>The data objects contained in GroundWork Foundation maps closely to the Nagios objects.
+This includes:<br><br>
+<table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td class="row1" width="25%">Host Groups</td>
+    <td class="row2" width="75%">This includes Hosts as members.</td>
+  </tr>
+  <tr>
+    <td class="row1">Hosts</td>
+    <td class="row2">This typically represents physical devices, and includes Services.</td>  
+</tr>
+  <tr>
+    <td class="row1">Service</td>
+    <td class="row2">This typically represents a Nagios plugin executing on a specific host.  A Host-Service combination is unique in the monitoring system.</td>
+  </tr>
+</table><br>
+The following type of information can be retrieved:<br><br><table width="100%" cellpadding="5" cellspacing="1">
+  <tr>
+    <td class="row1" width="25%">Host Status</td>
+    <td class="row2" width="75%">This represents the current status and attributes of Host objects.</td>
+  </tr>
+  <tr>
+    <td class="row1">Service Status</td>
+    <td class="row2">This represents the current status and attributes of Service objects.</td>
+  </tr>
+  <tr>
+    <td class="row1">Events</td>
+    <td class="row2">These are typically time stamped messages that are generated by a monitoring system or managed device.</td>
+  </tr>
+  <tr>
+    <td class="row1">Host Alerts</td>
+    <td class="row2">Generated when a host changes state.</td>
+  </tr>
+  <tr>
+    <td class="row1">Host Notifications</td>
+    <td class="row2">Generated when a notification occurs based on a Host Alert event.</td>
+  </tr>
+  <tr>
+    <td class="row1">Service Alerts</td>
+    <td class="row2">Generated when a service changes state.</td>
+  </tr>
+  <tr>    
+<td class="row1">Service Notifications</td>
+    <td class="row2">Generated when a notification occurs based on a Service Alert event.</td>  
+</tr>
+</table><br>
+APIs built on top of the GroundWork Foundation framework allows this information to be retrieved. The APIs allow programs to query by object and data 
+type. Separate APIs are available for PHP, Perl and Java programs. In addition to the provided samples, the GroundWork Foundation status views (Network View, 
+Trouble View and Event View) are built using the PHP API.<br><br>
+In the GroundWork Foundation package, the various web applications are delivered under the Jetspeed open source framework.  Jetspeed allows different applications to be packaged and delivered in a unified view and with a consistent look and 
+feel. A central login and security mechanism is used. The individual applications are referred to as portlets, and can be customized by an administrator 
+or the end user. The samples provided are shown as portlets, but standard web applications, such as CGI or JSP, can use the GroundWork Foundation APIs. Jasper Reports 
+is an open source report generator used by Java application developers that allows easy creation of custom reports. A Jasper Reports sample is also 
+included.<br><br>
+The Monarch tool is a web application that is used to configure the Nagios system. It stores the Nagios configuration data in its own 
+database.  At this point in time, the Monarch database is a separate database then the GroundWork Foundation database, but GroundWork intends to integrate the two in a 
+future release.
+<!-- Start Overview table -->
+  <tr class="tableHeader">
+    <td><a name="collagedataobjects"><h2>GroundWork Foundation Data Objects and Attributes</h2></a></td>  
+</tr>
+  <tr>
+    <td>GroundWork Foundation's data store has a flexible data format that can be expanded if needed. The GroundWork Foundation data types and attributes implemented in 
+the GroundWork Foundation package that are applicable to a Nagios-centric are listed below.
+    <h2>Host Status Attributes</h2>
+    <ul class="level01">
+      <li class="level01">MonitorStatus</li>
+      <li>LastCheckTime</li>
+      <li>LastStateChange</li>
+      <li>isAcknowledged</li>
+      <li>TimeUp</li>
+      <li>TimeDown</li>
+      <li>TimeUnreachable</li>
+      <li>LastNotificationTime</li>
+      <li>CurrentNotificationNumber</li>
+      <li>isNotificationsEnabled</li>
+      <li>isEventHandlersEnabled</li>
+      <li>isChecksEnabled</li>
+      <li>isFlapDetectionEnabled</li>
+      <li>isHostIsFlapping</li>
+      <li>PercentStateChange</li>
+      <li>ScheduledDowntimeDepth</li>
+      <li>isFailurePredictionEnabled</li>
+      <li>isProcessPerformanceData</li>
+      <li>LastPluginOutput</li>
+    </ul>
+    <h2>Service Status Attributes</h2>
+    <ul>
+      <li>Host</li>
+      <li>MonitorStatus</li>
+      <li>RetryNumber</li>
+      <li>StateType</li>
+      <li>LastCheckTime</li>
+      <li>NextCheckTime</li>
+      <li>CheckType</li>
+      <li>isChecksEnabled</li>
+      <li>isAcceptPassiveChecks</li>
+      <li>isEventHandlersEnabled</li>
+      <li>LastStateChange</li>
+      <li>isProblemAcknowledged</li>
+      <li>LastHardState</li>
+      <li>TimeOK</li>
+      <li>TimeUnknown</li>
+      <li class="bsList">TimeWarning</li>
+      <li>TimeCritical</li>
+      <li>LastNotificationTime</li>
+      <li>CurrentNotificationNumber</li>
+      <li>isNotificationsEnabled</li>
+      <li>Latency</li>
+      <li>ExecutionTime</li>
+      <li>isFlapDetectionEnabled</li>
+      <li>isServiceFlapping</li>
+      <li>PercentStateChange</li>
+      <li>ScheduledDowntimeDepth</li>
+      <li>isProcessPerformanceData</li>
+      <li>isObsessOverService</li>
+    </ul>
+    <h2>Event - Host or Service Alert</h2>
+    <ul>
+      <li>Host</li>
+      <li>ServiceDescription</li>
+      <li>Severity</li>
+      <li>HostStatus</li>
+      <li>ServiceStatus</li>
+      <li>TextMessage</li>
+      <li>ReportDate</li>
+      <li>LastInsertDate</li>
+      <li>FirstInsertDate</li>
+      <li>SubComponent</li>
+      <li>ErrorType</li>
+    </ul>
+    <h2>Event - Host or Service Notification</h2>
+    <ul>
+      <li>Host</li>
+      <li>ServiceDescription</li>
+      <li>Severity</li>
+      <li>HostStatus</li>
+      <li>ServiceStatus</li>
+      <li>TextMessage</li>
+      <li>ReportDate</li>
+      <li>LastInsertDate</li>
+      <li>FirstInsertDate</li>
+      <li>SubComponent</li>
+      <li>ErrorType</li>
+      <li>LoggerName</li>
+    </ul>
+    <h2>Host Groups</h2>
+    <ul>
+      <li>Name</li>
+      <li>Description</li>
+    </ul>
+    <h2>Device</h2>
+    <ul>
+      <li>DisplayName</li>
+      <li>Description</li>
+      <li>Identification</li>
+    </ul>
+    <h2>Monitoring Server</h2>
+    <ul>
+      <li>MonitorServerName</li>
+      <li>IP</li>
+      <li>Description</li>
+    </ul>
+    </td>
+  </tr>
+</table>
+    </td>  
+</tr>
+</table>
+  </body>
+</html>

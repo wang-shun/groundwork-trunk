@@ -1,0 +1,51 @@
+GWME-7.1.1-9 - NoMa fixes
+
+h2. Problem
+
+NoMa has been found to have a few bugs affecting the reliable delivery of notifications.
+
+* GWMON-10961:  The {{fas.executor.interrupt}} property should be present in our standard {{foundation.properties}} file.
+* GWMON-12574:  Error in handling a socket file descriptor.
+* GWMON-12857:  Perl warning messages produced by the NoMa daemon.
+* GWMON-12863:  Foundation may time out the {{alert_via_noma.pl}} script before it can even start.
+* GWMON-12997:  NoMa does not escalate beyond the first run of rules, even when using rollover.
+* GWMON-13006:  NoMa.yaml needs restricted permissions
+
+(There may be others; revise that list when the patch is complete.)
+
+h2. Solution
+
+This patch rolls up all the available NoMa-related fixes into one patch for the GWME 7.1.1 release.  Some NoMa files are replaced, and the {{config/foundation.properties}} file is augmented with a new configuration option.
+
+That new option ({{fas.executor.interrupt}}) controls how long the Java thread that runs the {{alert_via_noma.pl}} script for CloudHub-related notifications can run.  Field experience shows that the historical hardcoded timeout has been too small for reliable operation in the context of NoMa.  Exposing this parameter in the config file allows it to be adjusted if necessary.  The default in the config file is now set an order of magnitude larger, which should be sufficient to prevent problems even on large, heavily-loaded systems.
+
+h2. Installing
+
+# Download the patch file tar archive to, for example, the {{/tmp}} directory.
+{attachments:patterns=TB7.1.1-9.noma_fixes.tgz}
+# Unroll the downloaded tar archive.  The patch files will appear in the {{TB7.1.1-9.noma_fixes/}} subdirectory.  Go there and run the install script.
+{noformat}
+tar xvfz TB7.1.1-9.noma_fixes.tgz
+cd TB7.1.1-9.noma_fixes
+./TB7.1.1-9_install
+{noformat}
+The original files which are affected by this patch are first backed up, then the changes are applied, and the patch directory is adjusted to reflect the application of this patch.
+# Bounce NoMa, to run using the replacement files.  Also bounce Foundation, to pick up the non-default setting for the {{fas.executor.interrupt}} parameter.
+{noformat}
+service groundwork restart noma
+service groundwork restart gwservices
+{noformat}
+
+h2. Uninstalling
+
+# Go back to the patch directory, and run the uninstall script.
+{noformat}
+cd TB7.1.1-9.noma_fixes
+./TB7.1.1-9_uninstall
+{noformat}
+The backup directory will be accessed to restore the original files, and the patch directory will be processed to reflect the restoration of those files.
+# Bounce NoMa and Foundation, to revert back to the original files and the original setting for the {{fas.executor.interrupt}} parameter.
+{noformat}
+service groundwork restart noma
+service groundwork restart gwservices
+{noformat}

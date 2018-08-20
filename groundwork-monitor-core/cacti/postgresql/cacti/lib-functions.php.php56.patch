@@ -1,0 +1,20 @@
+--- cacti/htdocs/lib/functions.php.orig	2017-05-18 20:16:39.000000000 -0700
++++ cacti/htdocs/lib/functions.php	2017-05-19 16:35:35.000000000 -0700
+@@ -417,7 +417,7 @@
+ /* kill_session_var - kills a session variable using two methods -- session_unregister() and unset() */
+ function kill_session_var($var_name) {
+ 	/* register_global = off: reset local settings cache so the user sees the new settings */
+-	session_unregister($var_name);
++	// session_unregister($var_name);
+ 
+ 	/* register_global = on: reset local settings cache so the user sees the new settings */
+ 	unset($_SESSION[$var_name]);
+@@ -527,7 +527,7 @@
+ 			$log_type = "note";
+ 
+ 		if (strlen($log_type)) {
+-			define_syslog_variables();
++			// define_syslog_variables();
+ 
+ 			if ($config["cacti_server_os"] == "win32")
+ 				openlog("Cacti", LOG_NDELAY | LOG_PID, LOG_USER);

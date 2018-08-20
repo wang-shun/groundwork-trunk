@@ -1,0 +1,22 @@
+The GDMA-on-HPUX support scripts in this directory get installed in the
+locations listed.
+
+ctlscript.sh		/opt/groundwork/ctlscript.sh
+
+gdma.dot.profile	/usr/local/groundwork/users/gdma/.profile
+
+gdma			/sbin/init.d/gdma
+
+			Note:  we also need some symlinks to this file
+			from neighboring /sbin/rc#.d/ directories, to get
+			the GDMA start and kill actions actually initiated.
+			Specifically, we need these two symlinks:
+
+			/sbin/rc2.d/S999gdma -> /sbin/init.d/gdma
+			/sbin/rc1.d/K000gdma -> /sbin/init.d/gdma
+
+Also note:
+
+The /opt/groundwork/scripts/setenv.sh file installed on HP-UX must itself
+refer to /opt/groundwork/... paths, not to /usr/local/groundwork/... paths.
+

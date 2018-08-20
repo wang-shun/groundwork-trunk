@@ -1,0 +1,52 @@
+#!/bin/bash -e
+
+# syslog-ng.deploy
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+# {replica_path} {ready_path} {erase_path} {shadow_path} {working_path} {copy_pattern} ...
+
+if [ $# -lt 6 ]; then
+    program=`basename $0`
+    echo "usage:  $program {replica_path} {ready_path} {erase_path} {shadow_path} {working_path} {copy_pattern} ..."
+    exit 1
+fi
+
+replica_path="$1"
+ready_path="$2"
+erase_path="$3"
+shadow_path="$4"
+working_path="$5"
+shift 5
+copy_patterns="$*"
+
+script_directory=`dirname $0`
+scripts_path="$script_directory/../../../scripts"
+
+$scripts_path/make_ready_obj "$replica_path" "$ready_path" "$erase_path"
+
+# Stop any application program that might either read or alter the content of the application
+# files.  That includes any daemons, any cron jobs, and any other periodically-run programs.
+# Each must either be brought down completely, or at least have its contents flushed and be
+# prevented from making further alterations for the time being, or be blocked from starting.
+# If it is a program that is run periodically that might now be in progress, it must either
+# be stopped or we must wait for its current cycle to complete (with some timeout before
+# killing it anyway).
+sudo /usr/local/groundwork/common/scripts/ctl-syslog-ng.sh stop
+
+# FIX THIS:  make sure multiple copy patterns make it through this intact
+$scripts_path/make_shadow_app "$working_path" "$shadow_path" $copy_patterns
+
+$scripts_path/make_backup_obj "$shadow_path"
+
+$scripts_path/make_working_app "$ready_path" "$working_path"
+
+# Start or unblock the application programs stopped or blocked above.  Reverse the actions
+# we took above to stop the application, so that daemons will begin anew or pick up again
+# from where they were paused, cron jobs get unblocked, and any other related programs may
+# run again.  If a daemon was merely paused above and not brought down completely, it must
+# now be told to re-initialize itself from the current configuration in the application
+# files, which may have changed in the deploy operation.
+sudo /usr/local/groundwork/common/scripts/ctl-syslog-ng.sh start
+

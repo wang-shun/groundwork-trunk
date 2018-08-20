@@ -1,0 +1,113 @@
+#!/usr/bin/perl -w
+
+###############################################################################
+# CheckNewMac.pl
+# 2009-11-03
+# Upgraded to NeDi 1.0.7 and ported to also support PostgreSQL by
+# GroundWork Open Source, Inc.,  April 2012.
+###############################################################################
+# A tiny add-On for Nedi release 1.0.4 by josef kierberger
+# j.kierberger@gmx.at
+###############################################################################
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+###############################################################################
+# Description: This script loops through the nodes-table from nedi and
+# compares the year/month/day/hour part of the -firstseen- attribute with
+# the current time. If there is a match, that means a new mac address was
+# found in the last hour, an email with the new found mac address will be 
+# sent via localhost.
+# For correct function you should run it after the hourly nedi-run.
+# Moreover the arp aging time in your switches should be one hour.
+###############################################################################
+
+use strict;
+
+
+# PERL MODULES
+use DBI;
+use Net::SMTP;
+
+# CONFIG VARIABLES
+# FIX MINOR:  draw the credentials from the nedi.conf file instead of hardcoding them here
+my $dbtype       = "mysql";                    # "mysql" or "postgresql"
+my $dbname       = "nedi";
+my $dbhost       = "localhost";
+my $dbport       = "3306";                     # "3306" (mysql) or "5432" (postgresql)
+my $dbuser       = "nedi";
+my $dbpass       = "dbpa55";
+my $emailAddress = 'support@yourdomain.com';
+
+
+###############################################################################
+# OPEN DATABASE
+
+my $dsn = '';
+if ( defined($dbtype) && $dbtype eq 'postgresql' ) {
+    $dsn = "DBI:Pg:dbname=$dbname;host=$dbhost;port=$dbport";
+}
+else {
+    $dsn = "DBI:mysql:database=$dbname;host=$dbhost;port=$dbport";
+}
+my $dbh = undef;
+eval {
+    $dbh = DBI->connect( $dsn, $dbuser, $dbpass, {  RaiseError => 1, PrintError => 0, AutoCommit => 1 } );
+};
+if ($@) {
+    chomp $@;
+    die "ERROR:  $@\n";  
+}
+
+eval {
+    my $query = "SELECT firstseen,mac,name,nodip FROM nodes";
+    my $sth = $dbh->prepare($query);
+    my $firstseen;
+    my $mac;
+    my $name;
+    my $ip;
+
+    $sth->execute();
+    $sth->bind_columns(\$firstseen,\$mac,\$name,\$ip);
+
+    # LOOP THROUGH RESULTS
+
+    while($sth->fetch()) {
+	my ($sec,$min,$hour,$day,$month,$year) = localtime();
+	$year = 1900 + $year;
+	$month++;
+	my $thisHour = sprintf ("%02d/%02d/%02d/%02d", $year, $month, $day,$hour);
+     
+	($sec,$min,$hour,$day,$month,$year) = localtime($firstseen);
+	$year = 1900 + $year;
+	$month++;
+	my $myfirstseen = sprintf ("%02d/%02d/%02d/%02d", $year, $month, $day, $hour);
+
+	if ($myfirstseen eq $thisHour){
+	    my $a = $ip>>24;
+	    my $b = $ip<<8>>24;
+	    my $c = $ip<<16>>24;
+	    my $d = $ip<<24>>24;
+	    my $myIP = $a.".".$b.".".$c.".".$d;
+	    my $smtp = Net::SMTP->new('localhost');
+	    $smtp->mail($ENV{USER});
+	    $smtp->to($emailAddress);
+	    $smtp->data();
+	    $smtp->datasend("To: support\n");
+	    $smtp->datasend("\n");
+	    $smtp->datasend("New MAC found in network!\n");
+	    $smtp->datasend("MAC: ",$mac,"\n");
+	    $smtp->datasend("IP: ",$myIP,"\n");
+	    $smtp->datasend("Name: ",$name,"\n");
+	    $smtp->dataend();
+	    $smtp->quit;
+	}
+    }
+    $sth->finish if $sth;
+};
+if ($@) {
+    chomp $@;
+    die "ERROR:  $@\n";  
+}
+

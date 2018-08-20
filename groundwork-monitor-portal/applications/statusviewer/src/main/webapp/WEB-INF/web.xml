@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee"
+         xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd" version="3.0">
+	<display-name>portal-statusviewer</display-name>
+	<filter>
+		<filter-name>ResourceRequestFilter</filter-name>
+		<filter-class>org.exoplatform.portal.application.ResourceRequestFilter</filter-class>
+	</filter>
+
+	<filter-mapping>
+		<filter-name>ResourceRequestFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+	<context-param>
+      <param-name>org.jboss.jbossfaces.JSF_CONFIG_NAME</param-name>
+      <param-value>Mojarra-1.2</param-value>
+ 	</context-param>
+	<context-param>
+		<param-name>foundation.webservice.url</param-name>
+		<param-value>http://localhost/foundation-webapp/services/</param-value>
+	</context-param>
+	<context-param>
+		<param-name>portal.extension.resteasy.service.url</param-name>
+		<param-value>http://localhost/rest/</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.heartbeatInterval</param-name>
+		<param-value>60000</param-value>
+	</context-param>
+
+	<context-param>
+		<param-name>com.icesoft.faces.heartbeatTimeout</param-name>
+		<param-value>30000</param-value>
+	</context-param>
+
+	<context-param>
+		<param-name>com.icesoft.faces.connectionTimeout</param-name>
+		<param-value>240000</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.async.render.corePoolSize</param-name>
+		<param-value>50</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.async.render.maxPoolSize</param-name>
+		<param-value>75</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.async.render.keepAliveTime</param-name>
+		<param-value>45000</param-value>
+	</context-param>
+
+	<context-param>
+		<param-name>foundation.application.type</param-name>
+		<param-value>statusViewer</param-value>
+	</context-param>
+
+	<context-param>
+		<param-name>javax.faces.STATE_SAVING_METHOD</param-name>
+		<param-value>server</param-value>
+	</context-param>
+
+	<context-param>
+		<param-name>com.icesoft.faces.blockingRequestHandler</param-name>
+		<param-value>push-server</param-value>
+	</context-param>
+
+	<context-param>
+		<param-name>javax.faces.DEFAULT_SUFFIX</param-name>
+		<param-value>.jspx</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.debugDOMUpdate</param-name>
+		<param-value>false</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.concurrentDOMViews</param-name>
+		<param-value>true</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.synchronousUpdate</param-name>
+		<param-value>false</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.uploadDirectory</param-name>
+		<param-value>upload</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.uploadMaxFileSize</param-name>
+		<param-value>4048576</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.blockingConnectionTimeout</param-name>
+		<param-value>120000</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.sessionExpiredRedirectURI</param-name>
+		<param-value>portal</param-value>
+	</context-param>
+
+	<!-- Bean cleanup of beans associated with pages in JBoss Portal. It requires 
+		the icefaces-portlet.jar -->
+	<context-param>
+		<param-name>com.icesoft.faces.portlet.associatedPageViewsImpl</param-name>
+		<param-value>com.icesoft.faces.webapp.http.portlet.page.JBossAssociatedPageViews</param-value>
+	</context-param>
+	
+	<context-param>
+  		<param-name>javax.portlet.faces.RENDER_POLICY</param-name>
+  		<param-value>ALWAYS_DELEGATE</param-value>
+	</context-param>
+
+	<listener>
+		<listener-class>
+			com.icesoft.faces.util.event.servlet.ContextEventRepeater</listener-class>
+	</listener>
+	
+	<listener>
+		<listener-class>com.groundworkopensource.portal.statusviewer.common.listener.StatusViewerHttpSessionListener</listener-class>
+	</listener>
+	
+	<servlet>
+		<servlet-name>Faces Servlet</servlet-name>
+		<servlet-class>javax.faces.webapp.FacesServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet>
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<servlet-class>
+			com.icesoft.faces.webapp.xmlhttp.PersistentFacesServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet>
+		<servlet-name>Blocking Servlet</servlet-name>
+		<servlet-class>com.icesoft.faces.webapp.xmlhttp.BlockingServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+
+	<servlet>
+		<servlet-name>uploadServlet</servlet-name>
+		<servlet-class>
+			com.icesoft.faces.component.inputfile.FileUploadServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<url-pattern>*.jspx</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<url-pattern>*.iface</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<url-pattern>/xmlhttp/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<url-pattern>/faces/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>Blocking Servlet</servlet-name>
+		<url-pattern>/block/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>uploadServlet</servlet-name>
+		<url-pattern>/uploadHtml</url-pattern>
+	</servlet-mapping>
+	<!-- Status Viewer Init Servlet -->
+	<servlet>
+		<servlet-name>StatusViewerInitServlet</servlet-name>
+		<servlet-class>
+			com.groundworkopensource.portal.statusviewer.servlet.StatusViewerInitServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+
+	<servlet>
+		<servlet-name>URLMapServlet</servlet-name>
+		<servlet-class>
+			com.groundworkopensource.portal.statusviewer.servlet.URLMapServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>URLMapServlet</servlet-name>
+		<url-pattern>/urlmap/*</url-pattern>
+	</servlet-mapping>
+
+	<session-config>
+		<session-timeout>480</session-timeout>
+	</session-config>
+	<welcome-file-list>
+		<welcome-file>index.html</welcome-file>
+		<welcome-file>index.htm</welcome-file>
+		<welcome-file>index.jsp</welcome-file>
+		<welcome-file>default.html</welcome-file>
+		<welcome-file>default.htm</welcome-file>
+		<welcome-file>default.jsp</welcome-file>
+	</welcome-file-list>
+</web-app>

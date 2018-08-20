@@ -1,0 +1,40 @@
+<f:view xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:ice="http://www.icesoft.com/icefaces/component">
+
+	<ice:outputDeclaration doctypeRoot="HTML"
+		doctypePublic="-//W3C//DTD HTML 4.01 Transitional//EN"
+		doctypeSystem="http://www.w3.org/TR/html4/loose.dtd" />
+
+	<html>
+	<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"></meta>
+	<title>Host Statistics</title>
+	<link href="xmlhttp/css/xp/xp.css" rel="stylesheet" type="text/css" />
+	</head>
+	<body>
+
+	<ice:portlet>
+		<ice:form id="net_stat" partialSubmit="true">
+			<table>
+				<tr>
+					<td><b><ice:outputText value="Network Status:" /></b></td>
+					<!-- Following images are placeholder. The API to get overall network status is not implemented yet.
+    Once implemented, the state will determine which image to display. -->
+					<td><ice:graphicImage url="/images/blank.gif" /></td>
+					<td><ice:graphicImage url="/images/blank.gif" /></td>
+					<td><ice:graphicImage url="/images/green.gif" /></td>
+					<td><ice:outputText value="#{netstat.networkStatus}" /></td>
+					<td><b><ice:outputText value="| Events:" /></b></td>
+					<td bgcolor="red"><ice:outputText id="critical"
+						value=" Critical #{netstat.criticalServicesCount}" /></td>
+					<td></td>
+					<td bgcolor="yellow"><ice:outputText id="warning"
+						value=" Warning #{netstat.warningServicesCount}" /></td>
+				</tr>
+			</table>
+		</ice:form>
+	</ice:portlet>
+	</body>
+	</html>
+</f:view>

@@ -1,0 +1,111 @@
+Known Issues with the GroundWork Cloud Connector beta evaluation release
+========================================================================
+
+The Cloud Connector is an automatic provisioning system, making it easy to
+monitor your clouds as machines appear and disappear within that portion
+of your infrastructure.  The cloud management system for each region
+is probed on a periodic basis, to find new instances and provision their
+monitoring setup, and to discover which instances have been terminated
+and removing them from active monitoring.
+
+The set of services monitored on each instance can be customized to
+reflect the type of instance which is running.  That is done by creating
+host profiles named after the instances.  If present, those host profiles
+will be automatically applied when new instances are provisioned.
+
+
+How it works
+------------
+
+To monitor your clouds, you must first tell GroundWork Monitor where they
+are and provide access credentials for them.  This will allow the monitoring
+to probe the cloud managers and find which instances are active.
+
+To do this, visit the Clouds -> Cloud Configuration screen.  Add regions
+that represent your clouds; upload the corresponding credentials; then
+enable cloud processing at both the global level (top of screen) and for
+each region (in the list of configured regions).  Save.
+
+Once the cloud regions are configured, a batch job run every 15 minutes
+via cron will pick up those region definitions and adjust the monitoring
+configuration.
+
+If you wish to monitor particular services associated with your cloud machines,
+the easiest way to do so is to create host profiles named after instances:
+
+    cloud-machine-ami-xxxxxx    (for an EC2 cloud instance)
+    cloud-machine-emi-xxxxxx    (for a Eucalyptus cloud instance)
+
+These host profiles will be used by matching "ami-xxxxxx" or "emi-xxxxxx"
+against the image used for an instance, and the profile will be applied to
+each new instance of that machine.  Also, a host group will be created for
+these instances, with a name based on the Description field for that host
+profile.
+
+For anyone monitoring a cloud, the overall infrastructure status view which
+is available in the Dashboards -> Enterprise View is highly recommended.
+This provides a coarsely quantized thermal map of your infrastructure, with
+the thresholds for the quantization determined by the warning and critical
+thresholds set for your objects.  The boxes in the Snapshot view are active
+links that will get you directly to the status pages for the respective
+hosts, to see more detail.
+
+
+Known issues with this beta release:
+------------------------------------
+
+This release is being made available to solicit customer feedback
+before committing to a final feature set.  Therefore, this beta copy
+is a development release in which not all existing features have taken
+their final form, and in which some evidence of certain future features
+is present but not yet working.
+
+1.  The JVM size for Foundation may need to be reduced in some VM
+    deployments with limited memory.  Compare these two files:
+
+	/usr/local/groundwork/foundation/container/run.conf
+	/usr/local/groundwork/foundation/container/run.conf.small
+
+    and perhaps make similar adjustments.
+
+2.  These buttons in the Cloud Configuration screen do not work yet:
+
+	Reset to Current Configuration
+	Restart Batch Processing
+	Trigger Immediate Polling
+
+3.  No host/service profiles are yet provided to monitor the Eucalyptus
+    components on a Eucalyptus server.
+
+4.  Both Eucalyptus and EC2 clouds may be configured for monitoring on
+    the same GroundWork Monitor installation.  EC2 support should work
+    but has not yet been thoroughly tested.
+
+5.  Host groups are created from scratch each time the cron job runs.  As
+    a result, instances that don't show up in the ec2-describe-instances
+    command (perhaps because they have been deleted) will not show up in
+    any of the host groups that the cloud_config.pl script recreates.
+    This results in orphaned hosts that show up in the Status application
+    in a meta host group called "__Hosts not in any host groups".
+
+6.  The orphaned host retention period is currently ignored.  Since no time
+    period for orphaned host deletion is yet implemented, the user must
+    either select the "delete" option for orphaned host disposition, or
+    manually manage the eventual deletion of terminated instances.
+
+7.  The Clouds -> Orphaned Hosts screen is not yet working.  It is
+    intended to contain a mechanism for deleting orphaned hosts in
+    toto or by hostgroup, should you decide you wish to do so before
+    the configured orphaned host retention period expires.
+
+8.  EC2 API tools will fail, and the monitoring of EC2 regions will return
+    bad results, if the system time on the monitoring server is too far
+    off from Internet time.  You should use NTP or some similar mechanism
+    to keep the time on your monitoring system properly synchronized.
+    This is especially relevant for VMs, which typically lose time because
+    they do not receive a full set of clock ticks from the hypervisor.
+
+9.  The current handling of availability zones assumes their names are
+    unique across all monitored regions.  Otherwise, the world will end.
+    [That's an old note.  Maybe what we meant was, region names must be
+    unique across all endpoints/controllers.]

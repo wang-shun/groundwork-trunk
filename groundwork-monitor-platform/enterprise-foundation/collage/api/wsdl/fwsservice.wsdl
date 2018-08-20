@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions targetNamespace="urn:fws"
+	xmlns:fwsmodel="http://model.ws.foundation.groundwork.org"
+	xmlns:apachesoap="http://xml.apache.org/xml-soap" xmlns:impl="urn:fws"
+	xmlns:intf="urn:fws" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/"
+	xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:wsdlsoap="http://schemas.xmlsoap.org/wsdl/soap/"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<!--
+		Collage - The ultimate data integration framework. Copyright (C)
+		2004-2007 GroundWork Open Source Inc. info@groundworkopensource.com
+		This program is free software; you can redistribute it and/or modify
+		it under the terms of version 2 of the GNU General Public License as
+		published by the Free Software Foundation. This program is distributed
+		in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+		even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+		PARTICULAR PURPOSE. See the GNU General Public License for more
+		details. You should have received a copy of the GNU General Public
+		License along with this program; if not, write to the Free Software
+		Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+		USA
+	-->
+	<wsdl:import namespace="urn:fwsmodel"
+		xmlns:fwsmodel="http://model.ws.foundation.groundwork.org" location="../fwsmodel.wsdl" />
+	<wsdl:message name="WSFoundationException">
+		<wsdl:part name="fault" element="fwsmodel:WSFoundationException" />
+	</wsdl:message>
+	<wsdl:message name="getServicesResponse">
+		<wsdl:part name="getServicesReturn" type="fwsmodel:WSFoundationCollection">
+			<wsdl:documentation>Returns WSFoundationCollection: collection of services as per the criteria/filter.</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getServicesRequest">
+		<wsdl:part name="type" type="fwsmodel:ServiceQueryType">
+			<wsdl:documentation>ServiceQueryType is an enumeration of possible parameters to be used to retrieve services. Type can be one of - ALL,HOSTGROUPID, HOSTGROUPNAME, SERVICEDESCRIPTION, SERVICESTATUSID, HOSTID,HOSTNAME, QUERY and SERVICEGROUPID</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="value" type="xsd:string">
+			<wsdl:documentation>Applicable for types except ALL. Specify Host Group Id, Host Group name, service description etc. as per the type.</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="appType" type="xsd:string">
+			<wsdl:documentation>a type of application that has been configured to be monitored through the collage system. E.g NAGIOS</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="startRange" type="xsd:int">
+			<wsdl:documentation>beginning record number [first result]. For pagination.</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="endRange" type="xsd:int">
+			<wsdl:documentation>last record number [maximum results].For pagination.</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="orderedBy" type="fwsmodel:SortCriteria">
+			<wsdl:documentation>Defines sorting – ascending or descending order and sorting field.</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getServicesByStringResponse">
+		<wsdl:part name="getServicesByStringReturn" type="fwsmodel:WSFoundationCollection">
+			<wsdl:documentation>Returns WSFoundationCollection: collection of Services as per the input parameters specified.</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getServicesByStringRequest">
+		<wsdl:documentation>All parameters are exactly same as getServices () API. String “type” specified gets mapped to ServiceQueryType internally. Also SortOrder and SortFileld String parameters get converted to SortCriteria.</wsdl:documentation>
+		<wsdl:part name="type" type="xsd:string">
+			<wsdl:documentation>ServiceQueryType is an enumeration of possible parameters to be used to retrieve services. Type can be one of - ALL,HOSTGROUPID, HOSTGROUPNAME, SERVICEDESCRIPTION, SERVICESTATUSID, HOSTID,HOSTNAME, QUERY and SERVICEGROUPID </wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="value" type="xsd:string">
+			<wsdl:documentation>Applicable for types except ALL. Specify Host Group Id, Host Group name, service description etc. as per the type.</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="appType" type="xsd:string">
+			<wsdl:documentation>a type of application that has been configured to be monitored through the collage system. E.g NAGIOS</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="startRange" type="xsd:string">
+			<wsdl:documentation>beginning record number [first result]. For pagination.</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="endRange" type="xsd:string">
+			<wsdl:documentation>last record number [maximum results].For pagination.</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="sortOrder" type="xsd:string">
+			<wsdl:documentation>Defines sorting – ascending or descending order.</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="sortField" type="xsd:string">
+			<wsdl:documentation>Defines sorting field.</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getServicesByCriteriaRequest">
+		<wsdl:part name="filter" type="fwsmodel:Filter" >
+			<wsdl:documentation>A filter is provided to build the criteria for doing the required queries on the model (Foundation). Filters can be composed with the help of disjunctions (AND) and conjunctions (OR). Example: For example, to fetch all services that have status not equal to OK, use following Filter criteria: Filter NON_OK_SERVICES_FILTER = new Filter(&quot;monitorStatus.name&quot;, FilterOperator.NE, &quot;OK&quot;); </wsdl:documentation></wsdl:part>
+		<wsdl:part name="sort" type="fwsmodel:Sort" >
+			<wsdl:documentation>determines sort order of results and sorting field.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="firstResult" type="xsd:int" >
+			<wsdl:documentation>beginning record number [first result]. For pagination.</wsdl:documentation></wsdl:part>
+		<wsdl:part name="maxResults" type="xsd:int" >
+			<wsdl:documentation>last record number [first result]. For pagination.</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getServicesByCriteriaResponse">
+		<wsdl:part name="getServicesByCriteriaReturn" type="fwsmodel:WSFoundationCollection" >
+			<wsdl:documentation>Returns WSFoundationCollection: collection of services as per the input parameters specified.</wsdl:documentation></wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getTroubledServicesRequest">
+		<wsdl:part name="sort" type="fwsmodel:Sort">
+			<wsdl:documentation>determines sort order of results and sorting field.</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="firstResult" type="xsd:int">
+			<wsdl:documentation>beginning record number [first result]For pagination.</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="maxResults" type="xsd:int">
+			<wsdl:documentation>last record number [first result]. For pagination.</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getTroubledServicesResponse">
+		<wsdl:part name="getTroubledServicesReturn" type="fwsmodel:WSFoundationCollection">
+			<wsdl:documentation>Returns WSFoundationCollection: collection of services which are not in OK state.</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getServiceListByHostNameRequest">
+		<wsdl:part name="hostName" type="xsd:string">
+			<wsdl:documentation>Name of the host, to get all service under it.</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getServiceListByHostNameResponse">
+		<wsdl:part name="getServiceListByHostNameReturn" type="fwsmodel:WSFoundationCollection">
+			<wsdl:documentation>Returns WSFoundationCollection: collection of services as per the name supplied.</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getSimpleServiceListByHostNameRequest">
+		<wsdl:part name="hostName" type="xsd:string">
+			<wsdl:documentation>Name of the host which contains required services. </wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getSimpleServiceListByHostNameResponse">
+		<wsdl:part name="getSimpleServiceListByHostNameReturn" type="fwsmodel:WSFoundationCollection">
+			<wsdl:documentation>Returns WSFoundationCollection: collection of simple services as per the input parameters specified.</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="getSimpleServiceListByCriteriaRequest">
+		<wsdl:part name="filter" type="fwsmodel:Filter">
+			<wsdl:documentation>A filter is provided to build the criteria for doing the required queries on the model (Foundation). Filters can be composed with the help of disjunctions (AND) and conjunctions (OR). Example: For example, to fetch all services that have status not equal to OK, use following Filter criteria: Filter NON_OK_SERVICES_FILTER = new Filter(&quot;monitorStatus.name&quot;, FilterOperator.NE, &quot;OK&quot;);
+</wsdl:documentation></wsdl:part>
+      <wsdl:part name="sort" type="fwsmodel:Sort">
+      	<wsdl:documentation>determines sort order of results and sorting field.</wsdl:documentation></wsdl:part>
+      <wsdl:part name="firstResult" type="xsd:int">
+      	<wsdl:documentation>beginning record number [first result]. For pagination.
+</wsdl:documentation></wsdl:part>
+      <wsdl:part name="maxResults" type="xsd:int">
+      	<wsdl:documentation>last record number [first result]. For pagination.</wsdl:documentation></wsdl:part>
+   </wsdl:message>
+   
+   <wsdl:message name="getSimpleServiceListByCriteriaResponse">
+      <wsdl:part name="getSimpleServiceListByCriteriaReturn" type="fwsmodel:WSFoundationCollection">
+      	<wsdl:documentation>Returns WSFoundationCollection: collection of simple services as per the criteria/filter. </wsdl:documentation></wsdl:part>
+   </wsdl:message>    
+      
+   <wsdl:portType name="WSService">
+
+      <wsdl:operation name="getServices" parameterOrder="type value appType startRange endRange orderedBy">
+         <wsdl:documentation>Gets all services that match to specified options.</wsdl:documentation>
+         <wsdl:input message="impl:getServicesRequest" name="getServicesRequest"/>
+         <wsdl:output message="impl:getServicesResponse" name="getServicesResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation>
+
+      <wsdl:operation name="getServicesByString" parameterOrder="type value appType startRange endRange sortOrder sortField">
+         <wsdl:documentation>This API is String parameter version of getServices() API.</wsdl:documentation>
+         <wsdl:input message="impl:getServicesByStringRequest" name="getServicesByStringRequest"/>
+         <wsdl:output message="impl:getServicesByStringResponse" name="getServicesByStringResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation>
+      
+      <wsdl:operation name="getServicesByCriteria" parameterOrder="filter sort firstResult maxResults">
+         <wsdl:documentation>Gets all services that match to specified criteria.</wsdl:documentation>
+         <wsdl:input message="impl:getServicesByCriteriaRequest" name="getServicesByCriteriaRequest"/>
+         <wsdl:output message="impl:getServicesByCriteriaResponse" name="getServicesByCriteriaResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation>      
+      
+       <wsdl:operation name="getTroubledServices" parameterOrder="sort firstResult maxResults">
+         <wsdl:documentation>Retrieves collection of services which are not in OK state.</wsdl:documentation>
+         <wsdl:input message="impl:getTroubledServicesRequest" name="getTroubledServicesRequest"/>
+         <wsdl:output message="impl:getTroubledServicesResponse" name="getTroubledServicesResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation> 
+      
+       <wsdl:operation name="getServiceListByHostName" parameterOrder="hostName">
+	      <wsdl:documentation>Gets all services (service names only) for the supplied host. Does not get the complete hierarchy of inner objects.</wsdl:documentation>
+	      <wsdl:input message="impl:getServiceListByHostNameRequest" name="getServiceListByHostNameRequest"/>
+          <wsdl:output message="impl:getServiceListByHostNameResponse" name="getServiceListByHostNameResponse" />
+	       <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+      </wsdl:operation>
+      
+       <wsdl:operation name="getSimpleServiceListByHostName" parameterOrder="hostName">
+	      <wsdl:documentation>Gets All Simple services under particular host. Simple service is lightweight &amp; simplified version of foundation service object. </wsdl:documentation>
+	      <wsdl:input message="impl:getSimpleServiceListByHostNameRequest" name="getSimpleServiceListByHostNameRequest"/>
+          <wsdl:output message="impl:getSimpleServiceListByHostNameResponse" name="getSimpleServiceListByHostNameResponse" />
+	       <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+      </wsdl:operation>
+      
+       <wsdl:operation name="getSimpleServiceListByCriteria" parameterOrder="filter sort firstResult maxResults">
+         <wsdl:documentation>Gets all simple services that match to specified criteria.</wsdl:documentation>
+         <wsdl:input message="impl:getSimpleServiceListByCriteriaRequest" name="getSimpleServiceListByCriteriaRequest"/>
+         <wsdl:output message="impl:getSimpleServiceListByCriteriaResponse" name="getSimpleServiceListByCriteriaResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation> 
+      
+   </wsdl:portType>
+
+   <wsdl:binding name="serviceSoapBinding" type="impl:WSService">
+      <wsdlsoap:binding style="rpc" transport="http://schemas.xmlsoap.org/soap/http"/>
+      <wsdl:operation name="getServices">
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsservice"/>
+         <wsdl:input name="getServicesRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+
+         <wsdl:output name="getServicesResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation>
+      
+      <wsdl:operation name="getServicesByString">
+
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsservice"/>
+
+         <wsdl:input name="getServicesByStringRequest">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:input>
+
+         <wsdl:output name="getServicesByStringResponse">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException">
+
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+
+         </wsdl:fault>
+
+      </wsdl:operation>
+      
+      <wsdl:operation name="getServicesByCriteria">
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsservice"/>
+         <wsdl:input name="getServicesByCriteriaRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+
+         <wsdl:output name="getServicesByCriteriaResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation> 
+      
+      <wsdl:operation name="getTroubledServices">
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsservice"/>
+         <wsdl:input name="getTroubledServicesRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+
+         <wsdl:output name="getTroubledServicesResponse">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+
+      </wsdl:operation>      
+      
+      <wsdl:operation name="getServiceListByHostName">
+
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsservice"/>
+
+         <wsdl:input name="getServiceListByHostNameRequest">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:input>
+
+         <wsdl:output name="getServiceListByHostNameResponse">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+
+      </wsdl:operation>    
+      
+      <wsdl:operation name="getSimpleServiceListByHostName">
+
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsservice"/>
+
+         <wsdl:input name="getSimpleServiceListByHostNameRequest">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:input>
+
+         <wsdl:output name="getSimpleServiceListByHostNameResponse">
+
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+
+      </wsdl:operation>    
+      
+      <wsdl:operation name="getSimpleServiceListByCriteria">
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wsservice"/>
+         <wsdl:input name="getSimpleServiceListByCriteriaRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+
+         <wsdl:output name="getSimpleServiceListByCriteriaResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation> 
+      
+   </wsdl:binding>
+
+   <wsdl:service name="WSServiceService">
+      <wsdl:documentation>Service Web Service is a collection of APIs that manages service entries in Foundation. Service is a process under particular host.</wsdl:documentation>
+
+      <wsdl:port binding="impl:serviceSoapBinding" name="wsservice">
+
+         <wsdlsoap:address location="http://localhost:8080/foundation-webapp/services/wsservice"/>
+
+      </wsdl:port>
+
+   </wsdl:service>
+
+</wsdl:definitions>

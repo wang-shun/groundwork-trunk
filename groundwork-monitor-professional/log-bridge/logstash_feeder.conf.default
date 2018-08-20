@@ -1,0 +1,800 @@
+# logstash_feeder.conf
+
+# Copyright 2014-2015 GroundWork Open Source, Inc. ("GroundWork")
+# All rights reserved.  This program is free software; you can
+# redistribute it and/or modify it under the terms of the GNU
+# General Public License version 2 as published by the Free
+# Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301, USA.
+#
+#############################################################################################
+# The values specified here are used to control the behavior of the logstash_feeder.pl script.
+
+# This option is turned off in the default configuration.
+# The app will work when this option is set to yes.
+enable_processing = no
+
+# Foundation application type under which to submit results
+app_type = LOGSTASH
+
+# How often (seconds) to wait between processing cycles to perform esearches
+system_indicator_check_frequency = 15
+
+# Log how long each cycle is taking
+cycle_timings = yes
+
+# For stats and health etc of the app
+health_hostname = logstash_feeder
+health_hostgroup = LogBridgeHealth
+
+# A list of feeder-specific statistical services to be created.
+# The feeder will automatically have <feeder_name>_health created,
+# and then will create these services.  Each service in here needs
+# actual feeder code to update it.
+<feeder_services>
+    # servicename = service description
+    cycle_elapsed_time = Time taken to process last cycle
+    esearches_run                 = Counts of successful or unsuccessful elastic searches performed
+    results_processed_into_gw     = Counts of successful or unsuccessful elastic search results processed into GroundWork
+    esearches_run_took            = Time taken to run elastic searches as reported by elastic search API
+    esearches_run_elapsed         = Time taken to run elastic searches included network etc
+</feeder_services>
+
+# Foundation RAPID / REST API settings
+ws_client_config_file = "/usr/local/groundwork/config/ws_client.properties"
+api_timeout = 30
+RAPID_debug = no
+
+# Bundling options that determine how many to bundle up in one REST API call for CRUD ops
+host_bundle_size          = 30
+hostgroup_bundle_size     = 30
+service_bundle_size       = 50
+events_bundle_size        = 50
+notifications_bundle_size = 30
+
+# License checking options
+# Note : these go away in more recent versions of GW where the REST API supports license checking methods.
+# Note : license checking via add_check is currently not working in 702
+# Setting license_host = local will cause the connector check locally on this server for licensing
+# Setting license_host = remote will cause the connector check on monitoring_server using ssh
+monitoring_server = gw-parent # used for remote license checking
+license_check = remote
+# The Unix user that the feeder will used to ssh to monitor_server to perform a license check
+# ie to do the license check,  feeder will do : ssh <license_check_user>@<gwmaster> <license check command>
+license_check_user = nagios
+
+# Notification and event options
+# Enable/disable notifications for event host and service state changes.
+post_notifications = no # leave this set to no for logbridge child
+# Enable/disable creation of events in Foundation for event host and service state changes.
+# Leave this to yes unless instructed otherwise by GroundWork.
+post_events = yes
+
+# Feeder Unique Identifier options
+# Globally unique identifier for this feeder instance.
+# This is used for setting the value of AgentId which is field that is attached to host, hostgroup and service objects
+# in Foundation that are/were created by this feeder.
+# When the feeder runs, if the value of guid is set to 'undefined', then the feeder will
+# write a new value in this config file for this option.
+# Don't change this unless otherwise instructed by GroundWork.
+guid = undefined
+
+# Auditing options
+# The feeder can produce an audit trail of the following things :
+#  - creation of new hosts, new hostgroups, new services
+#  - deletion of hosts, hostgroups, services
+# On each feeder cycle, if any of the above things happens, Foundation audit events will be created.
+# There is a slight overhead in performance for auditing.
+auditing = yes
+
+# Set this to true if the feeder should send in host status updates, false if not.
+# Note that the feeder will always create a host with a status from the feeder regardless of this setting.
+update_hosts_statuses = yes
+
+# ----------------------------------------------------------------
+# Logger settings
+# ----------------------------------------------------------------
+
+# Where the log file is to be written.
+logfile = /usr/local/groundwork/logs/logstash_feeder.log
+
+# There are six predefined log levels within the Log4perl package:  FATAL,  
+# ERROR, WARN, INFO, DEBUG, and TRACE (in descending priority).  We define
+# two custom levels at the application level to form the full useful set:
+# FATAL, ERROR, WARN, NOTICE, STATS, INFO, DEBUG, and TRACE.  To see an
+# individual message appear, your configured logging level here has to at
+# least match the priority of that logging message in the code.
+#
+# WARNING:  Setting this value any higher than "INFO" will generate HUGELY
+# voluminous amounts of data, which will slow down your system and soon fill
+# your disk.  DO NOT DO SO in production for any significant length of time.
+GW_RAPID_log_level = "WARN"
+
+# The application-level logging level is set separately from the logging
+# level used by the GW::RAPID package, to avoid drowning in low-level
+# detail from the GW::RAPID module.
+#Logstash_Feeder_log_level = "DEBUG"
+Logstash_Feeder_log_level = "INFO"
+
+# Application-level logging configuration, for that portion of the logging 
+# which is currently handled by the Log4perl package.
+#
+# As recommended in the Log4perl documentation, we DO NOT try to mirror Perl
+# package names here as logging category names.  A more sensible classification
+# of categories provides more intelligent control across applications.
+log4perl_config = <<EOF 
+
+# Use this to send everything from FATAL through $GW_RAPID_log_level
+# (for messages from the GW::RAPID package) or $Logstash_Feeder_log_level
+# (for messages from the application level) to the logfile.
+log4perl.category.GW.RAPID.module = $GW_RAPID_log_level, Logstash_Feeder_Logfile
+#log4perl.category.GW.RAPID.module = $GW_RAPID_log_level, Logstash_Feeder_Logfile, Screen
+log4perl.category.Logstash.Feeder = $Logstash_Feeder_log_level, Logstash_Feeder_Logfile
+#log4perl.category.Logstash.Feeder = $Logstash_Feeder_log_level, Logstash_Feeder_Logfile, Screen
+log4perl.appender.Logstash_Feeder_Logfile          = Log::Log4perl::Appender::File
+log4perl.appender.Logstash_Feeder_Logfile.filename = $logfile
+log4perl.appender.Logstash_Feeder_Logfile.utf8     = 0
+log4perl.appender.Logstash_Feeder_Logfile.layout   = Log::Log4perl::Layout::PatternLayout
+log4perl.appender.Logstash_Feeder_Logfile.layout.ConversionPattern = [%d{EEE MMM dd HH:mm:ss yyyy}] %m%n
+log4perl.appender.Screen         = Log::Log4perl::Appender::Screen
+log4perl.appender.Screen.stderr  = 0
+log4perl.appender.Screen.layout  = Log::Log4perl::Layout::PatternLayout
+log4perl.appender.Screen.layout.ConversionPattern = %m %n
+
+EOF
+
+
+# --------------------------
+# Elasticsearch API settings
+# --------------------------
+
+# port and address of elasticsearch instance to search against
+esearchport=9200
+esearchhost=localhost
+
+# Notifications are not sent from logbridge child directly and this functionality is disabled.
+# 
+# How/where to run noma command. Normally, NoMa is configured on the GroundWork server (see monitoring_server above).
+# This feeder needs to execute the GW server noma program remotely from this logstash child server.
+# Setting remotenoma = yes : run noma remotely over on monitoring_server (normal operation use case)
+# Setting remotenoma = no  : run noma locally on logstash child server (use case unclear at this time)
+#remotenoma = no
+
+# The user that the logstash child will ssh to the monitoring_server as to run the noma command.
+# An ssh key exchange needs to be set up first.
+#nomauser = nagios
+
+# location of NoMa executable
+#nomaprog = /usr/local/groundwork/noma/notifier/alert_via_noma.pl
+
+# ----------------------------------------------------------------
+# Searches
+# ----------------------------------------------------------------
+#
+# Any number of <search>...</search> blocks may be defined. 
+# Each search is run against Elasticsearch, and the results mapped into the GroundWork data model.
+# Each search block contains a common set of search properties:
+#   stype : the search type which maps to a logstash_feeder.pl::process_esearch_<stype> method
+#   category : this is a GroundWork category (currently unused - for future use)
+#   hostgroup, hostname, servicename : GroundWork data objects which will be created/updated by this search
+#   warn/crit : search count result thresholds used for setting warning/unscheduled critical states on the GroundWork servicename
+#   es_timeperiod : a time range to filter elasticsearch results to, specified in elasticsearch terms
+#   es_index : an elasticsearch index to search against, default is _all and typically leave this set to the default
+#
+# Each search block also contains other properties used in the search. Examples :
+#   es_message : a string to search for in the message property of _source
+#   es_path : a path to search for in the message property of _source (typically this property is path.raw, the non analyzed/tokenized property of the path property)
+#   es_type :  an Elasticsearch document type
+#
+# Applicable to all searches : 
+# - filtered by a time range of @timestamp >= es_timeperiod
+# - return a count of search matches
+# - apply to index es_index
+#
+# Summary of search types
+#
+# Type          Description                     Elasticsearch detail
+# ----          -----------                     --------------------
+# 1             Host & message                  Match_phrase host.raw => es_host, match message => es_message
+# 2             Host & message                  Match_phrase host.raw => es_host, match_phrase message => es_message
+# 3             Host, path & message            Match_phrase host.raw => es_host, match path.raw => es_path, match => es_message
+# 4             Host, path & message            Match_phrase host.raw => es_host, match_phrase path.raw => es_path, match_phrase => es_message
+# 5             Host, type & message            Match_phrase Computername.raw => es_Computername, match _type => es_type, match message => es_message
+# 6             Host, type & message            Match Computername.raw => es_Computername, match _type => es_type, match message => es_message
+# 6_nxlog       Host, type & message            Match_phrase Hostname.raw => es_Computername, match _type => es_type, match_phrase message => es_message
+# 7             Host, type & eventcode          Match_phrase Computername.raw => es_Computername, match _type => es_type, match EventCode => es_EventCode
+# 8             Hostgroups,type & monitorStatus Match_phrase hostgroups => es_hostgroups, _type => es_type, monitorStatus => es_monitorStatus
+# 9             Path, type & message            Match_phrase path.raw => es_path, match_phrase message => es_message, match_phrase type => es_type
+# 10            Type & message                  Match_phrease type => es_type, match_phrase message => es_message
+
+
+# This option is useful if you want to turn off processing of all searches, except for those with an 'enabled' property
+only_do_enabled_searches = false
+
+# This option logs the calculated GroundWork service message for all searches
+search_verbosity = false
+
+# ============================ UNIX SECURITY BASED SEARCHES ============================
+
+# This search looks for a count of incorrect logins based on incorrect passwords.
+# Create this event by for example ssh'ing in to a host using a valid username, but incorrect password.
+<search>
+    # enabled  # will be run, event if only_do_enabled_searches = true
+	stype         = 9 
+	category      = UNIX_SECURITY  # service group
+	hostgroup     = UNIX_SECURITY  # hostgroup 
+	hostname      = all_hosts_security  # hostname
+	servicename   = ssh_user_failed_password_last_5min # servicename
+	warn          = 20 # GW alerting warning threshold based on count from this search
+	crit          = 40 # GW alerting critical threshold based on count from this search
+	es_type       = syslog # the doc type created by logstash 
+	es_index      = _all # the elastic search index
+	es_message    = Failed password for  # the string that will be searched for
+	es_timeperiod = now-5m # time range to scope the search results to
+	es_path       = /var/log/secure # the doc path value to match against
+</search>
+
+# This search looks for failed logins via ssh to users that don't exist.
+# Create this event by attempting to ssh to host as a user that doesn't exist on the host.
+# Eg ssh nouserhere@gw-logstash-02
+<search>
+    stype         = 9
+    category      = UNIX_SECURITY
+    hostgroup     = UNIX_SECURITY
+    hostname      = all_hosts_security
+    servicename   = ssh_user_failed_password_invalid_user_last_5min
+    warn          = 1
+    crit          = 3
+    es_type       = syslog
+    es_index      = _all
+    es_message    = Failed password for invalid user
+    es_timeperiod = now-5m
+    es_path       = /var/log/secure
+</search>
+
+# This search looks for root logins.
+# Create this event by logging in as root, or su -.
+<search>
+     stype         = 9
+     category      = UNIX_SECURITY
+     hostgroup     = UNIX_SECURITY
+     hostname      = all_hosts_security
+     servicename   = root_user_opened_sesson_last_5min
+     warn          = 2
+     crit          = 5
+     es_type       = syslog
+     es_index      = _all
+     es_message    = session opened for user root
+     es_timeperiod = now-5m
+     es_path       = /var/log/secure
+</search>
+
+# This search looks for creation of user groups.
+# Create this event by creating a new user group.
+<search>
+    stype         = 9
+    category      = UNIX_SECURITY
+    hostgroup     = UNIX_SECURITY
+    hostname      = all_hosts_security
+    servicename   = new_groups_created_last_5min
+    warn          = 1
+    crit          = 2
+    es_type       = syslog
+    es_index      = _all
+    es_message    = new group
+    es_timeperiod = now-5m
+    es_path       = /var/log/secure
+</search>
+
+# This search looks for creation of users.
+# Create this event by creating a new user.
+<search>
+    stype = 9
+    category = UNIX_SECURITY
+    hostgroup = UNIX_SECURITY
+    servicename = new_users_created_last_5min
+    hostname = all_hosts_security
+    warn = 1
+    crit = 2
+    es_type = syslog
+    es_index = _all
+    es_message = new user
+    es_timeperiod = now-5m
+    es_path = /var/log/secure
+</search>
+
+# This search looks for user sessions being opened ( any user )
+# Create this event by logging on
+<search>
+    stype = 9
+    category = UNIX_SECURITY
+    hostgroup = UNIX_SECURITY
+    servicename = opened_sessions_last_1hour
+    hostname = all_hosts_security
+    warn = 5 
+    crit = 10
+    es_type = syslog
+    es_index = _all
+    es_message = session opened for user
+    es_timeperiod = now-1h
+    es_path = /var/log/secure
+</search>
+
+# This search looks for user sessions being closed ( any user )
+# Create this event by logging off
+<search>
+    stype = 9
+    category = UNIX_SECURITY
+    hostgroup = UNIX_SECURITY
+    servicename = closed_sessions_last_1hour
+    hostname = all_hosts_security
+    warn = 5
+    crit = 10
+    es_type = syslog
+    es_index = _all
+    es_message = session closed for user
+    es_timeperiod = now-1h
+    es_path = /var/log/secure
+</search>
+
+# Network device that has syslog forwarded to this logstash server, searching for SNMP auth errors
+# Test by doing an smmpstat with wrong comm string for example
+<search>
+    stype = 10
+    category = SNMP_SYSLOG_SECURITY
+    hostgroup = SNMP_SYSLOG_SECURITY
+    hostname = all_hosts_syslog
+    servicename = snmp_auth_failures_last_1hour
+    warn = 1
+    crit = 2
+    es_type = syslog
+    es_index = _all
+    es_message = SNMP authentication failure
+    es_timeperiod = now-1h
+</search>
+<search>
+    stype = 10
+    category = SNMP_SYSLOG_SECURITY
+    hostgroup = SNMP_SYSLOG_SECURITY
+    hostname = all_hosts_syslog
+    servicename = snmp_auth_failures_last_1day
+    warn = 1
+    crit = 2
+    es_type = syslog
+    es_index = _all
+    es_message = SNMP authentication failure
+    es_timeperiod = now-1d
+</search>
+
+# Host specific unix searches not yet working 
+# Note: Requires some syslog configuration to make these work
+#<search>
+#    stype         = 4
+#    category      = UNIX_SECURITY
+#    hostgroup     = UNIX_SECURITY
+#    servicename   = ssh_user_fail
+#    hostname      = gw-logstash-01 # the hostname that will be created in GW
+#    warn          = 2
+#    crit          = 5
+#    es_type       = logs
+#    es_index      = _all
+#    es_message    = Failed password for invalid user
+#    es_host       = 172.28.113.152 # this is the host on which the error occurred
+#    es_timeperiod = now-1h # last 1 hour
+#    es_path       = /var/log/secure
+#</search>
+
+# host specific example
+#<search>
+#    category=UNIX_SECURITY
+#    hostgroup=UNIX_SECURITY
+#    servicename=reverse_dns
+#    hostname=gwmon-01 # Note : specific host service
+#    stype=4
+#    es_type=logs
+#    es_index=_all
+#    es_message=POSSIBLE BREAK-IN ATTEMPT!
+#    es_host=gwmon-01.groundworkopensource.com
+#    es_timeperiod=now-5m
+#    warn=2
+#    crit=5
+#    es_path=/var/log/secure
+#</search>
+ 
+#  # Not sure how to emulate this event.
+#  <search>
+#      category=UNIX_SECURITY
+#      hostgroup=UNIX_SECURITY
+#      servicename=reverse_dns
+#      hostname=all_hosts_security  # Note. All hosts service.
+#      stype=9
+#      es_type=syslog
+#      es_index=_all
+#      es_message=POSSIBLE BREAK-IN ATTEMPT!
+#      es_timeperiod=now-5m
+#      warn=2
+#      crit=5
+#      es_path=/var/log/secure
+#  </search>
+  
+
+#<search>
+#    category=UNIX_SECURITY
+#    hostgroup=UNIX_SECURITY
+#    hostname=gwmon-01
+#    servicename=new_user
+#    stype=4
+#    es_type=logs
+#    es_index=_all
+#    es_message=new user
+#    es_host=gwmon-01.groundworkopensource.com
+#    es_timeperiod=now-5m
+#    warn=1
+#    crit=1
+#    es_path=/var/log/secure
+#</search>
+
+# host specific example
+#<search>
+#    category=UNIX_SECURITY
+#    hostgroup=UNIX_SECURITY
+#    hostname=gwmon-01
+#    servicename=new_group
+#    stype=4
+#    es_type=logs
+#    es_index=_all
+#    es_message=new group
+#    es_host=gwmon-01.groundworkopensource.com
+#    es_timeperiod=now-5m
+#    warn=1
+#    crit=1
+#    es_path=/var/log/secure
+#</search>
+
+
+# ============================ UNIX EMAIL SYSTEM BASED SEARCHES ============================
+
+# (Need to experiment some more to get these tested positively)
+<search>
+     category=UNIX_SENDMAIL
+     hostgroup=UNIX_SENDMAIL
+     hostname=all_hosts_mail
+     servicename=returned_to_senders_last_1day
+     stype=9
+     es_type=syslog
+     es_index=_all
+     es_message=return to sender: User unknown
+     es_timeperiod=now-1d
+     warn=1
+     crit=5
+     es_path=/var/log/maillog
+ </search>
+
+<search>
+    category=UNIX_SENDMAIL
+    hostgroup=UNIX_SENDMAIL
+    hostname=all_hosts_mail
+    servicename=returned_to_senders_last_1hour
+    stype=9
+    es_type=syslog
+    es_index=_all
+    es_message=return to sender: User unknown
+    es_timeperiod=now-1h
+    warn=1
+    crit=5
+    es_path=/var/log/maillog
+</search>
+
+# ============================ CloudHub VEMA / VMWare Hypervisor BASED SEARCHES ============================
+# Note that these are fed into Elasticsearch by the GroundWork Elastic Scanner so that needs to be running.
+
+# VMWare Hypervisor warnings for last hour (from the bernina vmware hypervisor)
+<search>
+    stype            = 8
+    hostgroup        = VMWARE_events
+    category         = VMWARE_events
+    hostname         = HV_bernina_warning_events
+    servicename      = gw_warnings_last_1hour
+    warn             = 10
+    crit             = 50
+    es_index         = _all
+    es_type          = foundation_logmessage
+    es_monitorStatus = WARNING
+    es_hostgroups    = ESX:bernina.groundwork.groundworkopensource.com
+    es_timeperiod    = now-1h
+</search>
+
+# VMWare Hypervisor criticals for last hour (from the bernina vmware hypervisor)
+<search>
+    stype            = 8
+    hostgroup        = VMWARE_events
+    category         = VMWARE_events
+    hostname         = HV_bernina_critical_events
+    servicename      = gw_criticals_last_1hour
+    warn             = 10
+    crit             = 50
+    es_index         = _all
+    es_type          = foundation_logmessage
+    es_monitorStatus = UNSCHEDULED CRITICAL
+    es_hostgroups    = ESX:bernina.groundwork.groundworkopensource.com
+    es_timeperiod    = now-1h
+</search>
+
+# VMWare Hypervisor warnings for last day (from the bernina vmware hypervisor)
+<search>
+    stype            = 8
+    hostgroup        = VMWARE_events
+    category         = VMWARE_events
+    hostname         = HV_bernina_warning_events
+    servicename      = gw_warnings_last_1day
+    warn             = 100
+    crit             = 500
+    es_index         = _all
+    es_type          = foundation_logmessage
+    es_monitorStatus = WARNING
+    es_hostgroups    = ESX:bernina.groundwork.groundworkopensource.com
+    es_timeperiod    = now-1d
+</search>
+
+# VMWare Hypervisor criticals for last day (from the bernina vmware hypervisor)
+<search>
+    stype            = 8
+    hostgroup        = VMWARE_events
+    category         = VMWARE_events
+    hostname         = HV_bernina_critical_events
+    servicename      = gw_criticals_last_1day
+    warn             = 100
+    crit             = 500
+    es_index         = _all
+    es_type          = foundation_logmessage
+    es_monitorStatus = UNSCHEDULED CRITICAL
+    es_hostgroups    = ESX:bernina.groundwork.groundworkopensource.com
+    es_timeperiod    = now-1d
+</search>
+
+# ============================ GROUNDWORK BASED SEARCHES ============================
+
+# This block of 4 searches of type 8 tell you about counts of warnings and criticals, for last hr/day,
+# for hosts and/or services in a particular GroundWork hostgroup , in this case Production
+# Test by generating some interesting events for hosts in the Production group.
+<search> # Warnings from anything in Production group over last 1 hour
+    stype = 8
+    category = PRODUCTION_GROUPS
+    hostgroup = PRODUCTION_GROUPS
+    hostname = Production_group_warnings
+    servicename = gw_warnings_for_hostgroup_last_1hour
+    warn = 1
+    crit = 10
+    es_index = _all
+    es_type = foundation_logmessage
+    es_monitorStatus = WARNING
+    es_hostgroups = Production
+    es_timeperiod = now-1h
+</search>
+
+<search> # Warnings from anything in Production group over last 1 day
+    stype = 8
+    category = PRODUCTION_GROUPS
+    hostgroup = PRODUCTION_GROUPS
+    hostname = Production_group_warnings
+    servicename = gw_warnings_for_hostgroup_last_1day
+    warn = 50
+    crit = 100
+    es_index = _all
+    es_type = foundation_logmessage
+    es_monitorStatus = WARNING
+    es_hostgroups = Production
+    es_timeperiod = now-1d
+</search>
+
+<search> # Criticals from anything in Production group over last 1 hour
+    stype = 8
+    category = PRODUCTION_GROUPS
+    hostgroup = PRODUCTION_GROUPS
+    hostname = Production_group_criticals
+    servicename = gw_criticals_for_hostgroup_last_1hour
+    warn = 1
+    crit = 1
+    es_index = _all
+    es_type = foundation_logmessage
+    es_monitorStatus = UNSCHEDULED CRITICAL
+    es_hostgroups = Production
+    es_timeperiod = now-1h
+</search>
+
+<search> # Criticals from anything in Production group over last 1 day
+    stype = 8
+    category = PRODUCTION_GROUPS
+    hostgroup = PRODUCTION_GROUPS
+    hostname = Production_group_criticals
+    servicename = gw_criticals_for_hostgroup_last_1day
+    warn = 1
+    crit = 10
+    es_index = _all
+    es_type = foundation_logmessage
+    es_monitorStatus = UNSCHEDULED CRITICAL
+    es_hostgroups = Production
+    es_timeperiod = now-1d
+</search>
+
+# ============================ WINDOWS SYSTEMS SECURITY BASED SEARCHES ============================
+
+# This search looks for failed account logons, for a specific host
+# Create this event by failing a logon 
+<search>
+    stype = 6 # note that host vermont2 is running the logstash agent for event forwarding
+    category = WINDOWS_SECURITY
+    hostgroup = WINDOWS_SECURITY
+    servicename = login_failures_last_1day
+    hostname = vermont2
+    warn = 2
+    crit = 5
+    es_type = Win32-EventLog
+    es_index = _all
+    es_message = An account failed to log on
+    es_ComputerName = vermont2.groundwork.groundworkopensource.com
+    es_timeperiod = now-1d
+</search>
+<search>
+    stype = 6_nxlog # note that the scomdev-win-5.gwktest.com host is running nxlog for event forwarding
+    category = WINDOWS_SECURITY
+    hostgroup = WINDOWS_SECURITY
+    servicename = login_failures_last_1day
+    hostname = scomdev-win-5.gwktest.com
+    warn = 1
+    crit = 5
+    es_type = WindowsEventLog
+    es_index = _all
+    es_message = An account failed to log on
+    es_ComputerName = scomdev-win-5.gwktest.com
+    es_timeperiod = now-1d
+</search>
+
+
+# ============================ WINDOWS SYSTEMS OTHER SEARCHES ============================
+
+# host scomdev-win-5, service entered the running state, last day
+<search>
+    stype = 6_nxlog 
+    category = WINDOWS_SYSTEM
+    hostgroup = WINDOWS_SYSTEM
+    hostname = scomdev-win-5.gwktest.com
+    servicename = service_starts_last_1day
+    warn = 2
+    crit = 5
+    es_type = WindowsEventLog 
+    es_index = _all
+    es_message = service entered the running state
+    es_ComputerName  = scomdev-win-5.gwktest.com 
+    es_timeperiod = now-1d
+</search>
+
+<search>
+    stype = 6_nxlog 
+    category = WINDOWS_SYSTEM
+    hostgroup = WINDOWS_SYSTEM
+    hostname = scomdev-win-5.gwktest.com
+    servicename = service_stops_last_1day
+    warn = 2
+    crit = 5
+    es_type = WindowsEventLog 
+    es_index = _all
+    es_message = service entered the stopped state
+    es_ComputerName  = scomdev-win-5.gwktest.com 
+    es_timeperiod = now-1d
+</search>
+
+<search>
+    stype = 6
+    category = WINDOWS_SYSTEM
+    hostgroup = WINDOWS_SYSTEM
+    hostname = gwmon-02_system
+    servicename = service_starts_last_1hour
+    warn = 1
+    crit = 3
+    es_type = WindowsEventLog
+    es_index = _all
+    es_message = service entered the running state
+    es_ComputerName = gwmon-02.groundwork.groundworkopensource.com
+    es_timeperiod = now-1h
+</search>
+<search>
+    stype = 6
+    category = WINDOWS_SYSTEM
+    hostgroup = WINDOWS_SYSTEM
+    hostname = gwmon-02_system
+    servicename = service_stops_last_1hour
+    warn = 1
+    crit = 1
+    es_type = WindowsEventLog
+    es_index = _all
+    es_message = service entered the stopped state
+    es_ComputerName = gwmon-02.groundwork.groundworkopensource.com
+    es_timeperiod = now-1h
+</search>
+
+<search>
+    stype = 6_nxlog
+    category = WINDOWS_SYSTEM
+    hostgroup = WINDOWS_SYSTEM
+    hostname = colorado
+    servicename = service_starts_last_1hour
+    warn = 1
+    crit = 3
+    es_type = WindowsEventLog
+    es_index = _all
+    es_message = service entered the running state
+    es_ComputerName = Colorado.groundwork.groundworkopensource.com
+    es_timeperiod = now-1h
+</search>
+
+<search>
+    stype = 6_nxlog
+    category = WINDOWS_SYSTEM
+    hostgroup = WINDOWS_SYSTEM
+    hostname = colorado
+    servicename = service_stops_last_1hour
+    warn = 1
+    crit = 1
+    es_type = WindowsEventLog
+    es_index = _all
+    es_message = service entered the stopped state
+    es_ComputerName = Colorado.groundwork.groundworkopensource.com
+    es_timeperiod = now-1h
+</search>
+
+<search>
+    stype = 6_nxlog
+    category = WINDOWS_SYSTEM
+    hostgroup = WINDOWS_SYSTEM
+    hostname = colorado
+    servicename = SQL_Browser_service_failures_last_1hour
+    warn = 1
+    crit = 1
+    es_type = WindowsEventLog
+    es_index = _all
+    es_message = The SQLBrowser service was unable to process a client request
+    es_ComputerName = Colorado.groundwork.groundworkopensource.com
+    es_timeperiod = now-1h
+</search>
+
+<search>
+    stype = 6_nxlog
+    category = WINDOWS_SYSTEM
+    hostgroup = WINDOWS_SYSTEM
+    hostname = colorado
+    servicename = Dcom_service_failures_last_1hour
+    warn = 1
+    crit = 1
+    es_type = WindowsEventLog
+    es_index = _all
+    es_message = did not register with DCOM within the required timeout
+    es_ComputerName = Colorado.groundwork.groundworkopensource.com
+    es_timeperiod = now-1h
+</search>
+
+<search>
+    stype = 6_nxlog
+    category = WINDOWS_SYSTEM
+    hostgroup = WINDOWS_SYSTEM
+    hostname = colorado
+    servicename = Dcom_serice_failures_last_1day
+    warn = 1
+    crit = 1
+    es_type = WindowsEventLog
+    es_index = _all
+    es_message = did not register with DCOM within the required timeout
+    es_ComputerName = Colorado.groundwork.groundworkopensource.com
+    es_timeperiod = now-1d
+</search>
+
+# END 

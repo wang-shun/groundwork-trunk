@@ -1,0 +1,204 @@
+--- noma_2.0.3/notifier/lib/contacts.pm.orig.2	2017-10-10 16:22:37.263382617 -0700
++++ noma_2.0.3/notifier/lib/contacts.pm	2017-10-10 16:33:58.801818476 -0700
+@@ -14,6 +14,7 @@
+ # Please do not distribute without the above file!
+ use time_frames;
+ use datetime;
++use groupnames;
+ use Data::Dumper;
+ $Data::Dumper::Sortkeys = 1;
+ 
+@@ -77,6 +78,36 @@
+     my @recipients = split(",",$notificationRecipients);
+     my @hostgroups = split(",",$notificationHostgroups);
+     my @servicegroups = split(",",$notificationServicegroups);
++    # ========================================================================
++    # GWMON-13076:  Retrieve hostgroup/servicegroup associations from an
++    # outside source.
++    # ========================================================================
++    # We could conceivably retrieve the hostgroups and servicegroups here
++    # only if they were not supplied in the incoming alert.  If both are
++    # empty, we cannot be sure whether that's because there are no hostgroups
++    # or servicegroups associated with this host or service, or whether the
++    # upstream alerting source simply didn't bother to pass along that data.
++    # In either case, try to fetch the data now.
++    # if ( !@hostgroups && !@servicegroups ) { ... }
++
++    # Alternatively, we could base this decision to override the incoming
++    # hostgroup and servicegroup data for this particular alert on some
++    # config-file setting, perhaps in conjunction with whether the incoming
++    # group data is empty.  We choose not to do that for the time being,
++    # mostly because we know that our chosen external source should have
++    # comprehensive knowledge of all hostgroups and servicegroups maintained
++    # by all possible alerting sources, so we shouldn't lose anything by doing
++    # unconditional lookups here, and this will provide complete consistency
++    # in the values available for testing against notification rules.
++    #
++    if (1) {
++	my ( $hostgroups, $servicegroups ) = getHostGroupAndServiceGroupNames( $notificationHost, $notificationService );
++	@hostgroups    = @$hostgroups    if defined $hostgroups;
++	@servicegroups = @$servicegroups if defined $servicegroups;
++	debug( "Full set of    hostgroups for this alert:  " . join( ', ', map { '"' . $_ . '"' } @hostgroups ),    2 );
++	debug( "Full set of servicegroups for this alert:  " . join( ', ', map { '"' . $_ . '"' } @servicegroups ), 2 );
++    }
++    # ========================================================================
+     my $rCount = @recipients;
+     if ($rCount < 1) {
+         $recipients[0] = "__NONE";
+@@ -121,38 +152,35 @@
+ 	}
+ 	next unless $matched;
+ 
+-	# If its a service(group) check.
+-        if ( $check_type eq 's' )
+-        {
+-
+-			$matched = 0;
+-            # generate servicegroup list
+-            foreach my $servicegroup(@servicegroups) {
+-                if (!$servicegroup or ($servicegroup eq '__NONE')
+-					or (matchString($res->{servicegroups_include}, $servicegroup)
+-						and !matchString($res->{servicegroups_exclude}, $servicegroup)))
+-                {
+-                    debug( "Step1: SvcGrp: $servicegroup\t" . $res->{id}, 2);
+-                    $matched = 1;
+-                }
+-
+-            }
+-			next unless $matched;
++	# ========================================================================
++	# GWMON-13076:  Modify the hostgroup/servicegroup processing model
++	# from what a stock NoMa distribution uses, to make it practical.
++	# ========================================================================
++	# Verify servicegroup restrictions.
++	if ( $check_type eq 's' )
++	{
++		(my $clean_include_patterns = $res->{servicegroups_include}) =~ s/(^\s+|\s+$)//g;
++		(my $clean_exclude_patterns = $res->{servicegroups_exclude}) =~ s/(^\s+|\s+$)//g;
++		$clean_include_patterns =~ s/(\s*,\s*)/,/g;
++		$clean_exclude_patterns =~ s/(\s*,\s*)/,/g;
++		next unless
++			( $clean_include_patterns =~ /(^|,)\*+(,|$)/ or groupsMatch( \@servicegroups, $clean_include_patterns ) )
++		      and
++			( $clean_exclude_patterns =~ /^,*$/ or not groupsMatch( \@servicegroups, $clean_exclude_patterns ) );
++		debug( "Step1: SvcGrp: passed all servicegroups conditions\t" . $res->{id}, 2);
+ 	}
+-	# generate hostgroup list
+-		$matched = 0;
+-        foreach my $hostgroup(@hostgroups) {
+-            if (!$hostgroup or ($hostgroup eq '__NONE')
+-				or (matchString($res->{hostgroups_include}, $hostgroup)
+-					and !matchString($res->{hostgroups_exclude}, $hostgroup)))
+-            {
+-		debug( "Step1: HostGrp: $hostgroup\t" . $res->{id}, 2);
+-                $matched = 1;
+-            }
+ 
+-        }
+-
+-		next unless $matched;
++	# Verify hostgroup restrictions.
++	(my $clean_include_patterns = $res->{hostgroups_include}) =~ s/(^\s+|\s+$)//g;
++	(my $clean_exclude_patterns = $res->{hostgroups_exclude}) =~ s/(^\s+|\s+$)//g;
++	$clean_include_patterns =~ s/(\s*,\s*)/,/g;
++	$clean_exclude_patterns =~ s/(\s*,\s*)/,/g;
++	next unless
++		( $clean_include_patterns =~ /(^|,)\*+(,|$)/ or groupsMatch( \@hostgroups, $clean_include_patterns ) )
++	      and
++		( $clean_exclude_patterns =~ /^,*$/ or not groupsMatch( \@hostgroups, $clean_exclude_patterns ) );
++	debug( "Step1: HostGrp: passed all hostgroups conditions\t" . $res->{id}, 2);
++	# ========================================================================
+ 
+ 		$matched = 0;
+         # generate host list
+@@ -222,26 +250,72 @@
+         my @items = split( ',', $matchList );
+         @items = map( { lc($_) } @items );
+ 
+-        for my $item (@items)
+-        {
+-            # remove leading/trailing whitespace
+-            $item =~ s/^\s+|\s+$//g;
+-
+-            if ( $item ne '' )
+-            {
+-
+-		# Use * and ? as wildcards
+-                $item =~ s/\*/.*/g;
+-                $item =~ s/\./\./g;
+-                $item =~ s/\?/./g;
+-
+-                # only add item to list if it matches the passed one
+-                return 1 if ( $match =~ m/^$item$/i );
++	## Match patterns are obtained from the outside world, and therefore
++	## might be invalid as Perl constructs.  So we must trap any errors.
++	my $found_match = 0;
++	eval {
++	    for my $item (@items)
++	    {
++		## remove leading/trailing whitespace
++		$item =~ s/^\s+|\s+$//g;
+ 
+-            }
++		if ( $item ne '' ) {
++		    ## Use * and ? as wildcards
++		    $item =~ s/\./\\./g;
++		    $item =~ s/\*/.*/g;
++		    $item =~ s/\?/./g;
++
++		    # only add item to list if it matches the passed one
++		    if ( $match =~ m/^$item$/i ) {
++			$found_match = 1;
++			last;
++		    }
++		}
++	    }
++	};
++	if ($@) {
++	    chomp $@;
++	    debug( "Invalid pattern matching in notification rule ($@).", 1 );
++	    debug( "Patterns were:  $matchList",                          1 );
++	}
++	return $found_match;
++}
+ 
+-        }
+-	return 0;
++sub groupsMatch {
++    my ( $groups, $patterns ) = @_;
++    my @groups = @$groups;
++    my @patterns = split( ',', $patterns );
++    ## Match patterns are obtained from the outside world, and therefore
++    ## might be invalid as Perl constructs.  So we must trap any errors.
++    my $found_match = 0;
++    eval {
++	foreach my $pattern (@patterns)
++	{
++	    ## Here we assume the incoming patterns have been cleaned up by the caller,
++	    ## so each individual pattern is already trimmed.
++	    # $pattern =~ s/^\s+|\s+$//g;
++	    if ( $pattern ne '' ) {
++		## Use * and ? as wildcards
++		$pattern =~ s/\./\\./g;
++		$pattern =~ s/\*/.*/g;
++		$pattern =~ s/\?/./g;
++		foreach my $member (@groups) {
++		    ## Notice that we do not ignore leading or trailing spaces within $member;
++		    ## it is up to the original upstream code to have submitted clean alert data.
++		    if ( $member =~ m/^$pattern$/i ) {
++			$found_match = 1;
++			last;
++		    }
++		}
++	    }
++	}
++    };
++    if ($@) {
++	chomp $@;
++	debug( "Invalid pattern matching in notification rule ($@).", 1 );
++	debug( "Patterns were:  $patterns",                           1 );
++    }
++    return $found_match;
+ }
+ 
+ # given a list of rules, the notification counter, and the type

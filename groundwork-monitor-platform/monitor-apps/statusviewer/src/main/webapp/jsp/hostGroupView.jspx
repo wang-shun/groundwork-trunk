@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets"
+	xmlns:c="http://java.sun.com/jstl/core">
+	<ui:define name="content">
+		<ice:inputHidden id="HGV_healthHiddenField"
+			value="#{healthPortletsHandler.healthHiddenField}" />
+
+		<ice:panelGrid columns="1" id="HGV_panelActs" width="100%"
+			rendered="#{userRoleBean.userInAdminOrOperatorRole and healthPortletsHandler.selectedNodeApplicationType == 'NAGIOS'}"
+			styleClass="UniqueActionsIDhg UniqueActionsID hgv_actions">
+			<ui:include src="actions.jspx" />
+		</ice:panelGrid>
+		
+		<ice:panelGrid columns="2" id="HGVpanel1" width="100%" border="0" cellpadding="0" cellspacing="0">
+			<ice:panelGrid columns="1" id="HGVpanel5" 
+				styleClass="portletStyle hgv_hostGroupHealth">
+				<ui:include src="hgv_hostGroupHealth.jspx" />
+			</ice:panelGrid>
+			<ice:panelGrid columns="1" id="HGVpanel6" width=""
+				styleClass="portletStyle hgv_hv_filterView">
+				<ui:include src="hv_filterView.jspx" />
+			</ice:panelGrid>
+			<ice:panelGrid columns="1" id="HGVpanel7" width=""
+				styleClass="portletStyle hgv_host">
+				<ui:include src="hgv_host.jspx" />
+			</ice:panelGrid>
+			<ice:panelGrid columns="1" id="HGVpanel8" width=""
+				styleClass="portletStyle hgv_hv_Service">
+				<ui:include src="hv_Service.jspx" />
+			</ice:panelGrid>
+		</ice:panelGrid>
+		
+		<ice:panelCollapsible id="eventPanel" expanded="false">
+            <f:facet name="header">
+                <ice:panelGroup>
+                    <ice:outputText id="eventHeader"
+                            value="Events, Nagios Statistics &amp; Host List"/>
+                </ice:panelGroup>
+            </f:facet>
+		<ice:panelGrid columns="1" id="HGVpanelEvent" 
+			styleClass="portlet_maxwidth portletStyle hgv_event">
+			<ui:include src="hgv_event.jspx" />
+		</ice:panelGrid>
+		
+          
+		<ice:panelGrid columns="1" id="HGVpanel3"
+			styleClass="portletStyle hgv_nagiosHorizontal">
+			<ui:include src="hgv_nagiosMonitoringStatisticsHorizontal.jspx" />
+		</ice:panelGrid>
+		
+          
+		<ice:panelGrid columns="1" id="HGVpanel4"
+			styleClass="portletStyle hgv_hostList">
+			<ui:include src="hgv_hostList.jspx" />
+		</ice:panelGrid>
+		</ice:panelCollapsible>
+		
+		<!-- Panel Pop-up for Integration with Action Portlet links  -->
+		<ui:include src="/jsp/acknowledgePopup.jspx">
+		</ui:include>
+		
+		<!-- Info Panel Pop-up to be displayed when nagios is down  -->
+		<ui:include src="/jsp/acknowledgeErrorPopup.jspx"></ui:include>
+
+		<!-- Modal pop-up to be displayed when user clicks on any child menu-->
+		<ui:include src="/jsp/actionsPortletPopup.jspx"></ui:include>
+		
+		<!-- Modal pop-up for info to be displayed when user clicks on any child menu and the nagios is down-->
+		<ui:include src="/jsp/actionsPortletNagiosDownPopup.jspx"></ui:include>
+
+	</ui:define>
+</ui:composition>

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork) All rights 
+	reserved. This program is free software; you can redistribute it and/or modify 
+	it under the terms of the GNU General Public License version 2 as published 
+	by the Free Software Foundation. This program is distributed in the hope 
+	that it will be useful, but WITHOUT ANY WARRANTY; without even the implied 
+	warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 
+	GNU General Public License for more details. You should have received a copy 
+	of the GNU General Public License along with this program; if not, write 
+	to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, 
+	MA 02110-1301, USA. -->
+
+<project xmlns:ant="jelly:ant" xmlns:j="jelly:core">
+
+	<goal name="build" prereqs="war">
+	</goal>	
+
+	<goal name="copy-webfiles">
+		<copy toDir="target/${vema.vmware.agent}">
+			<fileset dir="../../common/webapp" />
+			<filterset>
+				<filter token="virt_target"              value="VemaTest" />
+				<filter token="virt_target_lowercase"    value="vmware" />
+				<filter token="virt_agent_name"          value="${vema.vmware.agent}" />
+				<filter token="virt_login_redirect_page" value="${portal_login_redirect_page}" />
+				<filter token="virt_role"                value="${virt_role_all}" />
+				<filter token="virt_header"              value="" />
+			</filterset>
+		</copy>
+	</goal>	
+
+	<goal name="deploy" prereqs="war">
+		<mkdir dir="${portal.apps.deploy.root}" />
+		<ant:copy file="${maven.build.dir}/${pom.artifactId}.war"
+			todir="${tomcat.deployment.local}" verbose="true" />
+	</goal>
+
+	<goal name="war" description="Build war file for portal" prereqs="copy-webfiles">
+		<attainGoal name="war:war" />
+	</goal>
+	
+	<!-- This section is for building war file for standalone -->
+	<goal name="build-standalone" prereqs="standalone-war">
+	</goal>
+	
+	<goal name="copy-webfiles-standalone">
+		<copy toDir="target/${vema.vmware.agent}">
+			<fileset dir="../../common/webapp" />
+			<filterset>
+				<filter token="virt_target"              value="VemaTest" />
+				<filter token="virt_target_lowercase"    value="vmware" />
+				<filter token="virt_agent_name"          value="${vema.vmware.agent}" />
+				<filter token="virt_login_redirect_page" value="${standalone_login_redirect_page}" />
+				<filter token="virt_role"                value="${virt_role_restricted}" />
+				<filter token="virt_header"              value="${virt_logo_logout}" />
+			</filterset>
+		</copy>
+	</goal>
+
+	<goal name="standalone-war" description="Build war file for standalone apps"
+		prereqs="copy-webfiles-standalone">
+		<attainGoal name="war:war" />
+	</goal>
+</project>

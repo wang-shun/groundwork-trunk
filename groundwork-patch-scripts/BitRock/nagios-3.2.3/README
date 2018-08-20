@@ -1,0 +1,33 @@
+To minimize patch messages about patch hunks being applied at some
+number of lines offset from where the patch file says they should go,
+and thereby minimize the chance of a patch not being applied correctly,
+the Nagios 3.2.3 patches should be applied in this order:
+
+    patch -p0 -b < nagios-3.2.3-no_update_check.patch
+    patch -p0 -b < nagios-3.2.3-mutex_check_result_fixes.patch
+    patch -p0 -b < nagios-3.2.3-Makefile.in.statuswml2.patch
+    patch -p0 -b < nagios-3.2.3-cgi-refresh.patch
+    patch -p0 -b < nagios-3.2.3-circular-dependency-analysis.patch
+    patch -p0 -b < nagios-3.2.3-extra-service-alerts.patch
+
+The commands above are suitable for use in the parent directory of the
+nagios-3.2.3/ directory where the Nagios source code has been untarred
+(the -p0 option shown reflects this relative location).
+
+In addition, the cgi/statuswml2.c file stored here should be placed in
+the nagios-3.2.3/cgi/ directory before the build.
+
+----------------------------------------------------------------
+
+Note added May 10 2011:
+
+These two patches:
+
+    nagios-3.2.3-mutex_check_result_fixes.patch
+    nagios-3.2.3-no_update_check.patch
+
+will probably need some porting when we go to apply them to a future
+Nagios release, because apparently the cgiutils.c and utils.c files
+have been merged into a common file, common/shared.c, in the current
+Nagios development tree.
+

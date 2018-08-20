@@ -1,0 +1,22 @@
+This directory contains the following patch for the Nmap::Scanner 1.0 package:
+
+Nmap::Scanner-1.0.patch
+
+The Nmap::Scanner 1.0 package straight from CPAN has a variety of issues.
+
+(*) It relies too much on undef, which throws "Use of uninitialized value"
+    warnings from various places.
+
+(*) It does not properly XML-encode certain characters, notably ampersand,
+    that it receives from nmap.
+
+(*) When it does try to encode entities, it uses HTML encoding instead of
+    XML encoding or numeric entity encoding, which means that inappropriate
+    (non-XML) entities may be referenced.
+
+(*) It mixes up <nmap-err> and </nmap-msg> tags.
+
+I have run a lot of tests and addressed all the instances of such problems
+found in that testing.  The resulting patch is captured here as the
+Nmap::Scanner-1.0.patch file.  For simplicity, the patch uses the Perl
+"//" operator, first available in Perl 5.10.

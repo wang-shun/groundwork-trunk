@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<artifactId>groundwork-container-extension-parent</artifactId>
+		<groupId>com.groundwork.portal</groupId>
+		<version>0.0.1</version>
+	</parent>
+
+	<artifactId>groundwork-container-extension-ear</artifactId>
+	<packaging>ear</packaging>
+
+	<name>groundwork-container-extension-ear EAR</name>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.groundwork.portal</groupId>
+			<artifactId>groundwork-container-extension-config</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.groundwork.portal</groupId>
+			<artifactId>groundwork-container-extension-war</artifactId>
+			<version>${project.version}</version>
+			<type>war</type>
+		</dependency>
+		<dependency>
+			<groupId>com.groundwork.portal</groupId>
+			<artifactId>groundwork-container-extension-rest</artifactId>
+			<version>${project.version}</version>
+			<type>war</type>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>1.6</source>
+					<target>1.6</target>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-clean-plugin</artifactId>
+				<version>2.4.1</version>
+				<configuration>
+					<filesets>
+						<fileset>
+							<directory>${jboss-profile}/deploy</directory>
+							<includes>
+								<include>groundwork-container-extension.ear</include>
+								<include>gatein-ds.xml</include>
+							</includes>
+							<followSymlinks>false</followSymlinks>
+						</fileset>
+					</filesets>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-ear-plugin</artifactId>
+				<configuration>
+					<displayName>groundwork-container-extension</displayName>
+					<modules>
+						<webModule>
+							<groupId>com.groundwork.portal</groupId>
+							<artifactId>groundwork-container-extension-war</artifactId>
+							<contextRoot>groundwork-portal</contextRoot>
+						</webModule>
+						<webModule>
+							<groupId>com.groundwork.portal</groupId>
+							<artifactId>groundwork-container-extension-rest</artifactId>
+							<contextRoot>myrest</contextRoot>
+						</webModule>
+						<jarModule>
+							<groupId>com.groundwork.portal</groupId>
+							<artifactId>groundwork-container-extension-config</artifactId>
+							<includeInApplicationXml>true</includeInApplicationXml>
+						</jarModule>
+					</modules>
+					<outputDirectory>${jboss-profile}/deploy</outputDirectory>
+				</configuration>
+			</plugin>
+			<plugin>
+				<artifactId>maven-resources-plugin</artifactId>
+				<version>2.6</version>
+				<executions>
+					<execution>
+						<id>copy-resources</id>
+						<!-- here the phase you need -->
+						<phase>generate-resources</phase>
+						<goals>
+							<goal>copy-resources</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>${jboss-profile}/deploy</outputDirectory>
+							<resources>
+								<resource>
+									<directory>../../</directory>
+									<includes>
+										<include>gatein-ds.xml</include>
+									</includes>
+								</resource>
+							</resources>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+		<finalName>groundwork-container-extension</finalName>
+	</build>
+
+</project>

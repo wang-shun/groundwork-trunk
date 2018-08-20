@@ -1,0 +1,106 @@
+The files that live here represent a port of the Cacti 0.8.7g Spine
+code to support PostgreSQL.  The raw files we retrieved from the Cacti
+site are:
+
+    -rw-r--r-- 1 gherteg gwstaff 592801 Jul  9  2010 cacti-spine-0.8.7g.tar.gz
+    -rw-r--r-- 1 gherteg gwstaff  11583 Aug 31  2010 unified_issues.patch
+
+and they were obtained from:
+
+    http://www.cacti.net/downloads/spine/cacti-spine-0.8.7g.tar.gz
+    http://www.cacti.net/downloads/spine/patches/0.8.7g/unified_issues.patch
+
+So to start, we unwrapped the tarball, then applied the unified patches:
+
+    tar xfz cacti-spine-0.8.7g.tar.gz 
+    patch -p 0 < unified_issues.patch 
+
+The Cacti 0.8.7g release is not the current Cacti release as of this
+writing.  The 0.8.7h release is current, and further development work by
+the Cacti team is ongoing for further releases.  We have chosen to port
+the 0.8.7g release of Spine both because it matches the Cacti 0.8.7g
+release we are currently delivering in GWMEE 6.5 (and will in GWMEE 6.6
+as well, ported to PostgreSQL), and also because the 0.8.7h release of
+Spine includes some additional complications in dealing with the database,
+notably the presence of at least one INSERT ... ON DUPLICATE KEY UPDATE
+command that is not present in the 0.8.7g Spine.  That type of INSERT
+is a MySQL extension to SQL which is not supported under PostgreSQL,
+which adheres closer to the SQL standards.
+
+Our approach to porting to PostgreSQL is to start by replacing the MySQL
+client library with an emulation library that preserves the same API but
+calls PostgreSQL instead.  Adjustments to the cacti-spine-0.8.7g build,
+controlled via the makefile at this level above the cacti-spine-0.8.7g/
+directory, allow selection of the MySQL or PostgreSQL version at compile
+time.  We will only implement those MySQL client API calls that are
+actually referenced by the Spine code.  There still remain some additional
+changes that are required in the SQL itself, to address MySQLisms like
+"SHOW COLUMNS FROM table", "REPLACE INTO table", timestamp formatting in
+SQL statements, function calls such as IF() and NOW(), database error
+code values, and perhaps other issues.  Where such changes are needed,
+they will be conditionally compiled, based on selection of the database
+type in the makefile at this level, some extra C preprocessor symbol(s)
+that it defines and passes to the Spine build, and additional include and
+link options as well.  That will both preserve the ability to create a
+MySQL version of the compiled code, and ultimately allow the Cacti team to
+adopt our changes while continuing to support MySQL-based installations.
+
+Keeping the MySQL client API calls intact will make it easier to port
+future versions of Spine, and hopefully help to gain acceptance of
+this port by the Cacti team.  We can see from the current Subversion
+copy of the Spine development branch that it is peppered with other
+changes unrelated to PostgreSQL support, and it would only be that
+much more complicated to merge in our changes if we made more complex
+modifications to the existing code.  The goal is to have the Cacti
+team adopt our changes in time for their official Cacti 1.0.0 release,
+currently projected for 1Q2012.  Ideally, we then won't have to support
+our own separate database-porting patches.
+
+The code saved here is a set of files that can be used to build a
+copy of Spine ported to PostgreSQL.  As configured and checked into
+Subversion, that will be the default version built by the supplied
+makefile in this directory.  The files here were obtained by first
+splaying out the cacti-spine-0.8.7g.tar.gz tarball, then applying the
+unified_issues.patch file, then making the changes to port to PostgreSQL.
+The ".orig" files also checked in represent the baseline code before
+database-porting changes, meaning after the unified_issues.patch
+patches were applied.  (We have not seen fit to separately preserve
+the pre-patched files.)  The presence of these ".orig" files will make
+it easier to create our own patch files which can then be applied as a
+first step to porting later versions of Spine to support PostgreSQL, as we
+will need to do until our patches are accepted upstream by the Cacti team.
+
+Our PostgreSQL emulation of the MySQL client library also lives here,
+in the postgresql_as_mysql/ directory.  For simplicity, since it will
+only be used by Spine, it is statically linked into the spine binary.
+
+Building a copy of Spine from the code currently checked into Subversion
+here assumes that you have a copy of GroundWork Monitor installed on
+the build machine, to provide access to SNMP, PostgreSQL, and other
+header files and libraries as compiled by BitRock.  We have made the
+choice of database and the paths to the PostgreSQL and MySQL components
+modifiable in the Makefile here at this level, and those choices will be
+automatically propagated to the cacti-spine-0.8.7g build if you follow
+the instructions here.  Once you have modified these choices in the local
+makefile in the directory that contains this README, just run "make".
+The compiled binary for Spine will appear as cacti-spine-0.8.7g/spine .
+
+The build of spine concludes by automatically running "make validate"
+as the last step of the build.  This checks to see that all the libraries
+referenced by spine are in fact available on the build machine in their
+expected locations, and that the RPATH setting in the spine binary
+is correct.  That helps a lot during the development process.  If the
+BitRock compilation environment does not already include an installed
+copy of GroundWork Monitor, this check will likely fail.  If that is an
+issue for BitRock, this check can be suppressed by changing this line
+in the makefile:
+
+    default : postgresql_as_mysql_emulation spine validate
+
+to this:
+
+    default : postgresql_as_mysql_emulation spine
+
+Let us know, and we will change this in the Subversion copy if need be.
+Rest assured that we will run similar checks when we get the spine binary
+back, though!

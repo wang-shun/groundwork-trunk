@@ -1,0 +1,220 @@
+---
+- hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    servername: "{{ ansible_fqdn }}"
+    jossoservername: "localhost:8888"
+    redirect: true
+    secure_enabled: "true"
+    dual_jboss: false
+    frontend_jboss_port: 8080
+    backend_jboss_port: 8080
+    protocol: https
+    proxy_port: 443
+    db_host: localhost
+    use_cname: false
+    create_certs: true
+    cert: false
+    cacert: false
+    caname: groundwork-ca
+    java_keystore_path: /usr/local/groundwork/java/jre/lib/security/cacerts
+    java_keystore_pass: changeit
+    grafana_installed: false
+    openssl_csr_path: /usr/local/groundwork/tmp/{{ servername }}.csr
+    openssl_cert_path: /usr/local/groundwork/common/openssl/certs/{{ servername }}.pem
+    apache_cert_link: /usr/local/groundwork/apache2/conf/server.crt
+    openssl_key_path: /usr/local/groundwork/common/openssl/private/{{ servername }}.key
+    apache_key_link: /usr/local/groundwork/apache2/conf/server.key
+    openssl_cacert_path: /usr/local/groundwork/common/openssl/certs/{{caname}}.pem
+    apache_cacert_link: /usr/local/groundwork/apache2/conf/server-ca.crt
+  tasks:
+  - name: gather facts
+    setup:
+      filter: ansible_*
+    tags:
+      - facts
+  - name: check cert
+    stat:
+      path: "{{openssl_cert_path}}"
+    register: cert_path
+    tags:
+      - checks
+      - fs
+  - set_fact:
+      cert: true
+    when: cert_path.stat.isreg is defined and cert_path.stat.isreg
+    tags:
+      - checks
+      - fs
+  - name: check cacert
+    stat:
+      path: "{{openssl_cacert_path}}"
+    register: cacert_path
+    tags:
+      - checks
+      - fs
+  - set_fact:
+      cacert: true
+    when: cacert_path.stat.isreg is defined and cacert_path.stat.isreg
+    tags:
+      - checks
+      - fs
+  - name: zulu_jdk_path redhat/suse check
+    set_fact:
+      zulu_jdk_path: /usr/lib/jvm/zulu-7/
+    when: ansible_distribution_file_variety in ["RedHat", "SuSE"]
+    tags:
+      - facts
+      - redhat
+      - suse
+  - name: zulu_jdk_path ubuntu check
+    set_fact:
+      zulu_jdk_path: /usr/lib/jvm/zulu-7-amd64/
+    when: ansible_distribution_file_variety == "Debian"
+    tags:
+      - facts
+      - ubuntu
+  - name: azul rpm keyring
+    rpm_key:
+      state: present
+      key: http://repos.azulsystems.com/RPM-GPG-KEY-azulsystems
+    when: ansible_distribution_file_variety in ["RedHat", "SuSE"]
+    tags:
+      - pkg
+      - redhat
+      - suse
+  - name: azul yum repo
+    yum_repository:
+      name: zulu
+      description: "zulu-$releasever - Azul Systems Inc., Zulu packages for $basearch"
+      gpgkey: http://repos.azulsystems.com/RPM-GPG-KEY-azulsystems
+      repo_gpgcheck: no
+      gpgcheck: yes
+      baseurl: http://repos.azulsystems.com/rhel/$releasever/$basearch
+      protect: 1
+    when: ansible_distribution_file_variety == "RedHat"
+    tags:
+      - pkg
+      - redhat
+  - name: zulu-7 yum package
+    command: /usr/bin/env -i /usr/bin/python /usr/bin/yum -y install zulu-7
+    args:
+      creates: "{{zulu_jdk_path}}"
+    when: ansible_distribution_file_variety == "RedHat"
+    tags:
+      - pkg
+      - redhat
+  - name: azul zypper repo
+    zypper_repository:
+        name: zulu
+        description: "zulu-$releasever - Azul Systems Inc., Zulu packages for $basearch"
+        repo: 'http://repos.azulsystems.com/sles/latest'
+        state: present
+    when: ansible_distribution_file_variety == "SuSE"
+    tags:
+      - pkg
+      - suse
+  - name: zulu-7 zypper package
+    zypper:
+      name: zulu-7
+      state: present
+    when: ansible_distribution_file_variety == "SuSE"
+    tags:
+      - pkg
+      - suse
+  - name: azul apt keyring
+    apt_key:
+      id: 219BD9C9
+      keyserver: keyserver.ubuntu.com
+      state: present
+    when: ansible_distribution_file_variety == "Debian"
+    tags:
+      - pkg
+      - ubuntu
+  - name: azul apt repo
+    template:
+      src: zulu.list.j2
+      dest: /etc/apt/sources.list.d/zulu.list
+      owner: root
+      group: root
+      mode: 0644
+    when: ansible_distribution_file_variety == "Debian"
+    tags:
+      - pkg
+      - ubuntu
+  - name: zulu-7 apt package
+    shell: /bin/su - -c "/usr/bin/apt-get update && /usr/bin/apt-get -y install zulu-7"
+    args:
+      creates: "{{zulu_jdk_path}}"
+    when: ansible_distribution_file_variety == "Debian"
+    tags:
+      - pkg
+      - ubuntu
+  - name: move sun java out of the way
+    shell: mv /usr/local/groundwork/java /usr/local/groundwork/java.sun
+    args:
+      creates: /usr/local/groundwork/java.sun
+    notify: "restart web services"
+    tags:
+      - fs
+  - name: link java.zulu-7
+    file:
+      src: "{{zulu_jdk_path}}"
+      dest: /usr/local/groundwork/java.zulu-7
+      owner: nagios
+      group: nagios
+      state: link
+    notify: "restart web services"
+    tags:
+      - fs
+  - name: link java
+    file:
+      src: java.zulu-7
+      dest: /usr/local/groundwork/java
+      owner: nagios
+      group: nagios
+      state: link
+    notify: "restart web services"
+    tags:
+      - fs
+  - name: import server.crt to the java keystore
+    java_cert:
+      executable: /usr/local/groundwork/java/bin/keytool
+      keystore_path: "{{ java_keystore_path }}"
+      keystore_pass: "{{ java_keystore_pass }}"
+      cert_alias: "{{ servername }}"
+      cert_path: "{{ openssl_cert_path }}"
+      state: present
+    notify: "restart web services"
+    tags:
+      - installcerts
+    when: cert == True
+  - name: import server-ca.crt to the java keystore
+    java_cert:
+      executable: /usr/local/groundwork/java/bin/keytool
+      keystore_path: "{{ java_keystore_path }}"
+      keystore_pass: "{{ java_keystore_pass }}"
+      cert_alias: "{{ caname }}"
+      cert_path: "{{ openssl_cacert_path }}"
+      state: present
+    notify: "restart web services"
+    tags:
+      - installcerts
+    when: cacert == True
+  handlers:
+  - name: stop gwservices
+    shell: /etc/init.d/groundwork stop gwservices
+    listen: "restart web services"
+    tags:
+      - ctrl
+  - name: restart apache
+    shell: /usr/local/groundwork/apache2/bin/apachectl -t && /etc/init.d/groundwork restart apache
+    listen: "restart web services"
+    tags:
+      - ctrl
+  - name: start gwservices - this can take a while
+    shell: /etc/init.d/groundwork start gwservices
+    listen: "restart web services"
+    tags:
+      - ctrl

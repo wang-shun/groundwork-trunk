@@ -1,0 +1,35 @@
+#!/bin/bash -e
+
+# make_working_db
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+PATH=/bin:/usr/bin
+
+print_usage() {
+    echo "usage:  make_working_db {ready_path} {remote_dump_prefix} {load_command}"
+    echo "where:  remote_dump_prefix has the form:"
+    echo "            {source-system-name}.{database-name}"
+}
+
+if [ $# -ne 3 ]; then
+    print_usage
+    exit 1
+fi
+
+ready_path="$1"
+remote_dump_prefix="$2"
+load_command="$3"
+
+# The "*" field in the filename is supposed to represent a "YYYY-MM-DD.hh_mm_ss" timestamp.
+files=($ready_path/$remote_dump_prefix.*.sql)
+if [ ${#files[@]} -eq 1 ]; then
+    eval $load_command < ${files[0]}
+elif [ ${#files[@]} -eq 0 ]; then
+    echo "ERROR:  no SQL dump file was found in $ready_path"
+    exit 1
+else
+    echo "ERROR:  more than one SQL dump file was found in $ready_path"
+    exit 1
+fi

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<jsp:root version="1.2" xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets"
+	xmlns:c="http://java.sun.com/jstl/core">
+	<jsp:directive.page contentType="text/html;charset=ISO-8859-1"
+		pageEncoding="ISO-8859-1" />
+	<ui:composition template="/templates/template.xhtml">
+		<ice:outputDeclaration doctypeRoot="HTML"
+			doctypePublic="-//W3C//DTD HTML 4.01 Transitional//EN"
+			doctypeSystem="http://www.w3.org/TR/html4/loose.dtd" />
+
+		<ui:define name="content">
+			<ice:portlet>
+				<f:loadBundle basename="#{localeBean.baseName}" var="message" />
+				<ice:form id="reportTreePortlet_frmTree" partialSubmit="true">
+					<!--  error message -->
+					<ice:panelGroup rendered="#{reportTreeBean.error}"
+						id="reportTreePortlet_panelsSearchError">
+						<ui:include src="error.jspx">
+							<ui:param name="errorMessage"
+								value="#{reportTreeBean.errorMessage}" />
+						</ui:include>
+						<ice:commandButton id="reportTreePortlet_cmdRetryNow"
+							value="#{message['reports.ui.retry']}"
+							actionListener="#{reportTreeBean.reloadPage}"></ice:commandButton>
+					</ice:panelGroup>
+					<!--  error message -->
+					<ice:panelGroup id="reportTreePortlet_pnlTree"
+						styleClass="treeContainer" rendered="#{!reportTreeBean.error}">
+						<ice:tree id="reportTreePortlet_reportTree"
+							value="#{reportTreeBean.model}" var="item" hideRootNode="false"
+							hideNavigation="false" imageDir="/portal-reportviewer/images/">
+							<ice:treeNode id="reportTreePortlet_treeNode">
+								<f:facet name="icon">
+									<ice:panelGroup id="reportTreePortlet_pnlTreeIcon"
+										style="display: inline">
+										<h:graphicImage id="reportTreePortlet_imgTreeIcon"
+											value="#{item.userObject.icon}" />
+									</ice:panelGroup>
+								</f:facet>
+								<f:facet name="content">
+									<ice:panelGroup id="reportTreePortlet_pnlNode"
+										style="display: inline;">
+										<c:if
+											test="#{viewReportSelectBean.currentReportView.currentView == 'viewReport'}">
+											<ice:commandLink id="reportTreePortlet_linkReportName"
+												rendered="#{item.userObject.leaf}"
+												actionListener="#{reportViewerBean.showReport}">
+												<f:param name="reportID" value="#{item.userObject.objectId}" />
+												<ice:outputText id="reportTreePortlet_txtReportName"
+													value="#{item.userObject.text}"></ice:outputText>
+											</ice:commandLink>
+											<ice:outputText id="reportTreePortlet_txtReportName"
+												value="#{item.userObject.text}"
+												rendered="#{!item.userObject.leaf}" />
+										</c:if>
+										<c:if
+											test="#{viewReportSelectBean.currentReportView.currentView == 'publishReport'}">
+											<ice:commandLink id="reportTreePortlet_linkPublishReport"
+												actionListener="#{inputFileController.showExistingFiles}">
+												<f:param name="ReportDir" value="#{item.userObject.text}" />
+												<ice:outputText id="reportTreePortlet_txtPublishReport"
+													value="#{item.userObject.text}"></ice:outputText>
+											</ice:commandLink>
+										</c:if>
+									</ice:panelGroup>
+								</f:facet>
+							</ice:treeNode>
+						</ice:tree>
+					</ice:panelGroup>
+					<!-- this component is a workaround for incorrect ajax push functionality, 
+					where the list of files in publish report screen is updated on clicking on 
+					folder in tree.  -->
+					<ice:inputHidden id="reportTreePortlet_treeHiddenElement"
+						value="#{inputFileController.fileListBean.hiddenField}"></ice:inputHidden>
+
+					<!-- Popup: Warning: excessive results-->
+					<ice:panelPopup id="popupForAccessDenied" autoPosition="manual"
+						styleClass="icePnlPop" modal="true"
+						visible="#{reportViewerBean.accessPopupVisible}"
+						style="z-index:999; top: 25%; left: 400px; width: 400px; height: 200px; position:relative; background: #FFFFFF;">
+
+						<f:facet name="header">
+							<div style="width: 399px;"><ice:outputText id="txtErrTitle"
+								style="font-weight:bold; padding-top: 5px; padding-left: 5px;float:left;"
+								value="#{message['com_groundwork_portal_reportviewer_ErrorPopupHeader']}"></ice:outputText>
+							<ice:commandButton id="LinkCloseBtn" type="button"
+								image="/images/popup_modeBtn_close.gif"
+								action="#{reportViewerBean.closePopup}"
+								title="#{message['reports.ui.close']}" alt="Close"
+								style="background:none; border:none;float:right;margin-top:3px;" />
+							</div>
+						</f:facet>
+						<f:facet name="body">
+							<ice:panelGroup id="panelWarningContents">
+								<ice:panelGroup id="panelgroupPopupHost"
+									style="padding-top: 5px; padding-left: 5px;">
+									<ice:outputText id="txtProlog"
+										value="#{message['com_groundwork_portal_reportviewer_accessError']}"></ice:outputText>
+
+								</ice:panelGroup>
+								<div class="gen_div_right"><ice:commandButton
+									style="margin-top:110px;margin-right:20px;float:right;"
+									id="btnClose" action="#{reportViewerBean.closePopup}"
+									title="#{message['reports.ui.close']}"
+									styleClass="iceCmdBtn portlet-filter-button"
+									value="#{message['reports.ui.close']}"></ice:commandButton></div>
+							</ice:panelGroup>
+						</f:facet>
+					</ice:panelPopup>
+
+				</ice:form>
+			</ice:portlet>
+		</ui:define>
+	</ui:composition>
+</jsp:root>

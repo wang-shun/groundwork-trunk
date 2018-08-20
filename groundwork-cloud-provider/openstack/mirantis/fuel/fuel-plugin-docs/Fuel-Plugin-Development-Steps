@@ -1,0 +1,392 @@
+http://content.mirantis.com/rs/451-RBY-185/images/plugin-guide-template.rst
+(*) To develop a Fuel Plugin:
+    (*) Install an Ubuntu 16.04 distribution of your choosing, on a 64-bit machine.
+    (*) Bring the list of available packages up-to-date with the upstream repositories.
+    (*) Use your favorite package installer to install the following packages, along with all of their respective dependencies:
+	    createrepo
+	    rpm
+	    dpkg-dev
+	    git
+	    python-pip
+	    sphinx-common
+	    alien
+	    python3			(perhaps)
+	    python3-pip			(perhaps)
+    (*) To connect to the Mirantis test environment, also install these packages:
+	    openvpn
+	    openvpn-blacklist
+	    gadmin-openvpn-client
+    (*) Run as the development user:
+	    cd
+	    pip install fuel-plugin-builder
+	    git clone https://github.com/stackforge/fuel-plugins.git
+	    cd fuel-plugins
+	    sudo python setup.py install
+    (*) If you are starting a new plugin, run the following as the development
+	user, to create a skeleton file tree that you can then modify:
+	    cd
+	    fpb --create {fuel-plugin-groundwork-monitor}
+    (*) Construct the end-user documentation tree:
+	    cd ~/{fuel-plugin-groundwork-monitor}
+	    mkdir doc
+	    mkdir doc/source
+	    mkdir doc/source/images
+	    touch doc/source/.gitignore
+		copy initial content template from:
+		https://raw.githubusercontent.com/openstack/fuel-plugin-contrail/master/doc/.gitignore
+		(and for now, make no other changes)
+	    cd doc/source
+	    sphinx-quickstart
+	        (answer all the questions in reasonable ways)
+
+		> Root path for the documentation [.]: 
+		> Separate source and build directories (y/n) [n]: 
+		> Name prefix for templates and static dir [_]: 
+		> Project name: fuel-plugin-groundwork-monitor
+		> Author name(s): GroundWork Inc.  
+		> Project version: 7.1
+		> Project release [7.1]: 7.1.0
+		> Project language [en]: 
+		> Source file suffix [.rst]: 
+		> Name of your master document (without suffix) [index]: 
+		> Do you want to use the epub builder (y/n) [n]: 
+		> autodoc: automatically insert docstrings from modules (y/n) [n]: 
+		> doctest: automatically test code snippets in doctest blocks (y/n) [n]: 
+		> intersphinx: link between Sphinx documentation of different projects (y/n) [n]: 
+		> todo: write "todo" entries that can be shown or hidden on build (y/n) [n]: 
+		> coverage: checks for documentation coverage (y/n) [n]: 
+		> pngmath: include math, rendered as PNG images (y/n) [n]: 
+		> mathjax: include math, rendered in the browser by MathJax (y/n) [n]: 
+		> ifconfig: conditional inclusion of content based on config values (y/n) [n]: 
+		> viewcode: include links to the source code of documented Python objects (y/n) [n]: 
+		> Create Makefile? (y/n) [y]: 
+		> Create Windows command file? (y/n) [y]: 
+
+		The following files and directories get created:
+
+		    Makefile
+		    conf.py
+		    index.rst
+		    make.bat
+		    _build/
+		    _static/
+		    _templates/
+
+		In the generated conf.py file, set this value:
+
+		    html_theme = 'default'
+
+		both because the 'alabaster' theme specified by the quickstart looks terrible, and
+		because only 'default' is guaranteed to be available in a CentOS environment if
+		this plugin is built there.
+
+		Later, you will use the Makefile to build the docs, like so:
+		   make {builder}
+		where "{builder}" is one of the supported builders, e.g. html, latex or linkcheck.
+		Run "make -n" to see all the possibilities.  You can also "make clean" to remove
+		any previous builds of the documentation, to ensure that you are starting from
+		scratch.  For simple testing, "make html" is the easiest thing to do; you can then
+		navigate your browser to the _build/html/ directory, and view the index.html file
+		and take links from there for proofreading.
+
+	    If we had not run sphinx-quickstart to create doc/source/Makefile and doc/source/conf.py,
+	    we would have used the following sources for inspiration:
+		Makefile:
+		    copy initial content template from:
+		    https://raw.githubusercontent.com/openstack/fuel-plugin-openbook/7.0/doc/Makefile
+		    https://raw.githubusercontent.com/openstack/fuel-plugin-contrail/master/doc/source/Makefile
+		    (run vimdiff on those two sources, merge them as seems appropriate, and convert to this plugin name)
+		conf.py:
+		    copy initial content template from:
+		    https://raw.githubusercontent.com/openstack/fuel-plugin-openbook/7.0/doc/source/conf.py
+		    https://raw.githubusercontent.com/openstack/fuel-plugin-contrail/master/doc/source/conf.py
+		    (start with the openbook copy, and edit from there)
+
+    (*) Construct the end-user plugin documentation:
+	    Create whatever sections are appropriate for your documentation, such as the following.  Focus on:
+	    * how/where to download the plugin
+	    * how to install the plugin
+	    * any additional required post-install procedures (e.g., certain critical backend configuration steps for security)
+	    * screenshot of GroundWork Monitor login splash screen
+	    * where to find additional documentation on the GroundWork site
+
+	    cd ~/{fuel-plugin-groundwork-monitor}
+	    touch doc/source/introduction.rst
+		copy initial content template from:
+		https://raw.githubusercontent.com/openstack/fuel-plugin-contrail/master/doc/source/intro.rst
+	    touch doc/source/system_requirements.rst
+		copy initial content template from:
+		https://raw.githubusercontent.com/openstack/fuel-plugin-contrail/master/doc/source/sys_reqs.rst
+	    touch doc/source/installation.rst
+		copy initial content template from:
+		https://raw.githubusercontent.com/openstack/fuel-plugin-contrail/master/doc/source/install_guide.rst
+	    touch doc/source/user_guide.rst
+		copy initial content template from:
+		https://raw.githubusercontent.com/openstack/fuel-plugin-contrail/master/doc/source/contrail_ui_intro.rst
+	    touch doc/source/limitations.rst
+		copy initial content template from:
+		https://raw.githubusercontent.com/openstack/fuel-plugin-contrail/master/doc/source/limitations.rst
+	    touch doc/source/license.rst
+	        (include a table listing licenses of subsidiary components, or reference(s) to where to find such license info)
+		(or ditch this file in favor of including this information in the introduction.rst file)
+	    touch doc/source/appendix.rst
+		copy initial content template from:
+		https://raw.githubusercontent.com/openstack/fuel-plugin-contrail/master/doc/source/appendix.rst
+
+	    Compare the index.rst file created earlier, to be used to
+	    refer to the individual sections, with this sample file from an
+	    existing plugin.  Make adjustments to your local copy as needed
+	    (changing the title and adding section names).
+		see initial content template from:
+		https://raw.githubusercontent.com/openstack/fuel-plugin-contrail/master/doc/source/index.rst
+
+	    mkdir doc/testing
+	    (need test plan in the doc/testing directory)
+	     	touch doc/testing/master_test_plan_for_fuel-plugin-groundwork-monitor_v7.1.0.rst
+		(see the contrail doc for an initial content template)
+		(must have clearly specified prerequisites to make the plugin up and running)
+	    (need test report in the doc/testing directory?  [not seen for the contrail plugin])
+
+	    Test making the end-user documentation:
+		cd doc/source
+
+		make html
+		(look for a HTML copy of the doc, in the _build/html/ subdirectory)
+
+		make latexpdf
+		(look for a PDF of the doc, in the _build/latex/ subdirectory)
+
+    (*) Construct the developer documentation tree:
+	    cd ~/{fuel-plugin-groundwork-monitor}
+	    mkdir specs
+	    mkdir specs/7.1.0
+	    touch specs/7.1.0/spec.rst
+		(need a developer's specification [perhaps this very file you are reading now]
+		placed into the specs directory, containing design and implementation details
+		and explaining what problem can be solved with this plugin)
+		copy initial content template from:
+		https://raw.githubusercontent.com/openstack/fuel-plugin-contrail/master/specs/spec.rst
+		(Later, add content into the specs/7.1.0/spec.rst file.)
+	    touch specs/template.rst
+		copy initial content template from:
+		https://raw.githubusercontent.com/openstack/fuel-specs/master/specs/template.rst
+
+    (*) Files to potentially modify:
+
+	-rw-rw-r-- 1 anon anon   533 May 15 14:10 fuel-plugin-groundwork-monitor/components.yaml
+	    This file contains wizard components descriptions that are pretty similar to
+	    the `environment_config.yaml` file.  Look at the following link for details:
+	    https://specs.openstack.org/openstack/fuel-specs/specs/8.0/component-registry.html
+
+	-rw-rw-r-- 1 anon anon   456 May 11 21:07 fuel-plugin-groundwork-monitor/network_roles.yaml
+
+	-rwxrwxr-x 1 anon anon   129 May 15 14:10 fuel-plugin-groundwork-monitor/deployment_scripts/deploy.sh
+	    This script will need to be modified to run the GroundWork Monitor BitRock installer in unattended mode.
+
+	-rw-rw-r-- 1 anon anon     0 May 11 21:07 fuel-plugin-groundwork-monitor/repositories/ubuntu/.gitkeep
+	    Leave this file alone for now.
+
+	-rw-rw-r-- 1 anon anon     0 May 11 21:07 fuel-plugin-groundwork-monitor/repositories/centos/.gitkeep
+	    Leave this file alone for now.
+
+	-rw-rw-r-- 1 anon anon   357 May 15 14:10 fuel-plugin-groundwork-monitor/environment_config.yaml
+	    Copy appropriate material (not necessarily everything) from these sections of the Fuel Plugins Wiki:
+	    https://wiki.openstack.org/wiki/Fuel/Plugins#environment_config.yaml
+	    https://wiki.openstack.org/wiki/Fuel/Plugins#Plugin_elements_in_the_Fuel_web_UI
+
+	-rw-rw-r-- 1 anon anon    18 May 11 21:07 fuel-plugin-groundwork-monitor/.gitignore
+	    Copy appropriate material (not necessarily everything) from this template file:
+	    https://raw.githubusercontent.com/openstack/fuel-plugin-contrail/master/.gitignore
+
+	-rw-rw-r-- 1 anon anon  1063 May 15 14:10 fuel-plugin-groundwork-monitor/metadata.yaml
+	    Copy appropriate material (not necessarily everything) from this section of the Fuel Plugins Wiki:
+	    https://wiki.openstack.org/wiki/Fuel/Plugins#metadata.yaml
+	    Copy appropriate material (not necessarily everything) from this template file:
+	    https://raw.githubusercontent.com/openstack/fuel-plugin-neutron-vpnaas/master/metadata.yaml
+
+	-rw-rw-r-- 1 anon anon  1406 May 15 14:10 fuel-plugin-groundwork-monitor/deployment_tasks.yaml
+	    Copy appropriate material (not necessarily everything) from this section of the Fuel Plugins Wiki:
+	    https://wiki.openstack.org/wiki/Fuel/Plugins#deployment_tasks.yaml
+
+	-rwxrwxr-x 1 anon anon   204 May 11 21:07 fuel-plugin-groundwork-monitor/pre_build_hook
+	    Copy appropriate material (not necessarily everything) from the template shown in one of the FAQ answers:
+	    https://wiki.openstack.org/wiki/Fuel/Plugins#FAQ
+
+	-rw-rw-r-- 1 anon anon   736 May 11 21:07 fuel-plugin-groundwork-monitor/tasks.yaml
+
+	-rw-rw-r-- 1 anon anon   485 May 15 14:10 fuel-plugin-groundwork-monitor/node_roles.yaml
+
+	-rw-rw-r-- 1 anon anon   176 May 15 14:10 fuel-plugin-groundwork-monitor/volumes.yaml
+
+	-rw-rw-r-- 1 anon anon    63 May 15 14:10 fuel-plugin-groundwork-monitor/README.md
+	    Copy a simple initial template from:
+	    https://raw.githubusercontent.com/openstack/fuel-plugin-contrail/master/README.md
+	    and modify to suit the needs of this plugin.
+	    (Edit at the end of development to accurately reflect the final RPM filename.)
+
+	-rw-rw-r-- 1 anon anon 11325 May 11 21:07 fuel-plugin-groundwork-monitor/LICENSE
+	    (Edit is needed, to reflect GroundWork's desired licensing; ask Hans.)
+
+    (*) Add the desired GroundWork Monitor BitRock installer to the plugin directory.
+	    ~/{fuel-plugin-groundwork-monitor}/deployment_scripts/groundworkenterprise-7.1.0-br389-gw2838-linux-64-installer.run
+    (*) Make the GroundWork Monitor BitRock installer executable.
+	    chmod 755 ~/{fuel-plugin-groundwork-monitor}/deployment_scripts/groundworkenterprise-7.1.0-br389-gw2838-linux-64-installer.run
+    (*) Add copyrights to all files:
+	    Copy appropriate material (not necessarily everything) from this template file:
+	    https://raw.githubusercontent.com/openstack/fuel-library/e64d5408c0274950fd88e37bfbd94991941bbe4d/deployment/puppet/cobbler/manifests/profile/centos63_x86_64.pp
+        (list each such file here, and whether it has been so processed; compare copyrights in other plugins)
+    (*) Build the plugin using the following raw commands:
+	    cd {fuel-plugin-groundwork-monitor}
+	    fpb --build .
+	or more simply, using the Makefile that we have supplied:
+	    cd {fuel-plugin-groundwork-monitor}
+	    make clean plugin
+    (*) That last command creates the following file:
+	    ~/fuel-plugin-groundwork-monitor/fuel-plugin-groundwork-monitor-7.1-7.1.0-1.x86_64.rpm
+	    fuel-plugin-groundwork-monitor-7.1-7.1.0-1.x86_64.rpm
+	    fuel-plugin-groundwork-monitor-7.1-7.1.0-1.noarch.rpm
+	if you have the GroundWork Monitor BitRock installer included, or the
+	file if you do not:
+	    ~/fuel-plugin-groundwork-monitor/fuel-plugin-groundwork-monitor-7.1-7.1.0-1.noarch.rpm
+	Those files do not seem to be fully RPM-format compliant.  For
+	instance, these commands don't work as expected:
+	    rpm -qp --scripts fuel-plugin-groundwork-monitor-7.1-7.1.0-1.x86_64.rpm
+	    rpm2cpio fuel-plugin-groundwork-monitor-7.1-7.1.0-1.x86_64.rpm | cpio -ictv
+    (*) Instructions for installing and removing the plugin, assuming that the
+	RPM file has been placed in the /tmp directory on the Fuel Master:
+	    fuel plugins --install /tmp/fuel-plugin-groundwork-monitor-7.1-7.1.0-1.x86_64.rpm
+	    fuel plugins --list
+	    fuel plugins --remove fuel-plugin-groundwork-monitor==7.1.0
+	(See the Fuel User Guide, version 8.0, page 64, for these commands,
+	in case adjustments must be made to what I have described here.)
+	In order to apply the plugin to a node, it must first be enabled
+	by checking its box in the Plugins screen in the Fuel Web UI.
+	In order to remove the plugin, you must have no nodes in your
+	environment which are currently using it, and the plugin must
+	already be disabled (unchecked in the Plugins screen in the
+	Fuel Web UI).
+
+Still to document:
+* construct a top-level Makefile to control all aspects of building
+* edit install/uninstall scripting
+* edit YAML config files
+* add the actual GroundWork Monitor BitRock installer to the plugin for inclusion in the RPM
+* figure out how to specify the version number (e.g., 7.1.0)
+* document the plugin
+
+Questions
+
+-- GroundWork Monitor is most definitely NOT an anonymous compute node.
+    It stores a tremendous amount of locally customized configuration data for
+    how the site is to be monitored.  So in the Mirantis OpenStack context,
+    how do you lock down an OpenStack node in Fuel to prevent inadvertent
+    reprovisioning, thereby wiping out hugely precious configuration data?
+-- How is the documentation supposed to be versioned, if all of the principal
+    documentation files live at the top level of the plugin's doc/ directory?
+    Shouldn't we use a version-number subdirectory for the documentation?
+    (The same issue goes for most of the other files that make up the plugin
+    itself.)
+-- At least one of the deployment scripts will be run during installation of
+    the plugin RPM.  What scripts will be run when the RPM is uninstalled, and
+    how do I as a fuel plugin developer tell the Fuel Plugin Builder about such
+    scripting?
+-- The Fuel Plugin Wiki page talks briefly about using Sphinx to help with
+    documentation.  But I haven't seen anything about what Sphinx is, or how
+    to get it installed on my development machine so it can be used.  What is
+    it, how do I get it installed, how do I run it against the documentation
+    (if that's what is done with it), and where is the resulting output?
+-- There seems to be some confusion in the Fuel and Fuel Plugin documentation
+    about major.minor.patch numbering, and what level of semantic versioning
+    can be updated by Fuel.  Can Mirantis clarify this?  (The second level is
+    supposed to be used for a minor release, not the third level.)  What
+    preparations (if any) are required in a base-level (major-release) plugin
+    to prepare for safe upgrades to later minor and patch releases?
+
+Issues
+
+  -- GW Monitor needs to adopt Semantic Versioning conventions for release tagging
+  -- updates not supported as such in GW Monitor patch structure, in past releases
+  -- GIT code-repository account to be owned by some GroundWork-controlled github.com user?
+  -- LaunchPad bug-reporting account to be owned by some GroundWork-controlled launchpad.net user?
+  -- licensing desired-by/approved-by GroundWork?
+  -- copyright info desired-by/approved-by GroundWork?
+
+Questions for Mirantis:
+
+=====================
+
+Irina,
+
+I have a few initial questions for you.  The context is this:
+
+* I have built a trial version of the Fuel plugin.
+
+* I have transferred the Fuel plugin to what I believe is the
+  Fuel master (172.16.1.2, hostname fuel.domain.tld) in the
+  Mirantis Lab.
+
+* I have successfully installed and removed the plugin on the Fuel
+  master itself, observing that the installed files end up under
+  the /var/www/nailgun/plugins/fuel-plugin-groundwork-monitor-7.1
+  directory.
+
+Now I wish to deploy the plugin on an existing compute node (node-8).
+But I don't see any instructions for doing so.  All the Fuel Plugins
+SDK doc says is:
+
+    Deployment
+
+    After environment is created and configured, user starts
+    a deployment.
+
+That's it -- no hints as to what steps to take and commands to run.
+
+I have the Fuel User Guide version 8.0 printed out here (although
+the Mirantis Lab seems to be running Fuel 7.0), but I see nothing
+in the Contents that talks about deploying Fuel plugins.  So that
+manual doesn't seem like a fruitful approach.  I could stumble
+around for a very long time to try to figure this out, but that
+strategy seems highly inefficient.  I need simple advice on how to
+both deploy this plugin and how to un-deploy it so I can run tests
+on the same compute node with modified versions of the plugin.
+
+For reference, my plugin's deployment_tasks.yaml file says "role:
+[fuel-plugin-groundwork-monitor_role]" in a couple of places.
+I assume that's going to come into play somehow at this juncture.
+
+Secondarily, and of less importance at the moment, I tried to
+connect to the Fuel master via HTTPS in a browser.  Firefox says
+the following when connecting to:  https://172.16.1.2
+
+    172.16.1.2:8443 uses an invalid security certificate.
+    The certificate is not trusted because it is self-signed.
+    The certificate is only valid for 10.20.0.2
+    Error code: SEC_ERROR_UNKNOWN_ISSUER
+
+And later, with more detail:
+
+    Certificate Status
+	This site attempts to identify itself with invalid
+	information.
+
+	Wrong Site
+
+	The certificate belongs to a different site, which could
+	mean that someone is trying to impersonate this site.
+
+	Unknown Identity
+
+	The certificate is not trusted because it hasn't been
+	verified as issued by a trusted authority using a secure
+	signature.
+
+For purposes of a lab-test environment, I'm not so much concerned
+about the use of self-signed certificate as I am about using a
+certificate from some other site.
+
+Glenn
+
+=====================
+
+(*) Mirantis ought to include a section on "OSTF" in their
+    Terminology Reference.  Explain what the acronym stands for.

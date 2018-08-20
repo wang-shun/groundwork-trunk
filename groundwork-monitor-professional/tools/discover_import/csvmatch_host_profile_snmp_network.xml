@@ -1,0 +1,71 @@
+<!--
+Copyright 2007 GroundWork Open Source, Inc.  
+All rights reserved. Use is subject to GroundWork commercial license terms.
+-->
+<groundwork_import_match_configuration>
+<host_profile name="host_profile_snmp_network">
+<field_name order="1">Host_IPAddress</field_name>
+<field_name order="2">Host_Name</field_name>
+<field_name order="3">Service_Name</field_name>
+<field_name order="4">Service_Index</field_name>
+<field_name order="5">Service_Descr</field_name>
+<field_name order="6">Service_Speed</field_name>
+<host_name_field><![CDATA[Host_Name]]></host_name_field>
+<host_alias_field><![CDATA[Host_Name]]></host_alias_field>
+<host_ipaddress_field>Host_IPAddress</host_ipaddress_field>
+<service>
+<service_name><![CDATA[snmp_ifoperstatus_1]]></service_name>
+<create_service_condition>
+<on_every_host></on_every_host>
+<on_field_match>
+<enable>1</enable>
+<field><![CDATA[Service_Name]]></field>
+<field_match_value><![CDATA[SNMP_ifoperstatus]]></field_match_value>
+</on_field_match>
+</create_service_condition>
+<new_service_description><![CDATA[snmp_ifoperstatus_$Service_Index$]]></new_service_description>
+<command_arg_map>
+<argument_file_map number="1"><![CDATA[Service_Index]]></argument_file_map>
+</command_arg_map>
+</service>
+<service>
+<service_name><![CDATA[udp_snmp]]></service_name>
+<create_service_condition>
+<on_every_host>1</on_every_host>
+</create_service_condition>
+<new_service_description><![CDATA[udp_snmp]]></new_service_description>
+<command_arg_map>
+</command_arg_map>
+</service>
+<service>
+<service_name><![CDATA[snmp_ifbandwidth_1]]></service_name>
+<create_service_condition>
+<on_every_host></on_every_host>
+<on_field_match>
+<enable>1</enable>
+<field><![CDATA[Service_Name]]></field>
+<field_match_value><![CDATA[SNMP_bandwidth]]></field_match_value>
+</on_field_match>
+</create_service_condition>
+<new_service_description><![CDATA[snmp_ifbandwidth_$Service_Index$]]></new_service_description>
+<command_arg_map>
+<argument_file_map number="1"><![CDATA[Service_Index]]></argument_file_map>
+</command_arg_map>
+</service>
+<service>
+<service_name><![CDATA[snmp_if_1]]></service_name>
+<create_service_condition>
+<on_every_host></on_every_host>
+<on_field_match>
+<enable>1</enable>
+<field><![CDATA[Service_Name]]></field>
+<field_match_value><![CDATA[SNMP_if_]]></field_match_value>
+</on_field_match>
+</create_service_condition>
+<new_service_description><![CDATA[snmp_if_$Service_Index$]]></new_service_description>
+<command_arg_map>
+<argument_file_map number="1"><![CDATA[Service_Index]]></argument_file_map>
+</command_arg_map>
+</service>
+</host_profile>
+</groundwork_import_match_configuration>

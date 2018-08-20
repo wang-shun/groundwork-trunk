@@ -1,0 +1,320 @@
+*** cacti.orig/htdocs/lib/export.php	Fri Oct  5 02:24:47 2012
+--- cacti/htdocs/lib/export.php	Thu Nov  1 15:51:19 2012
+***************
+*** 22,28 ****
+   +-------------------------------------------------------------------------+
+  */
+  
+! function &graph_template_to_xml($graph_template_id) {
+  	global $struct_graph, $fields_graph_template_input_edit, $struct_graph_item;
+  
+  	$hash["graph_template"] = get_hash_version("graph_template") . get_hash_graph_template($graph_template_id);
+--- 22,28 ----
+   +-------------------------------------------------------------------------+
+  */
+  
+! function graph_template_to_xml($graph_template_id) {
+  	global $struct_graph, $fields_graph_template_input_edit, $struct_graph_item;
+  
+  	$hash["graph_template"] = get_hash_version("graph_template") . get_hash_graph_template($graph_template_id);
+***************
+*** 34,44 ****
+  	$graph_template_inputs = db_fetch_assoc("select * from graph_template_input where graph_template_id=$graph_template_id");
+  
+  	if ((empty($graph_template["id"])) || (empty($graph_template_graph["id"]))) {
+! 		print 'Invalid graph template "' . $graph_template["name"] . '".<br>';
+! 		// FIX MAJOR:  This construction causes the following PHP error message to appear in the browser.
+! 		// Notice: Only variable references should be returned by reference.
+! 		// So a proper exception handling mechanism has to be designed for this case.
+! 		return "Invalid graph template.";
+  	}
+  
+  	$xml_text .= "<hash_" . $hash["graph_template"] . ">\n\t<name>" . xml_character_encode($graph_template["name"]) . "</name>\n\t<graph>\n";
+--- 34,43 ----
+  	$graph_template_inputs = db_fetch_assoc("select * from graph_template_input where graph_template_id=$graph_template_id");
+  
+  	if ((empty($graph_template["id"])) || (empty($graph_template_graph["id"]))) {
+! 		// print 'Invalid graph template "' . $graph_template["name"] . '".<br>';
+! 		raise_message(30);
+! 		cacti_log("ERROR: Invalid Graph Template found in Database.  Please run database repair script to identify and/or correct.", false, "WEBUI");
+! 		return;
+  	}
+  
+  	$xml_text .= "<hash_" . $hash["graph_template"] . ">\n\t<name>" . xml_character_encode($graph_template["name"]) . "</name>\n\t<graph>\n";
+***************
+*** 134,140 ****
+  	return $xml_text;
+  }
+  
+! function &data_template_to_xml($data_template_id) {
+  	global $struct_data_source, $struct_data_source_item;
+  
+  	$hash["data_template"] = get_hash_version("data_template") . get_hash_data_template($data_template_id);
+--- 133,139 ----
+  	return $xml_text;
+  }
+  
+! function data_template_to_xml($data_template_id) {
+  	global $struct_data_source, $struct_data_source_item;
+  
+  	$hash["data_template"] = get_hash_version("data_template") . get_hash_data_template($data_template_id);
+***************
+*** 147,153 ****
+  	$data_input_data = db_fetch_assoc("select * from data_input_data where data_template_data_id=" . $data_template_data["id"]);
+  
+  	if ((empty($data_template["id"])) || (empty($data_template_data["id"]))) {
+! 		return "Invalid data template.";
+  	}
+  
+  	$xml_text .= "<hash_" . $hash["data_template"] . ">\n\t<name>" . xml_character_encode($data_template["name"]) . "</name>\n\t<ds>\n";
+--- 146,155 ----
+  	$data_input_data = db_fetch_assoc("select * from data_input_data where data_template_data_id=" . $data_template_data["id"]);
+  
+  	if ((empty($data_template["id"])) || (empty($data_template_data["id"]))) {
+! 		// print 'Invalid data template "' . $data_template["name"] . '".<br>';
+! 		raise_message(27);
+! 		cacti_log("ERROR: Invalid Data Template found in Database.  Please run database repair script to identify and/or correct.", false, "WEBUI");
+! 		return;
+  	}
+  
+  	$xml_text .= "<hash_" . $hash["data_template"] . ">\n\t<name>" . xml_character_encode($data_template["name"]) . "</name>\n\t<ds>\n";
+***************
+*** 246,252 ****
+  	return $xml_text;
+  }
+  
+! function &data_input_method_to_xml($data_input_id) {
+  	global $fields_data_input_edit, $fields_data_input_field_edit, $fields_data_input_field_edit_1;
+  
+  	/* aggregate field arrays */
+--- 248,254 ----
+  	return $xml_text;
+  }
+  
+! function data_input_method_to_xml($data_input_id) {
+  	global $fields_data_input_edit, $fields_data_input_field_edit, $fields_data_input_field_edit_1;
+  
+  	/* aggregate field arrays */
+***************
+*** 259,265 ****
+  	$data_input_fields = db_fetch_assoc("select * from data_input_fields where data_input_id=$data_input_id");
+  
+  	if (empty($data_input["id"])) {
+! 		return "Invalid data input method.";
+  	}
+  
+  	$xml_text .= "<hash_" . $hash["data_input_method"] . ">\n";
+--- 261,270 ----
+  	$data_input_fields = db_fetch_assoc("select * from data_input_fields where data_input_id=$data_input_id");
+  
+  	if (empty($data_input["id"])) {
+! 		// print 'Invalid data input method "' . $data_input["name"] . '".<br>';
+! 		raise_message(26);
+! 		cacti_log("ERROR: Invalid Data Input Method found in Data Template.  Please run database repair script to identify and/or correct.", false, "WEBUI");
+! 		return;
+  	}
+  
+  	$xml_text .= "<hash_" . $hash["data_input_method"] . ">\n";
+***************
+*** 304,317 ****
+  	return $xml_text;
+  }
+  
+! function &cdef_to_xml($cdef_id) {
+  	global $fields_cdef_edit;
+  
+  	$fields_cdef_item_edit = array(
+  		"sequence" => "sequence",
+  		"type" => "type",
+  		"value" => "value"
+! 		);
+  
+  	$hash["cdef"] = get_hash_version("cdef") . get_hash_cdef($cdef_id);
+  	$xml_text = "";
+--- 309,322 ----
+  	return $xml_text;
+  }
+  
+! function cdef_to_xml($cdef_id) {
+  	global $fields_cdef_edit;
+  
+  	$fields_cdef_item_edit = array(
+  		"sequence" => "sequence",
+  		"type" => "type",
+  		"value" => "value"
+! 	);
+  
+  	$hash["cdef"] = get_hash_version("cdef") . get_hash_cdef($cdef_id);
+  	$xml_text = "";
+***************
+*** 320,326 ****
+  	$cdef_items = db_fetch_assoc("select * from cdef_items where cdef_id=$cdef_id order by sequence");
+  
+  	if (empty($cdef["id"])) {
+! 		return "Invalid CDEF.";
+  	}
+  
+  	$xml_text .= "<hash_" . $hash["cdef"] . ">\n";
+--- 325,334 ----
+  	$cdef_items = db_fetch_assoc("select * from cdef_items where cdef_id=$cdef_id order by sequence");
+  
+  	if (empty($cdef["id"])) {
+! 		// print 'Invalid CDEF "' . $cdef["name"] . '".<br>';
+! 		raise_message(25);
+! 		cacti_log("ERROR: Invalid CDEF found in Graph Template.  Please run database repair script to identify and/or correct.", false, "WEBUI");
+! 		return;
+  	}
+  
+  	$xml_text .= "<hash_" . $hash["cdef"] . ">\n";
+***************
+*** 363,369 ****
+  	return $xml_text;
+  }
+  
+! function &gprint_preset_to_xml($gprint_preset_id) {
+  	global $fields_grprint_presets_edit;
+  
+  	$hash = get_hash_version("gprint_preset") . get_hash_gprint($gprint_preset_id);
+--- 371,377 ----
+  	return $xml_text;
+  }
+  
+! function gprint_preset_to_xml($gprint_preset_id) {
+  	global $fields_grprint_presets_edit;
+  
+  	$hash = get_hash_version("gprint_preset") . get_hash_gprint($gprint_preset_id);
+***************
+*** 372,378 ****
+  	$graph_templates_gprint = db_fetch_row("select * from graph_templates_gprint where id=$gprint_preset_id");
+  
+  	if (empty($graph_templates_gprint["id"])) {
+! 		return "Invalid GPRINT preset.";
+  	}
+  
+  	$xml_text .= "<hash_$hash>\n";
+--- 380,389 ----
+  	$graph_templates_gprint = db_fetch_row("select * from graph_templates_gprint where id=$gprint_preset_id");
+  
+  	if (empty($graph_templates_gprint["id"])) {
+! 		// print 'Invalid GPRINT preset "' . $graph_templates_gprint["name"] . '".<br>';
+! 		raise_message(24);
+! 		cacti_log("ERROR: Invalid GPRINT preset found in Graph Template.  Please run database repair script to identify and/or correct.", false, "WEBUI");
+! 		return;
+  	}
+  
+  	$xml_text .= "<hash_$hash>\n";
+***************
+*** 390,396 ****
+  	return $xml_text;
+  }
+  
+! function &round_robin_archive_to_xml($round_robin_archive_id) {
+  	global $fields_rra_edit;
+  
+  	$hash = get_hash_version("round_robin_archive") . get_hash_round_robin_archive($round_robin_archive_id);
+--- 401,407 ----
+  	return $xml_text;
+  }
+  
+! function round_robin_archive_to_xml($round_robin_archive_id) {
+  	global $fields_rra_edit;
+  
+  	$hash = get_hash_version("round_robin_archive") . get_hash_round_robin_archive($round_robin_archive_id);
+***************
+*** 400,410 ****
+  	$rra_cf = db_fetch_assoc("select * from rra_cf where rra_id=$round_robin_archive_id");
+  
+  	if (empty($rra["id"])) {
+! 		print 'Invalid round robin archive "' . $rra["name"] . '".<br>';
+! 		// FIX MAJOR:  This construction causes the following PHP error message to appear in the browser.
+! 		// Notice: Only variable references should be returned by reference.
+! 		// So a proper exception handling mechanism has to be designed for this case.
+! 		return "Invalid round robin archive.";
+  	}
+  
+  	$xml_text .= "<hash_$hash>\n";
+--- 411,420 ----
+  	$rra_cf = db_fetch_assoc("select * from rra_cf where rra_id=$round_robin_archive_id");
+  
+  	if (empty($rra["id"])) {
+! 		// print 'Invalid Round Robin Archive "' . $rra["name"] . '".<br>';
+! 		raise_message(23);
+! 		cacti_log("ERROR: Invalid Round Robin Archive found during Data Template export.  Please run database repair script to identify and/or correct.", false, "WEBUI");
+! 		return;
+  	}
+  
+  	$xml_text .= "<hash_$hash>\n";
+***************
+*** 442,448 ****
+  	return $xml_text;
+  }
+  
+! function &host_template_to_xml($host_template_id) {
+  	global $fields_host_template_edit;
+  
+  	$hash = get_hash_version("host_template") . get_hash_host_template($host_template_id);
+--- 452,458 ----
+  	return $xml_text;
+  }
+  
+! function host_template_to_xml($host_template_id) {
+  	global $fields_host_template_edit;
+  
+  	$hash = get_hash_version("host_template") . get_hash_host_template($host_template_id);
+***************
+*** 453,459 ****
+  	$host_template_snmp_query = db_fetch_assoc("select * from host_template_snmp_query where host_template_id=$host_template_id");
+  
+  	if (empty($host_template["id"])) {
+! 		return "Invalid host template.";
+  	}
+  
+  	$xml_text .= "<hash_$hash>\n";
+--- 463,472 ----
+  	$host_template_snmp_query = db_fetch_assoc("select * from host_template_snmp_query where host_template_id=$host_template_id");
+  
+  	if (empty($host_template["id"])) {
+! 		// print 'Invalid Host Template "' . $host_template["name"] . '".<br>';
+! 		raise_message(28);
+! 		cacti_log("ERROR: Invalid Host Template found during Export.  Please run database repair script to identify and/or correct.", false, "WEBUI");
+! 		return;
+  	}
+  
+  	$xml_text .= "<hash_$hash>\n";
+***************
+*** 507,513 ****
+  	return $xml_text;
+  }
+  
+! function &data_query_to_xml($data_query_id) {
+  	global $fields_data_query_edit, $fields_data_query_item_edit;
+  
+  	$hash["data_query"] = get_hash_version("data_query") . get_hash_data_query($data_query_id);
+--- 520,526 ----
+  	return $xml_text;
+  }
+  
+! function data_query_to_xml($data_query_id) {
+  	global $fields_data_query_edit, $fields_data_query_item_edit;
+  
+  	$hash["data_query"] = get_hash_version("data_query") . get_hash_data_query($data_query_id);
+***************
+*** 517,523 ****
+  	$snmp_query_graph = db_fetch_assoc("select * from snmp_query_graph where snmp_query_id=$data_query_id");
+  
+  	if (empty($snmp_query["id"])) {
+! 		return "Invalid data query.";
+  	}
+  
+  	$xml_text .= "<hash_" . $hash["data_query"] . ">\n";
+--- 530,539 ----
+  	$snmp_query_graph = db_fetch_assoc("select * from snmp_query_graph where snmp_query_id=$data_query_id");
+  
+  	if (empty($snmp_query["id"])) {
+! 		// print 'Invalid Data Query "' . $snmp_query["name"] . '".<br>';
+! 		raise_message(28);
+! 		cacti_log("ERROR: Invalid Data Query found during Export.  Please run database repair script to identify and/or correct.", false, "WEBUI");
+! 		return;
+  	}
+  
+  	$xml_text .= "<hash_" . $hash["data_query"] . ">\n";

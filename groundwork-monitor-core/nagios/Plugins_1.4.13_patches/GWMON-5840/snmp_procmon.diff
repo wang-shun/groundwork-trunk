@@ -1,0 +1,17 @@
+--- nagios-plugins-1.4.13/contrib/check_snmp_process_monitor.pl	2002-08-22 15:08:46.000000000 -0700
++++ nagios-plugins-1.4.13_mod/contrib/check_snmp_process_monitor.pl	2009-06-01 05:57:37.000000000 -0700
+@@ -293,12 +293,12 @@
+ # warning, critical
+ if ( ($opt_warning->[0] > 0 && $opt_warning->[0]  >  $count)
+   || ($opt_warning->[1] > 0 && $opt_warning->[1]  <= $count) ) {
+-    $message = "WARNING - no processes found resembling '". ($opt_command || $opt_regex);
++    $message = "WARNING - $count processes found resembling '". ($opt_command || $opt_regex);
+     $exit = $ERRORS{WARNING};
+ }
+ if ( ($opt_critical->[0] > 0 && $opt_critical->[0]  >  $count)
+   || ($opt_critical->[1] > 0 && $opt_critical->[1]  <= $count) ) {
+-    $message = "CRITICAL - no processes found resembling '". ($opt_command || $opt_regex);
++    $message = "CRITICAL - $count processes found resembling '". ($opt_command || $opt_regex);
+     $exit = $ERRORS{CRITICAL};
+ }
+ 

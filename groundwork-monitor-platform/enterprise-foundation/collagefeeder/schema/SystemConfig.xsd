@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<xsd:element name="Adapter">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element name="Command">
+					<xsd:complexType>
+						<xsd:sequence>
+			    			<xsd:element name="Host" type="HostAttributes" minOccurs="0" maxOccurs="unbounded"/>
+			    			<xsd:element name="HostGroup" type="HostGroupAttributes" minOccurs="0" maxOccurs="unbounded"/>
+			    			<xsd:element name="ServiceGroup" type="ServiceGroupAttributes" minOccurs="0" maxOccurs="unbounded"/>
+			    			<xsd:element name="Device" type="DeviceAttributes" minOccurs="0" maxOccurs="unbounded"/>
+			    			<xsd:element name="MonitorServer" type="MonitorServerAttributes" minOccurs="0" maxOccurs="unbounded"/>
+			    			<xsd:element name="ConsolidationCriteria" type="ConsolidationCriteriaAttributes" minOccurs="0" maxOccurs="unbounded"/>
+			    			<xsd:element name="LogMessage" type="LogMessageAttributes" minOccurs="0" maxOccurs="unbounded"/>
+			    			<xsd:element name="Service" type="ServiceAttributes" minOccurs="0" maxOccurs="unbounded"/>
+                            <xsd:element name="PerformanceData" type="PerformanceDataAttributes" minOccurs="0" maxOccurs="unbounded"/>
+						</xsd:sequence>
+						<xsd:attribute name="Action">
+							<xsd:simpleType>
+								<xsd:restriction base="xsd:string">
+									<xsd:enumeration value="ADD"></xsd:enumeration>
+									<xsd:enumeration value="MODIFY"></xsd:enumeration>
+									<xsd:enumeration value="REMOVE"></xsd:enumeration>
+								</xsd:restriction>
+							</xsd:simpleType>
+						</xsd:attribute>
+						<xsd:attribute name="ApplicationType" type="xsd:string"></xsd:attribute>
+					</xsd:complexType>
+				</xsd:element>
+			</xsd:sequence>
+			<xsd:attribute name="Session" type="xsd:string"></xsd:attribute>
+			<xsd:attribute name="AdapterType" type="xsd:string"></xsd:attribute>
+		</xsd:complexType>
+	</xsd:element>
+				
+    <xsd:complexType name="HostAttributes">
+    	<xsd:attribute name="Host" type="xsd:string" />
+		<xsd:attribute name="HostId" type="xsd:int" />
+    	<xsd:attribute name="Device" type="xsd:string" />
+    	<xsd:attribute name="DisplayName" type="xsd:string" />
+    	<xsd:attribute name="Description" type="xsd:string" />
+    	<xsd:attribute name="MonitorServer" type="xsd:string" />
+    </xsd:complexType>
+    
+    <xsd:complexType name="ServiceAttributes">
+    	<xsd:attribute name="ServiceDescription" type="xsd:string" />
+		<xsd:attribute name="ServiceId" type="xsd:int" />
+    	<xsd:attribute name="Host" type="xsd:string" />
+    </xsd:complexType>
+    
+    <xsd:complexType name="HostGroupAttributes">
+    	<xsd:sequence>
+    		<xsd:element name="Host" type="HostAttributes" minOccurs="0" />
+    	</xsd:sequence>
+    	<xsd:attribute name="HostGroup" type="xsd:string"/>
+    	<xsd:attribute name="HostGroupId" type="xsd:int"/>
+    	<xsd:attribute name="Description" type="xsd:string"/>
+    </xsd:complexType>
+    
+    <xsd:complexType name="ServiceGroupAttributes">
+    	<xsd:sequence>
+    		<xsd:element name="Service" type="ServiceAttributes" minOccurs="0" />
+    	</xsd:sequence>
+    	<xsd:attribute name="ServiceGroup" type="xsd:string"/>
+    	<xsd:attribute name="Description" type="xsd:string"/>
+    </xsd:complexType>
+    
+    
+    <xsd:complexType name="DeviceAttributes">
+    	<xsd:sequence>
+    		<xsd:element name="DeviceChild" type="DeviceAttributes" minOccurs="0" />
+    		<xsd:element name="DeviceParent" type="DeviceAttributes" minOccurs="0" />
+    	</xsd:sequence>    
+    	<xsd:attribute name="Device" type="xsd:string" />
+    	<xsd:attribute name="DeviceId" type="xsd:int" />
+    	<xsd:attribute name="DisplayName" type="xsd:string" />
+    	<xsd:attribute name="Description" type="xsd:string" />
+    </xsd:complexType>    
+    
+    <xsd:complexType name="MonitorServerAttributes">
+    	<xsd:sequence>
+    		<xsd:element name="Device" type="DeviceAttributes" minOccurs="0"/>
+    	</xsd:sequence>
+    	<xsd:attribute name="MonitorServer" type="xsd:string" />
+    	<xsd:attribute name="MonitorServerId" type="xsd:int" />
+    	<xsd:attribute name="IPAddress" type="xsd:string" />
+    	<xsd:attribute name="Description" type="xsd:string" />
+    </xsd:complexType>
+    
+    <xsd:complexType name="LogMessageAttributes">
+		<xsd:attribute name="LogMessageId" type="xsd:string" />
+		<xsd:attribute name="MonitorServer" type="xsd:string"/>
+		<xsd:attribute name="Device" type="xsd:string"/>
+		<xsd:attribute name="Severity" type="xsd:string"/>
+		<xsd:attribute name="TextMessage" type="xsd:string"/>
+		<xsd:attribute name="OperationStatus">
+			<xsd:simpleType>
+				<xsd:restriction base="xsd:string">
+					<xsd:enumeration value="OPEN"></xsd:enumeration>
+					<xsd:enumeration value="CLOSED"></xsd:enumeration>
+					<xsd:enumeration value="NOTIFIED"></xsd:enumeration>
+					<xsd:enumeration value="ACCEPTED"></xsd:enumeration>
+				</xsd:restriction>
+			</xsd:simpleType>
+		</xsd:attribute>
+    </xsd:complexType>
+    
+    <xsd:complexType name="ConsolidationCriteriaAttributes">
+		<xsd:attribute name="CriteriaName" type="xsd:string" />
+		<xsd:attribute name="CriteriaId" type="xsd:string" />
+		<xsd:attribute name="Criteria" type="xsd:string" />
+    </xsd:complexType>
+    
+    <!-- Performance Data Post. Performance data feeder will send performance values for each service
+    identified by the hostname and servicedescription attributes -->
+    <xsd:complexType name="PerformanceDataAttributes">
+        <xsd:attribute name="hostname" type="xsd:string" />
+        <xsd:attribute name="servicedescription" type="xsd:string" />
+        <xsd:attribute name="performancedatalabel" type="xsd:string" />
+        <xsd:attribute name="performancevalue" type="xsd:string" />
+        <xsd:attribute name="checkdate" type="xsd:string" />
+    </xsd:complexType>
+       	
+</xsd:schema>

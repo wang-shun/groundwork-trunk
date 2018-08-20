@@ -1,0 +1,19 @@
+Note:  The patch found here in usr_lib_rpm_perl.req.patch is necessary
+to patch the installed rpm-build-4.4.2.3-32.el5_9 package, which is the
+latest version available under CentOS 5.9 as of this writing (according
+to yum).  That package does not properly analyze the Perl dependency
+requirements found in one of the Perl packages we include in the Disaster
+Recovery build, and in the servicedeskexpress build.  This issue has now
+been reported to the RPM developers (http://www.rpm.org/ticket/128),
+and it appears to be folded into the current upstream release of RPM
+(4.11.0.1), but the fix hasn't shown up in CentOS 5.9.  CentOS 6.3
+includes 4.8.0-32.el6, which does include this patch.  I don't know the
+status in other Linux distributions.  Hence the possible need to patch
+the copy you are running with on your own build machine.
+
+The patch here is a slightly updated version of the one we originally
+generated while building the monitor-dr (Disaster Recovery) project.
+
+Note that our patching of /usr/lib/rpm/perl.req is subject to being
+"repaired" when the rpm-build package is updated by yum, so this patch
+may need to be re-applied to the system at some future time.

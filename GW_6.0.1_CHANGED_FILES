@@ -1,0 +1,283 @@
+========================================================================
+CHANGES FOR THE GW 6.0.1 RELEASE
+========================================================================
+
+Be careful about where you enter data into this file.  There are three
+separate sections:
+
+Section 1:  Changes in common for both Community and Enterprise versions
+Section 2:  Changes for the Community version ONLY
+Section 3:  Changes for the Enterprise version ONLY
+
+Choose the appropriate section for your change.
+
+========================================================================
+
+Record in this file all changes that affect the build for the GW 6.0.1
+release.  For each installed component or set of related components,
+enter the following information:
+
+Components:
+	absolute pathname(s) in the installed product, along with
+	the required file permissions and ownership
+
+Subversion source:
+	particularly for components that may have different versions
+	checked in for CE and EE distributions, give the full HTTP
+	pathname for accessing the source code for this change
+
+Related JIRAs:
+	the related JIRA(s) addressed by these components
+
+Manual Upgrade Instructions:
+Automatic Upgrade Actions:
+	Describe in detail any special install-time handling (such as,
+	turn off Apache during the install, or bounce a script after
+	install, or run some special backup or migration script before
+	or after the upgrade, or ...).	Specify separately the steps
+	that must be taken manually and those that should be automated.
+	Include explicit commands whenever that will clarify the intent.
+
+------------------------------------------------------------------------
+Sample entry:
+------------------------------------------------------------------------
+
+Components:
+	-rwxr-xr-x nagios nagios /usr/local/groundwork/core/foo/bar
+
+Subversion source:
+	http://archive.groundworkopensource.com/groundwork-opensource/trunk/foo/bar
+
+Related JIRAs:
+	GWMON-####, GWMON-####
+
+Manual Upgrade Instructions:
+	Back up the world before attempting this upgrade, and save
+	your backup files outside of the /usr/local/groundwork/ tree.
+
+Automatic Upgrade Actions:
+	Stop gwservices for the period of this upgrade.
+
+========================================================================
+Section 1:  Changes in common for both Community and Enterprise versions
+========================================================================
+
+Components:Foundation
+
+Subversion source:
+	http://archive.groundworkopensource.com/groundwork-opensource/trunk/foundation/collage/api/src/java/com/groundwork/collage/CollageAdminInfrastructure.java
+   	http://archive.groundworkopensource.com/groundwork-opensource/trunk/foundation/collage/impl/admin/src/java/META-INF/admin-api-assembly.xml
+  	http://archive.groundworkopensource.com/groundwork-opensource/ trunk/foundation/collage/impl/admin/src/java/com/groundwork/collage/impl/admin/CollageAdminImpl.java
+   	http://archive.groundworkopensource.com/groundwork-opensource/trunk/foundation/collage/impl/admin/src/java/com/groundwork/collage/impl/aop/PublishEventsAfterAdvice.java
+
+Related JIRAs:7589
+
+Manual Upgrade Instructions:
+
+Automatic Upgrade Actions:
+./ctlscript stop gwservices
+cp foundation-webapp.war /usr/local/groundwork/foundation/container/webapps/foundation-webapp.war
+chown nagios.nagios /usr/local/groundwork/foundation/container/webapps/foundation-webapp.war
+chmod 644 /usr/local/groundwork/foundation/container/webapps/foundation-webapp.war
+./ctlscript start gwservices
+------------------------------------------------------------------------
+
+Components: Birt Reports
+
+Subversion source:
+	http://archive.groundworkopensource.com/groundwork-opensource/trunk/foundation/misc/web-application/reportserver/resources/gwbirtweb.xml
+
+Related JIRAs: 7877
+
+Manual Upgrade Instructions:
+
+Automatic Upgrade Actions:
+./ctlscript stop gwservices
+cp foundation-webapp.war /usr/local/groundwork/foundation/container/webapps/foundation-reportserver.war
+chown nagios.nagios /usr/local/groundwork/foundation/container/webapps/foundation-reportserver.war
+chmod 644 /usr/local/groundwork/foundation/container/webapps/foundation-reportserver.war
+./ctlscript start gwservices
+
+------------------------------------------------------------------------
+
+Components:StatusViewer & Event Console
+
+Subversion source:
+http://archive.groundworkopensource.com/groundwork-opensource/trunk/foundation/misc/web-application/jboss/start-foundation.sh
+
+Related JIRAs: 7879
+
+Manual Upgrade Instructions:
+
+Automatic Upgrade Actions:
+./ctlscript stop gwservices
+copy http://archive.groundworkopensource.com/groundwork-opensource/trunk/foundation/misc/web-application/jboss/start-foundation.sh to /usr/local/groundwork/foundation/container
+./ctlscript start gwservices
+------------------------------------------------------------------------
+
+Components:
+
+Subversion source:
+
+Related JIRAs:
+
+Manual Upgrade Instructions:
+
+Automatic Upgrade Actions:
+
+------------------------------------------------------------------------
+
+Components:
+
+Subversion source:
+
+Related JIRAs:
+
+Manual Upgrade Instructions:
+
+Automatic Upgrade Actions:
+
+------------------------------------------------------------------------
+
+Components:
+
+Subversion source:
+
+Related JIRAs:
+
+Manual Upgrade Instructions:
+
+Automatic Upgrade Actions:
+
+========================================================================
+Section 2:  Changes for the Community version ONLY
+========================================================================
+
+Components: portal-statusviewer.war
+
+Subversion source: Changes to the build to include latest version of ICEfaces. File is copied out of the CE build 
+
+Related JIRAs: GWMON-7881
+
+Manual Upgrade Instructions:
+
+Automatic Upgrade Actions:
+./ctlscript stop gwservices
+cp portal-statusviewer.war /usr/local/groundwork/foundation/container/webapps/jboss/jboss-portal.sar
+chown nagios.nagios /usr/local/groundwork/foundation/container/webapps/jboss/jboss-portal.sar/portal-statusviewer.war
+chmod 644 /usr/local/groundwork/foundation/container/webapps/jboss/jboss-portal.sar/portal-statusviewer.war
+./ctlscript stop gwservices
+
+------------------------------------------------------------------------
+
+Components:
+
+Subversion source:
+
+Related JIRAs:
+
+Manual Upgrade Instructions:
+
+Automatic Upgrade Actions:
+
+------------------------------------------------------------------------
+
+Components:
+
+Subversion source:
+
+Related JIRAs:
+
+Manual Upgrade Instructions:
+
+Automatic Upgrade Actions:
+
+------------------------------------------------------------------------
+
+Components:
+
+Subversion source:
+
+Related JIRAs:
+
+Manual Upgrade Instructions:
+
+Automatic Upgrade Actions:
+
+========================================================================
+Section 3:  Changes for the Enterprise version ONLY
+========================================================================
+
+Components: 
+-rwxr-xr-x nagios nagios /usr/local/groundwork/gwreports/StatusReports
+
+Subversion source:
+http://geneva/groundwork-professional/trunk/foundation/misc/web-application/reportserver/reports/StatusReports/gw-host-status.rptdesign
+http://geneva/groundwork-professional/trunk/foundation/misc/web-application/reportserver/reports/StatusReports/gw-hostgroup-status.rptdesign
+
+Related JIRAs:
+GWMON-7803
+
+Manual Upgrade Instructions:
+1. Backup the files from /usr/local/groundwork/gwreports/StatusReports folder and keep it outside of /usr/local/groundwork folder.
+2. Copy the above files to /usr/local/groundwork/gwreports/StatusReports folder.
+Note: No need to restart the server. Hot deploy would work here.
+
+Automatic Upgrade Actions:
+
+------------------------------------------------------------------------
+Components: portal-statusviewer.war
+
+Subversion source: Changes to the build to include latest version of ICEfaces. File is copied out of the EE build 
+
+Related JIRAs: GWMON-7881
+
+Manual Upgrade Instructions:
+
+Automatic Upgrade Actions:
+./ctlscript stop gwservices
+cp portal-statusviewer.war /usr/local/groundwork/foundation/container/webapps/jboss/jboss-portal.sar
+chown nagios.nagios /usr/local/groundwork/foundation/container/webapps/jboss/jboss-portal.sar/portal-statusviewer.war
+chmod 644 /usr/local/groundwork/foundation/container/webapps/jboss/jboss-portal.sar/portal-statusviewer.war
+./ctlscript stop gwservices
+
+-----------------------------------------------------------------------------------------------------------------------------
+Components: Event Console
+
+Subversion source:
+http://geneva/groundwork-professional/trunk/monitor-portal/applications/console/src/java/console.properties
+
+Related JIRAs: GWMON-7771
+
+Manual Upgrade Instructions:
+./ctlscript stop gwservices
+copy http://geneva/groundwork-professional/trunk/monitor-portal/applications/console/src/java/console.properties to /usr/local/groundwork/config/
+./ctlscript stop gwservices
+
+Automatic Upgrade Actions:
+
+------------------------------------------------------------------------
+
+Components:
+
+Subversion source:
+
+Related JIRAs:
+
+Manual Upgrade Instructions:
+
+Automatic Upgrade Actions:
+
+------------------------------------------------------------------------
+
+Components:
+
+Subversion source:
+
+Related JIRAs:
+
+Manual Upgrade Instructions:
+
+Automatic Upgrade Actions:
+
+========================================================================

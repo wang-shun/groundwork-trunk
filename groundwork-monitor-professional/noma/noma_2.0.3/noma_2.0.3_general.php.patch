@@ -1,0 +1,126 @@
+*** noma_2.0.3/share/inc/general.php.orig	Mon Nov 21 03:25:24 2011
+--- noma_2.0.3/share/inc/general.php	Thu Jan 29 15:29:10 2015
+***************
+*** 46,51 ****
+--- 46,99 ----
+  #
+  # Nagios and the Nagios logo are registered trademarks of Ethan Galstad.
+  
++ # FIX MINOR:  This is something of a hack.  It doesn't handle embedded quote characters
++ # (not that we have any in the cases where this will be called); it's here mostly because
++ # we sometimes have table columns which are named using words that are keywords for some
++ # database engine, and we need identifier quoting to prevent confusion.
++ #
++ # We might get 'table.column' sent to this function, not just a bare column name.
++ #
++ # Do not further quote the result of this function.
++ function quoteIdentifier($identifier){
++ 
++ 	// FIGURE OUT WHAT BACKEND!!
++ 	if (!$ndo) {
++ 		global $dbConf;
++ 	} else {
++ 		global $dbNDO;
++ 		$dbConf = &$dbNDO;
++ 	}
++ 
++         $components = explode(".", $identifier);
++ 	if ($dbConf['type'] == 'mysql'){
++ 		# For MySQL.
++ 		# PHP appears to have no standard MySQL-related function for this,
++ 		# so we approximate it as best we can.  Logically, we want:
++ 		#     return "`" . implode("`.`", array_map(mysql_real_escape_string, $components)) . "`";
++ 		# but we have no open database handle to work with (and it would be ridiculous to
++ 		# open a new connection every time we want to quote an individual identifier).
++ 		# So we must further approximate the result we want, here only handling the
++ 		# external quoting, not any internal character transformations.
++ 		return "`" . implode("`.`", $components) . "`";
++ 	}
++ 	else {
++ 		# For SQLite and PostgreSQL.
++ 		# For PostgreSQL, we actually want:
++ 		#     return pg_escape_identifier($identifier);
++ 		# or perhaps some similar code that also invokes implode() and
++ 		# array_map(), but pg_escape_identifier() is not available in PHP
++ 		# 5.2.17.  So we have to settle for the following approximation.
++ 		# Logically, we would want this for our approximation:
++ 		#     return '"' . implode('"."', array_map(pg_escape_string, $components)) . '"';
++ 		# but we have no open database handle to work with (and it would be ridiculous to
++ 		# open a new connection every time we want to quote an individual identifier).
++ 		# So we must further approximate the result we want, here only handling the
++ 		# external quoting, not any internal character transformations.
++ 		return '"' . implode('"."', $components) . '"';
++ 	}
++ }
++ 
++ 
+  /**
+   * queryDB - queries db and return result as array
+   *
+***************
+*** 69,74 ****
+--- 117,126 ----
+  			global $dbConfMySQL;
+  	                $dbConf = &$dbConfMySQL;
+  	        };
++ 	        if ($dbType == 'postgresql'){
++ 			global $dbConfPostgreSQL;
++ 	                $dbConf = &$dbConfPostgreSQL;
++ 	        };
+  	        if ($dbType == 'sqlite3'){
+  			global $dbConfSQLite3;
+          	        $dbConf = &$dbConfSQLite3;
+***************
+*** 101,109 ****
+  		}
+  	}
+  
+  	// SQLite 3 backend
+  		if ($dbConf['type'] == 'sqlite3'){
+! 				// Require the function for MySQL query.
+  				require_once('noma-backend-sqlite3.php');
+  
+  				if ($return_count == true){
+--- 153,177 ----
+  		}
+  	}
+  
++ 	// PostgreSQL backend
++ 	if ($dbConf['type'] == 'postgresql'){
++ 		// Require the function for PostgreSQL query.
++ 		require_once('noma-backend-postgresql.php');
++ 
++ 		if ($return_count == true){
++ 			list($count, $dbResult) = queryPostgreSQLDB($query, $return_count, $ndo);
++ 			if ($sqllog == true){$log->lwrite("PostgreSQL Result - Count: $count - dbResult: ".var_export($dbResult, true));};
++ 						return array($count, $dbResult);
++ 		} else {
++ 			$dbResult = queryPostgreSQLDB($query, false, $ndo);
++ 						if ($sqllog == true){$log->lwrite("PostgreSQL Result - dbResult: ".var_export($dbResult, true));};
++ 			return $dbResult;
++ 		}
++ 	}
++ 
+  	// SQLite 3 backend
+  		if ($dbConf['type'] == 'sqlite3'){
+! 				// Require the function for SQLite query.
+  				require_once('noma-backend-sqlite3.php');
+  
+  				if ($return_count == true){
+***************
+*** 117,123 ****
+  				}
+  		}
+  
+! 	if ($dbConf['type'] != 'sqlite3' && $dbConf['type'] != 'mysql'){
+  		die('Invalid database type selected, check your configuration!');
+  	}
+  }
+--- 185,191 ----
+  				}
+  		}
+  
+! 	if ($dbConf['type'] != 'sqlite3' && $dbConf['type'] != 'mysql' && $dbConf['type'] != 'postgresql'){
+  		die('Invalid database type selected, check your configuration!');
+  	}
+  }

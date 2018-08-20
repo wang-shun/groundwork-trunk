@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<ice:inputHidden id="HostStatusPortlet_ipHiddn"
+			value="#{serviceStatisticsBean.serviceNavHiddenField}"></ice:inputHidden>
+		<ice:inputHidden id="ServiceStatusPortlet_ipHiddn"
+			value="#{serviceStatisticsBean.serviceHiddenField}"></ice:inputHidden>
+		<!--  error / info message -->
+		<ice:panelGroup rendered="#{statisticsHandler.serviceMessage || statisticsHandler.message}"
+			id="ServiceStatusPortlet_panelsGroupError">
+			<ice:column id="ServiceStatusPortlet_columnError"
+				rendered="#{statisticsHandler.serviceError}">
+				<ui:include src="/jsp/error.jspx">
+					<ui:param name="errorMessage"
+						value="#{statisticsHandler.serviceErrorMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:column id="ServiceStatusPortlet_columninfo"
+				rendered="#{statisticsHandler.info}">
+				<ui:include src="/jsp/info.jspx">
+					<ui:param name="infoMessage"
+						value="#{statisticsHandler.infoMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:commandButton id="frmServicefrom_cmdRetryNow"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{statisticsHandler.reloadServicePortlet}"></ice:commandButton>
+		</ice:panelGroup>
+		<ice:panelGroup rendered="#{!statisticsHandler.serviceMessage and !statisticsHandler.message}"
+			id="frmServicefrom_panelsgrpError1">
+			<ice:panelGrid id="servicestatusportlet_PanelMain" columns="2">
+				<ice:panelGrid id="servicestatusportlet_PanelMainImgs" rowClasses="icePnlGrdRow1,chartcaption"
+					styleClass="iceDatTbl_typA" columns="1" style="margin-right:35px;">
+					<ice:graphicImage 
+						value="#{serviceStatisticsBean.servicePieChart}"
+						mimeType="image/png"
+						rendered="#{serviceStatisticsBean.filteredServiceCount >'0' and serviceStatisticsBean.servicePieChart !=null}"></ice:graphicImage>
+					<ice:graphicImage id="imgServiceconnectactive"
+						value="/images/connect_active.gif"
+						rendered="#{serviceStatisticsBean.filteredServiceCount >'0' and serviceStatisticsBean.servicePieChart ==null}"></ice:graphicImage>
+					<ice:graphicImage 
+						url="/images/no_service.gif"
+						rendered="#{serviceStatisticsBean.filteredServiceCount le '0'}"></ice:graphicImage>
+					<ice:outputText id="outputtxtFilteredTOtal"
+						value="#{message['com_groundwork_portal_statusviewer_filtered_total']}"></ice:outputText>
+
+				</ice:panelGrid>
+				<ice:panelGrid id="servicestatusportlet_statistics_block" columns="1">
+					<ice:panelGrid columns="1" columnClasses="padleft19 padbottom4">
+						<ice:column id="pnlgridcolumn1">
+							<span> <ice:outputText id="outputtxtMonitorStatus"
+								value="#{message['com_groundwork_statusviewer_monitoring_statistics']}" />
+							</span>
+							<span> <ice:outputText id="outputtxtservice"
+								value="#{message['com_groundwork_statusviewer_service']}" /> </span>
+						</ice:column>
+					</ice:panelGrid>
+					<ice:dataTable id="tblServiceStatistics"
+						styleClass="iceDatTbl_typA"
+						columnClasses="blankClass,padright15 txtright,borderLeftdot status_colhdr"
+						footerClass="iceDatTblFtr_typA status_colhdr"
+						headerClass="iceDatTblColHdr1_typA"
+						rowClasses="iceDatTblRow1_typA,iceDatTblRow2_typA"
+						value="#{serviceStatisticsBean.serviceCountList}"
+						var="servicestatus" style="#{statisticsHandler.serviceStyle}">
+						<ice:column id="column1">
+							<f:facet name="header">
+								<ice:outputText
+									value="#{message['com_groundwork_statusviewer_results']}"></ice:outputText>
+							</f:facet>
+							<f:facet name="footer">
+								<ice:outputText id="outputtxtTotalServices"
+									value="#{message['com_groundwork_statusviewer_total_Services']}"
+									style="color: #000000; font-size: 10px; font-weight: bold;text-align:left;"></ice:outputText>
+							</f:facet>
+
+							<ice:panelGrid columns="2">
+								<ice:column id="tblServiceStatistics_pnlgridcolumn1">
+									<ice:graphicImage id="imgServiceStatus"
+										value="#{servicestatus.imgsrc}"></ice:graphicImage>
+									<ice:commandLink id="lnkservicestatus"
+										value="#{servicestatus.status}"
+										action="#{serviceStatisticsBean.openPopup}"
+										actionListener="#{statisticsHandler.showservicePopUp}"
+										rendered="#{servicestatus.total!='0'}">
+										<f:param value="#{servicestatus.status}" name="servicestatus" />
+									</ice:commandLink>
+								</ice:column>
+								<ice:column id="tblServiceStatistics_pnlgridcolumn2">
+									<ice:outputText id="outputtxtServiceStaus"
+										value="#{servicestatus.status}"
+										rendered="#{servicestatus.total=='0'}"></ice:outputText>
+								</ice:column>
+							</ice:panelGrid>
+						</ice:column>
+						<ice:column id="column2">
+							<f:facet name="header">
+								<ice:outputText id="outputtxtServiceFiltered"
+									value="#{message['com_groundwork_statusviewer_filtered']}"></ice:outputText>
+
+							</f:facet>
+							<ice:outputText id="outputtxtServiceFilteredValue"
+								value="#{servicestatus.filtered}"></ice:outputText>
+							<f:facet name="footer">
+								<ice:outputText id="outputtxtServiceTotalFilteredValue"
+									value="#{serviceStatisticsBean.filteredServiceCount}"
+									style="color: #000000; font-size: 10px; font-weight: bold;text-align:right;"></ice:outputText>
+							</f:facet>
+						</ice:column>
+						<ice:column id="column3">
+							<f:facet name="header">
+								<ice:outputText id="outputtxtServiceTotal"
+									value="#{message['com_groundwork_statusviewer_total']}"></ice:outputText>
+
+							</f:facet>
+							<ice:outputText id="outputtxtServiceTotalValue"
+								value="#{servicestatus.total}"></ice:outputText>
+							<f:facet name="footer">
+								<ice:outputText id="outtxtTotalServiceCount"
+									value="#{serviceStatisticsBean.totalServiceCount}"
+									style="color: #000000; font-size: 10px; font-weight: bold;"></ice:outputText>
+							</f:facet>
+						</ice:column>
+					</ice:dataTable>
+				</ice:panelGrid>
+			</ice:panelGrid>
+			<ice:panelPopup id="pnlpopupService" styleClass="icePnlPopTbl"
+				autoPosition="manual" modal="true"
+				visible="#{serviceStatisticsBean.visible}"
+				style="z-index:999; top: 25%; left: 400px; height: 200px; position:fixed; background: #FFFFFF;">
+				<f:facet name="header">
+					<ice:panelGrid width="480px" cellpadding="0" cellspacing="0"
+						columns="2" columnClasses="txtleft,icePnlPopHdr">
+						<ice:column>
+							<ice:outputText style="font-size:10px;" id="outputtxtpopStatus"
+								value="#{serviceStatisticsBean.currentPopstatus}"></ice:outputText>
+						</ice:column>
+						<ice:column>
+							<div class="cust_poupmodes"><span title="Close Window">
+							<ice:commandButton id="ServiceStatusPortlet_PopUpHdrCloseLnk"
+								type="button" image="/css/css-images/popup_modeBtn_close.gif"
+								action="#{serviceStatisticsBean.closePopup}"
+								actionListener="#{serviceStatisticsBean.closeWindow}"
+								title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+								alt="Close" /> </span></div>
+						</ice:column>
+					</ice:panelGrid>
+				</f:facet>
+				<f:facet name="body">
+					<ice:panelGrid id="body_pnlgrid" width="100%" cellpadding="0" cellspacing="0">
+						<ice:panelGrid columns="1" style="width:100%">
+							<ice:column>
+								<div class="gen_div" id="service_gen_div"><ice:dataPaginator
+									id="servicemodeltotalcount" for="tblServiceListDatatable"
+									rowsCountVar="rowsCount"
+									displayedRowsCountVar="displayedRowsCount"
+									firstRowIndexVar="firstRowIndex" lastRowIndexVar="lastRowIndex"
+									pageCountVar="pageCount" pageIndexVar="pageIndex"
+									styleclass="cust_popup_pgr"
+									
+									>
+									<ice:outputFormat id="servicetotalcount"
+										value="#{message['com_groundwork_statusviewer_total']} ={0} "
+										styleClass="iceOutTxt">
+										<f:param value=" #{rowsCount}" />
+									</ice:outputFormat>
+								</ice:dataPaginator></div>
+								<div class="gen_div_right"><span
+									class="iceOutTxt padleft10" style="vertical-align: middle"><ice:outputText
+									id="popupshow_label"
+									value="#{message['com_groundwork_portal_statusviewer_show']}"></ice:outputText></span>
+								<ice:selectOneMenu id="listService"
+													value="#{popUpSelectBean.serviceSelectValue}"
+													valueChangeListener="#{popUpSelectBean.servicesProcessMenuSelection}" style="min-width:150px;">
+									<f:selectItem itemValue="filteredservice"
+										itemLabel="#{message['com_groundwork_portal_statusviewer_filteredservice']}" />
+									<f:selectItem itemValue="allservice"
+										itemLabel="#{message['com_groundwork_portal_statusviewer_allservice']}" />
+								</ice:selectOneMenu><span class="iceOutTxt padleft10"> <ice:commandButton
+									value="Apply" id="serviceView_cmdButtonApply" type="submit"
+									actionListener="#{statisticsHandler.applyServiceFilters}">
+								</ice:commandButton></span></div>
+							</ice:column>
+						</ice:panelGrid>
+						<ice:dataTable id="tblServiceListDatatable"
+							styleClass="iceDatTbl_typB"
+							rowClasses="iceDatTblRow1_typB,iceDatTblRow2_typB table-alternate"
+							columnClasses="iceDatTblCol1_typB"
+							headerClass="iceDatTblColHdr1_typB" var="service"
+							value="#{statisticsHandler.statisticsModelPopUpListBean}"
+							rows="#{serviceStatisticsBean.popupRowSize}"
+							sortColumn="#{statisticsHandler.statisticsModelPopUpListBean.sortColumnName}"
+							sortAscending="#{statisticsHandler.statisticsModelPopUpListBean.ascending}"
+							style="width:100%">
+							<ice:column id="hostgl1">
+								<f:facet name="header">
+									<table border="0" cellspacing="0" cellpadding="0"
+										align="center">
+										<tr>
+											<td><ice:commandLink
+												id="tblServiceListDatatable_sortColHeader" styleClass="iceOutTxt"
+												actionListener="#{statisticsHandler.statisticsModelPopUpListBean.sort}">
+												<ice:outputText id="lnkServiceNameHdr"
+													value="#{message['com_groundwork_statusviewer_service']}"
+													style="font-weight:bold;"></ice:outputText>
+													
+											</ice:commandLink></td>
+											<td><ice:graphicImage id="serviceimgsort"
+												value="#{statisticsHandler.statisticsModelPopUpListBean.sortImgUrl}"
+												rendered="#{statisticsHandler.statisticsModelPopUpListBean !=null}"></ice:graphicImage></td>
+										</tr>
+									</table>
+								</f:facet>
+								<ice:panelGrid id="frmServicefrom_pnlgrdservicename"
+													columns="2" columnClasses="valign_bottom">
+									<ice:outputLink id="lnkServiceName" 
+										value="#{service.subPageURL}" onclick="blockNavigation();" rendered="#{!empty service.subPageURL}">
+										<ice:outputText id="lnkServiceName_txtService"
+											style="color: #5078AA;font-weight:normal;padding-bottom: 9px;"
+											value="#{service.name}" />
+									</ice:outputLink>
+									<ice:outputText id="lnkServiceName_txtService"
+											style="font-weight:normal;"
+											value="#{service.name}" rendered="#{empty service.subPageURL}"/>
+									<ice:outputLink id="lnkhostName"
+										value="#{service.parentPageURL}" onclick="blockNavigation();" rendered="#{!empty service.parentPageURL}">
+										<ice:outputText
+											style="color: #5078AA;font-weight:normal;padding-bottom: 9px;"
+											id="txtNameHost" value=" (#{service.parentName})" />
+									</ice:outputLink>
+									<ice:outputText
+											style="font-weight:normal;"
+											id="txtNameHost" value=" (#{service.parentName})" rendered="#{empty service.parentPageURL}"/>
+								</ice:panelGrid>
+							</ice:column>
+							<ice:column id="hostgl2"
+								rendered="#{statisticsHandler.serviceAcknowledgedRender}">
+								<f:facet name="header">
+									<ice:outputText id="outputtxtacknowledgedHrd"
+										value="#{message['com_groundwork_statusviewer_acknowledged']}"></ice:outputText>
+
+								</f:facet>
+
+								<div class="typCTxt"><ice:panelGrid columns="3">
+									<ice:outputText id="outputtxtacknowledged"
+										value="#{service.acknowledged}"></ice:outputText>
+									<ice:graphicImage id="imgacknowledged"
+										value="/images/service-ack.gif"
+										rendered="#{service.acknowledged=='No'}"
+										title="#{message['com_groundwork_portal_statusviewer_modelpopup_title_text']}"></ice:graphicImage>
+									<ice:commandLink id="serviceStatusPortlet_linkAcknowledge"
+										value="#{message['com_groundwork_portal_statusviewer_serviceList_linktext_Acknowledge']}"
+										rendered="#{service.acknowledged=='No' and service.applicationType=='NAGIOS'}"
+										actionListener="#{statisticsHandler.showServiceAcknowledgementPopup}" >
+										<f:attribute name="serviceName" value="#{service.name}" />
+										<f:attribute name="hostName" value="#{service.parentName}" />
+									</ice:commandLink>
+								</ice:panelGrid></div>
+
+							</ice:column>
+							<ice:column id="hostgl3"
+								rendered="#{statisticsHandler.serviceDateTimeRender}">
+								<f:facet name="header">
+									<ice:outputText id="outputtxtDatatimeHrd"
+										value="#{message['com_groundwork_statusviewer_date-time']}"></ice:outputText>
+
+								</f:facet>
+								<div class="typCTxt"><ice:outputText
+									style="font-weight:normal;" id="outputtxtDatatimeValue"
+									value="#{service.datetime}"></ice:outputText></div>
+							</ice:column>
+						</ice:dataTable>
+						<ice:dataPaginator id="servicemodelpagination"
+							for="tblServiceListDatatable" paginator="true" fastStep="5"
+							paginatorMaxPages="10" rowsCountVar="rowsCount"
+							displayedRowsCountVar="displayedRowsCount"
+							firstRowIndexVar="firstRowIndex" lastRowIndexVar="lastRowIndex"
+							pageCountVar="pageCount" pageIndexVar="pageIndex"
+							renderFacetsIfSinglePage="false" styleclass="cust_popup_pgr">
+
+							<ice:outputFormat style="margin-left:45%" value="{0} of {1}"
+								styleClass="standard">
+								<f:param value="#{pageIndex}" />
+								<f:param value="#{pageCount}" />
+							</ice:outputFormat>
+							<f:facet name="first">
+								<ice:graphicImage url="/images/arrow-first.gif"
+									style="border:none;" title="First Page" />
+							</f:facet>
+							<f:facet name="last">
+								<ice:graphicImage url="/images/arrow-last.gif"
+									style="border:none;" title="Last Page" />
+							</f:facet>
+							<f:facet name="previous">
+								<ice:graphicImage url="/images/arrow-previous.gif"
+									style="border:none;" title="Previous Page" />
+							</f:facet>
+							<f:facet name="next">
+								<ice:graphicImage url="/images/arrow-next.gif"
+									style="border:none;" title="Next Page" />
+							</f:facet>
+							<f:facet name="fastforward">
+								<ice:graphicImage url="/images/arrow-ff.gif"
+									style="border:none;" title="Fast Forward" />
+							</f:facet>
+							<f:facet name="fastrewind">
+								<ice:graphicImage url="/images/arrow-fr.gif"
+									style="border:none;" title="Fast Backwards" />
+							</f:facet>
+						</ice:dataPaginator>
+						<div class="gen_div_right"><ice:commandButton
+							id="cmdCloseWindow" action="#{serviceStatisticsBean.closePopup}"
+							title="Close"
+							actionListener="#{serviceStatisticsBean.closeWindow}"
+							value="#{message['com_groundwork_statusviewer_mobel_popup_close']}" />
+							
+						</div>
+					</ice:panelGrid>
+				</f:facet>
+			</ice:panelPopup>
+
+			<ice:panelGroup rendered="#{statisticsHandler.pnlGroupBlankRender}"
+				style="height:54px"></ice:panelGroup>
+		</ice:panelGroup>
+	</ui:define>
+</ui:composition>

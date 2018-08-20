@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2014  GroundWork Open Source Inc. info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-->
+<!DOCTYPE hibernate-mapping PUBLIC
+    "-//Hibernate/Hibernate Mapping DTD 2.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+    
+<hibernate-mapping default-lazy="false">
+  <class name="com.groundwork.collage.model.impl.AuditLog" 
+         table="AuditLog"
+         mutable="false">
+    <id name="auditLogId"
+        type="java.lang.Integer"
+        column="AuditLogID">
+      <generator class="native">
+        <param name="sequence">auditlog_auditlogid_seq</param>
+      </generator>
+    </id>
+    <property name="subsystem"
+              type="java.lang.String"
+              column="Subsystem"
+              length="254"
+              not-null="true"/>
+    <property name="action"
+              column="Action"
+              length="32"
+              not-null="true">
+      <type name="org.hibernate.type.EnumType">
+        <param name="enumClass">com.groundwork.collage.model.AuditLog$Action</param>
+        <param name="type">12</param>
+        <param name="useNamed">true</param>
+      </type>
+    </property>
+    <property name="description"
+              type="java.lang.String"
+              column="Description"
+              length="254"
+              not-null="true"/>
+    <property name="username"
+              type="java.lang.String"
+              column="Username"
+              length="254"
+              not-null="true"/>
+    <property name="timestamp"
+              type="java.util.Date"
+              column="LogTimestamp"
+              length="19"
+              not-null="true"/>
+    <property name="hostName"
+              type="java.lang.String"
+              column="HostName"
+              length="254"/>
+    <property name="serviceDescription"
+              type="java.lang.String"
+              column="ServiceDescription"
+              length="254"/>
+    <property name="hostGroupName"
+              type="java.lang.String"
+              column="HostGroupName"
+              length="254"/>
+    <property name="serviceGroupName"
+              type="java.lang.String"
+              column="ServiceGroupName"
+              length="254"/>
+  </class>
+</hibernate-mapping>

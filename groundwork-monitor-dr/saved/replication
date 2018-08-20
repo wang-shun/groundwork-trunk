@@ -1,0 +1,581 @@
+#!/usr/bin/perl -w --
+#!/usr/local/groundwork/bin/perl -w --
+# FIX MINOR:
+# We will use the generic OS-supplied Perl for initial testing,
+# until we package this all up for delivery.  At that time, we
+# will evaluate the situation to see if there is some reason to
+# use or not use a particular version of Perl.
+
+# Generate a GroundWork Monitor Quickstart license.
+# Copyright (c) 2010 GroundWork Open Source (www.groundworkopensource.com).
+# All rights reserved.
+
+# ================================================================
+# Documentation.
+# ================================================================
+
+# To do:
+# (*) Report a YAML::XS bug:  LoadFile and DumpFile are not mentioned in the
+#     YAML::XS documentation as available functions.
+# (*) Report a YAML::XS bug:  its documentation should refer also to the
+#     "boolean" module, so a Perl programmer knows how to get a boolean
+#     value properly tagged when dumping for reading by other languages
+
+# ================================================================
+# Perl setup.
+# ================================================================
+
+use strict;
+
+# This is where we'll pick up any Perl packages not in the standard Perl
+# distribution, to make this a self-contained package anchored in a single
+# directory.
+use FindBin qw($Bin);
+use lib "$Bin/perl/lib";
+
+use IO::Handle;
+use POSIX;
+# use Errno qw(EAGAIN);
+use YAML::XS qw(LoadFile);
+use boolean;
+
+my $PROGNAME = "replication";
+
+# Be sure to update this as changes are made to this script!
+my $VERSION = '0.0.1';
+
+# ================================================================
+# Command-line execution options and working variables.
+# ================================================================
+
+my $config_file = "$Bin/replication.conf";
+
+my $debug_config = 0;
+
+# For convenient interactive debugging during development.
+# You can set $reflect_log_to_tty dynamically via the -o option.
+my $reflect_log_to_tty = 0;
+my $stdout_is_a_tty    = (-t STDOUT);
+
+my $run_interactively = 0;
+my $do_one_request    = 0;
+my $do_one_cycle      = 0;
+
+# ================================================================
+# Global configuration variables, to be read from the config file.
+# ================================================================
+
+my $logfile = undef;
+
+# ================================================================
+# Configuration variables that perhaps ought to be migrated to
+# the config file.  These are used to extract and validate values
+# from the incoming license-key request.
+# ================================================================
+
+# ================================================================
+# Global working variables.
+# ================================================================
+
+my $debug_level   = undef;
+my $DEBUG_NONE    = undef;
+my $DEBUG_FATAL   = undef;
+my $DEBUG_ERROR   = undef;
+my $DEBUG_WARNING = undef;
+my $DEBUG_NOTICE  = undef;
+my $DEBUG_STATS   = undef;
+my $DEBUG_INFO    = undef;
+my $DEBUG_DEBUG   = undef;
+
+my $logtime = '';
+
+use constant ERROR_STATUS    => 0;
+use constant STOP_STATUS     => 1;
+use constant RESTART_STATUS  => 2;
+use constant CONTINUE_STATUS => 3;
+
+our $alarm_received     = 0;
+our $shutdown_requested = 0;
+
+my $config = undef;
+my $state  = undef;
+
+my $cycle_time = undef;
+
+# ================================================================
+# Program.
+# ================================================================
+
+exit (main() == ERROR_STATUS) ? 1 : 0;
+
+# ================================================================
+# Supporting subroutines.
+# ================================================================
+
+sub freeze_logtime {
+    $logtime = '[' . ( scalar localtime ) . '] ';
+}
+
+sub log_message {
+    print LOG @_, "\n";
+    if ($reflect_log_to_tty && $stdout_is_a_tty) {
+	print @_, "\n";
+    }
+}
+
+sub log_timed_message {
+    freeze_logtime();
+    log_message $logtime, @_;
+}
+
+sub log_shutdown {
+    log_timed_message "=== Shutdown requested; terminating (process $$). ===";
+}
+
+sub open_logfile {
+    if (! open (LOG, '>>', $logfile)) {
+	print "FATAL:  Can't open log file '$logfile': $!\n";
+	sleep 10;  # Don't have supervise restart us immediately, in a tight loop.
+	return 0;
+    }
+
+    # Autoflush the log output on every single write, to allow debugging mysterious failures.
+    LOG->autoflush(1);
+
+    if (!$run_interactively) {
+	# In daemon mode (only), we re-open the STDERR stream as a duplicate of the
+	# logfile stream, to capture any output written to STDERR (from, say, the
+	# MIME::Lite->send() Debug option for exposing the process of generating
+	# email in detail).  To capture such detail, we turn on that Debug option
+	# if our own $DEBUG_DEBUG level is enabled.
+	if (! open (STDERR, '>>&LOG')) {
+	    log_timed_message "ERROR:  Can't redirect STDERR to '$logfile': $!\n";
+	}
+	else {
+	    # Autoflush the error output on every single write, to avoid problems
+	    # with block i/o and badly interleaved output lines on LOG and STDERR.
+	    LOG->autoflush(1);
+	}
+    }
+
+    return 1;
+}
+
+sub close_logfile {
+    close(LOG);
+}
+
+sub dump_mess {
+    open TTY, '>>', '/tmp/otherstuff';
+    TTY->autoflush(1);
+    print TTY @_, "\n";
+}
+
+sub main {
+    my $command_line_status = parse_command_line();
+    if ($command_line_status != CONTINUE_STATUS) {
+	return $command_line_status;
+    }
+
+    # Daemonize, if we don't have a command-line argument saying not to.
+    if (!$run_interactively) {
+	make_daemon();
+    }
+
+    # Set up termination-signal handling, for both automated (SIGTERM)
+    # and interactive (SIGINT, perhaps SIGQUIT) use.  We also handle
+    # SIGHUP the same way, until such time as we convert to using it
+    # for re-reading the configuration file and re-initializing.
+    local $SIG{INT}  = \&handle_exit_signal;
+    local $SIG{QUIT} = \&handle_exit_signal;
+    local $SIG{TERM} = \&handle_exit_signal;
+    local $SIG{HUP}  = \&handle_exit_signal;
+
+    # Read the configuration file.
+    if (read_configuration() != CONTINUE_STATUS) {
+	return ERROR_STATUS;
+    }
+
+    # Stop if this is just a debugging run.
+    return STOP_STATUS if $debug_config;
+
+    if (!open_logfile()) {
+	return ERROR_STATUS;
+    }
+
+    log_timed_message "=== Starting up (process $$). ===";
+
+    if (validate_configuration() != CONTINUE_STATUS) {
+	return ERROR_STATUS;
+    }
+
+    if (!$config->{'enable-processing'}) {
+	log_timed_message "FATAL:  Stopping execution (process $$) because processing is not enabled in the config file.";
+	close_logfile();
+	return STOP_STATUS;
+    }
+
+    if (initialize() != CONTINUE_STATUS) {
+	log_timed_message "FATAL:  Stopping execution (process $$) because initialization failed.";
+	close_logfile();
+	return ERROR_STATUS;
+    }
+
+    # Loop, processing configured replications as needed.
+    while (!$shutdown_requested) {
+	my $cycle_status = cycle();
+	if ($cycle_status != CONTINUE_STATUS) {
+	    log_timed_message "=== Cycle processing result is not to continue; will exit (process $$). ===";
+	    close_logfile();
+	    return $cycle_status;
+	}
+	log_timed_message "--- taking a siesta ---" if $DEBUG_NOTICE;
+	sleep $cycle_time;
+
+	# FIX THIS:  drop this code
+	if (0) {
+	    if (!rotate_logfile()) {
+		log_timed_message "=== Problem with rotating the logfile; will exit (process $$). ===";
+		close_logfile();
+		return ERROR_STATUS;
+	    }
+	}
+    }
+
+    log_shutdown if $shutdown_requested;
+
+    close_logfile();
+
+    return $shutdown_requested ? STOP_STATUS : RESTART_STATUS;
+}
+
+sub print_usage {
+    print "usage:  replication [-h] [-v] [-c config_file] [-d] [-i] [-r|-s] [-o]\n";
+    print "where:  -h:  print this help message\n";
+    print "        -v:  print the version number\n";
+    print "        -c config_file:  specify an alternate config file\n";
+    print "             (default is $config_file)\n";
+    print "        -d:  dump the config file entries (to debug them)\n";
+    print "        -i:  run interactively, not as a persistent daemon\n";
+    print "        -r:  process just a single valid request, then stop\n";
+    print "        -s:  run just a single cycle, then stop\n";
+    print "        -o:  write log messages also to standard output\n";
+    print "The -o option is illegal unless -i is also specified.\n";
+}
+
+# We could have perhaps used Getopt::Long to simplify this.
+sub parse_command_line {
+    while ( scalar(@ARGV) >= 1 ) {
+	if ( $ARGV[0] eq '-h' || $ARGV[0] eq '--help' ) {
+	    print_usage();
+	    return STOP_STATUS;
+	}
+	if ( $ARGV[0] eq '-v' || $ARGV[0] eq '--version' ) {
+	    print "$PROGNAME Version:  $VERSION\n";
+	    print "Copyright 2010 GroundWork Open Source, Inc. (\"GroundWork\").\n";
+	    print "All rights reserved.\n";
+	    return STOP_STATUS;
+	}
+	if ( ( $ARGV[0] eq '-c' || $ARGV[0] eq '--config' ) && defined($ARGV[1]) ) {
+	    $config_file = $ARGV[1];
+	    shift @ARGV;
+	    shift @ARGV;
+	    next;
+	}
+	if ( $ARGV[0] eq '-d' || $ARGV[0] eq '--debug' ) {
+	    $debug_config = 1;
+	    shift @ARGV;
+	    next;
+	}
+	if ( $ARGV[0] eq '-i' || $ARGV[0] eq '--interactive' ) {
+	    $run_interactively = 1;
+	    shift @ARGV;
+	    next;
+	}
+	if ( $ARGV[0] eq '-r' || $ARGV[0] eq '--request' ) {
+	    $do_one_request = 1;
+	    shift @ARGV;
+	    next;
+	}
+	if ( $ARGV[0] eq '-s' || $ARGV[0] eq '--single-cycle' ) {
+	    $do_one_cycle = 1;
+	    shift @ARGV;
+	    next;
+	}
+	if ( $ARGV[0] eq '-o' || $ARGV[0] eq '--output-to-tty' ) {
+	    $reflect_log_to_tty = 1;
+	    shift @ARGV;
+	    next;
+	}
+	print_usage();
+	return ERROR_STATUS;
+    }
+    if ($do_one_request && $do_one_cycle) {
+	print "Error:  The -r and -s options are mutually exclusive.\n";
+	print_usage();
+	return ERROR_STATUS;
+    }
+    if (!$run_interactively && $reflect_log_to_tty) {
+	print_usage();
+	return ERROR_STATUS;
+    }
+    return CONTINUE_STATUS;
+}
+
+sub do_fork {
+    my $retries = 5;
+    while (--$retries >= 0) {
+	my $pid;
+	if ($pid = fork) {
+	    # successful fork; we're in the parent
+	    return $pid;
+	} elsif (defined $pid) {
+	    # successful fork; we're in the child
+	    return 0;
+	} elsif ($! == EAGAIN) {
+	    # unsuccessful but supposedly recoverable fork error; wait, then loop around and try again
+	    sleep 5;
+	} else {
+	    # weird fork error
+	    die "Cannot fork: $!\n";
+	}
+    }
+}
+
+# For details on what is done here to make a daemon process, and why, see:
+# * "How to Write a UNIX Daemon":  http://cjh.polyplex.org/software/daemon.pdf
+#   (this old USENIX article is the original bible on this topic)
+# * Proc::Daemon from CPAN
+# We prefer to write our own version so we know exactly what it is doing,
+# and can tweak it a bit, but the same principles are being followed.
+sub make_daemon {
+    # Make ourself immune to background job control write checks.
+    $SIG{TTOU} = 'IGNORE';
+    $SIG{TTIN} = 'IGNORE';
+    $SIG{TSTP} = 'IGNORE';
+
+    # We ought to close all open file descriptors, especially stdin, stdout, stderr,
+    # primarily to disconnect from any controlling terminal.
+    #
+    # However, Perl's i/o layer objects later on if, say, we try to open a file that uses one
+    # of these file descriptors (0, 1, or 2) in a manner different from how it is usually
+    # used (for example, read-only on file descriptor 1).  Presumably this is to provide a
+    # warning against opening these "system" file descriptors (see $SYSTEM_FD_MAX or $^F)
+    # in a way that would be inappropriate for actual use as STDIN, STDOUT, or STDERR.  So the
+    # simplest approach to dropping any connection to a controlling terminal is to open all of
+    # these channels to /dev/null.  But I've seen some advice that due to strange behavior of
+    # the Perl i/o layer, we might have to do the open() calls without preceding close() calls,
+    # or the open() calls won't connect the STDIN, STDOUT, and STDERR file handles to the file
+    # descriptors we expect.  Whether or not that's true, doing it this way is at least safe.
+    # close STDERR;
+    # close STDOUT;
+    # close STDIN;
+    # Opening these file descriptors to a safe place instead of leaving them closed also
+    # prevents lots of error messages from appearing in our logfile when odd parts of the
+    # code (e.g., stuff buried in library modules) tries to access these file handles.
+    open STDIN,  '<', '/dev/null';
+    open STDOUT, '>', '/dev/null';
+    open STDERR, '>', '/dev/null';
+    # FIX LATER:  Figure out if we can reliably and efficiently discover what other i/o
+    # channels might be open, and close them all.
+
+    # Disassociate from our process group and controlling terminal.
+    if (do_fork()) {
+	# successful fork; we're in the parent
+	exit 0;
+    }
+    # parent has exited, child remains; make it a session leader (not just a process group leader);
+    # the preceding fork was necessary to guarantee that this call succeeds
+    POSIX::setsid();
+
+    ## # Do not reacquire a controlling terminal.  To ensure that, become immune from process group leader death ...
+    ## $SIG{HUP} = 'IGNORE';
+    ## # ... then become non-process-group leader.
+    ## if (do_fork()) {
+    ##     # successful fork; we're in the parent
+    ##     exit 0;
+    ## }
+    # But in fact we don't want to do that, because the whole point of our exercise here is to become
+    # our own process group leader, so all descendants will be killed along with us when our process
+    # group is killed.  So we'll just have to be careful not to reacquire a controlling terminal,
+    # either by watching what actions we take (don't open any terminal devices), or by forking and
+    # having the parent just sleep forever waiting for the shutdown signal to come in.
+
+    # child has exited; grandchild remains
+
+    # Change current directory to '/', to prevent "filesystem busy" problems during unmounts.
+    chdir '/';
+
+    # Reset the file mode creation mask to an appropriate value,
+    # to override whatever got inherited from the parent process.
+    umask 022;
+}
+
+sub read_configuration {
+    eval {
+	$config = YAML::XS::LoadFile($config_file);
+    };
+    if ($@) {
+	# We cannot log this error, because the location of the logfile is
+	# contained in the configuration file and we haven't read it yet.
+	# So all we can do is spill to the output stream.
+	print STDERR 'ERROR:  ', $@;
+	return ERROR_STATUS;
+    }
+
+    # FIX THIS:  either drop this or clean it up
+    if (0) {
+	foreach my $key (sort keys %$config) {
+	    print "$key = $config->{$key}\n";
+	}
+    }
+
+    # This one aspect of validation, we'll do here, so the calling code can then
+    # depend on this value to attempt to open the logfile for recording further
+    # validation failures.  Most other configuration validation will be handled
+    # separately, after the logfile is opened.
+    $logfile = $config->{'replication-log-file'};
+    if (!defined($logfile)) {
+	print STDERR "ERROR:  replication-log-file is not defined in config file $config_file\n";
+	return ERROR_STATUS;
+    }
+
+    # We need to absolutize a relative path to the $logfile right away
+    # before we attempt to use $logfile to open the file, so we do that 
+    # work here instead of within validate_configuration() or initialize().
+    $logfile = "$Bin/$logfile" if $logfile !~ m{^/};
+
+    return CONTINUE_STATUS;
+}
+
+sub validate_configuration {
+    # FIX LATER:  Implement YAML::Valid and call it here to check the presence and validity
+    # of all the expected configuration-file entries for this application, by comparing the
+    # complete $config tree against some predefined notion of what it ought to contain.
+
+    # Global Debug Level Flag.
+    $debug_level = $config->{'debug-level'};
+
+    # Variables to be used as quick tests to see if we're interested in
+    # particular debug messages.
+    $DEBUG_NONE    = $debug_level == 0;  # turn off all debug info
+    $DEBUG_FATAL   = $debug_level >= 1;  # the application is about to die
+    $DEBUG_ERROR   = $debug_level >= 2;  # the application has found a serious problem, but will attempt to recover
+    $DEBUG_WARNING = $debug_level >= 3;  # the application has found an anomaly, but will try to handle it
+    $DEBUG_NOTICE  = $debug_level >= 4;  # the application wants to inform you of a significant event
+    $DEBUG_STATS   = $debug_level >= 5;  # the application wants to log statistical data for later analysis
+    $DEBUG_INFO    = $debug_level >= 6;  # the application wants to log a potentially interesting event
+    $DEBUG_DEBUG   = $debug_level >= 7;  # the application wants to log detailed debugging data
+
+    return CONTINUE_STATUS;
+}
+
+# FIX MAJOR:  if we load this default state, we probably need to synchronize
+# with Foundation or somesuch so its notion of Master Configuration Authority
+# is properly synchronized with our setting of that state here, and so that
+# state can be properly reflected to the GW Monitor UI
+sub load_default_replication_state {
+    my $temporary_state_file = $config->{'replication-state-file'} . '.tmp';
+    # FIX THIS
+    log_timed_message "ERROR:  no default replication state is being initialized yet";
+
+    # what belongs here:
+    # has_notification_authority
+    # has_master_configuration_authority
+    # replication_is_enabled
+    # replication_operations_are_active
+    # XXX_is_quiesced_for_source_replication
+    # XXX_is_quiesced_for_sink_replication
+    # XXX_is_out_of_sync
+    my %default_state = ();
+
+    # Note:
+    # A false value here serializes as: !!perl/scalar:boolean 0
+    # A true  value here serializes as: !!perl/scalar:boolean 1
+    # Hopefully the type tags here, while they appear to be language-specific,
+    # will be properly understood by other language interpreters upon import.
+    # Too bad the values cannot be specially handled by the YAML dumper or
+    # emitter and serialized instead as simple and obvious yes and no values.
+
+    # FIX THIS:  is there some other way to get the dump to tag such values
+    # with !!bool so they do in fact show up that way?
+
+    $default_state{has_notification_authority}         = false;
+    $default_state{has_master_configuration_authority} = false;
+    $default_state{replication_is_enabled}             = false;
+    $default_state{replication_operations_are_active}  = false;
+    eval {
+	YAML::XS::DumpFile( $temporary_state_file, \%default_state );
+    };
+    if ($@) {
+        log_timed_message "ERROR:  $@";
+	return ERROR_STATUS;
+    }
+    else {
+	# Only now that the state file is completely written is it appropriate
+	# to slide it into place where other applications can read it.
+	if (!rename( $temporary_state_file, $config->{'replication-state-file'} )) {
+	    log_timed_message "ERROR:  $!";
+	    return ERROR_STATUS;
+	}
+    }
+    return CONTINUE_STATUS;
+}
+
+sub load_replication_state {
+    $config->{'replication-state-file'} = "$Bin/$config->{'replication-state-file'}" if $config->{'replication-state-file'} !~ m{^/};
+    eval {
+	$state = YAML::XS::LoadFile($config->{'replication-state-file'});
+    };
+    if ($@) {
+	if ($! == ENOENT) {
+	    log_timed_message "WARNING:  replication state file $config->{'replication-state-file'}"
+	      . " does not exist; loading default replication state instead";
+	    if (load_default_replication_state() != CONTINUE_STATUS) {
+		return ERROR_STATUS;
+	    }
+	}
+	else {
+	    # We cannot log this error, because the location of the logfile is
+	    # contained in the configuration file and we haven't read it yet.
+	    # So all we can do is spill to the output stream.
+	    log_timed_message 'ERROR:  ', $@;
+	    return ERROR_STATUS;
+	}
+    }
+
+    return CONTINUE_STATUS;
+}
+
+sub dump_replication_state {
+    return CONTINUE_STATUS;
+}
+
+# FIX THIS:  fill in more detail here
+sub initialize {
+    if (load_replication_state() != CONTINUE_STATUS) {
+	return ERROR_STATUS;
+    }
+
+    $cycle_time = $config->{'contact-heartbeat-period'};
+
+    # FIX THIS:  load the state of GW Monitor
+    # FIX THIS:  load the states of various applications
+    # FIX THIS:  load the state of the remote heartbeat sensor
+
+    return CONTINUE_STATUS;
+}
+
+sub cycle {
+    # FIX THIS:  fill in more detail here
+    log_timed_message "INFO:  nothing to see here; move along!";
+    return CONTINUE_STATUS;
+}
+
+sub handle_exit_signal {
+    my $signame = shift;
+    $shutdown_requested = 1;
+
+    # for developer debugging only
+    log_timed_message "NOTICE:  Received SIG$signame; aborting!" if $DEBUG_NOTICE;
+}

@@ -1,0 +1,895 @@
+#!/usr/bin/perl -w --
+#
+#	Copyright 2003-2007 Groundwork Open Source, Inc.
+#	http://www.groundworkopensource.com
+#
+#	Unless required by applicable law or agreed to in writing, software
+#	distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#	WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#	License for the specific language governing permissions and limitations under
+#	the License.
+
+#use strict;
+use lib qw(/opt/groundwork/gdma/lib/site_perl /opt/groundwork/gdma/lib);
+use Fcntl;
+use IO::Socket;
+# use Data::Dumper;
+use Getopt::Std;
+use Sys::Hostname;
+use sigtrap qw(die normal-signals);
+use LWP::UserAgent;
+$|=1;
+my $version = "1.0";
+
+# We'd like to use Time::HiRes, but it's not dependably installed
+# on all platforms we might want to monitor.  So we build a portable
+# mechanism for finding time to whatever resolution is available.
+my $hires_time;
+my $hires_time_format;
+eval {require Time::HiRes; import Time::HiRes;};
+if ($@) {
+    # 'require' died; Time::HiRes is not available.
+    $hires_time = sub { return time; };
+    $hires_time_format = "%0.0f";
+} else {
+    # 'require' succeeded; Time::HiRes was loaded.
+    $hires_time = sub { return Time::HiRes::time(); };
+    $hires_time_format = "%0.3f";
+}
+
+my %config;
+my $host;
+my $Logfile;
+my $ServerfilePath;
+my $ConfigfilePath;
+my $Configfile;
+my %opt				= ();
+my $cycle_time			= 300;	# Default time interval for each poll - 5 minutes
+my $num_cycles_until_get_config	= 1; # adjustable dynamically via ConfigFile_Pull_Cycle in host cfg - typically this is 10
+my $debug			= 0;
+my $start_program_time		= time;
+my $os = `uname -s`; chomp $os;
+my $solaris = ($os eq 'SunOS');
+my $linux = ($os eq 'Linux');
+my $prefix;
+if ($solaris) {
+    $prefix = "/opt";
+} else {
+    # For Linux, and for all other platforms until we extend this code.
+    $prefix = "/usr/local";
+}
+my $head_path			= "$prefix/groundwork/gdma";
+my $local_spool_filename	= "$prefix/groundwork/gdma/spool/gdma.spool";
+
+$ENV{'PATH'}.=":$head_path/libexec";
+if ($solaris)
+{
+    $ENV{'LD_LIBRARY_PATH'} = "$prefix/groundwork/lib";
+}
+elsif ($linux)
+{
+    my $linuxarch = `uname -p`; chomp $linuxarch;
+    if ($linuxarch eq 'x86_64') { $ENV{'LD_LIBRARY_PATH'} = "$prefix/groundwork/gdma/lib64"; }
+    else { $ENV{'LD_LIBRARY_PATH'} = "$prefix/groundwork/gdma/lib"; }
+}
+
+my %return_codes	= ("OK" => "0","WARNING" => "1","CRITICAL" => "2","UNKNOWN" => "3" );
+my %exit_codes 		= ("0" => "0","256" => "1","512" => "2","768" => "3" , "-1"=>"512");
+my $helpstring		= "
+GDMA agent for Unix version $version monitors system statistics on this server.
+Results are sent back to the GroundWork server(s) using NSCA.
+
+Options:
+-c <CONFIG FILE>  Config file containing monitoring parameters.
+-l <LOG FILE>     Log file for this script.
+-d <1,2>          Debug mode. Will log additional messages to the log file, 1 less 2 most.
+-h                Displays help message.
+-x                Run once.  If this option not selected, run continually with sleep.
+-i                Run interactively - shows output to the cli (non service mode) as well as to log
+-v                Show version.
+
+Copyright 2003-2008 Groundwork Open Source, Inc.
+http://www.groundworkopensource.com
+Unless required by applicable law or agreed to in writing, software distributed under the License
+is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+or implied. See the License for the specific language governing permissions and limitations under
+the License.
+";
+
+my $fqhn		= hostname();
+
+## This is wrong - the requirement is at best that the nagios host name matches the host hostname . DSN
+## Commenting these two lines out. DSN
+#my @host_parseout	= split(/\./, $fqhn); # DSN
+#my $hostname		= $host_parseout[0]; # DSN
+$hostname = $fqhn; # DSN
+
+my $wait_for_cfg_sleep	= 60; # seconds
+my $configfile_use_https = 1; # set to make pulls use https DSN - set to 0 to use scp instead
+my $cfgurl_timeout=10; # DSN - dynamically adjustable with the ConfigFile_URL_Timeout = "####" option in the host cfg
+my $spooling=1; # DSN  spooling switch - Spooling="[yes|no]" option to the host cfg to control adjusts this
+my $nsca_port = 5667; # DSN default NSCA port
+my $interactive = 0; # DSN switch to 1 or use -i for cli output when running not as a service but from cli
+sub lprint; # DSN
+
+
+##
+##	Handle Command Line Options
+##
+
+getopts("d:hivxc:",\%opt);
+if ($opt{h}) { print $helpstring; exit; }
+if ($opt{v}) { print "Version $version\n"; exit; }
+if ($opt{i}) { $interactive = 1; }
+if ($opt{d}) { $debug = $opt{d}; }
+if ($opt{c}) {
+    # FIX LATER:  What do we use for the ServerfilePath in this case?  Do we need another command-line option?
+    $ServerfilePath = undef;
+    $ConfigfilePath = $opt{c};
+} else {
+    if ($solaris)
+    {
+	$ServerfilePath = "$prefix/groundwork/home/gdma/config/gdma_server.conf";
+	$ConfigfilePath = "$prefix/groundwork/home/gdma/config/gwmon_$hostname.cfg";
+    }
+    else
+    {
+	$ServerfilePath = "$head_path/config/gdma_server.conf";
+	$ConfigfilePath = "$head_path/config/gwmon_$hostname.cfg";
+    }
+}
+($Configfile = $ConfigfilePath) =~ s#.*/##;	# strip leading pathname components, leaving just the filename
+
+########################################################################
+##	Wait for Config File
+##
+##	When we first are executed, it is possible that we are executing
+##	without a configuration file.  This is the circumstance where
+##	we have just loaded the software on a new host.  So, we sit here
+##	and wait for our configuration file before we start executing.
+########################################################################
+
+# -- NOTE [DSN] - this doesnt work using -c option if the conf doesnt exist.
+# ---             ServerfilePath is undef so gdma_server.conf
+# ---             will never auto pull like this . This needs fixing or removing.
+
+
+while (1) {
+    if (open(CFG_TEST, '<', "$ConfigfilePath")) { close(CFG_TEST); last; }
+
+    #sleep($wait_for_cfg_sleep); # DSN - moved to below
+
+    # We cannot depend on any external agent grabbing the config file for us,
+    # so we need to take that responsibility ourselves.  That raises the question,
+    # "without a config file to tell us, how do we know what machine to contact
+    # to read the config file from?".  The answer is, we look in the $ServerfilePath
+    # configuration file to find the IP address of that server.
+
+    lprint "Fetching config file\n" if $debug; # wont be logged
+    fetch_config_file (server_address ($ServerfilePath));
+    if (open(CFG_TEST, '<', "$ConfigfilePath")) { close(CFG_TEST); last; } # DSN - if we got the file, then lets not wait
+    lprint "Didn't get config file - waiting to retry\n" ;  # won't be logged to LOG
+    sleep($wait_for_cfg_sleep);
+}
+
+########################################################################
+##	Open LogFile
+##
+##	Note, it is closed after the main loop is executed and before the sleep
+##	Also note that it is only the very first config file read after startup,
+##	or the default value, that is ever used as the logfile name and to
+##	determine from where to find fetch configuration files; no later
+##	config-file settings will have any effect.
+########################################################################
+
+my $logconfig = read_config($ConfigfilePath) || {};
+$logconfig->{Output_Logfile} ||= "$head_path/log/gwmon_$hostname.log";
+
+########################################################################
+#	loop for running as a daemon, depending on the startup flag option -s
+#	Note that the LOG file is named above so as to be available for opening
+#	and writing time stamp
+########################################################################
+
+my $loop_start_time;
+my $loopcount = 0;
+my $num_cycles = 0;
+
+while (1) {
+    open(LOG, '>', "$logconfig->{Output_Logfile}") or die ("Failed to open logfile $logconfig->{Output_Logfile} : $!");
+
+    $loop_start_time = &$hires_time();
+
+    main(); # execute system checks
+
+    my $exec_time = &$hires_time() - $loop_start_time;	# to help compute the time to wait before the next execution
+    lprint "Loop count=$loopcount. Last loop exec time = " . sprintf($hires_time_format, $exec_time) . " seconds.\n";
+    if($opt{x}) {last;}
+
+    ##
+    ##	If it's time to sleep, do so.
+    ##
+
+    ++$loopcount;
+    if ($exec_time < $cycle_time) {
+	my $wait_time = int($cycle_time - $exec_time);
+	lprint "Waiting $wait_time seconds...\n" if $debug;
+	#close LOG; # DSN
+	sleep $wait_time;
+    }
+
+    ++$num_cycles;
+    if ($num_cycles >= $num_cycles_until_get_config) {
+
+	# We'd prefer to use a Config_Server option instead of Target_Server here, so on boxes without SSH support,
+	# if our initial config file doesn't contain a Config_Server, we would never attempt to update our
+	# configuration file.  That's okay on a box where we don't want to install or use SSH for such purposes.
+	# In that situation, the config file would need to be manually managed by the local administrator.
+	# With the current setup, we will instead go through a series of ultimately fruitless machinations
+	# resulting in a failed "scp" down below, so the configuration file should remain unchanged.
+
+	# Target_Server may be a list, not just a single host, so by convention we need to extract and use just the first host.
+
+        lprint "Fetching config file\n" if $debug;
+	fetch_config_file((split(/[,\s]+/, $logconfig->{Target_Server}))[0]) if (defined($logconfig->{Target_Server}));
+
+	$num_cycles = 0;
+    }
+    close LOG; # DSN
+}
+exit 0;
+
+########################################################################
+# go grab a copy of the config-server's IP address
+########################################################################
+
+sub server_address {
+    my $serverfile = shift;
+    my $ip_address = undef;
+
+    if (defined($serverfile) && open(CONFIGSERVER, '<', "$serverfile")) {
+	# We only expect a single line, containing an IP address with no adornment.
+        # Also, if we're getting via https, then allow a url DSN 10/08
+	while (<CONFIGSERVER>) {
+	    chomp;
+	    # Let's validate the address before we assume it's correct, to avoid script-injection attacks.
+	    # Currently, we only allow literal IPv4 addresses, not IPv6 addresses or hostnames.
+            if ( $configfile_use_https == 1 )
+            {
+               if ( /^http.*$/ ) { $ip_address = $_; last; } # its not really an ip address here, but a url instead
+            }
+            else
+            {
+	       if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/) { $ip_address = $_; last; }
+	    }
+	}
+	close(CONFIGSERVER);
+    }
+    # LOG is not opened yet
+    if ( $interactive ) { lprint "No server address was calculated from $serverfile - quitting.\n" if ( not defined $ip_address )  ; }
+    return $ip_address;
+}
+
+########################################################################
+# go grab a copy of the current config file from our config server
+########################################################################
+
+sub fetch_config_file
+{
+    my $configserver = shift;
+    my ( $cmd_string, $hostnamecfg  );
+
+
+    if (defined($configserver))
+    {
+
+        if ( $configfile_use_https == 1 )
+        {
+           # try do the pull of the externals cfg with https
+           $hostnamecfg=Sys::Hostname::hostname();
+           $hostnamecfg = "gwmon_${hostnamecfg}.cfg";
+
+
+           #get_gdma_cfg_file_using_http("$config->{ConfigFile_URL}/$hostnamecfg", "$config->{HostConfigFile_Directory}/$hostnamecfg", $cfgurl_timeout ) ;
+           lprint "Getting $configserver/$hostnamecfg to $ConfigfilePath (timeout $cfgurl_timeout)\n" ;
+           get_gdma_cfg_file_using_http("$configserver/$hostnamecfg", "$ConfigfilePath", $cfgurl_timeout ) ;
+
+        }
+        else
+        {
+           # try do the pull of the externals cfg with scp
+	   $cmd_string = join ('', $head_path, "/bin/gdma_getconfig.pl -H ", $configserver, " -c ", $Configfile);
+	   `$cmd_string 2>&1`;
+        }
+
+    }
+
+    else
+    {
+       lprint "Warning - no configuration server defined\n" ;
+    }
+
+}
+
+
+sub original_fetch_config_file { #DSN deprecated, or , depreciated as Kevin would say
+    my $configserver = shift;
+    if (defined($configserver)) {
+	my $cmd_string = join ('', $head_path, "/bin/gdma_getconfig.pl -H ", $configserver, " -c ", $Configfile);
+	`$cmd_string 2>&1`;
+    }
+}
+
+# ----------------------------------------------------------------------------------------------------------  DSN
+sub get_gdma_cfg_file_using_http
+{
+   # takes the following args :
+   # - a url to the cfg file location
+   # - the fully qualified name of where to save the cfg file
+   # - timeout in seconds for the url
+
+   my ( $cfgurl, $outfile, $urltimeout ) = @_;
+   my ( $response , $gdma_useragent) ;
+
+   $gdma_useragent = LWP::UserAgent->new(  );
+   $gdma_useragent->timeout($urltimeout);
+   $gdma_useragent->requests_redirectable   (); # default is GET and HEAD redirect - thats fine - maybe param'ize this opt later if necessary
+
+   lprint "Attempting to get $cfgurl to $outfile (timeout is set to " . $gdma_useragent->timeout() . ")\n" ;
+
+   $response = $gdma_useragent->mirror($cfgurl, $outfile);
+   if (not $response->is_success)
+   {
+
+       # the if defined fileno LOG bit is since the LOG file is not open on the first time the cfg is pulled via settings in the gdma_server.conf file
+       lprint "Failed to get $cfgurl - ", $response->status_line . "\n" ;
+       if ( $response->status_line =~ /304 not modified/i ) { lprint " (304's are generally safe to ignore) \n" ;} else { lprint "\n" ; }
+       if ( $debug )
+       {
+           lprint "Failed to get $cfgurl - " . $response->status_line ;
+           if ( $response->status_line =~ /304 not modified/i )
+           {
+              lprint " (304's are generally safe to ignore) \n" ;
+           }
+       }
+       #exit 2;  # don't exit - just return.
+       return;
+   }
+
+   # this isn't that useful here due to mirroring, but at least it tells us something happened
+   if ( $debug )
+   {
+      lprint "\nRetrieved content for $cfgurl\n", $response->content, "\n" ;
+   }
+
+}
+
+
+########################################################################
+# the main executed from the loop.  Note that the config file is opened
+# every time so a configuration change will happen immediately.
+########################################################################
+
+sub main {
+
+    ##
+    ##	Configuration file and create reference for $config
+    ##
+
+    my $config = read_config($ConfigfilePath);
+    if (! defined($config)) {
+	# The read_config() routine itself complains but doesn't know if LOG is open,
+	# so it cannot record the problem there.  In our present context, however,
+	# we do have that luxury.
+	lprint "Can't open configuration file $ConfigfilePath\n";
+	return;
+    }
+
+    ##
+    ##	print config values
+    ##
+
+    if ($debug)
+    {
+	foreach my $param (sort keys %{$config}) # DSN added sort for readability during debug
+	{
+	    if (ref($config->{$param}) eq "ARRAY")
+	    {
+		foreach (my $i=0; $i<=$#{$config->{$param}}; $i++)
+		{
+		    # FIX MINOR:  this looks really suspicious to me.  we just found
+		    # above that $config->{$param} was an array ref, not a hash ref;
+		    # so what are we doing dereferencing it like a hash reference?
+		    foreach my $option (keys %{$config->{$param}->[$i]})
+		    {
+			lprint $param."[$i]_$option = ".$config->{$param}->[$i]->{$option}."\n" if $debug;
+		    }
+		}
+	    }
+	    else
+	    {
+		lprint $param." = ".$config->{$param}."\n" if $debug;
+	    }
+	}
+    }
+
+    ########################################################################
+    ## Set defaults if not set in configuration file.
+    ########################################################################
+
+    $config->{Output_Logfile} ||= "$head_path/log/gwmon_$hostname.log";
+    $config->{Monitor_Host}   ||= $hostname;
+    # FIX MINOR:  using a fixed name here doesn't make sense; shouldn't we just return, instead?
+    $config->{Target_Server}  ||= "groundwork1";
+    $config->{Loop_Count}     ||= $cycle_time;
+
+    $config->{ConfigFile_URL_Timeout} ||= $cfgurl_timeout; # DSN
+    $config->{ConfigFile_Pull_Cycle}  ||= $num_cycles_until_get_config; # DSN
+    $config->{Spooling}               ||= $spooling; # DSN
+    $config->{NSCA_Port}              ||= $nsca_port; # DSN
+
+    ########################################################################
+    ## adopt new values from the config file
+    ########################################################################
+
+    $nsca_port = $config->{NSCA_Port}; # DSN
+    $cycle_time = $config->{Loop_Count}; # DSN
+    $num_cycles_until_get_config = $config->{ConfigFile_Pull_Cycle}; # DSN
+    $cfgurl_timeout = $config->{ConfigFile_URL_Timeout}; # DSN
+    if ( defined $config->{Spooling} ) # DSN
+    {
+       if ( $config->{Spooling} =~ /^on$/i ) { $spooling = 1 ; } else { $spooling = 0 ; }
+    }
+
+
+    ########################################################################
+    #	Start executing system checks if defined in the
+    #	configuration file.
+    ########################################################################
+
+    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+    $year += 1900;
+    my $month = qw(January February March April May June July August September October November December)[$mon];
+    my $timestring = sprintf "%02d:%02d:%02d",$hour,$min,$sec;
+    my $thisday = qw(Sunday Monday Tuesday Wednesday Thursday Friday Saturday)[$wday];
+    lprint "GroundWork Monitoring Script starting on $thisday, $month $mday, $year at $timestring.\n" if $debug;
+    lprint "Debug set to $debug\n" if $debug;
+    lprint "Using configuration file $ConfigfilePath\n" if $debug;
+
+    foreach my $checkname (keys %{$config})
+    {
+	if (defined($config->{$checkname})) {			# if in config file
+	    if ( $checkname !~ /^Check_/i ) { next; }	# Only process if name starts with "Check_"
+	    if (($checkname =~ /Check_Request_Servlet/) 	# See if special check
+	    or  ($checkname =~ /Check_SAR/)) {
+		Check_GENERIC_NOSEND($checkname);	# Execute but don't send_nsca. Handled in script
+	    } else {
+		Check_GENERIC($checkname);		# Generic, get check result and send to Nagios
+	    }
+	}
+    }
+
+    ########################################################################
+    #	Finished executing system checks.
+    ########################################################################
+
+    # FIX MINOR:  is this useful, given that we're already logging the execution time in the caller?
+    my $program_end_time = time;
+    $program_end_time -= $start_program_time;
+    lprint "Total elapsed time since startup:  $program_end_time seconds.\n" if $debug;
+}
+
+########################################################################
+#	Read configuration file
+########################################################################
+
+sub read_config {
+    my $configfile = shift;
+    if (!open(CONFIG, '<', "$configfile") ) {
+	lprint "Can't open configuration file $configfile $!\n" ;
+	return undef;
+    }
+    while (my $line = <CONFIG>) {
+	# Discard comment and invalid lines
+	if ($line=~/^\s*#/) {next }						# Comment if line starts with #
+	if ($line=~/^\s*(\S+)\s*=\s*"(.*?)"/) {
+	    my $parameter = $1; my $value = $2;
+	    # Sample line:
+	    #		Check_Disk[1]_Parm_--warning = "10%"
+	    if ($parameter =~ /^(.*?)\[(\d+)\]_(.*)/) {
+		$config->{$1}->[$2]->{$3} = $value;
+	    } elsif ($parameter =~ /^(.*?)\[(\d+)\]$/) {
+		$config->{$1}->[$2] = $value;
+	    } else {
+		$config->{$parameter} = $value;
+	    }
+	} elsif ($line=~/^\s*(\S+)\s*=\s*(\S+)/) {
+	    #
+	    #  Set to another parameter that has already been defined. No quotes after =
+	    #	Monitor_Server[1]= "groundwork.company.com"
+	    # 	Check_Response_Servlet[1]_Parm_-n = Monitor_Server[1]
+	    #	Also support multiples, ie:
+	    # 	Check_Response_Servlet[1]_Parm_-n = Monitor_Server[1],Monitor_Server[2]
+	    #
+	    my $parameter = $1; my $target = $2;
+	    my @targetparameters = split /,/,$target;
+	    lprint "target = $2\n" if $debug;
+	    foreach my $targetparameter (@targetparameters) {
+		my $value = "";
+		lprint "Checking targetparameter=$targetparameter\n" if $debug;
+		if ($targetparameter =~ /^(.*?)\[(\d+)\]_(.*)/) {
+		    $value = $config->{$1}->[$2]->{$3};
+		} elsif ($targetparameter =~ /^(.*?)\[(\d+)\]$/) {
+		    $value = $config->{$1}->[$2];
+		} else {
+		    $value = $config->{$targetparameter};
+		}
+		lprint "value = $value\n" if $debug;
+		if ($value) {
+		    if ($parameter =~ /^(.*?)\[(\d+)\]_(.*)/) {
+			$config->{$1}->[$2]->{$3} .= $value.",";
+		    } elsif ($parameter =~ /^(.*?)\[(\d+)\]$/) {
+			$config->{$1}->[$2] .= $value.",";
+		    } else {
+			$config->{$parameter} .= $value.",";
+		    }
+		    lprint "setting parameter $parameter \n" if $debug;
+		}
+	    }
+
+	    if ($parameter =~ /^(.*?)\[(\d+)\]_(.*)/)
+            {
+                # get rid of trailing comma
+		$config->{$1}->[$2]->{$3} =~ s/,$//;
+	    }
+            elsif ($parameter =~ /^(.*?)\[(\d+)\]$/)
+            {
+		$config->{$1}->[$2] =~ s/,$//;
+	    }
+            else
+            {
+		$config->{$parameter} =~ s/,$//;
+	    }
+
+	}
+        elsif ($line=~/^\s*(\S+)\s*#?/) {
+	    my $parameter = $1;
+	    # Sample line:
+	    #		Check_Disk[1]_Parm_--errors-only
+	    if ($parameter =~ /^(.*?)\[(\d+)\]_(.*)/) {
+		$config->{$1}->[$2]->{$3} = "";
+	    } elsif ($parameter =~ /^(.*?)\[(\d+)\]$/) {
+		$config->{$1}->[$2] = "";
+	    } else {
+		$config->{$parameter} = "";
+	    }
+	}
+    }
+    close CONFIG;
+    return \%{$config};
+}
+
+########################################################################
+#	Generic plugin processing
+########################################################################
+
+sub Check_GENERIC
+{
+    my $check_name = shift;
+    my ( $line_num, $num_lines , $line ) ; # DSN
+    foreach (my $i=1; $i<=$#{$config->{$check_name}}; $i++) {
+	my $exit = undef;
+	my $text = "";
+	my $execute_string = "";
+	if ($config->{$check_name}->[$i]->{Enable} ne "OFF") {
+	    lprint "Executing $check_name - iteration $i\n" if $debug;
+	    my $execute_string = $config->{$check_name}->[$i]->{Command};
+	    foreach my $option (keys %{$config->{$check_name}->[$i]}) {
+		#if ($config->{$check_name}->[$i]->{$option}) {
+		if (defined($config->{$check_name}->[$i]->{$option})) {
+		    lprint $check_name."[$i]_$option = ".$config->{$check_name}->[$i]->{$option}."\n"  if $debug;
+		    if ($option =~ /^Parm_(--.*)/) {
+			$execute_string .= " $1=".$config->{$check_name}->[$i]->{$option};
+		    } elsif ($option =~ /^Parm_(-.*)/) {
+			$execute_string .= " $1 ".$config->{$check_name}->[$i]->{$option};
+		    }
+		} else {
+		    if ($option =~ /^Parm_(--.*)/) {
+			$execute_string .= " $1";
+		    } elsif ($option =~ /^Parm_(-.*)/) {
+			$execute_string .= " $1";
+		    }
+		}
+	    }
+	    lprint "PLUGIN COMMAND STRING: $execute_string \n" if $debug;
+	    my @lines = `$execute_string 2>&1`;
+	    $exit=$?;	# Exit code
+	    $text = "";
+	    if ($exit < 0) {
+		$text = "Plugin execution error";
+	    }
+	    else {
+		$num_lines=scalar @lines;
+		$line_num=0;
+
+		foreach $line (@lines)
+		{
+		    $line_num=$line_num+1;
+		    if ($debug > 1) { lprint "PLUGIN OUTPUT: $line\n"; }
+		    if ($line =~ /ERROR/) {
+			$exit = "512";		# If ERROR found, force status to CRITICAL
+		    }
+		    if ($line =~ /(\S.*)/) {
+			$text .= $1;
+			if ($line_num < $num_lines) {
+			    $text .= "/";
+			}
+		    }
+		}
+	    }
+	    if ($debug > 1) {
+		lprint "PLUGIN RESULTS: exit=$exit; text=$text \n";
+	    }
+
+	    # <gwhost name>[tab]<service description>[tab]<return code> [tab]<plugin output> | <performance metrics>
+	    # echo "<send command text>" | send_nsca -H <monitor server> -c send_nsca.cfg`;
+
+	    my @target_servers = split(/[,\s]+/, $config->{Target_Server});
+	    my $num_target_servers = scalar(@target_servers);
+	    my $target_server;
+	    my $ts;
+
+	    $text =~ s/\r/\//og;
+	    $text =~ s/\n/\//og;
+	    $text =~ s/\t/\//og;
+	    $text =~ s/\"/'/og;
+	    #$text =~ s/\|/\//og;
+
+	    for ($ts=0; $ts < $num_target_servers; $ts++)
+	    {
+
+		$target_server = $target_servers[$ts];
+
+                # If using https for pulls, then target server will be https://<address>/somedir.
+                # We need to extract the address. We're going to force the requirement that the <address>
+                # part is the place to send the results, ie the web server from which we pull the cfgs
+                # is the same place we send nsca results. Not an unreasonable requirement. DSN 10/08
+
+                # EG https://abc.def/gdma-linux -> abc.def DSN
+                if ( $target_server =~ /^\S+:\/\/(.*)?\/.*$/i ) { $target_server =~ s|^\S+://(.*)?/.*$|$1|ig; } # DSN
+
+                # EG https://abc.def -> abc.def DSN
+                if ( $target_server =~ /^\S+:\/\/(.*)?.*$/i ) { $target_server =~ s|^\S+://(.*)?.*$|$1|ig; } # DSN
+
+                # log error if couldn't extract DSN
+                if ( $target_server =~ /^\S+:\/\// ) { lprint "Could not extract server from '$target_server'\n" ; }
+
+
+		my $send_string = join ('',
+		    "echo \"",
+		    $config->{Monitor_Host},
+		    "\t",
+		    $config->{$check_name}->[$i]->{Service},
+		    "\t",
+		    $exit_codes{$exit},
+		    "\t",
+		    $text,
+		    " \" | ",
+		    $head_path,
+		    "/bin/send_nsca.pl -t 10 -p 5667 -H ",
+		    $target_server);
+
+		##
+		## Now send it to Nagios.
+		##
+
+		lprint "SEND STRING: $send_string\n" if $debug;
+		send_to_nagios($send_string);
+	    }
+	}
+    }
+}
+
+########################################################################
+#	Generic plugin processing
+#		Executes plugin but doesn't send output.
+#		The plugin will execute the send_nsca
+########################################################################
+
+sub Check_GENERIC_NOSEND {
+    my $check_name = shift;
+    my ( $line ) ; #DSN
+    foreach (my $i=1; $i<=$#{$config->{$check_name}}; $i++) {
+	my $exit = undef; my $text = "";
+	my $execute_string = "";
+	if ($config->{$check_name}->[$i]->{Enable} ne "OFF") {
+	    lprint "Executing $check_name - iteration $i\n" if $debug;
+	    my $execute_string = $config->{Plugin_Directory};
+	    $execute_string .= "/".$config->{$check_name}->[$i]->{Command};
+	    foreach my $option (keys %{$config->{$check_name}->[$i]}) {
+		#if ($config->{$check_name}->[$i]->{$option}) {
+		if (defined($config->{$check_name}->[$i]->{$option})) {
+		    lprint $check_name."[$i]_$option = ".$config->{$check_name}->[$i]->{$option}."\n"  if $debug;
+		    if ($option =~ /^Parm_(--.*)/) {
+			$execute_string .= " $1=".$config->{$check_name}->[$i]->{$option};
+		    } elsif ($option =~ /^Parm_(-.*)/) {
+			$execute_string .= " $1 ".$config->{$check_name}->[$i]->{$option};
+		    }
+		} else {
+		    if ($option =~ /^Parm_(--.*)/) {
+			$execute_string .= " $1";
+		    } elsif ($option =~ /^Parm_(-.*)/) {
+			$execute_string .= " $1";
+		    }
+		}
+	    }
+	    lprint "PLUGIN COMMAND STRING: $execute_string \n" if $debug;
+	    my @lines = `$execute_string 2>&1`;
+	    $text = "";
+	    foreach $line (@lines) {
+		if ($debug > 1) { lprint "PLUGIN OUTPUT: $line\n"; }
+		if ($line =~ /(\S.*)/) {
+		    $text .= $1."\n";
+		}
+	    }
+	    lprint "PLUGIN RESULTS: text=$text \n" if $debug;
+	}
+    }
+}
+
+########################################################################
+#	send_to_nagios
+#
+#	Send plug-in output to nagios through send_nsca. If send_nsca
+#	fails, the plug-in output is spooled to a local file for retry
+#	later.
+########################################################################
+
+sub send_to_nagios
+{
+    my $send_string = shift;
+    my $send_result;
+
+    #
+    # First, empty our spool file if it exists.
+    #
+
+    # FIX MINOR:  I object to the current handling of the spool file on five counts:
+    # (1) we let our spool file build up forever, never concluding that we should
+    #     no longer accumulate into it or send its content to the central server,
+    #     in case the central server is down or unreachable for a long time
+    # (2) there are far too many individual calls to send_nsca (one per spooled line,
+    #     instead of bunching up some part of the spooled results, up to some maximum
+    #     message-size limit of perhaps 100 KB, for each call); this is inefficient
+    #     from the standpoint of overhead in both forking and opening an excessive
+    #     number of network connections, and it also leaves that many more sockets
+    #     on the client machine in a TIME_WAIT state when send_nsca closes them
+    # (3) if the loop fails after sending a few previously spooled results,
+    #     there is no recognition that some of the results were successfully sent;
+    #     and thus those results will be re-sent at a future time, which may result
+    #     in some out-of-sequence results being reported
+    # (4) there is no aging of results, such that sufficiently-old results are
+    #     considered to be irrelevant and will be dropped so they don't just clog up
+    #     the downstream processing
+    # (5) since we don't save a timestamp with each spooled line, we cannot tell how
+    #     old that data is when we do finally send it, which means the central server
+    #     may be inundated with a lot of completely obsolete data sent as if it were
+    #     the current state, and immediately overwritten by later state
+    # These problems are obvious targets for improvement in a future release.
+
+    if (-e $local_spool_filename and $spooling ) # DSN added spooling var
+    {
+	open(EMPTYSPOOL, '<', "$local_spool_filename");
+	lprint "Emptying spool file\n";
+
+	$send_result = 1;	# delete an empty spool file, if the loop has no iterations
+	while (my $line = <EMPTYSPOOL>)
+	{
+	    chomp $line;
+	    $send_result = send_nsca($line);
+	    if (!$send_result) {
+		last;
+	    }
+	}
+	close(EMPTYSPOOL);
+	if ($send_result) {
+	    unlink($local_spool_filename);
+	}
+    }
+
+    #
+    #	Next, write our string to nsca.
+    #
+
+    $send_result = send_nsca($send_string);
+    if (!$send_result) {
+	local_spool($send_string) if $spooling; #DSN
+    }
+}
+
+########################################################################
+#	send_nsca
+#
+#	Perform the actual send to nsca.
+########################################################################
+
+sub send_nsca
+{
+    my $send_string = shift;
+    my $OK = 0;
+    my $try = 0;
+    my $maxtry = 2;
+    my $minwait = 2;
+    my $maxwait = 5;	# will wait between 2 and 7 seconds
+    my $line ; # DSN
+
+    while (!$OK and ($try < $maxtry))
+    {
+	my @lines = `$send_string 2>&1`;
+	foreach $line (@lines)
+	{
+	    if ($line =~ /Sent \d+ packets to /)	# OK response for send_nsca perl script
+	    {
+		$OK = 1;
+	    }
+	}
+	if ($debug)
+	{
+	    foreach $line (@lines)
+	    {
+		# $line should already contain a newline at the end
+		lprint "return = $line";
+	    }
+	}
+
+	$try++;
+	if (!$OK) {
+	    lprint "Failed attempt $try to send to nsca; sleeping.\n" if $debug;
+	    sleep int(rand($maxwait)) + $minwait;
+	}
+    }
+    return($OK);
+}
+
+########################################################################
+#	local_spool
+#
+#	shove failed send_nsca's in the spool for later
+########################################################################
+
+sub local_spool
+{
+    my $line = shift(@_);
+
+    if (open(SPOOL_FILE, '>>', "$local_spool_filename"))
+    {
+	if (print (SPOOL_FILE $line."\n"))
+        {
+	    lprint "Spooled line: $line\n";
+	}
+        else
+        {
+	    lprint "Unable to write to spool file\n";
+	}
+	close (SPOOL_FILE);
+    }
+    else
+    {
+	lprint "Unable to open spool file\n";
+    }
+}
+
+########################################################################
+#	lprint
+#
+#       prints to LOG filehandle if attached,
+#       and, to stdout if -i ($interactive) is used
+########################################################################
+sub lprint # DSN
+{
+   if ( defined fileno LOG ) { print LOG "@_"; }
+   if ( $interactive ) { print "@_"; }
+}
+
+__END__
+

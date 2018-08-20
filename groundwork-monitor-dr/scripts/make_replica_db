@@ -1,0 +1,44 @@
+#!/bin/bash -e
+
+# make_replica_db
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+PATH=/bin:/usr/bin
+
+print_usage() {
+    echo "usage:  make_replica_db {staged_path} {replica_machine} {replica_user} {replica_path}"
+}
+
+if [ $# -ne 4 ]; then
+    print_usage
+    exit 1
+fi
+
+staged_path="$1"
+replica_machine="$2"
+replica_user="$3"
+replica_path="$4"
+
+if [[ ! ("$staged_path" =~ '/staged$') ]]; then
+    echo 'ERROR:  staged_path must end in "/staged"'
+    exit 1
+fi
+
+if [[ ! ("$replica_path" =~ '/replica$') ]]; then
+    echo 'ERROR:  replica_path must end in "/replica"'
+    exit 1
+fi
+
+# FIX MAJOR:  We are sometimes seeing multiple .sql files accumulate in the remote replica;
+# figure out how that might happen and fix it.
+
+# FIX LATER:  possibly, use rdist or rsync instead, though this should work just fine
+ssh $replica_user@$replica_machine mkdir -p $replica_path/ || true
+for staged_file in $staged_path/*.sql
+do
+    file_base=`basename $staged_file .sql`
+    scp -p $staged_file $replica_user@$replica_machine:$replica_path/$file_base.tmp
+    ssh $replica_user@$replica_machine mv $replica_path/$file_base.tmp $replica_path/$file_base.sql
+done

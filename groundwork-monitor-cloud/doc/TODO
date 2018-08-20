@@ -1,0 +1,63 @@
+================================================================
+Sep 20, 2010:  Amazon EC2 Introduces Tagging, Filtering,
+Import Key Pair, and Idempotency
+================================================================
+
+We are excited to let you know about four separate features that will
+make EC2 easier to use for customers with large deployments. First, weve
+added the ability to tag EC2 resources to simplify the administration of
+your cloud infrastructure. A form of metadata, tags can be used to create
+user-friendly names, enhance searchability, and improve coordination
+between multiple users. The AWS Management Console has also been updated
+to support tagging.
+
+Were also announcing the ability to filter among your EC2 resources
+to find ones that match specified criteria. For example, you can use
+filtering to quickly determine which instances are running in a particular
+Availability Zone or which snapshots are associated with a particular
+EBS volume. Filtering will make it easier to manage resources within
+your deployment.
+
+Starting today, you can also use your own RSA keys to access your EC2
+instances instead of relying on AWS generated keys. This feature gives you
+complete control over your private keys and will also allow you to use the
+same RSA key across different regions, simplifying resource management.
+
+Last but not the least, you will also be able to idempotently launch
+instances so that timeouts or connection errors do not result in the
+launch of more instances than you originally intended, saving you time
+and money.
+
+================================================================
+GroundWork response:
+================================================================
+
+We should be using tags as critical metadata for provisioning our
+monitoring.  Stay tuned for a design that will cover the use cases we can
+envision, and corresponding notes on an implementation that will address
+anticipated customer deployment issues.
+
+Also, we want a mechanism for pulling Amazon CloudWatch metrics out of EC2
+and folding them into GroundWork.
+
+Also, we might think about plugins for stuff like Hadoop, Cassandra,
+and Mongo.
+
+================================================================
+Customer inquiry
+================================================================
+
+Monitoring System For The Cloud?
+
+I need a monitoring system, much like ganglia / nagios that is
+build for the cloud. I need it to support : Adding / removing nodes
+dynamically. (Node shuts down, dose not imply node failure...) Dynamic
+node based categorization, meaning node can identify them self as being
+part of group X (ganglia gets this almost right, but lacks the dynamic
+part...) Does not require multicast support (generally not allowed
+in cloud based setups) Plugins for recent cool stuff such as Hadoop,
+Cassandra, Mongo would be cool. More features include: External API,
+web interface and co. I've looked at Ganglia, munin and they both seem
+be almost there (but not exactly). I would also go for reasonably priced
+Software as Service solution. I'm currently doing research, so Suggestions
+are highly appreciated.

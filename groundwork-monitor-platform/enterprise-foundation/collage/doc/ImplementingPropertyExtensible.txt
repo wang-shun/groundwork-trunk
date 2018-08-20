@@ -1,0 +1,109 @@
+Assuming that we want to make the class/entity 'Host' a PropertyExtensible entity:
+
+1. make Host interface extend "PropertyExtensible"
+1a. add static ENTITY_TYPE_CODE to 'Host' interface;
+
+
+2a. make Host implementation extend "PropertyExtensibleAbstract"
+
+or, if extending PropExtAbstr is not desireable (for example because the 
+entity already extends some other class)
+
+2b. cut-paste the contents of "PropertyExtensibleAbstract" into the appropriate
+implementing class
+
+
+3. edit 
+
+	collage/database/seed/GWCollage-Metadata.sql 
+	
+and enter a record for the entity in the EntityType table:
+
+	- The 'Name' field should be the same as the code entered in the interface
+		in step 1a. (eg
+	- Host.ENTITY_TYPE_CODE). A numeric ID must also be assigned to the entity (eg '5')
+
+
+4. enter a <map> node for the 'propertyValues' field in the appropriate
+hibernate mapping file, or Host.hbm.xml in this case:
+
+	<map
+		name="propertyValues"
+		table="EntityProperty"
+		lazy="false"
+		cascade="all"
+		where="EntityTypeID = 5"
+	>
+		<key column="ObjectID"/>
+		<index 
+			column="PropertyTypeID" 
+			type="java.lang.Integer"
+		/>
+		<composite-element class="com.groundwork.collage.model.impl.PropertyValue">
+			<property name="valueString"  access="field"/>
+			<property name="valueDate"    access="field"/>
+			<property name="valueBoolean" access="field"/>
+			<property name="valueInteger" access="field"/>
+			<property name="valueLong"    access="field"/>
+			<property name="valueDouble"  access="field"/>
+			<property name="createdOn"    access="field"/>
+		</composite-element>
+	</map>
+
+Note that the 'where' attribute of the map node should contain the exact
+numeric ID defined in 3.
+
+
+5. If the entity's properties will not vary from one ApplicationType to
+another, then the properties are 'SYSTEM' properties, and
+get/setApplicationTypeId() in the implementing concrete class 'Host' should be
+overriden to something like:
+
+    public Integer getApplicationTypeId()
+    {
+        return com.groundwork.collage.model.ApplicationType.SYSTEM_APPLICATION_TYPE_ID;
+    }
+
+    public void setApplicationTypeId(Integer Id)
+    {
+        log.warn("ApplicationTypeId for Host is fixed and cannot be changed!");
+    }
+
+
+6. Optional:  If it is desireable that 'built-in' getter/setters be
+modifieable when calling get/setProperties, then 
+
+6a. add the static string array 'BUILT_IN_PROPERTIES' in the interface, and
+optionally, static fields representing the name of the methods, as illustrated
+in the interface ServiceStatus
+
+6b.  edit getProperty and setProperty in concrete implementing class, as
+illustrated, for example, in concrete class ServiceStatus
+
+
+7. Edit/create the appropriate 'properties' file, modeled after either:
+
+	collage/database/seed/system-properties.sql
+	collage/database/seed/nagios-properties.sql
+	collage/database/test/samplex-jmx-properties.sql
+
+	and:
+
+	7a. add records to the table PropertyType if needed
+	7b. create ApplicationEntityProperty records to assign the PropertyType to
+	    an EntityType in the context of an ApplicationType
+	7c. modify maven.xml as necessary to load any new seed data to the system
+	    during the build
+
+Alternatively, the CollageAdminMetadata API can be used to add and assign
+PropertyTypes.  Nevertheless, in order to add metadata through the API to a
+specific entity, steps 1. through 6. must have been taken in order to make
+that entity be PropertyExtensible.
+
+
+8. Add seed data to:
+
+	collage/database/test/monitor-data.sql
+
+and write a unit test to verify the functionality, as illustrated, for
+example, in TestDeviceDAO.testGetDevice

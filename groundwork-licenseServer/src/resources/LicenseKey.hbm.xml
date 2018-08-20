@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+    "-//Hibernate/Hibernate Mapping DTD 2.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd" >
+    
+<hibernate-mapping default-lazy="false">
+<!-- 
+    Created by the Middlegen Hibernate plugin 2.1
+
+    http://boss.bekk.no/boss/middlegen/
+    http://www.hibernate.org/
+-->
+
+<class 
+    name="com.groundworkopensource.webapp.license.hibernate.LicenseKey" 
+    table="LicenseKey"
+>
+
+    <id
+        name="licenseKeyId"
+        type="java.lang.Integer"
+        column="LicenseKeyID"
+    >
+        <generator class="native" />
+    </id>
+
+    <property
+        name="license"
+        type="java.lang.String"
+        column="License"
+        not-null="true"
+        length="65535"
+    />
+    <property
+        name="creationDate"
+        type="java.sql.Timestamp"
+        column="CreationDate"
+        length="19"
+    />
+    <property
+        name="comment"
+        type="java.lang.String"
+        column="Comment"
+        length="100"
+    />
+
+    <!-- Associations -->
+  
+    <!-- bi-directional many-to-one association to OrderInfo -->
+    <many-to-one
+        name="orderInfo"
+        class="com.groundworkopensource.webapp.license.hibernate.OrderInfo"
+        not-null="true"
+    >
+        <column name="OrderInfoID" />
+    </many-to-one>
+
+</class>
+</hibernate-mapping>

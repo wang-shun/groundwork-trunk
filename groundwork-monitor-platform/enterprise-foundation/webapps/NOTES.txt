@@ -1,0 +1,44 @@
+========================================================================================================================
+Notes on Maven-1 Build procedures that should be moved to deployment scripts
+========================================================================================================================
+
+[1] Build File: misc/web-application/foundation/maven.xml
+
+Problem #1: Creating /usr/local/groundwork/config ${org.groundwork.build.config}
+Problem #2: Creating /usr/local/groundwork/config/log4j.xml
+Problem #3: Copying gdma_plugin_update.dtd to /usr/local/groundwork/config
+Problem #4: Copying war file to Deployment area /usr/local/groundwork/jpp/standalone/deployments
+
+NOTE: makes use /monitor-platform/enterprise-foundation/resources/
+
+Solution: create a gw-deploy plugin or project to handle all deployment-related activities in one central place
+          move enterprise-foundation/resources into that project
+
+
+	<goal name="build" >
+
+		<!-- Prepare the structure -->
+		<mkdir dir='${org.groundwork.build.config}' />
+		<mkdir dir='${basedir}/target/foundation-webapp/WEB-INF/classes' />
+
+		<!-- Generate the log4j properties file -->
+      <copy file="${basedir}/../../../resources/log4j.xml" tofile="${org.groundwork.build.config}/log4j.xml" overwrite="true">
+        <filterset begintoken="@" endtoken="@">
+          <filter token="LOG_DIR"    value="logs"/>
+          <filter token="LOG_APPEND" value="${com.groundwork.collage.log.append}"/>
+        </filterset>
+      </copy>
+
+		 <copy file="${basedir}/../../../resources/gdma_plugin_update.dtd" tofile="${org.groundwork.build.config}/gdma_plugin_update.dtd" overwrite="true">
+		 </copy>
+
+	<goal name="deploy">
+		<!-- Copy war -->
+		<copy todir="${com.groundwork.epp.deploy.path}" overwrite="true" >
+			<fileset dir="${basedir}/target/" includes="*.war" excludes="*svn" />
+		</copy>
+
+
+========================================================================================================================
+
+[2]

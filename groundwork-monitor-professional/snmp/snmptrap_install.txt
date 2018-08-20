@@ -1,0 +1,62 @@
+Copyright 2007 GroundWork Open Source, Inc. ("GroundWork")  
+All rights reserved. This program is free software; you can redistribute it
+and/or modify it under the terms of the GNU General Public License version 2
+as published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU General Public License for 
+more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
+Prerequisites - add from GW Monitor 4-8g build.
+ - Perl Config::IniFiles module
+
+
+1. Create directory /usr/local/groundwork/etc/snmp for all snmp configuration files.
+
+2. Create directory /usr/local/groundwork/var/log/snmp for all snmptrapd and snmptt log and debug files.
+
+3. Create directory /usr/local/groundwork/var/spool/snmptt for snmptrapd output files. This directory is referenced in snmptt.ini file. The snmptt.ini file is referenced in the snmptt init.d script and the snmptrapd.conf file.
+
+4. Copy snmptt to /usr/local/grounwork/sbin.  
+	- Modified to use /usr/local/groundwork/bin/perl.
+	- Modified to reference spool directory /usr/local/groundwork/var/spool/snmptt
+	- Modified to use log directory /usr/local/groundwork/var/log/snmp
+
+5. Copy snmptthandler to /usr/local/grounwork/sbin.  
+	- Modified to use /usr/local/groundwork/bin/perl.
+
+6. Copy snmptt.ini to /usr/local/groundwork/etc/snmp/. 
+	- Modified to reference groundwork directories.
+
+7. Copy snmptrapd.conf to /usr/local/groundwork/etc/snmp/. 
+	- Modified to reference groundwork snmptthandler.
+	- Modified to use groundwork snmptt.ini file
+
+8. Copy snmptt.conf to /usr/local/groundwork/etc/snmp/. 
+	- All MIBs must be imported into this file.
+
+9. Copy init.d script snmptt to /etc/init.d/.  
+	- Modified to reference groundwork directories, 
+	- Modified to use daemon startup 
+	- Modified to reference groundwork snmptt.ini file.  
+	- Do chkconfig to start automatically.
+
+10. Copy init.d script snmptrapd to /etc/init.d/. 
+	- Modified to reference groundwork directories, 
+	- Modified to pass OIDs (-On option), 
+	- Modified to reference groundwork snmptrapd.conf file, 
+	- Modified to output log in groundowrk var/log/snmp directory (can take out after debug).  
+	- Do chkconfig to start automatically.
+
+11. copy snmpttconvertmib script to /usr/local/grounwork/sbin.
+	- Modified to use /usr/local/groundwork/bin/perl --
+	- Modified to execute snmptranslate as /usr/local/groundwork/bin/snmptranslate 
+
+12. copy snmpttconvert script to /usr/local/grounwork/sbin.
+	- Modified to use /usr/local/groundwork/bin/perl --
+

@@ -1,0 +1,128 @@
+# Custom RPM macros configuration file for building application RPM packages
+# as a non-root user.
+#
+# Copyright 2007-2017 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+#
+# For help with anything related to RPM development, packaging, or
+# customization, join the Red Hat RPM mailing list by sending an email
+# message to:  rpm-list-request@redhat.com  with the word "subscribe"
+# in the Subject: line.
+
+# The interpreter used for build scriptlets.  Normally this is defined in the
+# /usr/lib/rpm/macros file as /bin/sh.  But we tire of having that old shell
+# be a dependency of the RPMs we build, when we really want the our scripting
+# to run under a more full-featured shell.  Alas, having this in place does
+# not actually prevent the generated RPM from having a dependency on /bin/sh.
+# So while this might improve the flexibility of some of our scripting, it
+# does not fully solve the problem we wanted to solve.
+%_buildshell  /bin/bash
+
+# %_topdir defines the top directory to be used for RPM building purposes.
+%_topdir	%(echo $PWD)/rpmbuild
+
+# %_tmppath is where temporary scripts are placed during the RPM build process.
+%_tmppath	%{_topdir}/tmp
+
+# %_rpmtopdir is a convenience macro, referred to below to collect a bunch of
+# file trees related specifically to this package and release all under one roof.
+#
+# Previously, this *.rpmmacros file was referenced indirectly through a sibling
+# *.rpmrc file, which apparently got processed after the associated specfile had
+# provided definitions for the %{name} and %{version} macros.  In that context,
+# we used to define this as:
+#
+#     %_rpmtopdir	%{_topdir}/%{name}-%{version}
+#
+# But now we are using a newer version of rpmbuild, and this *.rpmmacros file
+# can no longer be referenced indirectly through a sibling *.rpmrc file.  It
+# must instead be referenced directly on the rpmbuild command line via the
+# --macros option.  The net result is that the macros in this *.rpmmacros file
+# are processed before the specfile is processed, so we can no longer depend on
+# those other macro definitions to be available for use here.  We must instead
+# depend on a predefined external command-line definition of some macro (here,
+# %{rpm_versioned_package}) to give specificity to the particular package and
+# release we are building for.
+%_rpmtopdir	%{_topdir}/%{rpm_versioned_package}
+
+# Here are the most-critical standard macro definitions that we are replacing
+# with our definitions below.
+#
+#     %_builddir          %{_topdir}/BUILD
+#     %_rpmdir            %{_topdir}/RPMS
+#     %_sourcedir         %{_topdir}/SOURCES
+#     %_specdir           %{_topdir}/SPECS
+#     %_srcrpmdir         %{_topdir}/SRPMS
+#     %_buildrootdir      %{_topdir}/BUILDROOT
+#
+# And this other macro uses the _buildrootdir macro in the standard setup:
+#
+#     %buildroot          %{_buildrootdir}/%{name}-%{version}-%{release}.%{_arch}
+
+# %_builddir is where source code tarballs are decompressed, and patches then
+# applied when building an RPM package.
+%_builddir	%{_rpmtopdir}/BUILD_DIR
+
+# %_buildrootdir is where the %buildroot is historically placed.  We won't make
+# much use of it ourselves, but we override the standard definition so as not to
+# imply that the standard definition, which is not specific to the package/version
+# being built, would make sense, even if we do end up leaving this directory empty.
+%_buildrootdir	%{_rpmtopdir}/BUILD_ROOT
+
+# %_buildroot is where files get placed during the %install section of
+# specfile processing prior to final packaging into RPMs.  This is oddly
+# named and probably should have been called "%_installroot" back when it
+# was initially added to RPM.  Alas, it was not.
+# %_buildroot	%{_rpmtopdir}/%{name}-%{version}-root
+%_installroot	%{_rpmtopdir}/INSTALL_ROOT
+
+# %_sourcedir is where the source code tarballs, patches, etc. will be
+# placed after you do an "rpm -ivh somepackage.1.0-1.src.rpm".
+%_sourcedir	%{_rpmtopdir}/SOURCE_DIR
+
+# %_specdir is where the specfile gets placed when installing a src.rpm.  We
+# prefer the specfile to be in the same directory as the source tarballs, etc.
+%_specdir	%{_sourcedir}
+
+# %_rpmdir is where binary RPM packages are put after being built.
+%_rpmdir	%{_topdir}/RPMS
+
+# %_srcrpmdir is where src.rpm packages are put after being built.  We prefer
+# to keep all the RPMs in one place, not split out the source RPMs into a
+# separate directory as is the usual default.
+%_srcrpmdir	%{_rpmdir}
+
+# %_rpmfilename defines the naming convention of the produced RPM packages,
+# and should not be modified.  We list this here because while we are not
+# changing the structure of the filenames themselves, we are overriding
+# RPM's default behaviour of dropping binary RPM's into separate %{_arch}
+# subdirectories, which seems pointless since the RPM filenames already
+# include the architecture as a component, and we're only going to build
+# for one particular architecture on each build machine anyway.
+%_rpmfilename	%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm
+
+# Customized package tags
+
+# %packager is the info that will appear in the "Packager:" field in the
+# RPM header in built packages.  Here we set up a default, to incorporate
+# your username and fully-qualified hostname.  But this is just a backup
+# mechanism, used only if you forget to set this field in your specfile.
+%packager	%(echo ${USER}@)%(hostname --fqdn)
+
+# GNU GPG config below.
+# We're not using this yet; it's left here only as an example for a
+# possible future extension to these macros.
+# %_signature     gpg
+# %_gpg_name      Joe Blow <joeblow@somewhere.com>
+# %_gpg_path      %(echo $HOME)/.gnupg
+
+# Specialized package macros
+
+# This macro is used to create any missing directories defined above.
+# It must be invoked as the very first action in the %prep section of
+# your specfile.
+#
+# It turns out that some of these directories would be created automatically
+# if we didn't make them here, but this works, so we leave it as-is.
+#
+%make_all_rpm_build_dirs	%(%{__mkdir_p} %{_topdir} %{_tmppath} %{_rpmtopdir} %{_builddir} %{_installroot} %{_sourcedir} %{_specdir} %{_rpmdir} %{_srcrpmdir})

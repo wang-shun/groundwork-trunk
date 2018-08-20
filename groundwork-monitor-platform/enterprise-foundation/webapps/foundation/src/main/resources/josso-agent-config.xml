@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
+    <!-- This agent is mainly used by the AuthResource for generating JOSSO tokens -->
+
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <!-- This should point to GateIn configuration.properties file. so it
+                could be read by JOSSO -->
+            <value>${gatein.sso.josso.properties.file}</value>
+        </property>
+    </bean>
+
+    <bean class="org.gatein.sso.agent.josso.GateInSSOAgent" name="gatein-agent">
+
+        <!-- ============================================ -->
+        <!-- Genreral options -->
+        <!-- ============================================ -->
+        <property name="sessionAccessMinInterval">
+            <value>1000</value>
+        </property>
+
+        <!-- ============================================ -->
+        <!-- JOSSO Login URL (for JOSSO SP Initiated SSO) -->
+        <!-- ============================================ -->
+        <property name="gatewayLoginUrl">
+            <value>${gatein.sso.josso.base.url}/login.do</value>
+        </property>
+
+        <!-- ============================================ -->
+        <!-- JOSSO Login URL (for JOSSO SP Initiated SLO) -->
+        <!-- ============================================ -->
+        <property name="gatewayLogoutUrl">
+            <value>${gatein.sso.josso.base.url}/logout.do</value>
+        </property>
+
+        <!-- ==================================== -->
+        <!-- JOSSO back channel endpoints (SOAP) -->
+        <!-- ==================================== -->
+        <property name="gatewayServiceLocator">
+            <bean class="org.josso.gateway.WebserviceGatewayServiceLocator">
+                <!-- Uncomment to SSL transport in back channel <property name="transportSecurity">
+                    <value>CONFIDENTIAL</value> </property> -->
+
+                <property name="endpoint">
+                    <value>${gatein.sso.josso.ws.host}</value>
+                </property>
+
+            </bean>
+        </property>
+
+        <property name="parametersBuilders">
+            <list>
+                <bean class="org.josso.agent.http.AppIdParametersBuilder" />
+            </list>
+        </property>
+
+        <!-- Partner apps never used. -->
+
+        <property name="configuration">
+            <bean class="org.josso.agent.SSOAgentConfigurationImpl">
+                <property name="ssoPartnerApps">
+                    <list>
+
+                        <bean class="org.josso.agent.SSOPartnerAppConfig">
+                            <property name="id">
+                                <value>portal</value>
+                            </property>
+
+                            <property name="context">
+                                <value>/portal</value>
+                            </property>
+                        </bean>
+
+                    </list>
+                </property>
+            </bean>
+        </property>
+
+    </bean>
+</beans>

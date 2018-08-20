@@ -1,0 +1,424 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vema-monitoring>
+    <profileType>cloudera</profileType>
+    <hypervisor>
+        <!-- Cluster Metrics -->
+        <metric name="cpu_percent_across_hosts"
+                description="Host CPU Usage Across Hosts"
+                serviceType="CLUSTER"
+                monitored="true" graphed="true" warningThreshold="60" criticalThreshold="90"  />
+        <metric name="total_read_bytes_rate_across_disks"
+                description="Cluster Total Bytes Read Across Disks bytes/sec"
+                serviceType="CLUSTER"
+                monitored="false" graphed="true" warningThreshold="-1" criticalThreshold="-1"  />
+        <metric name="total_write_bytes_rate_across_disks"
+                description="Cluster Total Bytes Read Across Disks bytes/sec"
+                serviceType="CLUSTER"
+                monitored="true" graphed="true" warningThreshold="-1" criticalThreshold="-1"  />
+        <metric name="total_bytes_receive_rate_across_network_interfaces"
+                description="Cluster Total Bytes Receive Rate Across Network Interfaces b/sec"
+                serviceType="CLUSTER"
+                monitored="true" graphed="true" warningThreshold="-1" criticalThreshold="-1"  />
+        <metric name="total_bytes_transmit_rate_across_network_interfaces"
+                description="Cluster Total Bytes Transmit Rate Across Network Interfaces b/sec"
+                serviceType="CLUSTER"
+                monitored="true" graphed="true" warningThreshold="-1" criticalThreshold="-1"  />
+
+        <!-- Host Metrics -->
+        <metric name="load_5" customName="Host-Load-5-Minute"
+                description="Host CPU Load over 5 minutes"
+                serviceType="HOST"
+                monitored="true" graphed="true" warningThreshold="1" criticalThreshold="2"  />
+
+        <metric name="physical_memory_used / 1048576 as memory_used_mb" customName="memory_used_mb"
+                description="Host Physical Memory Used MB"
+                serviceType="HOST"
+                monitored="true" graphed="true" warningThreshold="8192" criticalThreshold="10240"  />
+        <metric name="(physical_memory_used / physical_memory_total) * 100 as memory_usage_percent" customName="memory_usage_percent"
+                description="Host Physical Memory Used Percentage"
+                serviceType="HOST"
+                format="%.2f%%"
+                monitored="true" graphed="true" warningThreshold="85" criticalThreshold="95"  />
+
+        <metric name="cpu_user_rate / getHostFact(numCores, 1) * 100 as cpu-rate-user" customName="cpu-rate-user"
+                description="Host CPU Load Percentage over 1 Minute"
+                serviceType="HOST"
+                monitored="true" graphed="false" warningThreshold="75" criticalThreshold="90"  />
+
+        <metric name="total_read_bytes_rate_across_disks"
+                description="Bytes read across Host disks b/sec"
+                serviceType="HOST"
+                monitored="true" graphed="true" warningThreshold="-1" criticalThreshold="-1"  />
+
+        <metric name="total_write_bytes_rate_across_disks"
+                description="Bytes written across Host disks b/sec"
+                serviceType="HOST"
+                monitored="true" graphed="true" warningThreshold="-1" criticalThreshold="-1"  />
+
+        <metric name="bytes_receive_rate_across_network_interfaces"
+                description="Host Total Bytes Receive Rate Across Network Interfaces b/sec"
+                serviceType="HOST"
+                monitored="true" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+        <metric name="bytes_transmit_rate_across_network_interfaces"
+                description="Host Total Bytes Transmit Rate Across Network Interfaces b/sec"
+                serviceType="HOST"
+                monitored="true" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+        <!-- Host HealthCheck
+            HOST_AGENT_LOG_DIRECTORY_FREE_SPACE
+            HOST_AGENT_PARCEL_DIRECTORY_FREE_SPACE
+            HOST_AGENT_PROCESS_DIRECTORY_FREE_SPACE
+            HOST_CLOCK_OFFSET
+            HOST_DNS_RESOLUTION
+            HOST_MEMORY_SWAPPING
+            HOST_NETWORK_FRAME_ERRORS
+            HOST_NETWORK_INTERFACES_SLOW_MODE
+            HOST_SCM_HEALTH
+         -->
+        <metric name="HOST_SCM_HEALTH"
+                computeType="health"
+                customName="HostHealthCheck"
+                description="Host SCM Health Check"
+                serviceType="HOST"
+                monitored="true" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+        <metric name="HOST_MEMORY_SWAPPING"
+                computeType="health"
+                description="Host Memory Swapping Check"
+                serviceType="HOST"
+                monitored="false" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+
+
+        <!-- Host Temporary Calculation fields, not monitored but used in Synthetic calculation -->
+        <metric name="fd_open"
+                description="Open file descriptors count"
+                serviceType="HOST"
+                monitored="false" graphed="true" warningThreshold="-1" criticalThreshold="-1"  />
+        <metric name="fd_max"
+                description="Max file descriptors count"
+                serviceType="HOST"
+                monitored="false" graphed="true" warningThreshold="-1" criticalThreshold="-1"  />
+        <metric name="physical_memory_used"
+                description="Host Physical Memory Used in bytes"
+                serviceType="HOST"
+                monitored="false" graphed="true" warningThreshold="-1" criticalThreshold="-1"  />
+
+        <!-- Host Synthetics -->
+        <metric name="syn_fd_usage"
+                expression="(fd_open / fd_max) * 100.0"
+                format="%.2f%%"
+                description="Percentage of file descriptors used"
+                serviceType="HOST"
+                computeType="synthetic"
+                monitored="true" graphed="true" warningThreshold="70" criticalThreshold="85"  />
+
+        <metric name="syn_gb_memory_used"
+                expression="GW:GB2(physical_memory_used)"
+                format="%.2f"
+                description="Host Memory used in GB"
+                serviceType="HOST"
+                computeType="synthetic"
+                monitored="true" graphed="true" warningThreshold="8" criticalThreshold="10"  />
+
+
+    </hypervisor>
+    <vm>
+        <!-- HBase Queries -->
+        <!--monitored="true" graphed="true" warningThreshold="0.08" criticalThreshold="0.12"  />-->
+
+        <metric name="jvm_heap_used_mb/1024 as jvm_heap_used_gb" customName="jvm_heap_used_gb"
+                description="JVM Heap Used in GB"
+                serviceType="HBASE"
+                monitored="true" graphed="true" warningThreshold="-1" criticalThreshold="-1"  />
+        <metric name="fd_open"
+                description="Open file descriptors count"
+                serviceType="HBASE"
+                monitored="true" graphed="true" warningThreshold="512" criticalThreshold="1024"  />
+        <metric name="mem_rss / 1048576 as mem_rss"
+                customName="mem_rss"
+                description="Resident memory used in MB"
+                serviceType="HBASE"
+                monitored="true" graphed="true" warningThreshold="300" criticalThreshold="400"  />
+
+        <metric name="get_rate_across_regionservers * 60 as get_rate_across_regionservers"
+                customName="get_rate_across_regionservers"
+                description="Get Operations aggregate computed across all RegionServers (operations/minute)"
+                serviceType="HBASE"
+                monitored="true" graphed="true" warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="total_read_requests_rate_across_regionservers"
+                description="HBase Total read requests rate across regions"
+                serviceType="HBASE"
+                monitored="true" graphed="true" warningThreshold="-1" criticalThreshold="-1"  />
+        <metric name="total_write_requests_rate_across_regionservers"
+                description="HBase Total write requests rate across regions"
+                serviceType="HBASE"
+                monitored="true" graphed="true" warningThreshold="-1" criticalThreshold="-1"  />
+        <!-- HBASE Health Checks
+            HBASE_MASTER_HEALTH
+            HBASE_REGION_SERVERS_HEALTHY
+        -->
+        <metric name="HBASE_MASTER_HEALTH"
+                description="HBase Master Health Check"
+                serviceType="HBASE"
+                computeType="health"
+                monitored="true" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+        <metric name="HBASE_MASTER_HEALTH"
+                description="HBase Region Servers Health Check"
+                serviceType="HBASE"
+                computeType="health"
+                monitored="false" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+
+        <!-- HDFS -->
+        <metric name="dfs_capacity_used /  1048576 as dfs_capacity_used"
+                customName="dfs_capacity_used"
+                description="HDFS File System Capacity Used in MB"
+                serviceType="HDFS"
+                monitored="true" graphed="true" warningThreshold="1024" criticalThreshold="1536"  />
+        <metric name="dfs_capacity_free / 1048576 as dfs_capacity_free"
+                customName="dfs_capacity_free"
+                description="HDFS File System Free (dfs-capacity-used - dfs-capacity) in MB"
+                serviceType="HDFS"
+                monitored="true" graphed="true" warningThreshold="-1" criticalThreshold="-1"  />
+        <metric name="jvm_blocked_threads"
+                description="Host JVM Blocked Threads"
+                serviceType="HDFS"
+                monitored="true" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+        <metric name="jvm_max_memory_mb_across_datanodes"
+                description="Max Memory aggregate computed across all DataNodes in MB"
+                serviceType="HDFS"
+                monitored="true" graphed="true" warningThreshold="80" criticalThreshold="100"  />
+        <!-- HDFS Health Checks
+            HDFS_BLOCKS_WITH_CORRUPT_REPLICAS
+            HDFS_CANARY_HEALTH
+            HDFS_DATA_NODES_HEALTHY
+            HDFS_FREE_SPACE_REMAINING
+            HDFS_HA_NAMENODE_HEALTH
+            HDFS_MISSING_BLOCKS
+            HDFS_UNDER_REPLICATED_BLOCKS
+         -->
+        <metric name="HDFS_DATA_NODES_HEALTHY"
+                description="HDFS Data Nodes Health Checks"
+                serviceType="HDFS"
+                computeType="health"
+                monitored="true" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+        <metric name="HDFS_CANARY_HEALTH"
+                description="HDFS Canary Health Check"
+                serviceType="HDFS"
+                computeType="health"
+                monitored="false" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+        <metric name="HDFS_FREE_SPACE_REMAINING"
+                description="HDFS Free Space Remaining Health Check"
+                serviceType="HDFS"
+                computeType="health"
+                monitored="true" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+
+        <!-- Impala -->
+        <metric name="num_files_open_for_insert_across_impalads"
+                description="Number of files open for insert across all Impalads"
+                serviceType="IMPALA"
+                monitored="true" graphed="false" warningThreshold="200" criticalThreshold="250"  />
+        <metric name="num_open_beeswax_sessions_across_impalads"
+                description="Number of Beeswax sessions open across all Impalads"
+                serviceType="IMPALA"
+                monitored="true" graphed="false" warningThreshold="20" criticalThreshold="30"  />
+        <metric name="num_queries_rate_across_impalads"
+                description="Number of Queries running across all Impalads (queries/second)"
+                serviceType="IMPALA"
+                monitored="true" graphed="false" warningThreshold="50" criticalThreshold="75"  />
+        <!-- Impala Health Checks
+        IMPALA_ASSIGNMENT_LOCALITY
+        IMPALA_CATALOGSERVER_HEALTH
+        IMPALA_IMPALADS_HEALTHY
+        IMPALA_STATESTORE_HEALTH
+        -->
+        <metric name="IMPALA_IMPALADS_HEALTHY"
+                computeType="health"
+                description="Impalads Health Check"
+                serviceType="IMPALA"
+                monitored="true" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+
+        <!-- ZooKeeper -->
+        <metric name="jvm_total_threads"
+                customName=""
+                description="Zookeeper Total JVM Threads"
+                serviceType="ZOOKEEPER"
+                monitored="true" graphed="false" warningThreshold="120" criticalThreshold="200"  />
+        <metric name="canary_duration"
+                description="Duration of the last or currently running canary job on Zookeeper"
+                serviceType="ZOOKEEPER"
+                monitored="true" graphed="false" warningThreshold="80" criticalThreshold="160"  />
+        <metric name="jvm_heap_used_mb/1024 as jvm_heap_used_gb" customName="jvm_heap_used_gb"
+                description="JVM Heap Used in GB"
+                serviceType="ZOOKEEPER"
+                monitored="true" graphed="true" warningThreshold="-1" criticalThreshold="-1"  />
+        <metric name="fd_open"
+                description="Open file descriptors count"
+                serviceType="ZOOKEEPER"
+                monitored="true" graphed="true" warningThreshold="384" criticalThreshold="512"  />
+        <metric name="mem_rss / 1048576 as mem_rss"
+                customName="mem_rss"
+                description="Resident memory used in MB"
+                serviceType="ZOOKEEPER"
+                monitored="true" graphed="true" warningThreshold="300" criticalThreshold="400"  />
+        <!-- Zookeeper Health Checks
+            ZOOKEEPER_CANARY_HEALTH
+            ZOOKEEPER_SERVERS_HEALTHY
+        -->
+        <metric name="ZOOKEEPER_SERVERS_HEALTHY"
+                computeType="health"
+                description="Zookeeper Servers Health Check"
+                serviceType="ZOOKEEPER"
+                monitored="true" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+        <metric name="ZOOKEEPER_CANARY_HEALTH"
+                computeType="health"
+                description="Zookeeper Canary Health Check"
+                serviceType="ZOOKEEPER"
+                monitored="true" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+
+        <!-- Hive -->
+        <metric name="mem_rss / 1048576 as mem_rss"
+                customName="mem_rss"
+                description="Resident memory used in MB"
+                serviceType="HIVE"
+                monitored="true" graphed="true" warningThreshold="300" criticalThreshold="400"  />
+        <metric name="fd_open"
+                description="Open file descriptors count"
+                serviceType="HIVE"
+                monitored="true" graphed="true" warningThreshold="512" criticalThreshold="1024"  />
+        <!-- Hive Health Checks
+            HIVE_HIVEMETASTORES_HEALTHY
+            HIVE_HIVESERVER2S_HEALTHY
+         -->
+        <metric name="HIVE_HIVESERVER2S_HEALTHY"
+                computeType="health"
+                description="Hive Servers Health Check"
+                serviceType="HIVE"
+                monitored="true" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+
+        <!-- Hue -->
+        <metric name="mem_rss / 1048576 as mem_rss"
+                customName="mem_rss"
+                description="Resident memory used in MB"
+                serviceType="HUE"
+                monitored="true" graphed="true" warningThreshold="300" criticalThreshold="400"  />
+        <metric name="fd_open"
+                description="Open file descriptors count"
+                serviceType="HUE"
+                monitored="true" graphed="true" warningThreshold="512" criticalThreshold="1024"  />
+        <metric name="events_critical_rate"
+                description="Critical Events Per Second"
+                serviceType="HUE"
+                monitored="true" graphed="true" warningThreshold="3" criticalThreshold="10"  />
+        <!-- HUE Health Checks
+            HUE_HUE_SERVERS_HEALTHY
+         -->
+        <metric name="HUE_HUE_SERVERS_HEALTHY"
+                computeType="health"
+                description="HUE Servers Health Check"
+                serviceType="HUE"
+                monitored="true" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+
+        <!-- KS_Indexer -->
+        <metric name="events_critical_rate"
+                description="Critical Events Per Second"
+                serviceType="KS_INDEXER"
+                monitored="true" graphed="true" warningThreshold="3" criticalThreshold="10"  />
+        <metric name="mem_rss / 1048576 as mem_rss"
+                customName="mem_rss"
+                description="Resident memory used in MB"
+                serviceType="KS_INDEXER"
+                monitored="true" graphed="true" warningThreshold="300" criticalThreshold="400"  />
+        <!-- KS_Indexer Health Checks
+            KS_INDEXER_HBASE_INDEXERS_HEALTHY
+         -->
+        <metric name="KS_INDEXER_HBASE_INDEXERS_HEALTHY"
+                customName="KSIndexerHealthCheck"
+                computeType="health"
+                description="KS_INDEXER Indexers Health Check"
+                serviceType="KS_INDEXER"
+                monitored="true" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+
+        <!-- Oozie -->
+        <metric name="jobs_running"
+                description="Current number of Oozie Jobs running"
+                serviceType="OOZIE"
+                monitored="true" graphed="true" warningThreshold="40" criticalThreshold="60"  />
+        <metric name="jobs_failed_rate"
+                description="Jobs filed Rate Per Second"
+                serviceType="OOZIE"
+                monitored="true" graphed="true" warningThreshold="3" criticalThreshold="10"  />
+        <metric name="mem_rss / 1048576 as mem_rss"
+                customName="mem_rss"
+                description="Resident memory used in MB"
+                serviceType="OOZIE"
+                monitored="true" graphed="true" warningThreshold="300" criticalThreshold="400"  />
+        <!-- Oozie Health Checks
+              OOZIE_OOZIE_SERVERS_HEALTHY
+         -->
+        <metric name="OOZIE_OOZIE_SERVERS_HEALTHY"
+                computeType="health"
+                description="OOZIE Servers Health Check"
+                serviceType="OOZIE"
+                monitored="true" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+
+        <!-- Solr -->
+        <metric name="jvm_heap_used_mb_across_solr_servers"
+                description="Used Heap Memory aggregate computed across all Solr Servers in MB"
+                serviceType="SOLR"
+                monitored="true" graphed="true" warningThreshold="64" criticalThreshold="128"  />
+        <metric name="mem_rss_across_solr_servers / 1048576 as mem_rss_mb"
+                description="Resident Memory aggregate computed across all Solr Servers in MB"
+                serviceType="SOLR"
+                monitored="true" graphed="true" warningThreshold="300" criticalThreshold="400"  />
+        <metric name="fd_open_across_solr_servers"
+                description="File Descriptors aggregate computed across all Solr Servers."
+                serviceType="SOLR"
+                monitored="true" graphed="true" warningThreshold="512" criticalThreshold="1024"  />
+        <!-- SOLR Health Checks
+              SOLR_SOLR_SERVERS_HEALTHY
+         -->
+        <metric name="SOLR_SOLR_SERVERS_HEALTHY"
+                computeType="health"
+                description="SOLR Servers Health Check"
+                serviceType="SOLR"
+                monitored="true" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+
+        <!-- Spark -->
+        <metric name="events_critical_rate"
+                description="Critical Events Per Second"
+                serviceType="SPARK_ON_YARN"
+                monitored="true" graphed="true" warningThreshold="3" criticalThreshold="10"  />
+        <metric name="mem_rss / 1048576 as mem_rss"
+                customName="mem_rss"
+                description="Resident memory used in MB"
+                serviceType="SPARK_ON_YARN"
+                monitored="true" graphed="true" warningThreshold="300" criticalThreshold="400"  />
+        <!-- SPARK_ON_YARN Health Checks
+         -->
+
+        <!-- Yarn -->
+        <metric name="apps_running_across_yarn_pools"
+                description="Applications Running aggregate computed across all YARN Pools"
+                serviceType="YARN"
+                monitored="true" graphed="true" warningThreshold="100" criticalThreshold="160"  />
+        <metric name="jvm_heap_used_mb_across_nodemanagers"
+                description="Used Heap Memory aggregate computed across all NodeManagers in MB"
+                serviceType="YARN"
+                monitored="true" graphed="true" warningThreshold="48" criticalThreshold="64"  />
+        <metric name="log_error_rate_across_nodemanagers"
+                description="Logged Errors aggregate computed across all NodeManagers (messages/second)"
+                serviceType="YARN"
+                monitored="true" graphed="false" warningThreshold="10" criticalThreshold="20"  />
+        <!-- YARN Health Check
+        YARN_JOBHISTORY_HEALTH
+        YARN_NODE_MANAGERS_HEALTHY
+        YARN_RESOURCEMANAGERS_HEALTH
+        YARN_USAGE_AGGREGATION_HEALTH
+        -->
+        <metric name="YARN_USAGE_AGGREGATION_HEALTH"
+                customName="YarnAggregatedHealth"
+                description="YARN Aggregated Health"
+                serviceType="YARN"
+                computeType="health"
+                monitored="true" graphed="false" warningThreshold="-1" criticalThreshold="-1"  />
+
+    </vm>
+</vema-monitoring>

@@ -1,0 +1,187 @@
+--- nedi/nedi.conf.orig	2017-03-29 02:31:15.000000000 -0700
++++ nedi/nedi.conf	2017-08-24 13:34:39.078768229 -0700
+@@ -150,7 +150,7 @@
+ #============================================================================
+ 
+ # Choose backend (mysql or Pg)
+-backend		mysql
++backend		Pg
+ 
+ # DB params
+ dbname		nedi
+@@ -160,22 +160,22 @@
+ 
+ # Points to executable (leave empty to disable graphs)
+ # The "new" option enables some additional styling (will not work with rrdtool <1.4)
+-rrdcmd		rrdtool		new
++rrdcmd         /usr/local/groundwork/common/bin/rrdtool                new
+ 
+ # Location of NeDi
+-nedipath	/var/nedi
++nedipath	/usr/local/groundwork/nedi
+ 
+ # Prefix to call Cacti CLI tools for adding graphs in Topology-Graph
+-;cacticli	/usr/bin/php /usr/share/cacti/cli
++;cacticli	/usr/local/groundwork/php/bin/php /usr/local/groundwork/cacti/htdocs/cli
+ 
+ # Cacti integration. Uncomment, if you want Devices-Status to link to Cacti.
+ # You will need to have the NeDi device names as host (or description) in cacti,
+ # with that a link can be established.
+ ;cactihost	localhost
+ ;cactidb	cacti
+-;cactiuser	cacti
+-;cactipass	cactipa55
+-;cactiurl	/cacti
++;cactiuser	cactiuser
++;cactipass	cactiuser
++;cactiurl	/portal/auth/portal/groundwork-monitor/nagios/Cacti
+ 
+ # Freeradius integration for NeDi Enterprise
+ ;rdbname		radius
+@@ -185,13 +185,13 @@
+ 
+ # Spool NeDi events
+ # 		Destination			Format
+-;eventpipe	/Data/nagios/rw/nagios.cmd	nagios
++;eventpipe	/usr/local/groundwork/nagios/var/spool/nagios.cmd	nagios
+ ;eventpipe	/var/spool/nedi/nedi.log	nedi
+ ;eventpipe	/usr/local/bin/custom.sh	cmdarg
+ ;eventpipe	syslog				nedi
+ 
+ # Path to nfdump data files
+-nfdpath		/var/nfdump
++nfdpath		/usr/local/groundwork/common/var/nfdump
+ 
+ # Top 10 netflow ports
+ # flow.rrd needs to be recreated after changes (can be achieved by deleting Flow RRD in Systm-Files)
+@@ -330,23 +330,29 @@
+ # Define the modules you wish to include in the menu and
+ # assign a group required for access
+ #	Section		Module			Icon	Group
++
++# The Devices modules contain some powerful features, off by default.
+ module	Devices		List			dev	net
+-module	Devices		Modules			cubs	net
++# The Modules module requires extensive configuration -- default is off.
++#module	Devices		Modules			cubs	adm
+ module	Devices		Interfaces		port	net
+ module	Devices		Vlans			vlan	net
+ module	Devices		Status			sys	net
+ module	Devices		Config			conf	net
+ module	Devices		Translator		lang	net
+-module	Devices		Install			dril	adm
++# The Install module allows you to configure HP Procurve switches with NeDi. Off by default.
++#module	Devices		Install			dril	adm
+-module	Devices		Doctor			doc	net
++module	Devices		Doctor			doc	adm
+ module	Devices		Graph			grph	net
+-module	Devices		Write			wrte	adm
++# Write module is very useful but very dangerous. Experts only.
++#module	Devices		Write			wrte	adm
+ 
++# The Assets modules are useful if you want to do asset tracking. They are mostly harmless, and enabled by default ...
+ module	Assets		List			list	oth
+ module	Assets		Management		pkg	mgr
+ module	Assets		Locations		home	oth
+ module	Assets		Loced			ncfg	mgr
+-
++# The Topology modules are the heart of NeDi's value, and are all enabled by default.
+ module	Topology	Table			icon	net
+ module	Topology	Map			paint	net
+ module	Topology	Routes			rout	net
+@@ -356,16 +361,21 @@
+ module	Topology	Links			link	net
+ module	Topology	Linked			lned	mgr
+ 
++# Node modules concern objects connected to devices.
+ module	Nodes		List			nods	dsk
+ module	Nodes		Status			node	dsk
+-module	Nodes		Toolbox			tool	dsk
++# The Toolbox has some powerful tools for download. Off by default.
++#module	Nodes		Toolbox			tool	dsk
+ module	Nodes		RogueAP			wlar	dsk
+-module	Nodes		Traffic			tap	dsk
++# Traffic module requires extensive configuration of netflow/sflow. Experts only.
++#module	Nodes		Traffic			tap	dsk
++# The PBX and Create modules are experimental, and without documentation. Off by default.
+ #module	Nodes		PBX			voip	dsk
+-module	Nodes		Create			kons	adm
++#module	Nodes		Create			kons	adm
+ 
+ module	Reports		Devices			ddev	net
+-module	Reports		Modules			dcub	net
++# Turn the Modules reporting module on if you configure Modules and want reports. Off by default.
++#module	Reports		Modules			dcub	net
+ module	Reports		Interfaces		dif	net
+ module	Reports		Networks		dnet	net
+ module	Reports		Nodes			dnod	dsk
+@@ -373,35 +383,50 @@
+ module	Reports		Combination		dadd	mgr
+ module	Reports		Custom			dcus	mgr
+ 
++# Monitoring modules are optional, but are extremely useful. Some are off by default, but only if they need extra planning to deploy.
+ module	Monitoring	Health			hlth	mon
++# The Master module is reserved for central NeDi nodes. Off by default.
+ #module	Monitoring	Master			trgt	mon
+ module	Monitoring	Map			map	mon
+ module	Monitoring	Events			bell	mon
+ module	Monitoring	History			news	mon
+ module	Monitoring	Incidents		bomb	mon
+ module	Monitoring	Setup			bino	adm
+ 
++# System modules are inherently powerful and dangerous. The one that are potentially security threats are off by default.
+ module	System		NeDi			radr	mgr
+-#module	System		NoDi			nfld	mgr
+-module	System		Files			file	adm
+-module	System		Database		db	adm
+-module	System		Services		cog	adm
++module	System		NoDi			nfld	mgr
++# Files allows editing of files on the disk of the server. SERIOUS SECURITY RISK. Off by default.
++#module	System		Files			file	adm
++# Database allows direct access to the nedi database.  Off by default.
++#module	System		Database		db	adm
++# The Services page is a bit dangerous, but also useful for starting and stopping processes NeDi uses. Consider enabling here. Off by default.
++#module	System		Services		cog	adm
+ module	System		Snapshot		foto	adm
+ module	System		Setup			scfg	adm
+-module	System		Policy			hat3	mgr
++# Policy is useful for alerting and taking scripted actions, It is also powerful. Off by default.
++#module	System		Policy			hat3	mgr
+ 
++# These modules control user administration in NeDi.
+ module	User		Profile			user
+-module	User		Management		ugrp	adm
+-module	User		Chat			say
+-module	User		Logout			exit
++# User Management is not needed in GroundWork by default, as the portal restricts NeDi to the "Admin" role.
++#module	User		Management		ugrp	adm
++#These modules are not needed with a GroundWork install.
++#module	User		Chat			say
++#module	User		Logout			exit
+ 
++# These Other modules are occasionally used.
+ module	Other		Noodle			find	oth
+-module	Other		Defed			geom	net
++# The Defed module is for adding new device types. Expert only.
++#module	Other		Defed			geom	net
+ module	Other		Calculator		calc	net
+ module	Other		Info			php	oth
++# The Flower module is for defining Openflow on Floodlight controllers. Expert only.
+ #module	Other		Flower			fan	oth
+ module	Other		Converter		hat2	oth
+-module	Other		Invoice			cash
++# The Invoice module helps you contribute to the NeDi project. Enable if you want!
++#module	Other		Invoice			cash
++# The Nagios module is not needed in a GroundWork installation. It also lacks documentation.
+ #module	Other		Nagios			warn	oth
+ 
+ # Authentication for GUI users can be set to:
+@@ -414,7 +440,7 @@
+ # Override the Login and Logout URLs (e.g. for your SSO setup)
+ # The defaults will be used if commented
+ #		Login URL		Logout URL
+-;authurls	User-Profile.php	index.php
++authurls	User-Profile.php	index.php
+ 
+ # Set Radiusserver(s) parameters, if selected above
+ #		host		port	secret		timeout	retries

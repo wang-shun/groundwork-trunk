@@ -1,0 +1,7 @@
+<p-dataTable [value]="data" [rows]="10" [paginator]="true">
+    <p-column *ngFor="let col of cols" [field]="col.field" [header]="col.header" [sortable]="true" [style]="{'width': col.selectable ? '95px' : 'auto', 'text-align': col.selectable ? 'center' : 'left'}">
+        <template pTemplate="body" *ngIf="col.selectable" let-data="rowData">
+            <p-checkbox value="checked" [(ngModel)]="data[col.field].selected" binary="true"></p-checkbox>
+        </template>
+    </p-column>
+</p-dataTable>

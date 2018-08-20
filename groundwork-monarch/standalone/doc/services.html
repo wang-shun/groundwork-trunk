@@ -1,0 +1,666 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="en">
+  <head>
+<title>Configuring Services</title>
+<link rel="stylesheet" type="text/css" href="/monarch/groundwork.css"/>
+  </head>
+  <body>
+<!-- Start Main table-->
+<table class="main" border="0" cellpadding="1" cellspacing="0">
+  <tbody>
+  <tr>
+    <td valign="top">
+    <h1 class="chapter"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> Configuring Services</h1>
+    <h4>Copyright 2006 GroundWork Open Source, Inc. ("GroundWork").<br />
+    All rights reserved. Use is subject to GroundWork commercial license.</h4>
+<!-- Start Main Contents -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+  <tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader">Contents</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- TOC -->
+    <ul class="level01">
+        <li><a href="#s5chapter3a">How Do I Define a New Service?</a></li>
+        <li><a href="#s5chapter3b">How Do I Clone a Service?</a></li>
+        <li><a href="#s5chapter3c">How Do I Create a Service Template?</a></li>
+        <li><a href="#s5chapter3d">How Do I Configure a Service Dependency Template?</a></li>
+        <li><a href="#s5chapter3e">How Do I Create Extended Service Info Templates?</a></li>
+        <li><a href="#s5chapter3f">How Do I Create Service Groups?</a></li>
+    </ul>
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Section 1 -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+<tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader"><a name="section1"></a>Configuring Services</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- How do I define a new Service -->
+    <a name="s5chapter3a"></a><h1 class="chapter"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> How Do I Define a New Service?</h1>
+<hr />
+    <p>Step 1 will cover how to set up a new Service. When naming the Service you should use a standard naming convention to make it easier to tell what is going on later (e.g. ssh_disk_/). You will also need to select a Service Template to be associated with the new Service. A Service Template is useful when you have common attributes for multiple Services. A Service Template incorporates multiple Service detail directives and Service Check definitions. Then in Step 2, you will have the opportunity in the Service Detail screen to use (Set Inheritance) the selected template default attributes or you can uncheck each attribute which enables you to set individual attributes for the new Service and not inherit the default setting from the selected template. Next, you can continue with Step 3 to configure the Service Check.</p>
+    <p>See <i>Chapter 5 Advanced Configuration - Configuring Profiles</i> to learn about grouping Services into Service Profiles.</p>
+    <h2 class="smMargin">Step 1 - New Service</h2>
+    <ol>
+      <li>Select <b>Services</b> from the Configuration menu options.</li>
+      <li>Select <b>New service</b>.</li>
+      <li>In the <b>New Service</b> screen, enter the properties (see <b>Table 5.3.1a.</b> below).</li>
+      <li>Select <b>Add</b> to go to the <b>Manage Service</b> screen.
+    <h4>Figure 5.3.1a. New Service</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter3_1a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      <h4>Table 5.3.1a. New Service</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>[Required] Name of the new Service. Example: check-disk-sda1. Note: Monarch and GroundWork Monitor do not support backslashes in Host and Service names.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Service Template</b></td>
+    <td>[Required] This option sets the default template for the Service name definitions. Example: generic-service.</td>
+  </tr>
+</tbody>
+</table>
+      </li>
+    </ol>
+    <a name="s5chapter3a2"></a><h2 class="smMargin">Step 2 - Service Detail</h2>
+    <p>The <b>Manage Service</b> screen incorporates five tabs including Service Detail, Service Check, Service Dependencies, Services Profiles, Service Externals (optional), and Apply Hosts. Each of these tabs will be covered within this chapter.</p>
+    <ol>
+      <li>In the <b>Service Detail</b> tab, enter the properties (see <b>Table 5.3.1b.</b> below).</li>
+      <li>Select <b>Save</b> to add the new Service. You will be prompted in the next screen that the Service has been save. Select <b>Close</b>. <b>Delete</b> removes the current Service, <b>Rename</b> is used to change the name of the current Service, and <b>Close</b> is used to exit the current Service without saving.
+    <h4>Figure 5.3.1b. Service Detail</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter3_1b.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+    <h4>Table 5.3.1b. Service Detail</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>Name of the Service entered on the previous screen.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Service Template</b></td>
+    <td>[Required] The Service Template most suitable for this Service, selected on the previous screen. You may re-select it here.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Inherit All Values from Template</b></td>
+    <td>[Optional] <b>Checked</b> sets all directive to inherit values from the selected template. <b>Unchecked</b>, directives below will override template values.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Is Volatile</b></td>
+    <td>[Required] This directive is used to denote whether the Service is <i>Volatile</i>. Services are normally not volatile. <b>Unchecked</b> Service is not volatile; <b>Checked</b> Service is volatile.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Check Period</b></td>
+    <td>[Required] This directive is used to specify the sort name of the time period during which active checks of this Service can be made.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Max Check Attempts</b></td>
+    <td>[Required] This directive is used to define the number of time that Nagios will retry the Service check command if it returns any state other than an OK state.  Setting this value to 1 will cause Nagios to generate an alert without retrying the Service check again.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Normal Check Interval</b></td>
+    <td>[Required] This directive is used to define the number of time units to wait before scheduling the next regular check of the Service. Regular checks are those that occur when the Service is in an OK state or when the Service is in a non-OK state, but has already been rechecked max_attempts number of times. Unless the interval_length directive has been changed from the default value of 60, this number will mean minutes.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Retry Check Interval</b></td>
+    <td>[Required] This directive is used to define the number of <i>time units</i> to wait before scheduling a re-check of the Service. Services are rescheduled at the retry interval when they have changed to a non-OK state. Once the Service has been retried max_attempts times without a change in its status, it will revert to being scheduled at its normal rate as defined by the check_interval value. Unless you've changed the interval_length directive from the default value of 60, this number will mean minutes.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Active Checks Enabled</b></td>
+    <td>[Optional] This directive is used to determine whether or not active checks of this Service are enabled. <b>Unchecked</b> Disable Active Service Checks, <b>Checked</b> Enable Active Service Checks.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Passive Checks Enabled</b></td>
+    <td>Optional] This directive is use to determine whether or not passive checks of this Service are enabled. <b>Unchecked</b> Disable Passive Service Checks, <b>Checked</b> Enable Passive Service Checks.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Parallelize Check</b></td>
+    <td>[Optional] This directive is used to determine whether or not the Service check can be parallelized. By default, all Service checks are parallelized. Disabling parallel checks of Services can result in serious performance problems. <b>Unchecked</b> Service check cannot be parallelized (use with caution), <b>Checked</b> Service check can be parallelized.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Obsess Over Service</b></td>
+    <td>This value determines whether or not Nagios will <i>obsess</i> over Service checks results and run the obsessive compulsive Service processor command you define. This option is useful for performing distributed monitoring. If you're not doing distributed monitoring, don't enable this option.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Check Freshness</b></td>
+    <td>[Optional] This directive is used to determine whether or not freshness checks are enabled for this Service. <b>Unchecked</b> disable freshness checks, <b>Checked</b> enable freshness checks.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Freshness Threshold</b></td>
+    <td>[Optional] This directive is used to specify the freshness threshold (in seconds) for this Service. If you set this directive to a value of 0, Nagios will determine a freshness threshold to use automatically.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Notifications Enabled</b></td>
+    <td>[Optional] This directive is used to determine whether or not notifications for this Service are enabled. <b>Unchecked</b> Disable Service Notifications, <b>Checked</b> Enable Service Notifications.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Notification Interval</b></td>
+    <td>[Required] This directive is used to define the number of <i>time units</i> to wait before re-notifying a contact that this Service is still in a non-OK state. Unless you've changed the interval_length directive from the default value of 60, this number will mean minutes. If you set this value to 0, Nagios will not re-notify contacts about problems for this Service - only one problem notification will be sent out, unless there has been a state change.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Notification Period</b></td>
+    <td>[Required] This directive is used to specify the short name of the time period during which notifications of events for this Service can be sent out to contacts. No Service Notifications will be sent out during times which are not covered by the time period.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Notification Options</b></td>
+    <td>[Required] This directive is used to determine when Notifications for the Service should be sent out. Valid options are a combination of one or more of the following: If checked <b>Unknown</b> send notifications on an UNKNOWN state, <b>Critical</b> send notification on a CRITICAL state, Warning = send notifications on a WARNING state, <b>Recovery</b> send notifications on recoveries in OK state. If you specify <b>None</b> as an option, no Service notifications will be sent out.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Event Handler Enabled</b></td>
+    <td>[Optional] This directive is used to determine whether or not the event handler for this Service is enabled. <b>Unchecked</b> Disables Service Event Handler, <b>Checked</b> Enables Service Event Handler.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Event Handler</b></td>
+    <td>[Optional] This directive is used to specify the short name of the command that should be run whenever a change in the state of the Host is detected (i.e. whenever it goes down or recovers). The maximum amount of time that the event handler command can run is controlled by the event_handler_timeout option.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Flap Detection Enabled</b></td>
+    <td>[Optional] This directive is used to determine whether or not flap detection is enabled for this Service. <b>Unchecked</b> Disable Service Flap Detection, <b>checked</b> Enable Service Flap Detection.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Low Flap Threshold</b></td>
+    <td>[Optional] This directive is used to specify the low state change threshold used in flap detection for this Service. If you set this directive to a value of 0, the program-wide value specified by the low_service_flap_threshold directive will be used.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>High Flap Threshold</b></td>
+    <td>[Optional] This directive is used to specify the high state change threshold used in flap detection for this Service. If you set this directive to a value of 0, the program-wide value specified by the high_service_flap_threshold directive will be used.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Process Perf Data</b></td>
+    <td>[Optional] This directive is used to determine whether or not the processing of performance data is enabled for Services using this template. <b>Unchecked</b>disables performance data processing, <b>Checked</b> enables performance data processing.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Retain status information</b></td>
+    <td>[Optional] This directive is used to determine whether or not status-related information about the Service is retained across program restarts. This is only useful if you have enabled state retention using the retain_state_information directive. <b>Unchecked</b> disables status information retention, <b>Checked</b> enables status information retention.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Retain Non-status Information</b></td>
+    <td>[Optional] This directive is used to determine whether or not non-status information about the Service is retained across program restarts. This is only useful if you have enable state retention using the retain_state_information directive. <b>Unchecked</b> disables non-status information retention, <b>Checked</b> enables non-status information retention.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Contact Groups</b></td>
+    <td>Select the contact groups to be notified for this Service.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Extended Info Template</b></td>
+    <td>[Optional] Defines extended Service information for this Service name. The template controls the icon and URL link as seen in Nagios for Hosts assigned this Service definition.)</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Escalation Tree</b></td>
+    <td>[Optional] Select an escalation tree appropriate for this Service. To avoid amplified notification (i.e. multiple notifications for the same event), a Service Escalation assigned to a Service should not be assigned to the Host or the Host Group.</td>
+  </tr>
+</tbody>
+</table>
+    </li>
+  </ol>
+    <a name="s5chapter3a2"></a><h2 class="smMargin">Step 3 - Service Check</h2>
+    <p>Here we will configure the Service Check for the new Service. You can create as many Services as you like. If you want to use some of the other options on the plugins, you'll need to create new commands that set those options, and use them to create your Services. GroundWork Monitor comes loaded with many of the commonly used Services already preconfigured.</p>
+    <ol>
+      <li>Select the <b>Service Check</b> tab.</li>
+      <li>De-select the <b>Inherit check from template</b> box which enables you to define a specific Check Command for this Service. Select the command (e.g. check_by_ssh_disk) from the drop-down list. GroundWork Monitor comes with a lot of standard commands already defined for you.</li>
+      <li>Next, the ARG1!ARG2!ARG3 in the command line should be filled in to reflect the arguments to pass to the plugin. To run an example, use 20%!10%!/ to check the / partition and give a warning when less than 20% is free, and a critical alert when less than 10% is free.</li>
+      <li>You can then test the Service against any Host from within this Service Check screen.</li>
+      <li>Select <b>Save</b> to save the Service Check with the new Service.
+    <h4>Figure 5.3.1c. Service Check</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter3_1c.gif" border="0" alt="--- GW IMAGES NOT DISPLAYED ---" />
+    </li>
+  </ol>
+    <a name="s5chapter3c1"></a><h2 class="smMargin">OTHER SERVICE MANANGEMENT OPTIONS</h2>
+    <a name="s5chapter3c2"></a><h2 class="smMargin">Service Dependencies</h2>
+    <p>Service Dependencies are optional and allow you to suppress Notifications and active checks of Services based on the status of one or more other Services. After defining the Service Detail and the Service Check attributes, you can select the Service Dependencies to add or remove service dependencies.</p>
+    <ol>
+      <li>Select <b>Hosts</b> from the Configuration menu options.</li>
+      <li>Select the dependent host by using <b>Search host</b>. Or expand the <b>Hosts</b> navigation tree.</li>
+      <li>Select a <b>Host Group</b> to expand the list of Hosts.</li>
+      <li>Select the dependent <b>Host</b> to expand the navigation tree.</li>
+      <li>From the navigation tree select a <b>Service</b> to get bring up the <b>Manage Host Service</b> screen.</li>
+      <li>Select the <b>Service Dependencies</b> tab.</li>
+      <li>Select the desired <b>Dependency</b> and then choose the <b>Parent Host</b> from the list.</li>
+      <li>Click <b>Add Dependency</b> to create the new Service Dependency.
+      <h4>Figure 5.3.1d. Service Dependencies through Manage Host Service</h4>
+      <img src="/monarch/doc/images/OSPadm_s5chapter3_1d.gif" border="0" alt="--- GW IMAGES NOT DISPLAYED ---" />
+      
+      </li>      
+    </ol>
+    <p>The template you select defines a Parent Service relationship on a given Host. Monarch will create a Service Dependency relationship on a Host assigned to this Service name. To define a dependency from a Service running on a different Host use Hosts>Modify>Services>Service Dependency and select the Parent Host. Be careful to ensure that the Parent Service is assigned to the Parent Host definition and is included in the relevant Service Profiles.</p>
+    <p>To add a dependency, select from the dependency list and after the screen refreshes, choose the appropriate Host, or select same Host if the dependency is for Services on the same Host.</p>
+    <p>To configure a new, copy, or modify a Service Dependency Template go to Configuration>Services>Service Dependency Template where you can specify the Service, and specific execution failure criteria and notification failure criteria. These templates will then show up in the Manage Service, Service Dependencies screen. See <i>Service Dependencies</i> in this chapter.</p>
+    <h4>Figure 5.3.1e. Service Dependencies</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter3_1e.gif" border="0" alt="--- GW IMAGES NOT DISPLAYED ---" />
+
+    <a name="s5chapter3c3"></a><h2 class="smMargin">Service Profiles</h2>
+    <p>A Service Profile is a collection of multiple Services. Once you have a Service Profile you can combine this with a Host Template and create a Host Profile. With GroundWork Monitor Professional, you get a preloaded set of Service Checks for multiple types of servers, devices, etc. that you can use out of the box. Service Profiles encapsulate a set of standard Services with Plugins and best practices that can be applied toward monitoring specific devices or protocols. The advantages of using a Service Profile is that it is pre-integrated. Using profiles, you can quickly configure GroundWork Monitor Professional to monitor groups of devices the same way. To define a Service Profile see Section 5 Configuration, Chapter 5 Advanced Configuration - Configuring Profiles.</p>
+    <ol>
+      <li>Here we will add or remove Service Profiles using this Service. Adding or removing a Service Profile here has no effect on the Service Profile's member Hosts until the apply tab is used on the Service Profile (or Host Profile), or the Profile is applied on the individual Hosts.</li>
+      <li>Select <b>Save</b> to save the selected Service Profiles using this Service.
+    <h4>Figure 5.3.1f. Service Profiles</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter3_1f.gif" border="0" alt="--- GW IMAGES NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    <a name="s5chapter3c4"></a><h2 class="smMargin">Service Externals</h2>
+    <p>The Externals feature enables you to add your own configuration data that is not related to Nagios but can be useful when integrating other tools. When Externals are enabled, you can add this data to Host and Service Profiles, which can then be applied to instantiated Host and Service definitions.  You can then execute the <i>Run Externals</i> command, which will call a user written program in MonarchExternals.pm. The user program can process the Externals data associated with the Host and Service definitions in Monarch. For example, the Externals data can be used to generate a configuration update for another monitoring tool based on Monarch changes. This is an advanced feature that requires some knowledge of Perl to modify MonarchExternals.pm.</p>
+    <ol>
+      <li>To enable Externals within GroundWork Monitor Professional, select <b>Control</b> from the Configuration tab, then <b>Setup</b> and click the <b>Enable Externals</b> box, and <b>Save</b>. You are then able to define, add, and execute Externals using the Services, Profiles, and Hosts configuration tabs.
+    <h4>Figure 5.3.1g. Enabling Externals</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter3_1g.gif" border="0" alt="--- GW IMAGES NOT DISPLAYED ---" /></li>
+      <li>To create a Service External, select <b>Services</b> from the Configuration tab options.</li>
+      <li>Select <b>Service Externals</b>.</li>
+      <li>Select <b>New service</b>.</li>
+      <li>Enter a <b>Name</b>, and <b>Details</b> for the Service External.</li>
+      <li>Select <b>Add</b> and <b>Continue</b>, you will then see the new external listed under <b>Modify</b>.
+    <h4>Figure 5.3.1h. Defining Service Externals</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter3_1h.gif" border="0" alt="--- GW IMAGES NOT DISPLAYED ---" /></li>
+      <li>You can then add Service and Host Externals within the Services, Profiles, and Host configuration options.
+    <h4>Figure 5.3.1i. Adding Externals</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter3_1i.gif" border="0" alt="--- GW IMAGES NOT DISPLAYED ---" /></li>
+      <li>To execute the externals select <b>Control</b> from the Configuration tab options, and <b>Run Externals</b>, which will execute your code in MonarchExternals.pm.
+    <h4>Figure 5.3.1j. Executing Code in MonarchExternals.pm</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter3_1j.gif" border="0" alt="--- GW IMAGES NOT DISPLAYED ---" /></li></ol>
+    <a name="s5chapter3c5"></a><h2 class="smMargin">Apply Hosts</h2>
+    <p>In the <b>Apply Hosts</b> tab you will need to select the options you want to apply to the listed Hosts. The listed Hosts are Hosts that have this Service assigned to it within the Host configuration tab. The options for applying Hosts are detailed here:</p.
+    <ol>
+      <li>Apply Service Check - Check this if you want to apply the Service Check defined in the Service Check tab to this Host.</li>
+      <li>Apply Contact Groups - Check this if you want to apply the Service Contact properties to the listed Hosts.</li>
+      <li>Apply Service Extended Info - Check this if you want to apply the Service Extended Info properties to the listed Hosts.</li>
+      <li>Apply Service Escalation - Check this if you want to apply the Service Escalation properties to the listed Hosts.</li>
+      <li>Apply Dependencies - Check this if you want to apply the Service Dependencies to the listed Hosts.</li>
+      <li>Replace existing Service properties (force inheritance) - This refers to the properties selected on the Service Detail page and forces the inheritance of the Service Template.</li>
+      <li>Merge existing Services properties (preserve overrides) - This refers to the properties selected on the Service Detail page and preserves the indicated check box overrides for the listed Hosts.
+      <h4>Figure 5.3.1j. Apply Hosts</h4>
+      <img src="/monarch/doc/images/OSPadm_s5chapter3_1k.gif" border="0" alt="--- GW IMAGES NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Section 2 -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+  <tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader"><a name="section6"></a>Configuring Services</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- How do I create Service Groups -->
+    <a name="s5chapter3b"></a><h1 class="chapter"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> How Do I Clone a Service?</h1>
+<hr />
+    <h2 class="smMargin">Clone Service</h2>
+    <ol>
+      <li>Select <b>Services</b> from the Configuration menu options.</li>
+      <li>Select <b>Clone Service</b>.</li>
+      <li>In the <b>Clone Service</b> screen, choose a Service to copy from the <b>Select Service</b> drop-down box, all available Services will be listed.</li>
+      <li>Click <b>Next</b> to continue.</li>
+      <li>Enter a new name for the cloned Service.</li>
+      <li>Select <b>Apply to Profiles</b> to maintain the original Service Profile association for the new cloned Service. You will need to Commit the new Service.
+    <h4>Figure 5.3.2a. Clone Service</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter3_2a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Section 3 -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+  <tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader"><a name="section6"></a>Configuring Services</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- How do I create a new Service Template -->
+    <a name="s5chapter3c"></a><h1 class="chapter"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> How Do I Create a New Service Template?</h1>
+<hr />
+    <h2 class="smMargin">Step 1 - New Service Template</h2>
+    <ol>
+      <li>Select <b>Services</b> from the Configuration menu options.</li>
+      <li>Select <b>Service Templates</b>.</li>
+      <li>Select <b>New</b>.</li>
+      <li>In the <b>New Service Template</b> screen, enter the properties (see <b>Table 5.3.2a.</b> below).</li>
+      <li>Select <b>Add</b> to add the template name and go to the next screen to define the template.
+    <h4>Figure 5.3.3a. New Service Template</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter3_3a.gif" border="0" alt="--- GW IMAGES NOT DISPLAYED ---" />
+    <h4>Table 5.3.3a. New Service Template</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>Name of the new Service.</td>
+  </tr>
+</tbody>
+</table>
+    </li>
+  </ol>
+    <h2 class="smMargin"><a name="s5chapter3c1">Step 2 - Manage Service Template - Service Detail</a></h2>
+    <ol>
+      <li>In the <b>Service Detail</b> tab, enter the properties (see <b>Table 5.3.3b.</b> below).</li>
+      <li>Select <b>Save</b> to save and add the new Service Template. <b>Delete</b> removes the current Service Template, <b>Rename</b> is used to change the name of the current Service Template, and <b>Close</b> is used to exit the current Service Template without saving. <u>IMPORTANT NOTE</u>: Each tab has its own save command. You need to select <b>Save</b> between each tab or you will lose your entries.
+    <h4>Figure 5.3.3b. Service Detail</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter3_3b.gif" border="0" alt="--- GW IMAGES NOT DISPLAYED ---" />
+    <h4>Table 5.3.3b. Service Detail</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Use</b></td>
+    <td>[Required] Select the Service Template most suitable for this Service. Changing directives within this screen will override the template values.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Is Volatile</b></td>
+    <td>This directive is used to denote whether the Service is <i>Volatile</i>. Services are normally not volatile. <b>Unchecked</b> Service is not volatile; <b>Checked</b> Service is volatile.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Check Period</b></td>
+    <td>[Required] This directive is used to specify the sort name of the time period during which active checks of this Service can be made.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Max Check Attempts</b></td>
+    <td>[Required] This directive is used to define the number of time that Nagios will retry the Service check command if it returns any state other than an OK state.  Setting this value to 1 will cause Nagios to generate an alert without retrying the Service check again.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Normal Check Interval</b></td>
+    <td>[Required] This directive is used to define the number of <i>time units</i> to wait before scheduling the next <i>regular</i> check of the Service. <i>Regular</i> checks are those that occur when the Service is in an OK state or when the Service is in a non-OK state, but has already been rechecked max_attempts number of times. Unless the interval_length directive has been changed from the default value of 60, this number will mean minutes.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Retry Check Interval</b></td>
+    <td>[Required] This directive is used to define the number of <i>time units</i> to wait before scheduling a re-check of the Service. Services are rescheduled at the retry interval when they have changed to a non-OK state. Once the Service has been retried max_attempts times without a change in its status, it will revert to being scheduled at its <i>normal</i> rate as defined by the check_interval value. Unless you've changed the interval_length directive from the default value of 60, this number will mean minutes.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Active Checks Enabled</b></td>
+    <td>[Optional] This directive is used to determine whether or not active checks of this Service are enabled. <b>Unchecked</b> Disables Active Service Checks, <b>Checked</b> Enables Active Service Checks.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Passive Checks Enabled</b></td>
+    <td>[Optional] This directive is use to determine whether or not passive checks of this Service are enabled. <b>Unchecked</b> Disables Passive Service Checks, <b>Checked</b> Enables Passive Service Checks.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Parallelize Check</b></td>
+    <td>[Optional] This directive is used to determine whether or not the Service check can be parallelized. By default, all Service checks are parallelized. Disabling parallel checks of Services can result in serious performance problems. <b>Unchecked</b> Service check cannot be parallelized (use with caution), <b>Checked</b> Service check can be parallelized.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Obsess Over Service</b></td>
+    <td>This value determines whether or not Nagios will <i>obsess</i> over Service checks results and run the obsessive compulsive Service processor command you define. This option is useful for performing distributed monitoring. If you're not doing distributed monitoring, don't enable this option.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Check Freshness</b></td>
+    <td>[Optional] This directive is used to determine whether or not freshness checks are enabled for this Service. <b>Unchecked</b> disables freshness checks, <b>Checked</b> enable freshness checks.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Freshness Threshold</b></td>
+    <td>[Optional] This directive is used to specify the freshness threshold (in seconds) for this Service. If you set this directive to a value of 0, Nagios will determine a freshness threshold to use automatically.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Notifications Enabled</b></td>
+    <td>[Optional] This directive is used to determine whether or not Notifications for this Service are enabled. <b>Unchecked</b> Disables Service Notifications, <b>Checked</b> Enables Service Notifications.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Notification Interval</b></td>
+    <td>[Required] This directive is used to define the number of <i>time units</i> to wait before re-notifying a contact that this Service is still in a non-OK state. Unless you've changed the interval_length directive from the default value of 60, this number will mean minutes. If you set this value to 0, Nagios will not re-notify contacts about problems for this Service - only one problem notification will be sent out, unless there has been a state change.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Notification Period</b></td>
+    <td>[Required] This directive is used to specify the short name of the time period during which notifications of events for this Service can be sent out to contacts. No Service Notifications will be sent out during times which is not covered by the time period.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Notification Options</b></td>
+    <td>[Required] This directive is used to determine when notifications for the Service should be sent out. Valid options are a combination of one or more of the following: If checked <b>Unknown</b> send notifications on an UNKNOWN state, <b>Critical</b> send notification on a CRITICAL state, <b>Warning</b> send notifications on a WARNING state, <b>Recovery</b> send notifications on recoveries in OK state. If you specify <b>None</b> as an option, no Service notifications will be sent out.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Event Handler Enabled</b></td>
+    <td>[Optional] This directive is used to determine whether or not the event handler for this Service is enabled. <b>Unchecked</b> Disables Service Event Handler, <b>Checked</b> Enables Service Event Handler.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Event Handler</b></td>
+    <td>[Optional] This directive is used to specify the short name of the command that should be run whenever a change in the state of the Host is detected (i.e. whenever it goes down or recovers). The maximum amount of time that the event handler command can run is controlled by the event_handler_timeout option.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Flap detection enabled</b></td>
+    <td>[Optional] This directive is used to determine whether or not flap detection is enabled for this Service. <b>Unchecked</b> Disable Service Flap Detection, <b>Checked</b> Enable Service Flap Detection.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Low Flap Threshold</b></td>
+    <td>[Optional] This directive is used to specify the low state change threshold used in flap detection for this Service. If you set this directive to a value of 0, the program-wide value specified by the low_service_flap_threshold directive will be used.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>High Flap Threshold</b></td>
+    <td>[Optional] This directive is used to specify the high state change threshold used in flap detection for this Service. If you set this directive to a value of 0, the program-wide value specified by the high_service_flap_threshold directive will be used.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Process Perf Data</b></td>
+    <td>[Optional] This directive is used to determine whether or not the processing of performance data is enabled for Services using this template. <b>Unchecked</b> disables performance data processing, <b>Checked</b> enables performance data processing.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Retain status information</b></td>
+    <td>[Optional] This directive is used to determine whether or not status-related information about the Service is retained across program restarts. This is only useful if you have enabled state retention using the retain_state_information directive. <b>Unchecked</b> disable status information retention, <b>Checked</b> enable status information retention.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Retain Non-status Information</b></td>
+    <td>[Optional] This directive is used to determine whether or not non-status information about the Service is retained across program restarts. This is only useful if you have enable state retention using the retain_state_information directive. <b>Unchecked</b> disables non-status information retention, <b>Checked</b> enables non-status information retention.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Contact Groups</b></td>
+    <td>Select the contact groups to be notified for this Service.</td>
+  </tr>
+</tbody>
+</table>
+    </li>
+  </ol>
+    <h2 class="smMargin">Step 3 - Service Check</h2>
+    <ol>
+      <li>Next, select the <b>Service Check</b> tab to define a Service Check for this template.</li>
+      <li>In the <b>Service Check</b> tab, enter the properties (see <b>Table 5.3.3c.</b> below).</li>
+      <li>Select <b>Save</b> to save the check command. A screen will be displayed confirming your save. Select <b>Close</b>.
+    <h4>Figure 5.3.3c. Service Check</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter3_3c.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+    <h4>Table 5.3.3c. Service Check</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" class="row1"><b>Check Command</b></td>
+    <td>This is the command that Nagios will run in order to check the status of the Service. There are three command formats that can be used; the Command, the Command with arguments, and a command line.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Command Definition</b></td>
+    <td>The command definition will be displayed here after selection of the check command.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Usage</b></td>
+    <td>The command usage parameters.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Command Line</b></td>
+    <td>If the check command requires arguments this is where you would enter the check command with command arguments separated by a ! character. Example: check_disk!/dev/sda1.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Test</b></td>
+    <td>Enter a Host and arguments for the command line. When you click the "Test" button this parses through the command definition, performs the macro substitutions, inserts the Hostname from the Host box, puts the resulting command into a shell command line and executes, returning the results of the execution in the box to the right.</td>
+  </tr>
+</tbody>
+</table>
+    </li>
+  </ol>
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Section 4 -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+  <tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader"><a name="section6"></a>Configuring Services</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- How do I configure a new Service Dependency Template -->
+    <a name="s5chapter3d"></a><h1 class="chapter"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> How Do I Configure a New Service Dependency Template?</h1>
+<hr />
+    <h2 class="smMargin">Step 1 - New Service Template</h2>
+    <ol>
+      <li>Select <b>Services</b> from the Configuration menu options.</li>
+      <li>Select <b>Service Dependency Templates</b>.</li>
+      <li>Select <b>New</b>.</li>
+      <li>In the <b>Service Dependency Template</b> screen, enter the properties (see <b>Table 5.3.4a.</b> below).</li>
+      <li>Select <b>Save</b> to save the Service Dependency Template. <b>Delete</b> removes the current template, and <b>Rename</b> is used to change the name of the current template. You will be notified on the next screen that the Service Dependency Template has been saved, select <b>Continue</b>.
+    <h4>Figure 5.3.4a. Service Dependency Template</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter3_4a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      <h4>Table 5.3.4a. Service Dependency Template</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>[Required] Name of the Service Dependency Template.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Service Name</b></td>
+    <td>[Required] This is the Parent Service name.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Execution failure criteria</b></td>
+    <td>[Optional] This directive is used to specify the criteria that determine when the dependent Service should not be executed. If the Service that is being depended upon is in one of the failure states we specify, the dependent Service will not be executed. Valid options are a combination of one or more of the following: <b>Okay checked</b> fail on an OK state, <b>Warning checked</b> fail on a WARNING state, <b>Unknown checked</b> fail on an UNKNOWN state, and <b>Critical checked</b> fail on a CRITICAL state. If you specify n (none) as an option, the execution dependency will never fail and checks of the dependent Service will always be executed. Example: If you specify o,c,u in this field, the dependent Service will not be executed if the Service that's being depended upon is in either an OK, a CRITICAL, or an UNKNOWN state.)</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Notification failure criteria</b></td>
+    <td>[Optional] This directive is used to define the criteria that determine when notifications for the dependent Service should not be sent out. If the Service that is being depended upon is in one of the failure states we specify, notifications for the dependent Service will not be sent to contacts. Valid options are a combination of one or more of the following:  <b>Okay checked</b> fail on an OK state, <b>Warning checked</b> fail on a WARNING state, <b>Unknown checked</b> fail on an UNKNOWN state, and <b>Critical checked</b> fail on a CRITICAL state. If you specify n (none) as an option, the notification dependency will never fail and notifications for the dependent Service will always be sent out. Example:  If you specify w in this field, the notifications for the dependent Service will not be sent out if the Service that is being depended upon is in a WARNING state.)</td>
+  </tr>
+</tbody>
+</table>
+    </li>
+  </ol>
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Section 5 -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+  <tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader"><a name="section6"></a>Configuring Services</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- How do I define a new Service Dependency Template -->
+    <a name="s5chapter3e"></a><h1 class="chapter"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> How Do I Create an Extended Service Info Template?</h1>
+<hr />
+    <h2 class="smMargin">Step 1 - Extended Service Info Template</h2>
+    <ol>
+      <li>Select <b>Services</b> from the Configuration menu options.</li>
+      <li>Select <b>Extended Service Info Templates</b>.</li>
+      <li>Select <b>New</b>.</li>
+      <li>In the <b>Extended Service Info Template</b> screen, enter the properties (see <b>Table 5.3.5a.</b> below).</li>
+      <li>Select <b>Add</b> to add the new Extended Service Info Template.</li>
+      <li>You will be prompted that the template has been saved. Select <b>Continue</b>.
+    <h4>Figure 5.3.5a. Extended Service Info Template</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter3_4a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+    <h4>Table 5.3.5a. Extended Service Info Template</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>[Required] Name of the Extended Service Info Template.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Notes URL</b></td>
+    <td>[Optional] Define a URL that can be used to provide additional information to other support staff about the Host, such as emergency contact methods.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Icon Image</b></td>
+    <td>[Optional] This variable is used to define the name of an image to be associated with this Host. This image will be displayed in the status and extended information CGIs.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Icon Image Alt</b></td>
+    <td>[Optional] This variable is used to define an optional string that is used in the Alt tag of the image specified by the Icon Image.</td>
+  </tr>
+</tbody>
+</table>
+    </li>
+  </ol>
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Section 6 -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+  <tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader"><a name="section6"></a>Configuring Services</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- How do I create Service Groups -->
+    <a name="s5chapter3f"></a><h1 class="chapter"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> How Do I Create Service Groups?</h1>
+<hr />
+    <h2 class="smMargin">Step 1 - Service Group</h2>
+    <ol>
+      <li>Select <b>Services</b> from the Configuration menu options.</li>
+      <li>Select <b>Service Groups</b>.</li>
+      <li>Select <b>New</b>.</li>
+      <li>In the <b>Service Group</b> screen, enter the properties (see <b>Table 5.3.6a.</b> below).</li>
+      <li>Select <b>Add</b> to go to the <b>Service Group</b> screen.</li>
+      <li>Select the <b>Host</b> drop-down box to select a Host. Available Services will be listed.</li>
+      <li>Select a Service to add and click <b>Add Service(s)</b>. The Host and Service columns above will displayed your selections. To remove a selected Service click the X corresponding to the line to be deleted.</li>
+      <li>Select the <b>Service</b> drop-down box to select a Service, available Hosts will be listed.</li>
+      <li>Select a Host to add and click <b>Add Host(s)</b>. The Host and Service columns above will display your selections. To remove a selected Host click the X corresponding to the line to be deleted.</li>
+      <li>Select <b>Save</b> to save the Service Group. <b>Delete</b> removes the current Service Group, and <b>Rename</b> is used to change the name of the current Service Group. You will be notified on the next screen that the Service Groups has been updated.
+    <h4>Figure 5.3.6a. Service Groups</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter3_5a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      <h4>Table 5.3.6a. Service Groups</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>[Required] Name of the Service Group. Example: dbservices</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Alias</b></td>
+    <td>[Required] This directive is is used to define a longer name or description used to identify the Service Group. It is provided in order to allow you to more easily identify a particular Service Group. Example: Database Services</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Host/Service</b></td>
+    <td>[Required] This is a list of the descriptions of Services (and the names of their corresponding Hosts) that should be included in this group.</td>
+  </tr>
+</tbody>
+</table>
+    </li>
+  </ol>
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+<!-- End -->
+</tbody>
+</table>
+  </body>
+</html>

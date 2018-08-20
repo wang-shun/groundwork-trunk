@@ -1,0 +1,457 @@
+#!/usr/local/groundwork/perl/bin/perl
+
+# Copyright 2012 GroundWork Open Source, Inc. (GroundWork)
+# All rights reserved. This program is free software; you can redistribute
+# it and/or modify it under the terms of the GNU General Public License
+# version 2 as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# originally: auto_add_gdma.pl
+# now: gdma_autoregister.pl
+#
+# Script that can be run regularly via cron, or manually, to import hosts into
+# Monarch using the Configuration API available in GroundWork Monitor 6.0 and higher.
+#
+# Change log:
+#
+# 2009-11-18	v0.1	Initial version.  Tested against GroundWork Monitor Enterprise 6.0
+# 2010-06-15	v0.2	Fixed so it removes input file after processing. Avoids unlimited growth of file in production.
+# 2012-01-12	v0.3	Fixed so it does not overwrite hosts that alpass ready exist in monarch stops triggering of build externals on failing gdmas.
+# 2012-06-01	v0.4	Major rewrite to support 6.7 auto registration features.
+# 2012-07-27	v0.5	Run through perltidy to normalize the source formatting,
+#			and performed other simple cleanup.
+
+# TO DO KDS 2012-06-06
+# Add code to send messages to REST GDMA and Configuration listeners
+# reformat to use main() and subfunctions
+
+use Time::HiRes;
+my $start_time = Time::HiRes::time();
+use DBI;
+use TypedConfig;
+use Getopt::Std;
+use strict;
+use dassmonarch;
+
+my $NAME    = "gdma_autoregister";
+my $VERSION = "0.5";
+
+my $default_config_file = 'gdma_autoregister.properties';
+my $debug_config        = 0;                                # if set, spill out certain data about config-file processing to STDOUT
+my (
+    $monarch_group,    $works_with_version, $use_mac,       $primary_interface, $staging_file, $auto_add_hosts,
+    $auto_stage_hosts, $use_ip,             $use_alias,     $fix_hosts,         $debug_level,  $debug_log,
+    $monarchdbname,    $monarchdbuser,      $monarchdbpass, $monarchdbhost,     $monarchdbport
+) = ();
+
+BEGIN {
+    unshift @INC, "/usr/local/groundwork/core/monarch/lib";
+}
+my %blocktext = ();
+my $section   = "";
+my %opt       = ();
+my $debug;
+&initoptions();
+$default_config_file = $opt{c} if defined( $opt{c} );
+
+read_config_file($default_config_file);
+
+# read in the configuration package into %blocktext
+while (<STDIN>) {
+    chomp;
+    s/^\s+//;
+    next if /^#/;    # skip comments
+    next if /^$/;    # skip empty lines
+
+    if (/^<([^\/][^>]*)>/)  { $section = $1; next; }
+    if (/^<\/${section}.*/) { $section = ""; next; }
+
+    push @{ $blocktext{$section} }, $_;
+}
+
+# bail out early if there is a version mismatch
+my %version = get_discovery_version();
+if ( $version{version} ne $works_with_version ) {
+    my $message = "$NAME $VERSION incompatible with discovery plugin $version{version} required version $works_with_version";
+    bailout( 1, $message );
+}
+
+# establish monarch connection
+my $dbh = DBI->connect( "DBI:Pg:dbname=$monarchdbname;host=$monarchdbhost", $monarchdbuser, $monarchdbpass, { 'AutoCommit' => 1 } );
+if ( !$dbh ) {
+    my $message = "Can't connect to database $monarchdbname. Error: " . $DBI::errstr;
+    bailout( 1, $message );
+}
+
+# gather host infor from input
+my %hostinfo = get_hostdata();
+my %network  = get_network();
+
+# test to see if host already exists, bail out if it does.
+my %testhost = find_host( $hostinfo{hostname}, $network{ipaddr}, $network{macaddr} );
+if ( $testhost{found} ) {
+    my $message;
+    if ( $testhost{foundby} eq "hostname" ) {
+	$message = "Existing host found with matching hostname for $testhost{hostname}";
+    }
+    if ( $testhost{foundby} eq "alias" ) {
+	$message = "Existing host found with matching alias for $testhost{hostname} with alias $testhost{alias}";
+    }
+    if ( $testhost{foundby} eq "address" ) {
+	$message = "Existing host found with matching ip for $testhost{hostname} with address $testhost{address}";
+    }
+    if ( $testhost{foundby} eq "mac" ) {
+	$message = "Existing host found with matching mac for $testhost{hostname} with address $testhost{mac}";
+    }
+    bailout( 1, $message );
+}
+
+# continue then if we have a real new host
+my @known_apps = get_known_apps();
+
+# establish what base host profile we are going to use
+my %os_profile_hash = ();
+$os_profile_hash{"linux"}   = "host-profile-linux-gdma";
+$os_profile_hash{"Linux"}   = "host-profile-linux-gdma";
+$os_profile_hash{"MSWin32"} = "host-profile-win-gdma";
+$os_profile_hash{"solaris"} = "host-profile-sun-gdma";
+$os_profile_hash{"aix"}     = "host-profile-aix-gdma";
+
+my $host_profile;
+if ( $os_profile_hash{ $hostinfo{osfamily} } ) {
+    $host_profile = $os_profile_hash{ $hostinfo{osfamily} };
+}
+else {
+    my $message = "No Matching host profile for type **$hostinfo{osfamily}** found for host $hostinfo{hostname}";
+    bailout( 1, $message );
+}
+
+# populate an array with additional service profiles to apply
+my %service_profile_hash = ();
+my @service_profiles     = ();
+$service_profile_hash{"postgres"} = "service-profile-postgres-gdma";
+$service_profile_hash{"mysql"}    = "service-profile-mysql-gdma";
+$service_profile_hash{"sshd"}     = "service-profile-ssh-gdma";
+$service_profile_hash{"httpd"}    = "service-profile-apache-gdma";
+foreach (@known_apps) {
+    if ( $service_profile_hash{$_} ) {
+	push @service_profiles, $service_profile_hash{$_};
+    }
+}
+
+# build the host
+my $monarchapi = dassmonarch->new();
+
+# Set this to error, in order to get minimal debug messages, verbose creates a lot of output
+if ($debug) {
+    print "debug: submitting hosts to Monarch\n";
+    $monarchapi->set_debuglevel('verbose');
+}
+else {
+    $monarchapi->set_debuglevel('none');
+}
+
+if ( !$monarchapi->import_host_api( $hostinfo{hostname}, $hostinfo{hostname}, $network{ipaddr}, $host_profile, 1 ) ) {
+    my $message = "Import_host exception for host $hostinfo{hostname}";
+    bailout( 1, $message );
+}
+
+# get the id for the host we just built
+my $hostid = $monarchapi->get_hostid( $hostinfo{hostname} );
+
+# add to the apropriate monarch group
+if ( !$monarchapi->monarch_group_exists($monarch_group) ) {
+    my $message = "monarch_group_exists exception monarch group $monarch_group does not exist.";
+    delete_host( $hostinfo{hostname} );    # get rid of it if we cannot add it to a  monarch group
+    bailout( 1, $message );
+}
+
+if ( !$monarchapi->assign_monarch_group_host( $monarch_group, $hostinfo{hostname} ) ) {
+    my $message = " assign_monarch_group_host exception. Failed to add host $hostinfo{hostname} to monarch group $monarch_group";
+    delete_host( $hostinfo{hostname} );    # get rid of it if we cannot add it to a  monarch group
+    bailout( 1, $message );
+}
+
+# apply additional service profiles if needed
+
+#foreach (@service_profiles)
+#	{
+#	my $service_profile = $_;
+#	my $result = $monarchapi->assign_and_apply_serviceprofile_to_host($hostinfo{hostname}, $service_profile, 0);
+#	if (!$result)
+#		{
+#		my $message = "Assign service profile exception for $service_profile on $hostinfo{hostname}";
+#		bailout( 1, $message );
+#		}
+#	}
+
+# build the externals for it
+push my @build_external_list, $hostinfo{hostname};
+my $result = $monarchapi->buildSomeExternals( \@build_external_list );
+if ( !$result ) {
+    my $message = "Build externals exception for host $hostinfo{hostname}";
+    delete_host( $hostinfo{hostname} );    # get rid of it if we cannot build externals for it
+    bailout( 1, $message );
+}
+
+my $message       = "Host $hostinfo{hostname} created with host profile $host_profile";
+my $commit_needed = 1;
+bailout( 0, $message, $hostid );
+
+sub delete_host {
+    my $host   = shift;
+    my $result = $monarchapi->delete_host($host);
+    print "Deleting $host\n";
+    return $result;
+}
+
+sub get_network {
+    my %data = ();
+    foreach ( @{ $blocktext{network} } ) {
+	my @words1    = split( /=/, $_ );
+	my $header    = $words1[0];
+	my $value     = $words1[1];
+	my @words2    = split( /:/, $header );
+	my $interface = $words2[0];
+	my $key       = $words2[1];
+	if ( $interface =~ m/$primary_interface/ ) {
+	    $data{$key} = $value;
+	}
+    }
+
+    foreach ( @{ $blocktext{gdma} } ) {
+	my @pair  = split( /=/, $_ );
+	my $key   = $pair[0];
+	my $value = $pair[1];
+
+	#	if ( $key eq "ip" ) {
+	#	    ## override the ip address with the one from the GDMA block, this matches the GDMA derived address
+	#	    $data{"ipaddr"} = $value;
+	#	}
+    }
+    return %data;
+}
+
+sub get_discovery_version {
+    my %data = ();
+    foreach ( @{ $blocktext{version} } ) {
+	my @pair  = split( /=/, $_ );
+	my $key   = $pair[0];
+	my $value = $pair[1];
+	$data{$key} = $value;
+    }
+    return %data;
+}
+
+sub get_hostdata {
+    my %data = ();
+    foreach ( @{ $blocktext{hostname} } ) {
+	my @pair  = split( /=/, $_ );
+	my $key   = $pair[0];
+	my $value = $pair[1];
+	$data{$key} = $value;
+    }
+
+    foreach ( @{ $blocktext{gdma} } ) {
+	my @pair  = split( /=/, $_ );
+	my $key   = $pair[0];
+	my $value = $pair[1];
+	if ( $key eq "hostname" ) {
+	    ## override the hostname with the one from the GDMA block, this matches the GDMA derived name
+	    $data{$key} = $value;
+	}
+    }
+    return %data;
+}
+
+sub get_known_apps {
+    my @known_app = ( "httpd", "postgres", "mysql", "sshd" );
+    my @found_app = ();
+    foreach ( @{ $blocktext{ps} } ) {
+	my $app = $_;
+	foreach (@known_app) {
+	    if ( $app =~ m/.$_./ ) {
+		push @found_app, $_;
+	    }
+	}
+    }
+    @found_app = uniq(@found_app);
+    return @found_app;
+}
+
+sub dump_input {
+    printf "Found sections: \n";
+    printf "  %s\n", $_ foreach sort keys %blocktext;
+
+    # now print each section
+    foreach my $s ( sort keys %blocktext ) {
+	printf "Section '%s'\n", $s;
+	print join "\n", @{ $blocktext{$s} };
+	print "\n";
+    }
+}
+
+sub initoptions {
+    my $helpstring = "
+This script reads a configuration package from the standard input stream,
+and performs auto registration functions.
+
+Options: 
+-c configfile   use config file (default /usr/local/groundwork/config/gdma_autoregister.properties)
+-d              Debug mode. Will output additional messages. 
+-h or -help     Displays help message.
+";
+
+    getopts( "hdbc:", \%opt );
+    if ( $opt{h} or $opt{help} ) {
+	print $helpstring;
+	exit;
+    }
+    $debug = 1 if $opt{d};
+
+    # $opt{u} = "admin" unless $opt{u};
+    # $opt{k} = 12345678 unless $opt{k};
+    # $opt{p} = 5677 unless $opt{p};
+    # $opt{t} = 10 unless $opt{t};
+
+    return 0;
+}
+
+sub uniq {
+    return keys %{ { map { $_ => 1 } @_ } };
+}
+
+sub read_config_file {
+    my $config_file = shift;
+    eval {
+	my $config = TypedConfig->new($config_file);
+	$debug_level    = $config->get_number('debug_level');
+	$debug_log      = $config->get_scalar('debug_log');
+	$monarchdbname  = $config->get_scalar('monarchdbname');
+	$monarchdbuser  = $config->get_scalar('monarchdbuser');
+	$monarchdbpass  = $config->get_scalar('monarchdbpass');
+	$monarchdbport  = $config->get_scalar('monarchdbport');
+	$monarchdbhost  = $config->get_scalar('monarchdbhost');
+	$auto_add_hosts = $config->get_boolean('auto_add_hosts');
+
+	# $auto_stage_hosts = $config->get_boolean ('auto_stage_hosts');
+	# $staging_file     = $config->get_scalar ('staging_file');
+	$use_alias = $config->get_boolean('use_alias');
+
+	# $fix_hosts          = $config->get_boolean ('fix_hosts');
+	$use_ip             = $config->get_boolean('use_ip');
+	$use_mac            = $config->get_boolean('use_mac');
+	$primary_interface  = $config->get_scalar('primary_interface');
+	$works_with_version = $config->get_scalar('works_with_version');
+	$monarch_group      = $config->get_scalar('monarch_group');
+    };
+    if ($@) {
+	chomp $@;
+	$@ =~ s/^ERROR:\s+//i;
+	die "Error:  Cannot read config file $config_file ($@)\n";
+    }
+}
+
+sub find_host {
+    my %data        = ();
+    my $host        = shift;
+    my $hostaddress = shift;
+    my $hostmac     = shift;
+    my $hostexists  = ();
+    my $monarchapi  = dassmonarch->new() or die "Error: connect to dassmonarch failed\n";
+    $monarchapi->set_debuglevel('none');
+
+    if ( $monarchapi->host_exists($host) ) {
+	$data{found}    = 1;
+	$data{foundby}  = "hostname";
+	$data{hostname} = $host;
+	$data{hostid}   = $monarchapi->get_hostid($host);
+	return %data;
+    }
+
+    # see if we can find the host by its alias.
+    if ($use_alias) {
+	my $query    = "select name from hosts where alias = '$host'";
+	my $sqlQuery = $dbh->prepare($query) or die "Can't prepare $query: $dbh->errstr\n";
+	my $rv       = $sqlQuery->execute or die "can't execute the query: $sqlQuery->errstr";
+	my @result   = $sqlQuery->fetchrow_array();
+	if ( $result[0] ) {
+	    $data{found}    = 1;
+	    $data{hostname} = $result[0];
+	    $data{alias}    = $host;
+	    $data{foundby}  = "alias";
+	    $data{hostid}   = $monarchapi->get_hostid( $result[0] );
+	    return %data;
+	}
+    }
+
+    # see if we can find the host by its ip address.
+    if ($use_ip) {
+	my $query    = "select name from hosts where address = '$hostaddress'";
+	my $sqlQuery = $dbh->prepare($query) or die "Can't prepare $query: $dbh->errstr\n";
+	my $rv       = $sqlQuery->execute or die "can't execute the query: $sqlQuery->errstr";
+	my @result   = $sqlQuery->fetchrow_array();
+	if ( $result[0] ) {
+	    $data{found}    = 1;
+	    $data{hostname} = $result[0];
+	    $data{address}  = $hostaddress;
+	    $data{foundby}  = "address";
+	    $data{hostid}   = $monarchapi->get_hostid( $result[0] );
+	    return %data;
+	}
+    }
+
+    # see if we can find the host by its mac address.
+    if ($use_mac) {
+	my $query    = "select name from hosts where mac = '$hostmac'";
+	my $sqlQuery = $dbh->prepare($query) or die "Can't prepare $query: $dbh->errstr\n";
+	my $rv       = $sqlQuery->execute or die "can't execute the query: $sqlQuery->errstr";
+	my @result   = $sqlQuery->fetchrow_array();
+	if ( $result[0] ) {
+	    $data{found}    = 1;
+	    $data{hostname} = $result[0];
+	    $data{mac}      = $hostmac;
+	    $data{foundby}  = "mac";
+	    $data{hostid}   = $monarchapi->get_hostid( $result[0] );
+	    return %data;
+	}
+    }
+    return;
+}
+
+# add code to write messages to foundation or to autoconfig REST API listerner
+sub bailout {
+    ## do something useful with the $commit_flag like send a message to the console or autocommit.
+    my $elapsed  = ( Time::HiRes::time() - $start_time );
+    my $exitcode = shift;
+    my $message  = shift;
+    my $hostid   = shift;
+    if ( !$hostid ) { $hostid = -1 }
+
+    if ($debug) {
+	print "Elapsed time $elapsed\n";
+	print "Discovery Plugin Version @{$blocktext{version}}[0]\n";
+	print "Hostname $hostinfo{hostname}\n";
+	print "OS Family $hostinfo{osfamily}\n";
+	print "Machine type $hostinfo{machinetype}\n";
+	print "Known Applications\n";
+	foreach (@known_apps) { print "\t"; print; print "\n"; }
+	print "IP Address $network{ipaddr}\n";
+	print "MAC Address $network{macaddr}\n";
+	print "Host Profile $host_profile;\n";
+	print "Service Profiles\n";
+	foreach (@service_profiles) { print "\t"; print; print "\n"; }
+    }
+    if ($dbh) { $dbh->disconnect() }
+    $message = $hostid . ";;" . $message;
+    print "$message\n";
+    exit $exitcode;
+}

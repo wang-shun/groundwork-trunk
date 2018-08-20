@@ -1,0 +1,168 @@
+<!--
+    Copyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
+-->
+
+<!-- Build file for the Groundwork Monitor Portal -->
+
+<!-- $Id: maven.xml 22694 2014-02-20 17:40:13Z dtaylor $ -->
+
+<project default="deploy"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant"
+         xmlns:scm="jelly:scm">
+
+    <preGoal name="deploy">
+       <!-- <mkdir dir="${portal.apps.deploy.root}/META-INF"/> -->		
+    </preGoal>
+	
+	<goal name="copy-model-files" description="Copy rest common model files" >
+		<!-- Copy common model classes from jpp portal extension-->
+    	<delete dir="${basedir}/src/main/java/com/groundworkopensource/portal/model"/>
+		<mkdir dir="${basedir}/src/main/java/com/groundworkopensource/portal/model"/>
+		<exec dir="${basedir}/src/main/java/com/groundworkopensource/portal/" executable="svn" >
+		     <arg line="export --force http://geneva/groundwork-professional/trunk/monitor-framework/epp/portal-instance-ext/groundwork-ext-6.0.0.GA/groundwork-container-ext-model/src/main/java/com/groundworkopensource/portal/model"/>
+		</exec>
+	</goal>
+	
+	<goal name="prepare"
+	       description="Get all Community Edition files" >			
+		<del directory="${basedir}/src"/>
+		<exec dir="${basedir}" executable="svn" >
+		     <arg line="export --force http://archive.groundworkopensource.com/groundwork-opensource/trunk/monitor-portal/src"/>
+		</exec>		
+	</goal>
+		
+	
+	<goal name="build-libraries"
+	          description="Deploys all portal applications and the
+	                       gwportal-common.jar"
+	          prereqs="copy-model-files,jar,jar:install">
+	          
+	        <!-- Copy config files -->
+	        <ant:copy
+	             todir="${portal.config.dir}"
+	             verbose="true">
+	            <fileset dir="src/main/resources"/>
+	        </ant:copy>
+	                
+	        <!-- Deploy the gwportal-common.jar -->
+	        <copy file="${maven.build.dir}/${maven.final.name}.jar"
+	          todir="${portal.apps.deploy.lib.dir}"
+	          overwrite="true"/>
+
+	        <!-- Dependencies with the "portal.deploy" property set in the
+	             project.xml file will be deployed to a central library directory,
+	             accessible to all portalapps -->
+	        <j:forEach var="lib" items="${pom.artifacts}">
+	            <j:set var="dep" value="${lib.dependency}"/>
+	            <j:if test="${dep.getProperty('portal.deploy')=='true'}">
+	                <copy file="${lib.path}" todir="${portal.apps.deploy.lib.dir}"/>
+	            </j:if>
+	        </j:forEach>
+	    	
+	    	<!-- Deploy ICEFACES push server -->
+	    	<exec dir="${basedir}" executable="wget" >
+	    	            <arg line="-c ${icefaces.push.server}"/>
+	    	        </exec>
+	    	<copy file="${basedir}/push-server-${icefaces.pushserver.version}.war"
+	    	          todir="${portal.apps.deploy.root}" overwrite="true" />
+		</goal>
+	
+	<goal name="portal-libs"
+	          description="Build status viewer libraries"
+	          prereqs="build-libraries">
+	    	
+	          <!-- Deploy portal apps -->
+	        <maven:reactor basedir="${portal.apps.src.root}/statusviewer/src" 
+	                       includes="project.xml"
+	                       goals="jar:install" />
+		
+			<maven:reactor basedir="${portal.apps.src.root}/console/src" 
+				                       includes="project.xml"
+				                       goals="jar:install" />
+	    </goal>
+
+    <goal name="deploy"
+          description="Deploys all portal applications and the
+                       gwportal-common.jar"
+          prereqs="portal-libs">
+    	
+          <!-- Deploy portal apps -->
+        <maven:reactor basedir="${portal.apps.src.root}" 
+                       includes="status-restservice/project.xml,statusviewer/project.xml,console/project.xml,monarch/project.xml,groundwork-base/project.xml,reportserver/project.xml"
+                       goals="deploy" />
+    	
+    	<maven:reactor basedir="${portal.apps.src.root}" 
+    	                       includes="nagvis/project.xml,rstools/project.xml,nagios/project.xml,nms/project.xml"
+    	                       goals="deploy" />
+    	
+    	  <!-- Deploy portal ears -->
+    	        <maven:reactor basedir="${portal.apps.src.root}/groundwork-enterprise" 
+    	                       includes="**/project.xml"
+    	                       goals="deploy-ear" />
+    </goal>
+    
+    <goal name="undeploy"
+          description="Undeploys all portal applications and the
+                       gwportal-common.jar"
+          prereqs="clean:clean">
+	<!-- Undeploy portal apps -->
+	<maven:reactor basedir="${portal.apps.src.root}"
+                       includes="**/project.xml" goals="undeploy"/>
+	<!-- Undeploy the gwportal-common JAR -->
+	<delete file="${jboss.portal.lib.dir}/${maven.final.name}.jar" />
+    </goal>
+    
+    <goal name="build"
+          description="Build the gwportal-common.jar and all portal apps"
+          prereqs="jar,jar:install">
+    	
+   
+    	<!-- Build portal apps -->
+        <maven:reactor basedir="${portal.apps.src.root}" 
+                       includes="**/project.xml" 
+                       goals="war" />
+    </goal>
+    
+    <goal name="clean" 
+          description="Delete the build artifacts for the gwportal-common.jar
+                       and all portal apps"
+          prereqs="clean:clean">
+    	
+    	<maven:reactor basedir="${portal.apps.src.root}/statusviewer/src" 
+    		                       includes="project.xml"
+    		                       goals="clean:clean" banner="Cleaning statusviewer libraries.."/>
+    	<maven:reactor basedir="${portal.apps.src.root}/console/src" 
+    	    		                       includes="project.xml"
+    	    		                       goals="clean:clean" banner="Cleaning console libraries.."/>
+    	
+    	<!-- Clean portal apps -->
+        <maven:reactor basedir="${portal.apps.src.root}"
+                       includes="**/project.xml" ignoreFailures="true"
+                       goals="clean:clean" />
+    </goal>
+    
+    <goal name="createPortalApp" description="Create a skeleton for a new portal application">
+        <ant:input message="Please enter the ID for this app: " addproperty="maven.genapp.template.id" />
+        <ant:input message="Please enter a name for this app: " addproperty="maven.genapp.template.name" />
+        
+        <j:set var="maven.genapp.template" value="portalapp" />
+        <j:set var="maven.genapp.template.package" value="com.groundworkopensource.portal.${maven.genapp.template.id}" />
+        <j:set var="maven.genapp.basedir" value="${basedir}/applications/${maven.genapp.template.id}" />
+        <attainGoal name="genapp" />
+    </goal>
+</project>

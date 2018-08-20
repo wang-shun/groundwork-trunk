@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+	<ice:panelGrid columns="1" id="networkViewPortlet_panel1"
+                                styleClass="IEfixen portlet_maxwidth portletStyle nvFilter">
+								<ui:include src="hv_filterView.jspx" />
+							</ice:panelGrid>
+							<ice:panelGrid columns="2"  cellpadding="0" cellspacing="0"
+								id="networkViewPortlet_pnlgridHostGroupsRow" 
+								style="min-width:963px; width:100%;">
+								
+								<ice:panelGrid columns="1" id="networkViewPortlet_panel2"
+									styleClass="portletStyle nvHostGroup">
+									<ui:include src="nv_hostGroup.jspx" />
+								</ice:panelGrid>
+								
+								<ice:panelGrid columns="1" id="networkViewPortlet_panel3"
+									styleClass="portletStyle nv_hgvHost">
+									<ui:include src="hgv_host.jspx" />
+								</ice:panelGrid>
+								
+								<ice:panelGrid columns="1" id="networkViewPortlet_panel4" 
+									styleClass="portletStyle nv_sgvServiceGroup">
+									<ui:include src="sgv_serviceGroup.jspx" />
+								</ice:panelGrid>
+								
+								<ice:panelGrid columns="1" id="networkViewPortlet_panel5"
+									styleClass="portletStyle nv_hvService">
+									<ui:include src="hv_Service.jspx" />
+								</ice:panelGrid>
+							</ice:panelGrid>
+							
+							<ice:panelGrid columns="1" id="networkViewPortlet_panel6"
+								styleClass="portletStyle nv_nagiosHorizontal">
+								<ui:include src="hgv_nagiosMonitoringStatisticsHorizontal.jspx" />
+							</ice:panelGrid>
+							
+							
+							<!-- Panel Pop-up for Integration with Action Portlet links  -->
+							<ui:include src="/jsp/acknowledgePopup.jspx">
+							</ui:include>
+							<!-- Info Panel Pop-up to be displayed when nagios is down  -->
+							<ui:include src="/jsp/acknowledgeErrorPopup.jspx"></ui:include>
+	</ui:define>
+			</ui:composition>

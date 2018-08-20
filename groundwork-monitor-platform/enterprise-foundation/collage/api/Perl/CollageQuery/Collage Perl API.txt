@@ -1,0 +1,370 @@
+
+
+
+The API is subdivided into four groups.
+
+
+CollageQuery 
+	new - Create the CollageQuery object. Required to use any of the following methods.
+	destroy - Destroy's the CollageQuery object.  Should be called when the CollageQuery object is no longer needed.
+
+CollageHostGroupQuery
+	getServicesForHostGroup(String hostGroup) -  return a reference to a hash host-service-attributes for a designated host group
+	getHostsForHostGroup(String hostGroup) - return a reference to a hash of all host names, device name for a designated host group
+	getHostGroups() - return a reference to all hostgroup names, descriptions, 
+	getHostGroup(String hgName) -  return a hash containing the attributes for a host group 
+
+
+CollageHostQuery
+	getServicesForHost(String host) - return an reference to a hash of all services-attributes for a host
+	getHosts() - return a reference to a hash of all host-attributes
+	getHostStatusForHost(String host) - return a hash of all the status attributes for a host
+	getDeviceForHost(String host) - return a hash of the device attributes for a host
+
+CollageServiceQuery
+	getService(String serviceName, String hostName) - return a hash of service attributes
+	getServices() - return a reference to a hash of host-service-attributes
+
+CollageMonitorServerQuery
+	getMonitorServers() - return a reference to a hash of monitorserver-attributes
+	getHostsForMonitorServer(String MonitorServer) - return a reference to a hash of hosts for a designated monitorserver 
+	getHostGroupsForMonitorServer(String MonitorServer) - return a reference to a hash of host groups-attributes
+
+CollageEventQuery:   Returns a reference to a hash of events with the event ID as primary key and attributes as secondary key
+	getEventsForDevice(String identification, String timeField, Date fromDate, Date toDate)
+	getEventsForService(String serviceDescription, String HostName, String timeField, Date fromDate, Date toDate)
+	getEventsForHost(String HostName, String timeField, Date fromDate, Date toDate)
+Note: timeField (String) can be FirstInsertDate or LastInsertDate if it's null no range will be applied
+
+
+
+SQL:
+
+CollageHostGroupQuery
+	getServicesForHostGroup(String hostGroup) - return a reference to a hash host-service-attributes for a designated host group
+	select s.*,
+		h.HostName,
+		s.ServiceDescription,
+		st.Name as StateType, 
+		ct.Name as CheckType, 
+		ms.Name as MonitorStatus,
+		lhs.Name as LastHardState
+	from	ServiceStatus as s, 
+		Host as h,HostGroup as hg, 
+		HostGroupCollection as hgc, 
+		StateType as st,
+		CheckType as ct, 
+		MonitorStatus as ms, 
+		MonitorStatus as lhs
+	where hg.Name="demo-system" and
+ 		hgc.HostGroupID=hg.HostGroupID and 
+		hgc.HostID=h.HostID and 
+		s.HostID=h.HostID 
+		s.StateTypeID=st.StateTypeID and 
+		s.CheckTypeID=ct.CheckTypeID and 
+		s.LastHardStateID=lhs.MonitorStatusID and
+		s.MonitorStatusID=ms.MonitorStatusID
+		;
+
+	select s.*, h.HostName, s.ServiceDescription, st.Name as StateTypeName, ct.Name as CheckName, ms.Name as MonitorStatusName, lhs.Name as LastHardStateName from ServiceStatus as s, Host as h,HostGroup as hg, HostGroupCollection as hgc, StateType as st, CheckType as ct, MonitorStatus as ms, MonitorStatus as lhs where hg.Name="demo-system" and hgc.HostGroupID=hg.HostGroupID and hgc.HostID=h.HostID and s.HostID=h.HostID and s.StateTypeID=st.StateTypeID and s.CheckTypeID=ct.CheckTypeID and s.LastHardStateID=lhs.MonitorStatusID and s.MonitorStatusID=ms.MonitorStatusID
+		;
+
+
+	getHostsForHostGroup(String hostGroup) - return a reference to a hash of all host names, device name for a designated host group
+	select h.*,
+		h.Description as HostDescription,
+		d.*,
+		d.Description as DeviceDescription
+	from Host as h,HostGroup as hg, 
+		HostGroupCollection as hgc,
+		Device as d
+	where hg.Name="demo-system" and 
+		hgc.HostGroupID=hg.HostGroupID and 
+		hgc.HostID=h.HostID and 
+		h.DeviceID=d.DeviceID
+	;
+	select h.*, d.*, h.Description as HostDescription, d.Description as DeviceDescription from Host as h,HostGroup as hg, HostGroupCollection as hgc, Device as d where hg.Name="demo-system" and hgc.HostGroupID=hg.HostGroupID and hgc.HostID=h.HostID and h.DeviceID=d.DeviceID;
+
+
+
+	getHostGroups() - return a reference to all hostgroup names, descriptions, 
+	select * from HostGroup;
+
+	getHostGroup(String hgName) -  return a hash containing the attributes for a host group 
+	select * from HostGroup where Name="demo-system";
+
+
+CollageHostQuery
+	getServicesForHost(String host) - return an reference to a hash of all services-attributes for a host
+	select s.*, 
+		st.Name as StateType, 
+		ct.Name as CheckType, 
+		ms.Name as MonitorStatus,
+		lhs.Name as LastHardState
+	from	ServiceStatus as s, 
+		Host as h,
+		StateType as st,
+		CheckType as ct, 
+		MonitorStatus as ms, 
+		MonitorStatus as lhs
+	where s.HostID=h.HostID and 
+		h.HostName="nagios" and 
+		s.StateTypeID=st.StateTypeID and 
+		s.CheckTypeID=ct.CheckTypeID and 
+		s.LastHardStateID=lhs.MonitorStatusID and
+		s.MonitorStatusID=ms.MonitorStatusID
+	;
+
+	select ServiceStatus.*, StateType.Name as StateTypeName, CheckType.Name as CheckName, 	ms.Name as MonitorStatusName,lhs.Name as LastHardStateName from ServiceStatus, Host,StateType,CheckType, MonitorStatus as ms, MonitorStatus as lhs where ServiceStatus.HostID=Host.HostID and Host.HostName="nagios" and 	ServiceStatus.StateTypeID=StateType.StateTypeID and ServiceStatus.CheckTypeID=CheckType.CheckTypeID and ServiceStatus.LastHardStateID=lhs.MonitorStatusID and ServiceStatus.MonitorStatusID=ms.MonitorStatusID;
+
+
+	getHosts() - return a reference to a hash of all host-attributes
+	select * from Host;
+
+	getHostStatusForHost(String host) - return a hash of all the status attributes for a host
+	select 	
+		MonitorStatus.Name as MonitorStatus,
+		HostStatus.* ,
+		Host.*
+	from MonitorStatus, Host,HostStatus 
+	where 	
+		HostStatus.HostID=Host.HostID and
+		Host.HostName="nagios" and 
+		HostStatus.MonitorStatusID=MonitorStatus.MonitorStatusID;
+
+	getDeviceForHost(String host) - return a hash of the device attributes for a host
+	select Device.* from Device,Host where Device.DeviceID=Host.DeviceID and Host.HostName="nagios";
+
+CollageServiceQuery
+	getService(String serviceName, String hostName) - return a hash of service attributes
+	select s.*, 
+		st.Name as StateType, 
+		ct.Name as CheckType, 
+		ms.Name as MonitorStatus,
+		lhs.Name as LastHardState
+	from	ServiceStatus as s, 
+		Host as h,
+		StateType as st,
+		CheckType as ct, 
+		MonitorStatus as ms, 
+		MonitorStatus as lhs
+	where 
+		h.HostName="nagios" and
+		s.ServiceDescription="local_disk" and
+		s.HostID=h.HostID and 
+		s.StateTypeID=st.StateTypeID and 
+		s.CheckTypeID=ct.CheckTypeID and 
+		s.LastHardStateID=lhs.MonitorStatusID and
+		s.MonitorStatusID=ms.MonitorStatusID
+	;
+	select s.*, 	st.Name as StateTypeName, ct.Name as CheckName, ms.Name as MonitorStatusName,lhs.Name as LastHardStateName from ServiceStatus as s, Host as h,StateType as st,	CheckType as ct, MonitorStatus as ms, MonitorStatus as lhs where h.HostName="nagios" and s.ServiceDescription="local_disk" and s.HostID=h.HostID and s.StateTypeID=st.StateTypeID and s.CheckTypeID=ct.CheckTypeID and s.LastHardStateID=lhs.MonitorStatusID and s.MonitorStatusID=ms.MonitorStatusID ;
+
+	getServices() - return a reference to a hash of host-service-attributes
+	select Host.HostName,ServiceStatus.* from Host,ServiceStatus where ServiceStatus.HostID=Host.HostID;
+	select s.*, 
+		h.HostName, 
+		st.Name as StateType, 
+		ct.Name as CheckType, 
+		ms.Name as MonitorStatus,
+		lhs.Name as LastHardState
+	from	ServiceStatus as s, 
+		Host as h,
+		StateType as st,
+		CheckType as ct, 
+		MonitorStatus as ms, 
+		MonitorStatus as lhs
+	where 
+		s.HostID=h.HostID and 
+		s.StateTypeID=st.StateTypeID and 
+		s.CheckTypeID=ct.CheckTypeID and 
+		s.LastHardStateID=lhs.MonitorStatusID and
+		s.MonitorStatusID=ms.MonitorStatusID
+
+CollageMonitorServerQuery
+	getMonitorServers() - return a reference to a hash of monitorserver-attributes
+	select * from MonitorServer;
+
+	getHostsForMonitorServer(String MonitorServer) - return a reference to a hash of hosts for a designated monitorserver 
+	select h.HostName from Host as h, MonitorServer as m, Device as d, MonitorList as l where  m.MonitorServerName="server1" and m.MonitorServerID=l.MonitorServerID and l.DeviceID=d.DeviceID and h.DeviceID=d.DeviceID;
+		
+	getHostGroupsForMonitorServer(String MonitorServer) - return a reference to a hash of host groups-attributes
+	select hg.* from HostGroup as hg, HostGroupCollection as hgc, Host as h, MonitorServer as m, Device as d, MonitorList as ml where  m.MonitorServerName="server1" and m.MonitorServerID=ml.MonitorServerID and ml.DeviceID=d.DeviceID and h.DeviceID=d.DeviceID and hgc.HostID=h.HostID and hgc.HostGroupID=hg.HostGroupID;
+		
+
+
+CollageEventQuery:   Returns a reference to a hash of events with the event ID as primary key and attributes as secondary key
+	Note: timeField (String) can be FirstInsertDate or LastInsertDate if it's null no range will be applied
+
+	getEventsbyDate(String timeField, Date fromDate, Date toDate)
+	select lm.*, 
+		h.HostName,
+		s.ServiceDescription,
+		ms.Name as MonitorStatus,
+		sev.Name as Serverity,
+		appsev.Name as ApplicationsServerity,
+		c.Name as Component,
+		d.Identification as DeviceIdentification,
+		os.Name as OperationStatus
+	from LogMessage as lm,
+		Severity as sev,
+		Severity as appsev,
+		Priority as pri,
+		Component as c,
+		Device as d,
+		MonitorStatus as ms,
+		ServiceStatus as s,
+		Host as h,
+		HostStatus as hs,
+		OperationStatus as os,
+		TypeRule as t
+	where 
+		lm.LastInsertDate>="2005-05-01 00:00:00" and 
+		lm.LastInsertDate<="2005-05-12 00:00:00" and
+		lm.SeverityID=sev.SeverityID and
+		lm.ApplicationSeverityID=appsev.SeverityID and
+		lm.PriorityID=pri.PriorityID and
+		lm.ComponentID=c.ComponentID and
+		lm.DeviceID=d.DeviceID and
+		lm.MonitorStatusID=ms.MonitorStatusID and
+		lm.ServiceStatusID=s.ServiceStatusID and
+		lm.HostStatusID=hs.HostStatusID and
+		lm.OperationStatusID=os.OperationStatusID and
+		lm.TypeID=t.TypeID and
+		hs.HostStatusID=h.HostID 
+	;
+	select lm.*, h.HostName,s.ServiceDescription,ms.Name as MonitorStatus,sev.Name as Serverity,appsev.Name as ApplicationsServerity,c.Name as Component,d.Identification as DeviceIdentification,os.Name as OperationStatus from LogMessage as lm, Severity as sev, Severity as appsev, Priority as pri, Component as c, Device as d, MonitorStatus as ms, ServiceStatus as s, HostStatus as hs, OperationStatus as os, TypeRule as t,Host as h where lm.LastInsertDate>="05-01-2005 00:00:00" and lm.LastInsertDate<="05-12-2005 00:00:00" and lm.SeverityID=sev.SeverityID and lm.ApplicationSeverityID=appsev.SeverityID and lm.PriorityID=pri.PriorityID and lm.ComponentID=c.ComponentID and lm.DeviceID=d.DeviceID and lm.MonitorStatusID=ms.MonitorStatusID and 	lm.ServiceStatusID=s.ServiceStatusID and lm.HostStatusID=hs.HostStatusID and lm.OperationStatusID=os.OperationStatusID and lm.TypeID=t.TypeID and hs.HostStatusID=h.HostID
+	;
+
+	getEventsForDevice(String identification, String timeField, Date fromDate, Date toDate)
+	select lm.*, 
+		h.HostName,
+		s.ServiceDescription,
+		ms.Name as MonitorStatus,
+		sev.Name as Serverity,
+		appsev.Name as ApplicationsServerity,
+		c.Name as Component,
+		d.Identification as DeviceIdentification,
+		os.Name as OperationStatus
+	from LogMessage as lm,
+		Severity as sev,
+		Severity as appsev,
+		Priority as pri,
+		Component as c,
+		Device as d,
+		MonitorStatus as ms,
+		ServiceStatus as s,
+		Host as h,
+		HostStatus as hs,
+		OperationStatus as os,
+		TypeRule as t
+	where 
+		d.Identification="192.168.2.60" and
+		lm.LastInsertDate>="2005-05-01 00:00:00" and 
+		lm.LastInsertDate<="2005-05-12 00:00:00" and
+		lm.SeverityID=sev.SeverityID and
+		lm.ApplicationSeverityID=appsev.SeverityID and
+		lm.PriorityID=pri.PriorityID and
+		lm.ComponentID=c.ComponentID and
+		lm.DeviceID=d.DeviceID and
+		lm.MonitorStatusID=ms.MonitorStatusID and
+		lm.ServiceStatusID=s.ServiceStatusID and
+		lm.HostStatusID=hs.HostStatusID and
+		lm.OperationStatusID=os.OperationStatusID and
+		lm.TypeID=t.TypeID and
+		hs.HostStatusID=h.HostID 
+	;
+
+select lm.*, h.HostName,s.ServiceDescription,ms.Name as MonitorStatus,sev.Name as Serverity,appsev.Name as ApplicationsServerity,c.Name as Component,d.Identification as DeviceIdentification,os.Name as OperationStatus from LogMessage as lm, Severity as sev, Severity as appsev, Priority as pri, Component as c, Device as d, MonitorStatus as ms, ServiceStatus as s, HostStatus as hs, OperationStatus as os, TypeRule as t,Host as h where lm.LastInsertDate>="05-01-2005 00:00:00" and lm.LastInsertDate<="05-12-2005 00:00:00" and lm.SeverityID=sev.SeverityID and lm.ApplicationSeverityID=appsev.SeverityID and lm.PriorityID=pri.PriorityID and lm.ComponentID=c.ComponentID and lm.DeviceID=d.DeviceID and lm.MonitorStatusID=ms.MonitorStatusID and lm.ServiceStatusID=s.ServiceStatusID and lm.HostStatusID=hs.HostStatusID and lm.OperationStatusID=os.OperationStatusID and lm.TypeID=t.TypeID and hs.HostStatusID=h.HostID and d.Identification="192.168.2.60"
+	;
+
+
+	getEventsForService(String serviceDescription, String HostName, String timeField, Date fromDate, Date toDate)
+	select lm.*, 
+		h.HostName,
+		s.ServiceDescription,
+		ms.Name as MonitorStatus,
+		sev.Name as Serverity,
+		appsev.Name as ApplicationsServerity,
+		c.Name as Component,
+		d.Identification as DeviceIdentification,
+		os.Name as OperationStatus
+	from LogMessage as lm,
+		Severity as sev,
+		Severity as appsev,
+		Priority as pri,
+		Component as c,
+		Device as d,
+		MonitorStatus as ms,
+		ServiceStatus as s,
+		Host as h,
+		HostStatus as hs,
+		OperationStatus as os,
+		TypeRule as t
+	where
+		h.HostName="nagios" and 
+		s.ServiceDescription="local_disk" and 
+		lm.LastInsertDate>="2005-05-01 00:00:00" and 
+		lm.LastInsertDate<="2005-05-12 00:00:00" and
+		lm.SeverityID=sev.SeverityID and
+		lm.ApplicationSeverityID=appsev.SeverityID and
+		lm.PriorityID=pri.PriorityID and
+		lm.ComponentID=c.ComponentID and
+		lm.DeviceID=d.DeviceID and
+		lm.MonitorStatusID=ms.MonitorStatusID and
+		lm.ServiceStatusID=s.ServiceStatusID and
+		lm.HostStatusID=hs.HostStatusID and
+		lm.OperationStatusID=os.OperationStatusID and
+		lm.TypeID=t.TypeID and
+		hs.HostStatusID=h.HostID 
+	;
+
+select lm.*, h.HostName,s.ServiceDescription,ms.Name as MonitorStatus,sev.Name as Serverity,appsev.Name as ApplicationsServerity,c.Name as Component,d.Identification as DeviceIdentification,os.Name as OperationStatus from LogMessage as lm, Severity as sev, Severity as appsev, Priority as pri, Component as c, Device as d, MonitorStatus as ms, ServiceStatus as s, HostStatus as hs, OperationStatus as os, TypeRule as t,Host as h where lm.LastInsertDate>="2005-01-05 00:00:00" and lm.LastInsertDate<="2005-01-12 00:00:00" and lm.SeverityID=sev.SeverityID and lm.ApplicationSeverityID=appsev.SeverityID and lm.PriorityID=pri.PriorityID and lm.ComponentID=c.ComponentID and lm.DeviceID=d.DeviceID and lm.MonitorStatusID=ms.MonitorStatusID and lm.ServiceStatusID=s.ServiceStatusID and lm.HostStatusID=hs.HostStatusID and lm.OperationStatusID=os.OperationStatusID and lm.TypeID=t.TypeID and hs.HostStatusID=h.HostID and h.HostName="nagios"
+
+	getEventsForHost(String HostName, String timeField, Date fromDate, Date toDate)
+	select lm.*, 
+		h.HostName,
+		s.ServiceDescription,
+		ms.Name as MonitorStatus,
+		sev.Name as Serverity,
+		appsev.Name as ApplicationsServerity,
+		c.Name as Component,
+		d.Identification as DeviceIdentification,
+		os.Name as OperationStatus
+	from LogMessage as lm,
+		Severity as sev,
+		Severity as appsev,
+		Priority as pri,
+		Component as c,
+		Device as d,
+		MonitorStatus as ms,
+		ServiceStatus as s,
+		Host as h,
+		HostStatus as hs,
+		OperationStatus as os,
+		TypeRule as t
+	where 
+		lm.LastInsertDate>="2005-05-01 00:00:00" and 
+		lm.LastInsertDate<="2005-05-12 00:00:00" and
+		lm.SeverityID=sev.SeverityID and
+		lm.ApplicationSeverityID=appsev.SeverityID and
+		lm.PriorityID=pri.PriorityID and
+		lm.ComponentID=c.ComponentID and
+		lm.DeviceID=d.DeviceID and
+		lm.MonitorStatusID=ms.MonitorStatusID and
+		lm.ServiceStatusID=s.ServiceStatusID and
+		lm.HostStatusID=hs.HostStatusID and
+		lm.OperationStatusID=os.OperationStatusID and
+		lm.TypeID=t.TypeID and
+		hs.HostStatusID=h.HostID 
+	;
+
+
+
+
+
+
+
+
+
+
+

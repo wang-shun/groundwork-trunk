@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+-->
+<!DOCTYPE web-app
+  PUBLIC "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+  "http://java.sun.com/dtd/web-app_2_3.dtd">
+
+<web-app id="foundation-reportserver">
+  <display-name>GroundWork Open Source Report Server</display-name>	
+  
+  	<!--  GroundWork parameters -->
+	<context-param>
+		<param-name>reportServerConfig</param-name>
+		<param-value>@CONFIG_DIR@/gwreportserver.properties</param-value>
+	</context-param>
+
+  <servlet>
+    <servlet-name>fileupload</servlet-name>
+    <servlet-class>org.groundwork.foundation.reportserver.FileUploadServlet</servlet-class>
+    <init-param>
+      <param-name>maxFileSize</param-name>
+      <param-value>2048000</param-value>
+    </init-param>
+    <init-param>
+      <param-name>maxThreshold</param-name>
+      <param-value>2048</param-value>
+    </init-param>
+    <!-- Comma-separated list of file extensions to allow to be uploaded.
+    	 For now, we only allow rptdesign and rptlibrary files to be uploaded.
+    	 Leave this value blank to allow all files to be uploaded.
+    -->
+    <init-param>
+      <param-name>uploadFileExtensions</param-name>
+      <param-value>rptdesign,rptlibrary</param-value>
+    </init-param>
+  </servlet>
+  
+  <servlet-mapping>
+    <servlet-name>fileupload</servlet-name>
+    <url-pattern>/fileupload</url-pattern>
+  </servlet-mapping>  
+  
+  <welcome-file-list>	
+	<welcome-file>index.jsp</welcome-file>
+  </welcome-file-list>  
+</web-app>

@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Written by Eclipse BIRT 2.0 -->
+<report xmlns="http://www.eclipse.org/birt/2005/design" version="3.2.2" id="1">
+    <property name="createdBy">Eclipse BIRT Designer Version 2.1.0.N20060628-1351 Build &lt;20060628-1537></property>
+    <property name="units">in</property>
+    <property name="comments">Copyright (c) 2006 &lt;&lt;Your Company Name here>></property>
+    <parameters>
+        <scalar-parameter name="SessionId" id="136">
+            <property name="valueType">static</property>
+            <property name="dataType">decimal</property>
+            <property name="allowBlank">false</property>
+            <property name="controlType">text-box</property>
+            <property name="defaultValue">1</property>
+            <structure name="format">
+                <property name="category">Unformatted</property>
+            </structure>
+        </scalar-parameter>
+    </parameters>
+    <data-sources>
+        <oda-data-source extensionID="org.eclipse.birt.report.data.oda.jdbc" name="gw-profiler-ds" id="4">
+            <text-property name="displayName">gw-profiler-ds</text-property>
+            <property name="odaDriverClass">com.mysql.jdbc.Driver</property>
+            <property name="odaURL">jdbc:mysql://localhost/GWProfilerDB</property>
+            <property name="odaUser">root</property>
+        </oda-data-source>
+    </data-sources>
+    <data-sets>
+        <oda-data-set extensionID="org.eclipse.birt.report.data.oda.jdbc.JdbcSelectDataSet" name="gw-profiler-batches" id="6">
+            <text-property name="displayName">gw-profiler-batches</text-property>
+            <list-property name="parameters">
+                <structure>
+                    <property name="name">SessionId</property>
+                    <property name="dataType">string</property>
+                    <property name="nativeDataType">12</property>
+                    <property name="position">1</property>
+                    <expression name="defaultValue">params["SessionId"]</expression>
+                    <property name="isOptional">false</property>
+                    <property name="isInput">true</property>
+                </structure>
+            </list-property>
+            <list-property name="computedColumns">
+                <structure>
+                    <property name="name">RecordLatency</property>
+                    <expression name="expression">DateTimeSpan.seconds(row["BatchStartTime"], row["TimeRecorded"])</expression>
+                    <property name="dataType">integer</property>
+                </structure>
+            </list-property>
+            <structure name="cachedMetaData">
+                <list-property name="resultSet">
+                    <structure>
+                        <property name="position">1</property>
+                        <property name="name">SessionID</property>
+                        <property name="dataType">integer</property>
+                    </structure>
+                    <structure>
+                        <property name="position">2</property>
+                        <property name="name">SessionStartTime</property>
+                        <property name="dataType">date-time</property>
+                    </structure>
+                    <structure>
+                        <property name="position">3</property>
+                        <property name="name">SessionEndTime</property>
+                        <property name="dataType">date-time</property>
+                    </structure>
+                    <structure>
+                        <property name="position">4</property>
+                        <property name="name">WorkloadId</property>
+                        <property name="dataType">integer</property>
+                    </structure>
+                    <structure>
+                        <property name="position">5</property>
+                        <property name="name">Workload</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">6</property>
+                        <property name="name">WorkloadStartTime</property>
+                        <property name="dataType">date-time</property>
+                    </structure>
+                    <structure>
+                        <property name="position">7</property>
+                        <property name="name">WorkloadEndTime</property>
+                        <property name="dataType">date-time</property>
+                    </structure>
+                    <structure>
+                        <property name="position">8</property>
+                        <property name="name">MessageBatchId</property>
+                        <property name="dataType">integer</property>
+                    </structure>
+                    <structure>
+                        <property name="position">9</property>
+                        <property name="name">MessageName</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">10</property>
+                        <property name="name">BatchStartTime</property>
+                        <property name="dataType">date-time</property>
+                    </structure>
+                    <structure>
+                        <property name="position">11</property>
+                        <property name="name">BatchEndTime</property>
+                        <property name="dataType">date-time</property>
+                    </structure>
+                    <structure>
+                        <property name="position">12</property>
+                        <property name="name">TimeRecorded</property>
+                        <property name="dataType">date-time</property>
+                    </structure>
+                    <structure>
+                        <property name="position">13</property>
+                        <property name="name">RecordLatency</property>
+                        <property name="dataType">integer</property>
+                    </structure>
+                </list-property>
+            </structure>
+            <property name="dataSource">gw-profiler-ds</property>
+            <property name="queryText">select ws.SessionID,
+	   ws.StartTime As SessionStartTime,
+	   ws.EndTime As SessionEndTime,
+	   w.WorkloadId,
+	   w.Name as Workload,
+	   w.StartTime As WorkloadStartTime,
+	   w.EndTime As WorkloadEndTime,
+	   mb.MessageBatchId,
+	   mb.MessageName,
+	   mb.BatchStartTime,
+	   mb.BatchEndTime,
+	   mb.TimeRecorded
+from WorkloadSessions ws
+inner join Workloads w
+	on ws.SessionID = w.SessionId
+inner join MessageBatches mb
+	on w.WorkloadID = mb.WorkloadId
+where ws.SessionID = ?</property>
+        </oda-data-set>
+    </data-sets>
+    <page-setup>
+        <simple-master-page name="Simple MasterPage" id="2">
+            <page-footer>
+                <text id="3">
+                    <property name="contentType">html</property>
+                    <text-property name="content"><![CDATA[<value-of>new Date()</value-of>]]></text-property>
+                </text>
+            </page-footer>
+        </simple-master-page>
+    </page-setup>
+    <body>
+        <table id="7">
+            <property name="width">100%</property>
+            <property name="dataSet">gw-profiler-batches</property>
+            <list-property name="boundDataColumns">
+                <structure>
+                    <property name="name">SessionID</property>
+                    <expression name="expression">dataSetRow["SessionID"]</expression>
+                    <property name="dataType">integer</property>
+                </structure>
+                <structure>
+                    <property name="name">SessionStartTime</property>
+                    <expression name="expression">dataSetRow["SessionStartTime"]</expression>
+                    <property name="dataType">date-time</property>
+                </structure>
+                <structure>
+                    <property name="name">SessionEndTime</property>
+                    <expression name="expression">dataSetRow["SessionEndTime"]</expression>
+                    <property name="dataType">date-time</property>
+                </structure>
+                <structure>
+                    <property name="name">WorkloadId</property>
+                    <expression name="expression">dataSetRow["WorkloadId"]</expression>
+                    <property name="dataType">integer</property>
+                </structure>
+                <structure>
+                    <property name="name">Workload</property>
+                    <expression name="expression">dataSetRow["Workload"]</expression>
+                    <property name="dataType">string</property>
+                </structure>
+                <structure>
+                    <property name="name">WorkloadStartTime</property>
+                    <expression name="expression">dataSetRow["WorkloadStartTime"]</expression>
+                    <property name="dataType">date-time</property>
+                </structure>
+                <structure>
+                    <property name="name">WorkloadEndTime</property>
+                    <expression name="expression">dataSetRow["WorkloadEndTime"]</expression>
+                    <property name="dataType">date-time</property>
+                </structure>
+                <structure>
+                    <property name="name">BatchId</property>
+                    <expression name="expression">dataSetRow["BatchId"]</expression>
+                    <property name="dataType">integer</property>
+                </structure>
+                <structure>
+                    <property name="name">MessageName</property>
+                    <expression name="expression">dataSetRow["MessageName"]</expression>
+                    <property name="dataType">string</property>
+                </structure>
+                <structure>
+                    <property name="name">BatchStartTime</property>
+                    <expression name="expression">dataSetRow["BatchStartTime"]</expression>
+                    <property name="dataType">date-time</property>
+                </structure>
+                <structure>
+                    <property name="name">BatchEndTime</property>
+                    <expression name="expression">dataSetRow["BatchEndTime"]</expression>
+                    <property name="dataType">date-time</property>
+                </structure>
+                <structure>
+                    <property name="name">TimeRecorded</property>
+                    <expression name="expression">dataSetRow["TimeRecorded"]</expression>
+                    <property name="dataType">date-time</property>
+                </structure>
+                <structure>
+                    <property name="name">RecordLatency</property>
+                    <expression name="expression">dataSetRow["RecordLatency"]</expression>
+                    <property name="dataType">integer</property>
+                </structure>
+            </list-property>
+            <column id="76"/>
+            <column id="80"/>
+            <column id="84"/>
+            <column id="85"/>
+            <column id="87"/>
+            <column id="88"/>
+            <header>
+                <row id="8">
+                    <cell id="9">
+                        <label id="10">
+                            <text-property name="text"> Session ID</text-property>
+                        </label>
+                    </cell>
+                    <cell id="17">
+                        <label id="18">
+                            <text-property name="text">Workload</text-property>
+                        </label>
+                    </cell>
+                    <cell id="25">
+                        <label id="26">
+                            <text-property name="text">Message Name</text-property>
+                        </label>
+                    </cell>
+                    <cell id="27">
+                        <label id="28">
+                            <text-property name="text">Batch Start Time</text-property>
+                        </label>
+                    </cell>
+                    <cell id="31">
+                        <label id="32">
+                            <text-property name="text">Time Recorded</text-property>
+                        </label>
+                    </cell>
+                    <cell id="33">
+                        <label id="34">
+                            <property name="textAlign">center</property>
+                            <text-property name="text">Record Latency (Seconds)</text-property>
+                        </label>
+                    </cell>
+                </row>
+            </header>
+            <group id="89">
+                <property name="groupName">SessionGroup</property>
+                <property name="interval">none</property>
+                <property name="sortDirection">asc</property>
+                <expression name="keyExpr">row["SessionID"]</expression>
+                <property name="repeatHeader">true</property>
+                <property name="hideDetail">false</property>
+                <property name="pageBreakAfter">auto</property>
+                <property name="pageBreakBefore">auto</property>
+                <header>
+                    <row id="90">
+                        <cell id="91">
+                            <data id="118">
+                                <property name="resultSetColumn">SessionID</property>
+                            </data>
+                        </cell>
+                        <cell id="95"/>
+                        <cell id="99"/>
+                        <cell id="100"/>
+                        <cell id="102"/>
+                        <cell id="103"/>
+                    </row>
+                </header>
+                <footer>
+                    <row id="104">
+                        <cell id="105"/>
+                        <cell id="109"/>
+                        <cell id="113"/>
+                        <cell id="114"/>
+                        <cell id="116"/>
+                        <cell id="117"/>
+                    </row>
+                </footer>
+            </group>
+            <group id="119">
+                <property name="groupName">WorkloadGroup</property>
+                <property name="interval">none</property>
+                <property name="sortDirection">asc</property>
+                <expression name="keyExpr">row["WorkloadId"]</expression>
+                <property name="repeatHeader">true</property>
+                <property name="hideDetail">false</property>
+                <property name="pageBreakAfter">auto</property>
+                <property name="pageBreakBefore">auto</property>
+                <header>
+                    <row id="120">
+                        <cell id="121"/>
+                        <cell id="122">
+                            <data id="45">
+                                <property name="resultSetColumn">Workload</property>
+                            </data>
+                        </cell>
+                        <cell id="123"/>
+                        <cell id="124"/>
+                        <cell id="126"/>
+                        <cell id="127"/>
+                    </row>
+                </header>
+                <footer>
+                    <row id="128">
+                        <cell id="129"/>
+                        <cell id="130"/>
+                        <cell id="131"/>
+                        <cell id="132"/>
+                        <cell id="134"/>
+                        <cell id="135"/>
+                    </row>
+                </footer>
+            </group>
+            <detail>
+                <row id="35">
+                    <cell id="36"/>
+                    <cell id="44"/>
+                    <cell id="52">
+                        <data id="53">
+                            <property name="resultSetColumn">MessageName</property>
+                        </data>
+                    </cell>
+                    <cell id="54">
+                        <data id="55">
+                            <structure name="dateTimeFormat">
+                                <property name="category">Custom</property>
+                                <property name="pattern">hh:mm:ss</property>
+                            </structure>
+                            <property name="resultSetColumn">BatchStartTime</property>
+                        </data>
+                    </cell>
+                    <cell id="58">
+                        <data id="59">
+                            <structure name="dateTimeFormat">
+                                <property name="category">Custom</property>
+                                <property name="pattern">hh:mm:ss</property>
+                            </structure>
+                            <property name="resultSetColumn">TimeRecorded</property>
+                        </data>
+                    </cell>
+                    <cell id="60">
+                        <data id="61">
+                            <property name="textAlign">center</property>
+                            <property name="resultSetColumn">RecordLatency</property>
+                        </data>
+                    </cell>
+                </row>
+            </detail>
+            <footer>
+                <row id="62">
+                    <cell id="63"/>
+                    <cell id="67"/>
+                    <cell id="71"/>
+                    <cell id="72"/>
+                    <cell id="74"/>
+                    <cell id="75"/>
+                </row>
+            </footer>
+        </table>
+    </body>
+</report>

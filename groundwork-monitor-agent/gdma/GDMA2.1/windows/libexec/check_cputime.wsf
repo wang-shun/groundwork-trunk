@@ -1,0 +1,136 @@
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' "File_checking.vbs"
+' nagios@samurai.inka.de
+'
+' 28.05.2003 ver 0.1
+' Added Arguments processing
+' Bugfixes
+'
+' 02.06.2003 ver 1.1
+' Changed argument processing to XML Elements
+' 
+' --------------------------------------------------------------
+' This script returns the CPU time that was used between
+' the last and the actual execution of the script.
+'
+
+<job>
+<runtime>
+  <description>
+check_cputime (nrpe_nt-plugin) 1.1
+The nagios plugins come with ABSOLUTELY NO WARRANTY. You may redistribute
+copies of the plugins under the terms of the GNU General Public License.
+For more information about these matters, see the file named COPYING.
+Copyright (c) 1999-2001 Ethan Galstad/Hagen Deike (nagios@samurai.inka.de)
+
+Returns the current Total CPU time In %
+  </description>
+  <named
+    name="h"
+    helpstring="Help"
+    type="simple"
+    required="false" 
+  />
+  <named
+    name="w"
+    helpstring="Warning watermark  (Integer)"
+    type="string"
+    required="true"
+  />
+  <named
+    name="c"
+    helpstring="Critical watermark (Integer)"
+    type="string"
+    required="true"
+  />
+  <example>
+Example: check_cputime.wsf /w:60 /c:90
+</example>
+</runtime>
+<script language="VBScript">
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+  If Wscript.Arguments.Named.Exists("h") Or Not Wscript.Arguments.Named.Exists("w") Or Not Wscript.Arguments.Named.Exists("c") Or (Wscript.Arguments.Named("w") >= Wscript.Arguments.Named("c")) Then
+      Wscript.Arguments.ShowUsage()
+      Wscript.Quit(0)
+  End If
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Const's and Var's
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+strTempFile = "check_cputime.temp" 'Name of the temp file
+
+Const intOK = 0
+Const intWarning = 1
+Const intCritical = 2
+Const intUnknown = 3
+
+Const ForReading = 1
+Const ForWriting = 2
+
+
+' Create Filesystem Objekt
+Dim objFSO, objFile
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+
+' Create WMI Objekt
+Set objService = GetObject("Winmgmts:{impersonationlevel=impersonate}!\Root\Cimv2")
+
+
+' Get the date the plugin was executed the last time
+'''''''''''''' 
+  Dim objLastCheck, objFileAttribute
+  If objFSO.FileExists(strTempFile) Then 'does the temp file exsit?
+    if objFSO.GetFile(strTempFile).size > 0 then
+        Set objLastCheck = objFSO.OpenTextFile(strTempFile, ForReading)
+        ' Get PercentProcessorTime from the temp file
+        N1 = objLastCheck.Readline
+        D1 = objLastCheck.Readline
+        objLastCheck.Close
+ 
+        'Write the new Date to the file
+        Set objLastCheck = objFSO.OpenTextFile(strTempFile, ForWriting, True)
+
+        Set objInstance = objService.Get("Win32_PerfRawData_PerfOS_Processor.Name='_Total'")
+        ' Get PercentProcessorTime and write it into the temp file
+        N2 = objInstance.PercentProcessorTime
+        D2 = objInstance.TimeStamp_Sys100NS
+        objLastCheck.WriteLine(N2)
+        objLastCheck.WriteLine(D2)
+
+        objLastCheck.Close
+     Else
+	objFSO.DeleteFile(strTempFile)
+	Wscript.Echo "Temp file wasn't present. Needed to be created first..."
+    	Wscript.Quit(intUnknown)
+     End If		 
+  Else
+    Set objLastCheck = objFSO.OpenTextFile(strTempFile, ForWriting, True)
+    Set objInstance1 = objService.Get("Win32_PerfRawData_PerfOS_Processor.Name='_Total'")
+    objLastCheck.WriteLine(objInstance1.PercentProcessorTime)
+    objLastCheck.WriteLine(objInstance1.TimeStamp_Sys100NS)
+
+    objLastCheck.Close
+
+    Wscript.Echo "Temp file was broken - deleting it and starting over..."
+    Wscript.Quit(intUnknown) 'Quit with a unknown Status
+  End If
+''''''''''''''
+
+  ' CounterType - PERF_100NSEC_TIMER_INV
+  ' Formula - (1- ((N2 - N1) / (D2 - D1))) x 100
+  PercentProcessorTime = (1 - ((N2 - N1)/(D2-D1)))*100
+  PercentProcessorTime = Round(PercentProcessorTime,2)
+  WScript.Echo "Processor Time =", PercentProcessorTime ,"%"
+
+If PercentProcessorTime > CInt(Wscript.Arguments.Named("c")) Then 
+   Wscript.Quit(intCritical) 'Quit with Critical 
+Elseif PercentProcessorTime > CInt(Wscript.Arguments.Named("w")) Then 
+  Wscript.Quit(intWarning) 'Quit with Warning 
+End If 
+Wscript.Quit(intOK) 'Quit with OK
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+</script>
+</job>

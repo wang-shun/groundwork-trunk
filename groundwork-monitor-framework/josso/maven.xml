@@ -1,0 +1,77 @@
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+-->
+
+<project default="build"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant"
+         xmlns:scm="jelly:scm">
+
+	<goal name="build">
+		<attainGoal name="gw.josso.protocol" />
+		<attainGoal name="josso.gateway" />
+		<attainGoal name="gw.josso.tomcat55.agent" />
+	</goal>
+	
+	<goal name="clean">
+			<delete dir='${basedir}/target' />
+			<delete dir="${basedir}/josso-gateway" />
+			<delete dir="${basedir}/josso-tomcat55-agent/target" />
+			<delete dir="${basedir}/josso-comp-protocol/target" />
+	</goal>
+
+	<goal name="gw.josso.tomcat55.agent" description="JOSSO tomcat55 agent patch">
+		<maven:reactor basedir="josso-tomcat55-agent" includes="**/project.xml"  goals="jar" />
+		<copy file="josso-tomcat55-agent/target/gw-josso-tomcat55-agent-${josso.version}.jar" tofile="${basedir}/gw-josso-tomcat55-agent-${josso.version}.jar" overwrite="true" />
+	</goal>
+	
+	<goal name="gw.josso.protocol" description="JOSSO protocol patch">
+			<maven:reactor basedir="josso-comp-protocol" includes="**/project.xml"  goals="jar" />
+			<copy file="josso-comp-protocol/target/gw-josso-protocol-${josso.version}.jar" tofile="${basedir}/josso-protocol-${josso.version}.jar" overwrite="true" />
+		</goal>
+	
+	<goal name="josso.gateway" description="JOSSO Gateway package">
+	
+		<mkdir dir='${basedir}/target' />
+		<!-- Download the josso war -->
+		<exec dir="${basedir}" executable="wget">
+			<arg line="-c http://geneva/maven/josso/war/${org.groundwork.josso.original.package}" />
+		</exec>
+
+		<!-- Untar and add modified GroundWork files -->
+		<delete dir="${basedir}/josso-gateway" />
+		<mkdir dir="${basedir}/josso-gateway" />
+		<unjar src="${basedir}/${org.groundwork.josso.original.package}" dest="${basedir}/josso-gateway" />	
+		
+		<!-- copy patch files -->
+		<copy file="${basedir}/src/resources/josso-layout.jsp" tofile="${basedir}/josso-gateway/josso-layout.jsp" overwrite="true" />
+		<copy file="${basedir}/src/resources/usernamePasswordLogin.jsp" tofile="${basedir}/josso-gateway/signon/usernamePasswordLogin.jsp" overwrite="true" />		
+		<copy file="${basedir}/src/resources/screen.css" tofile="${basedir}/josso-gateway/resources/css/screen.css" overwrite="true" />
+		<copy file="${basedir}/src/resources/reset.css" tofile="${basedir}/josso-gateway/resources/css/reset.css" overwrite="true" />
+		<copy file="${basedir}/src/resources/bg-login-wide.gif" tofile="${basedir}/josso-gateway/resources/img/bg-login-wide.gif" overwrite="true" />
+		<copy file="${basedir}/src/resources/ApplicationResources.properties" tofile="${basedir}/josso-gateway/WEB-INF/classes/ApplicationResources.properties" overwrite="true" />
+		<copy file="${basedir}/josso-protocol-${josso.version}.jar" tofile="${basedir}/josso-gateway/WEB-INF/lib/josso-protocol-${josso.version}.jar" overwrite="true" />
+		
+		<!-- Package josso-gateway.war -->
+		<jar destfile="${basedir}/target/${org.groundwork.josso.original.package}" basedir="${basedir}/josso-gateway" />
+	</goal>
+	
+	
+	
+	</project>

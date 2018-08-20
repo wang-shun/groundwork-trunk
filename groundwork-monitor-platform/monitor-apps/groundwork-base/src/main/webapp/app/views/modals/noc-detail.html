@@ -1,0 +1,149 @@
+<div class="modal-header" id="nocBoardDetailHeader" gwp-sliding-dialog>
+    <button type="button" class="close" aria-hidden="true" ng-click="close()">&times;</button>
+    <h4 class="modal-title" ng-show="!boardInstance.id">New NOC Board <span ng-show="boardInstance.name.length">- {{boardInstance.name}}</span></h4>
+    <h4 class="modal-title" ng-show="boardInstance.id">Edit NOC Board - <span>{{boardInstance.name}}</span></h4>
+</div>
+<form name="nocBoardDetailForm" role="form" novalidate class="form-horizontal css-form" id="nocBoardDetailForm">
+    <div class="modal-body">
+        <div class="form-group">
+            <label for="host-name" class="col-sm-2 control-label">Name</label>
+            <div class="col-md-10 col-sm-10">
+                <input type="text" name="boardname" id="board-name" class="form-control" ng-model="boardInstance.name" ng-class="{error: !isValidName()}" gwp-autofocus gwp-safe-name />
+                <span class="help-block">Enter a unique NOC Board name</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="host-name" class="col-sm-2 control-label">Display Title</label>
+            <div class="col-md-10 col-sm-10">
+                <input type="text" name="boardtitle" id="board-title" class="form-control" ng-model="boardInstance.title" ng-class="{error: !isValidTitle()}" />
+                <span class="help-block">Enter a full title for this NOC Board</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="host-name" class="col-sm-2 control-label">Host Group</label>
+            <div class="col-md-10 col-sm-10">
+                <select type="text" name="boardhostgroup" id="board-host-group" class="form-control" ng-model="boardInstance.hostGroup" ng-options="hostGroup for hostGroup in hostGroups">
+                    <option value=""></option>
+                </select>
+                <span class="help-block">Select a Groundwork Host Group</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="host-name" class="col-sm-2 control-label">Service Group</label>
+            <div class="col-md-10 col-sm-10">
+                <select type="text" name="boardservicegroup" id="board-service-group" class="form-control" ng-model="boardInstance.serviceGroup" ng-options="serviceGroup for serviceGroup in serviceGroups">
+                    <option value=""></option>
+                </select>
+                <span class="help-block">Select a Groundwork Service Group</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-sm-6">
+                <label for="host-name" class="col-sm-2 control-label no-padding">Downtime Window</label>
+                <div class="col-md-10 col-sm-10 no-padding-right">
+                    <input type="number" name="downtimewindow" id="downtime-window" class="form-control" ng-model="boardInstance.downtimeHours" />
+                    <span class="help-block">Display Downtime in this window (past and future), in hours</span>
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <label for="host-name" class="col-sm-2 control-label no-padding">Availability Window</label>
+                <div class="col-md-10 col-sm-10 no-padding-right">
+                    <input type="number" name="availabilitywindow" id="availability-window" class="form-control" ng-model="boardInstance.availabilityHours" min="1" max="{{boardInstance.maxAvailabilityWindow}}" />
+                    <span class="help-block">Calculate Availability over this interval (past), in hours; valid values are 1 to {{boardInstance.maxAvailabilityWindow}}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-sm-6">
+                <label for="host-name" class="col-sm-2 control-label no-padding">SLA Percentage</label>
+                <div class="col-md-10 col-sm-10 no-padding-right">
+                    <input type="number" name="slapercentage" id="sla-percentage" class="form-control" ng-model="boardInstance.percentageSLA" />
+                    <span class="help-block">The Contractual SLA Percentage</span>
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <div class="checkbox">
+                    <label>
+                        <input type="checkbox" ng-model="boardInstance.autoExpand"> Auto-expand when non-ok items are present
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-sm-6">
+                <label for="host-name" class="col-sm-2 control-label no-padding">Rows</label>
+                <div class="col-md-10 col-sm-10 no-padding-right">
+                    <input type="number" name="boardrows" id="board-rows" class="form-control" ng-model="boardInstance.rows" />
+                    <span class="help-block">How many rows to display per NOC Board</span>
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <label for="host-name" class="col-sm-2 control-label no-padding">Refresh Rate (sec.)</label>
+                <div class="col-md-10 col-sm-10 no-padding-right">
+                    <input type="number" name="boardrefreshrate" id="board-refresh-rate" class="form-control" ng-model="boardInstance.refreshSeconds" />
+                    <span class="help-block">How often to refresh the NOC Board</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-md-3">
+            <h2 class="text-center">Ack Filters</h2>
+            <div class="form-group">
+                <div class="checkbox" ng-repeat="filter in boardInstance.ackFilters">
+                    <label>
+                        <input type="checkbox" ng-model="filter.checked">
+                        {{filter.name}}
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-md-3">
+            <h2 class="text-center">Downtime Filters</h2>
+            <div class="form-group">
+                <div class="checkbox" ng-repeat="filter in boardInstance.downTimeFilters">
+                    <label>
+                        <input type="checkbox" ng-model="filter.checked">
+                        {{filter.name}}
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-md-3">
+            <h2 class="text-center">States</h2>
+            <div class="form-group">
+                <div class="checkbox" ng-repeat="state in boardInstance.states">
+                    <label>
+                        <input type="checkbox" ng-model="state.checked">
+                        {{state.name}}
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-md-3">
+            <h2 class="text-center">Columns</h2>
+            <div class="form-group">
+                <div class="checkbox" ng-repeat="column in boardInstance.columns">
+                    <label>
+                        <input type="checkbox" ng-model="column.checked">
+                        {{column.name}}
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-md-10 col-sm-10 padding-left0">
+                <alert ng-repeat="alert in alerts" type="alert.type" close="closeAlert($index)"><strong>{{alert.msg}}</strong></alert>
+            </div>
+            <br />
+        </div>
+    </div>
+    <div class="modal-footer">
+        <input type="submit" class="btn btn-primary" ng-click="save()" ng-disabled="!isValidBoard()" value="Save"></input>
+        <input type="button" class="btn btn-danger" ng-click="delete()" ng-show="!isNew" value="Delete"></input>
+        <button type="button" class="btn btn-default" ng-click="close()">Cancel</button>
+    </div>
+</form>

@@ -1,0 +1,138 @@
+<?xml version="1.0"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Inc. info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-->
+<!DOCTYPE hibernate-mapping PUBLIC
+	"-//Hibernate/Hibernate Mapping DTD 2.0//EN"
+	"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd" >
+	
+<hibernate-mapping default-lazy="false" >
+
+<class 
+	name="com.groundwork.collage.model.impl.Host" 
+	table="Host"
+>
+
+	<id
+		name="hostId"
+		type="java.lang.Integer"
+		column="HostID"
+	>
+		<generator class="native">
+            <param name="sequence">host_hostid_seq</param>
+         </generator>
+	</id>
+
+	<property
+		name="hostName"
+		type="java.lang.String"
+		column="HostName"
+		not-null="true"
+		length="254"
+	/>
+	<property
+		name="description"
+		type="java.lang.String"
+		column="Description"
+		length="254"
+	/>
+
+    <property
+            name="agentId"
+            type="java.lang.String"
+            column="agentid"
+            length="128"
+            not-null="false"
+            />
+
+
+    <!-- Associations -->
+	<many-to-one
+		name="applicationType"
+		class="com.groundwork.collage.model.impl.ApplicationType"
+		not-null="true"
+		cascade="none"
+		fetch="join"
+	>
+		<column name="ApplicationTypeID" />
+	</many-to-one>
+	
+	<!-- 
+		bi-directonial many-to-many to HostGroup 
+	-->
+	<set 
+		name="hostGroups"
+		table = "HostGroupCollection"
+		lazy="true"
+		cascade="save-update"
+		inverse="false"
+	>
+		<key column="HostID" />
+		<many-to-many class="com.groundwork.collage.model.impl.HostGroup" column="HostGroupID" />
+	</set>
+  
+	<!-- bi-directional many-to-one association to Device -->
+	<many-to-one
+		name="device"
+		class="com.groundwork.collage.model.impl.Device"
+		not-null="true"
+		cascade="save-update"
+	>
+		<column name="DeviceID" />
+	</many-to-one>
+	
+	<!-- bi-directional one-to-one association to HostStatus -->
+	<one-to-one 
+		name="hostStatus" 
+		class="com.groundwork.collage.model.impl.HostStatus"
+		cascade="all"
+	/>
+
+	<!-- 
+		uni-directional one-to-many association to ServiceStatus.
+		If a new service status is created is should be done through
+		ServiceStatus.  We want to avoid loading collections of services
+		in order to add.
+	-->
+	<set
+		name="serviceStatuses"
+		lazy="true"
+		inverse="true"
+		cascade="none"
+	>
+		<key>
+			<column name="HostID" />
+		</key>
+		<one-to-many 
+			class="com.groundwork.collage.model.impl.ServiceStatus"
+		/>
+	</set>
+
+	<set
+		name="comments"
+		lazy="true"
+		inverse="true"
+		cascade="all,delete-orphan"
+	>
+		<key>
+			<column name="hostId"/>
+		</key>
+        <one-to-many class="com.groundwork.collage.model.impl.Comment"/>
+	</set>
+
+</class>
+</hibernate-mapping>

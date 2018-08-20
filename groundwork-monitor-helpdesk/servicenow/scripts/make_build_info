@@ -1,0 +1,19 @@
+#!/bin/bash -e
+
+# Copyright 2011 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+if [ $# -ne 2 ]; then
+    echo "usage:  make_build_info servicenow_integration_release subversion_build"
+    exit 1
+fi
+
+servicenow_integration_release="$1"
+svn_build="$2"
+build_time=`date`
+
+cat << eof
+ServiceNow Integration Release:  $servicenow_integration_release
+           Subversion Revision:  $svn_build
+                    Build Time:  $build_time
+eof

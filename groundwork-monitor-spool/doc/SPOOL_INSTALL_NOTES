@@ -1,0 +1,92 @@
+Setting up the GroundWork Monitor Spool capability
+==================================================
+
+GroundWork Monitor Spool 0.0.1 is only compatible with the GroundWork
+Monitor 6.3 release.  This package is to be installed only on child
+servers whose object status-check results are to be forwarded to one
+or more parent servers.
+
+
+Install the GroundWork Monitor Spool RPM
+----------------------------------------
+
+Once you have installed GroundWork Monitor 6.3 Enterprise, perform the
+following steps in a terminal window as user root:
+
+1.  Install the Monitor Spool RPM, using a command similar to this:
+
+	rpm -Uvh groundwork-monitor-spool-0.0.1-17083.noarch.rpm
+
+    Note:  This RPM replaces the nagios2collage_socket.pl feeder with
+    a revised version.	To make it possible for this RPM to be removed,
+    the first installation of the RPM saves a copy of the feeder script
+    in a sibling nagios2collage_socket.pl.pre_spooler file.
+
+    An uninstall of the groundwork-monitor-spool package will
+    automatically restore the original file from this copy, if it
+    still exists.
+
+2.  Edit this new configuration file:
+
+	/usr/local/groundwork/config/status-feeder.properties
+
+    In particular, if the spooling mechanism which is the point of this
+    package is to be invoked, you will want to edit this line:
+
+	send_state_changes_by_gdma = false
+
+    In contrast, this line:
+
+	send_state_changes_by_nsca = false
+
+    should be left as-is, since the point of this RPM package is to use
+    the GDMA spooler instead of direct NSCA invocations.
+
+3.  Edit this new configuration file:
+
+	/usr/local/groundwork/gdma/config/gwmon_{yourhost}.cfg
+
+    In particular, change the value of Spooler_Status from "off" to
+    "on", and uncomment and define the Target_Server so it points to
+    this child's parent server(s).
+
+4.  Edit this configuration file (as pointed to by the Spooler_NSCA_Config
+    setting in the gwmon_{yourhost}.cfg file):
+
+	/usr/local/groundwork/common/etc/send_nsca.cfg
+
+    and set the desired parameters.  The settings of password and
+    encryption_method here must match the settings of listener_password
+    and listener_encryption_method in the bronx.cfg file on the parent
+    server(s).	Note that, if this same send_nsca.cfg file is used for
+    this purpose (forwarding check results to the parent server) as is
+    used any for other purposes for which send_nsca is called on the
+    child server, all parties on the child server (and their respective
+    recipient partners) must share the same configuration parameters.
+    If instead a separate configuration is desired for this spooling of
+    results to the parent server(s), a recommended path for the alternate
+    configuration file would be:
+
+	/usr/local/groundwork/gdma/config/send_nsca.cfg
+
+    which you would need to set as the value of Spooler_NSCA_Config in
+    the gwmon_{yourhost}.cfg file.
+
+    It is recommended that you set:
+
+	wide_plugin_output=on
+
+    in the send_nsca.cfg file, for efficient operation even with short
+    plugin output.
+
+5.  Bounce gwservices on the child server so all the feeders get restarted
+    and pick up their respective new configuration settings.
+
+6.  Verify that host and service check results are being forwarded from
+    the child server to the parent server(s).
+
+
+KNOWN ISSUES:
+-------------
+
+None at this time.

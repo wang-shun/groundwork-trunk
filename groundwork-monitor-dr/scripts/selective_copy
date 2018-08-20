@@ -1,0 +1,277 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+# selective_copy
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+sub print_usage {
+    print <<eof;
+
+usage:  selective_copy {working_path} {target_path} {copy_pattern} ...
+where:  copy_pattern is a glob preceded by a + or - character, one of:
+
+        +/dir/  include these entire file trees (denoted by the trailing slash)
+        -/dir/  exclude these entire file trees (denoted by the trailing slash)
+        +/file  include these individual files (or [future?], non-recursive directories)
+        -/file  exclude these individual files (or [future?], non-recursive directories)
+
+	The copy patterns will be processed in the order shown above, regardless of the
+	order in which they are specified on the command line.  Each pattern must start
+	with the working_path after the initial + or - character specifying inclusion
+	or exclusion.  So the working path serves as a base directory under which all
+	the files of interest must reside.  Both the working path and the target path
+	must be an absolute pathname (i.e., start with a slash character).
+
+eof
+}
+
+# This is where we'll pick up any Perl packages not in the standard Perl
+# distribution, to make this a self-contained package anchored in a single
+# directory.
+use FindBin qw($Bin);
+use lib "$Bin/../perl/lib";
+
+use File::Find;
+use File::Basename;
+use File::Path 'make_path';
+use File::Copy;
+
+my $debug = 0;
+
+# (1) Setup:  Take in command-line arguments, validate them, and analyze them.
+
+if (scalar @ARGV < 3) {
+    print_usage();
+    exit 1;
+}
+
+my $working_path  = shift @ARGV;
+my $target_path   = shift @ARGV;
+my @copy_patterns = @ARGV;
+
+if (not defined $working_path) {
+    print "ERROR:  no working path supplied\n";
+    exit 1;
+}
+
+if (not defined $target_path) {
+    print "ERROR:  no target path supplied\n";
+    exit 1;
+}
+
+if (scalar @copy_patterns == 0) {
+    print "ERROR:  no copy patterns supplied\n";
+    exit 1;
+}
+
+if ($working_path !~ m{^/}) {
+    print "ERROR:  the working path must be an absolute pathname\n";
+    exit 1;
+}
+
+if ($target_path !~ m{^/}) {
+    print "ERROR:  the target path must be an absolute pathname\n";
+    exit 1;
+}
+
+$working_path =~ s{/+$}{}g;
+
+# This doesn't also test for "/.", "/..", and similar pathnames.
+if ($working_path eq '') {
+    print "ERROR:  the working path cannot be the root directory\n";
+    exit 1;
+}
+
+if (not -d $working_path) {
+    print "ERROR:  the working path must be a directory\n";
+    exit 1;
+}
+
+# Let's test for root directly, here, since we didn't do so above.
+# This catches not only simple paths like "/." and "/..", but also
+# symlinks that point to the root directory.
+my ($work_dev, $work_ino) = stat $working_path;
+my ($root_dev, $root_ino) = stat '/';
+if ($work_dev == $root_dev && $work_ino == $root_ino) {
+    print "ERROR:  the working path is the root directory\n";
+    exit 1;
+}
+
+my %include_tree_patterns = ();
+my %exclude_tree_patterns = ();
+my %include_file_patterns = ();
+my %exclude_file_patterns = ();
+
+foreach my $pattern (@copy_patterns) {
+    if ($pattern =~ m{^\+$working_path/(?:.*/)?$}) {
+        # include a set of directories
+	(my $include_trees = $pattern) =~ s/^\+//; chop $include_trees;
+	$include_tree_patterns{$include_trees} = 1;
+    }
+    elsif ($pattern =~ m{^-$working_path/(?:.*/)?$}) {
+        # exclude a set of directories
+	(my $exclude_trees = $pattern) =~ s/^-//; chop $exclude_trees;
+	$exclude_tree_patterns{$exclude_trees} = 1;
+    }
+    elsif ($pattern =~ m{^\+$working_path/}) {
+        # include a set of files (only)
+	(my $include_files = $pattern) =~ s/^\+//;
+	$include_file_patterns{$include_files} = 1;
+    }
+    elsif ($pattern =~ m{^-$working_path/}) {
+        # exclude a set of files (only)
+	(my $exclude_files = $pattern) =~ s/^-//;
+	$exclude_file_patterns{$exclude_files} = 1;
+    }
+    else {
+	print "ERROR:  copy pattern \"$pattern\" is not properly formed\n";
+	print "        (does not begin with + or - and the working path \"$working_path/\")\n";
+	exit 1;
+    }
+}
+
+# Note:  The globbing below doesn't care about the file types, so we need to filter
+# these lists afterward to verify that each entry is only a particular type.
+
+# This is a way-cool way to use a hash slice.
+sub unique (@) {
+    my %unique = ();
+    @unique{@_} = (undef) x @_;
+    return keys %unique;
+}
+
+# Lists of unique directories and files.  In a future release, we might alter the grep
+# to also allow an individual non-recursive directory to be specified as an included or
+# excluded file, though I suppose it would only make sense as an included file.  Note
+# that we had to chop the trailing slash from the tree patterns above to avoid checking
+# "/whatever/." here (definitely the directory, even if "/whatever" is a symlink to that
+# directory) and even with that making it possible to tell the difference by looking at
+# the right object, the test for a directory alone is not sufficient to distinguish it
+# from a link, as a link to a directory would satisfy both file tests.  The same goes
+# for the test for a file, so again we need to test first to disallow links in that case.
+
+# Setuid and setgid files are silently dropped, as they are considered to be a potential
+# security risk.  Also, read-only files are silently dropped, as these permissions are
+# taken to indicate that the files should be preserved as-is, not overwritten from the
+# opposing system.
+
+my @included_trees = grep { !-l && -d && -r _ && -x _                   } unique glob join(' ', keys %include_tree_patterns);
+my @excluded_trees = grep { !-l && -d                                   } unique glob join(' ', keys %exclude_tree_patterns);
+my @included_files = grep { !-l && -f && -r _ && -w _ && !-u _ && !-g _ } unique glob join(' ', keys %include_file_patterns);
+my @excluded_files = grep { !-l && -f                                   } unique glob join(' ', keys %exclude_file_patterns);
+
+my %included_trees = map { $_ => 1 } @included_trees;  # not currently used anywhere
+my %excluded_trees = map { $_ => 1 } @excluded_trees;
+my %included_files = map { $_ => 1 } @included_files;  # not currently used anywhere
+my %excluded_files = map { $_ => 1 } @excluded_files;
+
+print "included trees:  " . join(' ', @included_trees) . "\n" if $debug;
+print "excluded trees:  " . join(' ', @excluded_trees) . "\n" if $debug;
+print "included files:  " . join(' ', @included_files) . "\n" if $debug;
+print "excluded files:  " . join(' ', @excluded_files) . "\n" if $debug;
+
+# (2) Scan:  Read the filesystem according to the specified patterns,
+#     and collect lists of directories and files to be copied, editing
+#     those lists per the specified copy patterns.  Only include ordinary
+#     directories and files in the copying; skip all forms of special
+#     files (symlinks, fifos, sockets, devices).  In this processing,
+#     hard-linked files will be treated as separate files, so there may
+#     be separated copies eventually left in the target tree.  In the
+#     list of directories to create in the target tree, include the
+#     parent directories of individual files to be included if they were
+#     not already included as part of a tree scan.
+
+my %tree = ();
+my %file = ();
+
+sub wanted {
+    $tree{$_} = 1 if -d;
+    $file{$_} = 1 if -f _;
+}
+
+sub preprocess_tree {
+    my @fullpaths = map { "$File::Find::dir/$_" } @_;
+    my @okaypaths =
+      grep { !m{/?\.$} && !m{/?\.\.$} && !-l &&
+	(
+	    ( -d && -r _ && -x _ && !exists($excluded_trees{$_}) )
+	||
+	    ( -f && -r _ && -w _ && !-u _ && !-g _ && !exists($excluded_files{$_}) )
+	)
+      }
+      @fullpaths;
+    my @basenames = map { s{^$File::Find::dir/}{}; $_ } @okaypaths;
+    return @basenames;
+}
+
+find ({ wanted => \&wanted, preprocess => \&preprocess_tree, no_chdir => 1 }, @included_trees) if @included_trees;
+my @okayfiles = grep { !exists($excluded_files{$_}) } @included_files;
+my @okaytrees = map { dirname $_ } @okayfiles;
+@tree{@okaytrees} = (1) x @okaytrees;
+@file{@okayfiles} = (1) x @okayfiles;
+
+if ($debug) {
+    print "trees:\n"; map { print "    $_\n" } sort keys %tree;
+    print "files:\n"; map { print "    $_\n" } sort keys %file;
+}
+
+# (3) Prepare:  Possibly, purge the target area before repopulating it.
+#     Whether we really need to do so is open to question, so this won't
+#     happen in the first release.  Also, should this be the responsibility
+#     of the calling application rather than this copying script?
+
+# FIX MAJOR:  do the equivalent of these bash commands,
+# dealing with possibly nothing matching this "rm" glob
+# shopt -s nullglob
+# rm -rf $target_path/*
+
+# (4) Copy:  Make the final directories in the target tree in a sensible
+#     top-down order, setting permissions to match the source (whether or
+#     not we create the directory for the first time) except that we make
+#     sure each directory has write permission to us.
+
+# FIX LATER:  adjust the umask as seems sensible
+umask 022;
+
+foreach my $dir (sort keys %tree) {
+    # If this directory does not already exist rooted in the target area,
+    # make this directory with appropriate (755) permissions.
+    print "making directory:  $target_path$dir\n" if $debug;
+    eval {
+	make_path ("$target_path$dir", { mode => 0755 });
+    };
+    if ($@) {
+	chomp $@;
+	die "FATAL:  Cannot make the $target_path$dir directory ($@),";
+    }
+}
+
+# (5) Copy:  Copy the final files, making each file writable beforehand
+#     if need be, and setting permissions to match the source after the
+#     copy operation.  Given that all the parent directories will have
+#     been created beforehand, we won't need to worry about each copied
+#     file having a place to land.
+
+foreach my $file (sort keys %file) {
+    # Copy the file from the source tree to the target tree, making sure
+    # to give ourselves write permission beforehand and putting back the
+    # source-file permissions and timestamps afterward.
+    print "copying file $file to $target_path$file\n" if $debug;
+    # FIX MINOR:  deal with ensuring write permissions during the copy
+    # and restoring original permissions and timestamps afterward even
+    # if an error occurs
+    my $target_file = "$target_path$file";
+    copy ($file, $target_file) or die "FATAL:  Cannot copy $file to $target_file ($!),";
+    my ($mode, $atime, $mtime) = (stat($file))[2,8,9];
+    die "FATAL:  Cannot get attributes of \"$file\" ($!)" if not defined $mtime;
+    die "FATAL:  Cannot set mode of \"$target_file\" ($!)" if not chmod $mode & 07777, $target_file;
+    die "FATAL:  Cannot set attributes of \"$target_file\" ($!)" if not utime ($atime, $mtime, $target_file);
+}
+
+# (6) Cleanup:  Change ownership/permissions on directories to match
+#     the source tree.
+
+# We won't bother with that in the first release.  We'll just assume
+# that our ordinary 755 directory permissions on any created target
+# directories will be fine.  We can revisit this issue in the future.

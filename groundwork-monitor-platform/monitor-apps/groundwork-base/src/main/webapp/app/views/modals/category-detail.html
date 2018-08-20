@@ -1,0 +1,55 @@
+<div class="modal-header" gwp-sliding-dialog>
+    <button type="button" class="close" aria-hidden="true" ng-click="close()">&times;</button>
+    <h4 class="modal-title" ng-show="!category.id">New Category<span ng-show="category.name.length">: {{category.name}}</span></h4>
+    <h4 class="modal-title" ng-show="category.id">Category Detail: <span>{{category.name}}</span></h4>
+</div>
+<form role="form" novalidate class="form-horizontal css-form">
+    <div class="modal-body">
+        <div class="form-group">
+            <label for="category-name" class="col-sm-2 control-label">Name</label>
+            <div class="col-md-10 col-sm-10">
+                <input type="text" id="category-name" class="form-control" ng-model="category.name" ng-disabled="category.id" gwp-autofocus gwp-no-spaces maxlength="254" />
+                <span id="helpBlock" class="help-block">Enter a category name</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="category-description" class="col-sm-2 control-label">Description</label>
+            <div class="col-md-10 col-sm-10">
+                <input type="text" id="category-description" class="form-control" ng-model="category.description" maxlength="4096" />
+                <span id="helpBlock" class="help-block">Enter a category description</span>
+            </div>
+        </div>
+        <div class="modal-header inner-header no-margin-bottom" ng-if="category.isLeaf">
+            <h4 class="modal-title" ng-show="category.id">Group Membership:</span><input type="text" class="pull-right" ng-model="filter.name" placeholder="Search"></input></h4>
+        </div>
+        <div class="form-group no-margin-bottom" ng-if="category.isLeaf">
+            <div class="col-md-6 col-sm-6 no-padding-right">
+                <div class="checker-title">Selected</div>
+                <div class="checkers-container">
+                    <ul class="checkers">
+                        <li ng-repeat="entity in category.entities" ng-hide="hideEntity(entity)" ng-class="{ host: (entity.hosts), service: (entity.services), custom: (entity.entityTypeName == 'CUSTOM_GROUP') }"><input type="checkbox" ng-value="entity.name" checked="checked" ng-click="removeEntity(entity)" /> {{entity.name}}</li>
+                    </ul>
+                </div>
+            </div>
+           <div class="col-md-6 col-sm-6">
+                <div class="checker-title">Available</div>
+                <div class="checkers-container">
+                    <ul class="checkers">
+                        <li ng-repeat="entity in category.existingEntities" ng-hide="hideEntity(entity)" ng-class="{ host: (entity.hosts), service: (entity.services), custom: (entity.entityTypeName == 'CUSTOM_GROUP') }"><input type="checkbox" ng-value="entity.name" ng-click="addEntity(entity)" /> {{entity.name}}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-md-10 col-sm-10 padding-left0">
+                <alert ng-repeat="alert in alerts" type="alert.type" close="closeAlert($index)"><strong>{{alert.msg}}</strong></alert>
+            </div>
+            <br />
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-default" ng-click="close()">Cancel</button>
+        <input type="submit" class="btn btn-primary" ng-click="add()" ng-disabled="!category.name.length" ng-show="!category.id" value="Add"/>
+        <input type="submit" class="btn btn-primary" ng-click="update()" ng-disabled="!category.name.length" ng-show="category.id" value="Update"/>
+    </div>
+</form>

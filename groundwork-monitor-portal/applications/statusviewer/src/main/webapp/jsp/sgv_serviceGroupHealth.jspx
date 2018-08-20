@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<ice:inputHidden id="SGHserviceGroupHelathHiddenField"
+			value="#{healthPortletsHandler.healthHiddenField}" />
+		<!--  error / info message -->
+		<ice:panelGroup rendered="#{healthPortletsHandler.message}"
+			id="SGHpanelsSearchError">							
+			<ice:column id="SGHcolumnError"
+				rendered="#{healthPortletsHandler.error}">
+				<ui:include src="/jsp/error.jspx">
+					<ui:param name="errorMessage"
+						value="#{healthPortletsHandler.errorMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:column id="SGHcolumninfo"
+				rendered="#{healthPortletsHandler.info}">
+				<ui:include src="/jsp/info.jspx">
+					<ui:param name="infoMessage"
+						value="#{healthPortletsHandler.infoMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:commandButton id="SGHbtnRetryNow"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{healthPortletsHandler.reloadPage}"></ice:commandButton>
+
+		</ice:panelGroup>
+		<!--  error message -->
+
+		<ice:panelGrid id="SGHpanelgridpServiceGroup" width="100%" rendered="#{!healthPortletsHandler.message}">
+			<table width="100%" cellpadding="0" cellspacing="0">
+				<tr>
+					<td width="50%"> 
+						<!-- Service Group Name -->
+						<ice:outputText id="SGHtxtServiceGroupName"
+							style="font-weight: bold; font-size: 13px;"
+							value="#{healthPortletsHandler.serviceGroupHealthBean.serviceGroupNameLabel}" 
+							title="#{healthPortletsHandler.serviceGroupHealthBean.serviceGroupName}" />
+						<br />
+						
+						<!-- Service Group State icon -->
+						<ice:graphicImage
+							url="#{healthPortletsHandler.serviceGroupHealthBean.status.iconPath}"
+							style="padding-right: 4px; padding-bottom: 2px;"
+							id="SGHimgServiceState" />
+						
+						<ice:outputText id="SGHSGHtxtHostState"
+							style="color:#{healthPortletsHandler.serviceGroupHealthBean.status.hexColor};"
+							value="#{healthPortletsHandler.serviceGroupHealthBean.status.status}" />
+						
+						<br />
+						<div style="width: 220px; height: 25px; overflow: auto; padding: 5px;">
+							<ice:outputText styleClass="iceOutTxt" style="font-weight: normal;"
+								value="#{healthPortletsHandler.serviceGroupHealthBean.serviceGroupDescription}"								
+								escape="false"
+								id="txtServiceGroupDescription" />
+						</div>
+					</td>
+					
+					<td>
+						<table width="100%" cellpadding="0" cellspacing="0">
+							<tr>
+								<td class="cust_iceOrangeStatusLeft"></td>
+								
+								<td class="cust_iceOrangeStatusCenter" align="center">
+									<!-- Service Group Availability percentage -->
+									<ice:outputLabel for="SGHtxtServiceGroupAvailability"
+										id="SGHlblServiceAvl" 
+										style="font-weight: bold; font-size: 17px;"
+										value="#{message['com_groundwork_portal_statusviewer_outputtext_serviceAvailability']}" />
+									<br />
+									<ice:outputText id="SGHtxtServiceGroupAvailability"
+										style="font-weight: bold; font-size: 14px;"
+										value="#{healthPortletsHandler.serviceGroupHealthBean.serviceUptime}%" /> 
+								</td>
+								
+								<td class="cust_iceOrangeStatusRight"></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>			
+		</ice:panelGrid>					
+	</ui:define>
+</ui:composition>
+				

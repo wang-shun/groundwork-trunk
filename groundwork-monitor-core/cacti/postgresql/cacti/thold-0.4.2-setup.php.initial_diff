@@ -1,0 +1,40 @@
+*** dummy/cacti-0.8.7g/plugins/thold/setup.php	Sat Jul 17 08:04:22 2010
+--- cacti/htdocs/plugins/thold/setup.php.orig	Fri Sep 17 13:55:52 2010
+***************
+*** 27,33 ****
+  	global $config;
+  	api_plugin_register_hook('thold', 'top_header_tabs', 'thold_show_tab', 'includes/tab.php');
+  	api_plugin_register_hook('thold', 'top_graph_header_tabs', 'thold_show_tab', 'includes/tab.php');
+! 	api_plugin_register_hook('thold', 'config_insert', 'thold_config_arrays', 'includes/settings.php');
+  	api_plugin_register_hook('thold', 'config_settings', 'thold_config_settings', 'includes/settings.php');
+  	api_plugin_register_hook('thold', 'draw_navigation_text', 'thold_draw_navigation_text', 'includes/settings.php');
+  	api_plugin_register_hook('thold', 'data_sources_table', 'thold_data_sources_table', 'setup.php');
+--- 27,33 ----
+  	global $config;
+  	api_plugin_register_hook('thold', 'top_header_tabs', 'thold_show_tab', 'includes/tab.php');
+  	api_plugin_register_hook('thold', 'top_graph_header_tabs', 'thold_show_tab', 'includes/tab.php');
+! 	api_plugin_register_hook('thold', 'config_arrays', 'thold_config_arrays', 'includes/settings.php');
+  	api_plugin_register_hook('thold', 'config_settings', 'thold_config_settings', 'includes/settings.php');
+  	api_plugin_register_hook('thold', 'draw_navigation_text', 'thold_draw_navigation_text', 'includes/settings.php');
+  	api_plugin_register_hook('thold', 'data_sources_table', 'thold_data_sources_table', 'setup.php');
+***************
+*** 170,175 ****
+--- 170,187 ----
+  		$_SESSION['sess_config_array']['thold_draw_vrules'] = 'off';
+  	}
+  
++ // Begin REQUEST_URI fix
++ if (!isset($_SERVER['REQUEST_URI']))
++         {
++         $_SERVER['REQUEST_URI'] = substr($_SERVER['PHP_SELF'],0 );
++ 
++         if (isset($_SERVER['QUERY_STRING']) AND $_SERVER['QUERY_STRING'] != "")
++                 {
++                 $_SERVER['REQUEST_URI'] .= '?'.$_SERVER['QUERY_STRING'];
++                 }
++         }
++ // End REQUEST_URI fix
++ 
+  	$url = $_SERVER['REQUEST_URI'];
+  	$url = str_replace('&thold_vrule=on', '', $url);
+  	$url = str_replace('&thold_vrule=off', '', $url);

@@ -1,0 +1,41 @@
+<rant>
+
+Mirantis has asked that we follow a 6-digit, #.#-#.#.#-# format
+for release numbering.  The engineer in me has to ask, what is
+the point of this excessive complexity?  I don't know any other
+project that standardizes on such a format.  It seems that your
+other plugin developers are just cargo-culting (*) this construction,
+without trying to make any sense out of it.  People seem to be simply
+duplicating various digits in this format, without having any obvious
+connection to some outside definition of what each separate digit
+is supposed to represent.  For instance, the doc/source/conf.py
+file in the midonet-fuel-plugin-4.0-4.0.0-1 plugin contains this
+workaround for the complicated release numbering.
+
+    # General information about the project.
+    project = u'fuel-midonet-plugin'
+    copyright = u'2016, Midokura SARL'
+    version = '4.0.0'
+    release = version[:3] + '-' + version + '-1'
+
+In the interest of getting our GroundWork plugin quickly past the
+Mirantis plugin auditors, I have adopted the same strategy, but I
+am doing so under protest, as I can't see that it makes any real
+sense.  Perhaps I've forgotten now, but I don't recall seeing any
+explanation of this versioning scheme anywhere in the Fuel Plugin
+Wiki or the Fuel Plugin Handbook.  But that's not even the point.
+Version numbers are there partly to be consumed by users of the
+plugins, not just developers.  Whatever convention is being followed
+here, where is it described for ordinary end-users so they are aware
+of the meaning, and don't just treat it as a string of gobbledegook?
+
+To be constructive about it, I recommend you take a look at the
+simple Semantic Versioning convention (http://semver.org).
+
+(*) The term "cargo cult" comes from the book "Surely You're
+    Joking, Mr. Feynman!", by Richard P. Feynman, the famous
+    physicist.  It's a great book; I highly recommend it.
+    The part that is relevant here is described in the Wikipedia:
+    https://en.wikipedia.org/wiki/Cargo_cult_science
+
+</rant>

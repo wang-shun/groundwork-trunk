@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.groundwork</groupId>
+        <artifactId>gw-collage-impl-pom</artifactId>
+        <version>7.2.2-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>collage-admin</artifactId>
+    <version>7.2.2-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>Collage Admin Implementation</name>
+    <description>Groundwork Collage Admin Implementation</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.groundwork</groupId>
+            <artifactId>collage-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.groundwork</groupId>
+            <artifactId>collage-common</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-aop</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.groundwork</groupId>
+            <artifactId>collagenet-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.groundwork</groupId>
+            <artifactId>collagenet-impl</artifactId>
+        </dependency>
+    </dependencies>
+
+    <profiles />
+
+    <build>
+     <sourceDirectory>src/java</sourceDirectory>
+     <testSourceDirectory>src/test</testSourceDirectory>
+     <resources>
+         <resource>
+             <directory>${basedir}/src/java</directory>
+             <excludes>
+                 <exclude>**/*.java</exclude>
+             </excludes>
+         </resource>
+     </resources>
+        <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+                <includes>
+                    <!-- TODO: schedule JIRA to make entire build m3 -->
+                    <include>**/com/groundwork/collage/test/TestAdminLogMessage.java</include>
+                    <include>**/com/groundwork/collage/test/TestAdminServiceStatus.java</include>
+                    <include>**/com/groundwork/collage/test/TestCollageAdminMetadata.java</include>
+                </includes>
+            </configuration>
+        </plugin>
+        </plugins>
+    </build>
+
+</project>
+

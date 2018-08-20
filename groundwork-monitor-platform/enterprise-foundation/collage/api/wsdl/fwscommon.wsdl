@@ -1,0 +1,466 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions targetNamespace="urn:fws"  xmlns:fwsmodel="http://model.ws.foundation.groundwork.org" xmlns:apachesoap="http://xml.apache.org/xml-soap" xmlns:impl="urn:fws" xmlns:intf="urn:fws" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:wsdlsoap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Inc. info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-->
+
+   <wsdl:import namespace="urn:fwsmodel"
+			xmlns:fwsmodel="http://model.ws.foundation.groundwork.org"
+           location="../fwsmodel.wsdl" />
+
+   <wsdl:message name="logoutRequest">
+   </wsdl:message>
+
+   <wsdl:message name="loginResponse">
+      <wsdl:part name="loginReturn" type="xsd:string"/>
+   </wsdl:message>
+
+   <wsdl:message name="loginRequest">
+      <wsdl:part name="userName" type="xsd:string"/>
+      <wsdl:part name="password" type="xsd:string"/>
+      <wsdl:part name="realUserName" type="xsd:string"/>
+   </wsdl:message>
+
+   <wsdl:message name="logoutResponse">
+   </wsdl:message>
+
+   <wsdl:message name="getAttributeDataRequest">
+      <wsdl:part name="type" type="fwsmodel:AttributeQueryType">
+      	<wsdl:documentation>type is an enumeration of possible parameters to be used to retrieve attributes. Type can be one of - APPLICATION_TYPES, CATEGORIES, CHECK_TYPES, COMPONENTS, MONITOR_STATUSES, OPERATION_STATUSES, PRIORITIES, SEVERITIES, STATE_TYPES, TYPE_RULES. </wsdl:documentation></wsdl:part>
+   </wsdl:message>
+   
+   <wsdl:message name="getAttributeDataResponse">
+      <wsdl:part name="getAttributeDataReturn" type="fwsmodel:WSFoundationCollection">
+      	<wsdl:documentation>Returns WSFoundationCollection: collection of attributes.</wsdl:documentation></wsdl:part>
+   </wsdl:message>
+
+   <wsdl:message name="getAttributeDataByStringRequest">
+      <wsdl:documentation>):   this parameter is used to retrieve attributes of entity types in foundation. Type can be one of - APPLICATION_TYPES, CATEGORIES, CHECK_TYPES, COMPONENTS, MONITOR_STATUSES, OPERATION_STATUSES, PRIORITIES, SEVERITIES, STATE_TYPES, TYPE_RULES.</wsdl:documentation>
+      <wsdl:part name="type" type="xsd:string"/>
+   </wsdl:message>
+
+   <wsdl:message name="getAttributeDataByStringResponse">
+      <wsdl:documentation>Returns WSFoundationCollection: collection of attributes.</wsdl:documentation>
+      <wsdl:part name="getAttributeDataByStringReturn" type="fwsmodel:WSFoundationCollection"/>
+   </wsdl:message>
+   
+   <wsdl:message name="executeQueryRequest">
+      <wsdl:part name="sessionID" type="xsd:int"/>
+   </wsdl:message>
+   
+   <wsdl:message name="executeQueryResponse">
+      <wsdl:part name="executeQueryReturn" type="fwsmodel:WSFoundationCollection"/>
+   </wsdl:message>
+   
+   <wsdl:message name="cancelQueryRequest">
+      <wsdl:part name="sessionID" type="xsd:int"/>
+   </wsdl:message>
+   
+   <wsdl:message name="cancelQueryResponse">
+      <wsdl:part name="cancelQueryReturn" type="xsd:string"/>
+   </wsdl:message>
+   
+   <wsdl:message name="WSFoundationException">
+      <wsdl:part name="fault" element="fwsmodel:WSFoundationException"/>
+   </wsdl:message>
+   
+   <wsdl:message name="getEntityTypesRequest">
+   	<wsdl:documentation>No parameter.</wsdl:documentation>
+   </wsdl:message>
+   
+   <wsdl:message name="getEntityTypesResponse">
+      <wsdl:part name="getEntityTypesReturn" type="fwsmodel:WSFoundationCollection">
+      	<wsdl:documentation>Returns WSFoundationCollection: collection of all entity types.</wsdl:documentation></wsdl:part>
+   </wsdl:message>
+   
+   <wsdl:message name="getEntityTypePropertiesRequest">
+      <wsdl:part name="entityType" type="xsd:string">
+      	<wsdl:documentation>Type of entity in foundation. Example: HOST, HOSTGROUP</wsdl:documentation></wsdl:part>
+      <wsdl:part name="applicationType" type="xsd:string">
+      	<wsdl:documentation>type of application that has been configured to be monitored through the collage system. E.g NAGIOS</wsdl:documentation></wsdl:part>
+      <wsdl:part name="componentProperties" type="xsd:boolean">
+      	<wsdl:documentation>boolean to set weather it should return component properties.</wsdl:documentation></wsdl:part>
+   </wsdl:message>
+   
+   <wsdl:message name="getEntityTypePropertiesResponse">
+      <wsdl:part name="getEntityTypePropertiesReturn" type="fwsmodel:WSFoundationCollection">
+      	<wsdl:documentation>Returns WSFoundationCollection: collection of properties.</wsdl:documentation></wsdl:part>
+   </wsdl:message>   
+      
+   <wsdl:message name="performEntityQueryRequest">
+      <wsdl:part name="entityType" type="xsd:string">
+      	<wsdl:documentation>Type of entity in foundation. Example: HOST, HOSTGROUP</wsdl:documentation></wsdl:part>
+      <wsdl:part name="filter" type="fwsmodel:Filter">
+      	<wsdl:documentation>This filter will be used in with above entity type. A filter is provided to build the criteria for doing the required queries on the model (Foundation). Filters can be composed with the help of disjunctions (AND) and conjunctions (OR). Example: For example, to fetch all services that have status not equal to OK, use following Filter criteria: Filter NON_OK_SERVICES_FILTER = new Filter(&quot;monitorStatus.name&quot;, FilterOperator.NE, &quot;OK&quot;);</wsdl:documentation></wsdl:part>
+      <wsdl:part name="sort" type="fwsmodel:Sort">
+      	<wsdl:documentation>determines sort order of results and sorting field.</wsdl:documentation></wsdl:part>
+      <wsdl:part name="firstResult" type="xsd:int">
+      	<wsdl:documentation>beginning record number [first result]. For pagination.</wsdl:documentation></wsdl:part>
+      <wsdl:part name="maxResults" type="xsd:int">
+      	<wsdl:documentation>last record number [first result]. For pagination.</wsdl:documentation></wsdl:part>    
+   </wsdl:message>
+   
+   <wsdl:message name="performEntityQueryResponse">
+      <wsdl:part name="performEntityQueryReturn" type="fwsmodel:WSFoundationCollection">
+      	<wsdl:documentation>Returns WSFoundationCollection.</wsdl:documentation></wsdl:part>
+   </wsdl:message>                
+	      
+   <wsdl:message name="performEntityCountQueryRequest">
+      <wsdl:part name="entityType" type="xsd:string">
+      	<wsdl:documentation>Type of entity in foundation. Example: HOSTGROUP</wsdl:documentation></wsdl:part>
+      <wsdl:part name="filter" type="fwsmodel:Filter">
+      	<wsdl:documentation>This filter will be used in with above entity type. A filter is provided to build the criteria for doing the required queries on the model (Foundation). Filters can be composed with the help of disjunctions (AND) and conjunctions (OR).</wsdl:documentation></wsdl:part>
+   </wsdl:message>
+   
+   <wsdl:message name="performEntityCountQueryResponse">
+      <wsdl:part name="performEntityCountQueryReturn" type="xsd:int">
+      	<wsdl:documentation>Returns count as integer value.</wsdl:documentation></wsdl:part>
+   </wsdl:message>   
+   	      
+   <wsdl:message name="getActionsByApplicationTypeRequest">
+      <wsdl:part name="appType" type="xsd:string">
+      	<wsdl:documentation>type of application that has been configured to be monitored through the collage system. E.g NAGIOS </wsdl:documentation></wsdl:part>
+      <wsdl:part name="bIncludeSystem" type="xsd:boolean">
+      	<wsdl:documentation>boolean to set weather to include system actions.</wsdl:documentation></wsdl:part>
+   </wsdl:message>
+   
+   <wsdl:message name="getActionsByApplicationTypeResponse">
+      <wsdl:part name="getActionsByApplicationTypeReturn" type="fwsmodel:WSFoundationCollection">
+      	<wsdl:documentation>Returns WSFoundationCollection: collection of actions.</wsdl:documentation></wsdl:part>
+   </wsdl:message>   
+   
+   <wsdl:message name="getActionsByCriteriaRequest">
+      <wsdl:part name="filter" type="fwsmodel:Filter">
+      	<wsdl:documentation>1) filter (Filter): A filter is provided to build the criteria for doing the required queries on the model (Foundation). Filters can be composed with the help of disjunctions (AND) and conjunctions (OR). Example: For example, to fetch actions  for actionId 1, use following Filter criteria: Filter ACTION_FILTER = new Filter(&quot;actionId&quot;, FilterOperator.EQ, &quot;1&quot;);</wsdl:documentation></wsdl:part>
+      <wsdl:part name="sort" type="fwsmodel:Sort">
+      	<wsdl:documentation>determines sort order of results and sorting field.</wsdl:documentation></wsdl:part>
+      <wsdl:part name="firstResult" type="xsd:int">
+      	<wsdl:documentation>beginning record number [first result]. For pagination.</wsdl:documentation></wsdl:part>
+      <wsdl:part name="maxResults" type="xsd:int">
+      	<wsdl:documentation>last record number [first result]. For pagination.</wsdl:documentation></wsdl:part>
+   </wsdl:message>
+   
+   <wsdl:message name="getActionsByCriteriaResponse">
+      <wsdl:part name="getActionsByCriteriaReturn" type="fwsmodel:WSFoundationCollection">
+      	<wsdl:documentation>Returns WSFoundationCollection: collection of actions.</wsdl:documentation></wsdl:part>
+   </wsdl:message>   
+   
+   <wsdl:message name="performActionsRequest">
+      <wsdl:part name="actionPerforms" type="fwsmodel:ActionPerform[]">
+      	<wsdl:documentation>TODO: put example</wsdl:documentation></wsdl:part>
+   </wsdl:message>
+   
+   <wsdl:message name="performActionsResponse">
+      <wsdl:part name="performActionsReturn" type="fwsmodel:WSFoundationCollection">
+      	<wsdl:documentation>Returns WSFoundationCollection.</wsdl:documentation></wsdl:part>
+   </wsdl:message>  
+   
+   <wsdl:message name="searchEntityRequest">
+      <wsdl:part name="text" type="xsd:string">
+      	<wsdl:documentation>The query to be searched. By default, the query is searched as “*query*”.</wsdl:documentation></wsdl:part>
+       <wsdl:part name="maxresults" type="xsd:int">
+       	<wsdl:documentation>maximum number of results the web service should return.</wsdl:documentation></wsdl:part>
+       	<wsdl:part name="extRoleServiceGroupList" type="xsd:string">
+      	<wsdl:documentation>The query to be searched. By extended Role Service Group List, the query is searched as “*query*”.</wsdl:documentation></wsdl:part>
+      	<wsdl:part name="extRoleHostGroupList" type="xsd:string">
+      	<wsdl:documentation>The query to be searched. By By extended Role host Group List, the query is searched as “*query*”.</wsdl:documentation></wsdl:part>
+   </wsdl:message>
+   
+   <wsdl:message name="searchEntityResponse">
+      <wsdl:part name="searchEntityReturn" type="fwsmodel:WSFoundationCollection">
+      	<wsdl:documentation>Returns WSFoundationCollection: collection of Hosts, Hostgroups, services and servicegroups matching to sent query.</wsdl:documentation></wsdl:part>
+   </wsdl:message>     
+   
+   <wsdl:portType name="WSCommon">
+      <wsdl:operation name="login" parameterOrder="userName password realUserName">
+         <wsdl:documentation>Currently not implemented.</wsdl:documentation>
+         <wsdl:input message="impl:loginRequest" name="loginRequest"/>
+         <wsdl:output message="impl:loginResponse" name="loginResponse"/>
+      </wsdl:operation>
+      <wsdl:operation name="logout">
+      	 <wsdl:documentation>Currently not implemented.</wsdl:documentation>
+         <wsdl:input message="impl:logoutRequest" name="logoutRequest"/>
+         <wsdl:output message="impl:logoutResponse" name="logoutResponse"/>
+      </wsdl:operation>      
+      <wsdl:operation name="getAttributeData" parameterOrder="type">
+         <wsdl:documentation>Gets all attributes of given type. Attributes are all possible values of type.</wsdl:documentation>
+         <wsdl:input message="impl:getAttributeDataRequest" name="getAttributeDataRequest"/>
+         <wsdl:output message="impl:getAttributeDataResponse" name="getAttributeDataResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation>  
+      <wsdl:operation name="getAttributeDataByString" parameterOrder="type">
+         <wsdl:documentation>This API is String parameter version of getAttributeData API. Gets all attributes of given type. Attributes are all possible values of type. </wsdl:documentation>
+         <wsdl:input message="impl:getAttributeDataByStringRequest" name="getAttributeDataByStringRequest"/>
+         <wsdl:output message="impl:getAttributeDataByStringResponse" name="getAttributeDataByStringResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation>
+      
+      <wsdl:operation name="cancelQuery" parameterOrder="sessionID">
+         <wsdl:documentation>Currently not implemented.</wsdl:documentation>
+         <wsdl:input message="impl:cancelQueryRequest" name="cancelQueryRequest"/>
+         <wsdl:output message="impl:cancelQueryResponse" name="cancelQueryResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation> 
+      <wsdl:operation name="executeQuery" parameterOrder="sessionID">
+      	<wsdl:documentation>Currently not implemented.</wsdl:documentation>	
+         <wsdl:input message="impl:executeQueryRequest" name="executeQueryRequest"/>
+         <wsdl:output message="impl:executeQueryResponse" name="executeQueryResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation> 
+      
+      <wsdl:operation name="getEntityTypes">
+         <wsdl:documentation>Gets all entity types used in foundation.</wsdl:documentation>
+         <wsdl:input message="impl:getEntityTypesRequest" name="getEntityTypesRequest"/>
+         <wsdl:output message="impl:getEntityTypesResponse" name="getEntityTypesResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation>  
+      
+      <wsdl:operation name="getEntityTypeProperties" parameterOrder="entityType applicationType componentProperties">
+         <wsdl:documentation>Gets all properties of given entity type. For Example, for a HOST, this will return  properties such as HostId &amp; MonitorStatus.</wsdl:documentation>
+         <wsdl:input message="impl:getEntityTypePropertiesRequest" name="getEntityTypePropertiesRequest"/>
+         <wsdl:output message="impl:getEntityTypePropertiesResponse" name="getEntityTypePropertiesResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation>  
+      
+      <wsdl:operation name="performEntityQuery" parameterOrder="entityType filter sort firstResult maxResults">
+         <wsdl:documentation>This web service is called for performing queries on entities, like querying about “hosts with monitor status down” under hostgroups.</wsdl:documentation>
+         <wsdl:input message="impl:performEntityQueryRequest" name="performEntityQueryRequest"/>
+         <wsdl:output message="impl:performEntityQueryResponse" name="performEntityQueryResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation>                    
+      
+      <wsdl:operation name="performEntityCountQuery" parameterOrder="entityType filter">
+         <wsdl:documentation>It returns count of given entity type.</wsdl:documentation>
+         <wsdl:input message="impl:performEntityCountQueryRequest" name="performEntityCountQueryRequest"/>
+         <wsdl:output message="impl:performEntityCountQueryResponse" name="performEntityCountQueryResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation>    
+      
+      <wsdl:operation name="getActionsByApplicationType" parameterOrder="appType bIncludeSystem">
+         <wsdl:documentation>Gets list of actions that are applicable for given application type.</wsdl:documentation>
+         <wsdl:input message="impl:getActionsByApplicationTypeRequest" name="getActionsByApplicationTypeRequest"/>
+         <wsdl:output message="impl:getActionsByApplicationTypeResponse" name="getActionsByApplicationTypeResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation>   
+      
+      <wsdl:operation name="getActionsByCriteria" parameterOrder="filter sort firstResult maxResults">
+         <wsdl:documentation>Gets list of actions that are applicable for given criteria.</wsdl:documentation>
+         <wsdl:input message="impl:getActionsByCriteriaRequest" name="getActionsByCriteriaRequest"/>
+         <wsdl:output message="impl:getActionsByCriteriaResponse" name="getActionsByCriteriaResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation> 
+      
+      <wsdl:operation name="performActions" parameterOrder="actionPerforms">
+         <wsdl:documentation>This web service is called for performing some action, like closing some event in events portlet.</wsdl:documentation>
+         <wsdl:input message="impl:performActionsRequest" name="performActionsRequest"/>
+         <wsdl:output message="impl:performActionsResponse" name="performActionsResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation>  
+      
+      <wsdl:operation name="searchEntity" parameterOrder="text maxresults extRoleServiceGroupList extRoleHostGroupList">
+         <wsdl:documentation>Searches HostGroups, Hosts, ServiceGroups and Services and returns the results.</wsdl:documentation>
+         <wsdl:input message="impl:searchEntityRequest" name="searchEntityRequest"/>
+         <wsdl:output message="impl:searchEntityResponse" name="searchEntityResponse"/>
+         <wsdl:fault message="impl:WSFoundationException" name="WSFoundationException"/>
+      </wsdl:operation>  
+   </wsdl:portType>
+
+   <wsdl:binding name="commonSoapBinding" type="impl:WSCommon">
+      <wsdlsoap:binding style="rpc" transport="http://schemas.xmlsoap.org/soap/http"/>
+      <wsdl:operation name="login">
+         <wsdlsoap:operation soapAction=""/>
+         <wsdl:input name="loginRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="loginResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+      </wsdl:operation>
+      <wsdl:operation name="logout">
+         <wsdlsoap:operation soapAction=""/>
+         <wsdl:input name="logoutRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="logoutResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+      </wsdl:operation>
+      <wsdl:operation name="getAttributeData">
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wscommon"/>
+         <wsdl:input name="getAttributeDataRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="getAttributeDataResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation>      
+      <wsdl:operation name="getAttributeDataByString">
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wscommon"/>
+         <wsdl:input name="getAttributeDataByStringRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="getAttributeDataByStringResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation> 
+      
+      <wsdl:operation name="cancelQuery">
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wscommon"/>
+         <wsdl:input name="cancelQueryRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="cancelQueryResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation> 
+      
+      <wsdl:operation name="executeQuery">
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wscommon"/>
+         <wsdl:input name="executeQueryRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="executeQueryResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation> 
+      
+      <wsdl:operation name="getEntityTypes">
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wscommon"/>
+         <wsdl:input name="getEntityTypesRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="getEntityTypesResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation> 
+      
+      <wsdl:operation name="getEntityTypeProperties">
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wscommon"/>
+         <wsdl:input name="getEntityTypePropertiesRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="getEntityTypePropertiesResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation> 
+      
+      <wsdl:operation name="performEntityQuery">
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wscommon"/>
+         <wsdl:input name="performEntityQueryRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="performEntityQueryResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation> 
+                                      
+      <wsdl:operation name="performEntityCountQuery">
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wscommon"/>
+         <wsdl:input name="performEntityCountQueryRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="performEntityCountQueryResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation>   
+      
+	  <wsdl:operation name="getActionsByApplicationType">
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wscommon"/>
+         <wsdl:input name="getActionsByApplicationTypeRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="getActionsByApplicationTypeResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation>  
+      
+      <wsdl:operation name="getActionsByCriteria">
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wscommon"/>
+         <wsdl:input name="getActionsByCriteriaRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="getActionsByCriteriaResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation>  
+      
+      <wsdl:operation name="performActions">
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wscommon"/>
+         <wsdl:input name="performActionsRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="performActionsResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation>  
+   
+   
+   <wsdl:operation name="searchEntity">
+         <wsdlsoap:operation soapAction="/foundation-webapp/services/wscommon"/>
+         <wsdl:input name="searchEntityRequest">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="searchEntityResponse">
+            <wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:fws" use="literal"/>
+         </wsdl:output>
+         <wsdl:fault name="WSFoundationException">
+            <wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" name="WSFoundationException" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation>  
+   </wsdl:binding>
+
+   <wsdl:service name="WSCommonService">
+      <wsdl:documentation>Web Service API to retrieve meta data for Application Types, Statuses, etc. and to access the Action API used for custom actions from the GroundWork Console.</wsdl:documentation>
+      <wsdl:port binding="impl:commonSoapBinding" name="wscommon">
+         <wsdlsoap:address location="http://localhost:8080/foundation-webapp/services/wscommon"/>
+      </wsdl:port>
+   </wsdl:service>
+
+</wsdl:definitions>

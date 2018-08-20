@@ -1,0 +1,225 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+# MonArch - Groundwork Monitor Architect
+# alter_sendemail_commands
+#
+# This script corrects a GW 6.3 bug, namely the lack of escaping of
+# semicolons within command-line definitions of commands that call
+# the sendEmail script.  Only commands which are unaltered from the
+# GW 6.3 setup are adjusted; if the user has changed the commands
+# from those defined in the standard release, another mechanism
+# must be used to fix the data.
+#
+############################################################################
+# Release 3.4
+# November 2010
+############################################################################
+#
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+#
+
+use DBI;
+use strict;
+use XML::LibXML;
+
+my $all_is_done     = 0;
+my $version         = '3.4';
+my $is_portal       = 0;
+my $monarch_home    = 0;
+my $sqlstmt         = '';
+my $sth             = undef;
+my $properties_file = '/usr/local/groundwork/config/db.properties';
+
+my ( $dbhost, $database, $user, $passwd ) = undef;
+if ( -e $properties_file ) {
+    open( FILE, '<', $properties_file ) or die "\n\tERROR:  Cannot open $properties_file: $!\n";
+    while ( my $line = <FILE> ) {
+	if ( $line =~ /\s*monarch\.dbhost\s*=\s*(\S+)/ )   { $dbhost   = $1 }
+	if ( $line =~ /\s*monarch\.database\s*=\s*(\S+)/ ) { $database = $1 }
+	if ( $line =~ /\s*monarch\.username\s*=\s*(\S+)/ ) { $user     = $1 }
+	if ( $line =~ /\s*monarch\.password\s*=\s*(\S+)/ ) { $passwd   = $1 }
+    }
+    close(FILE);
+    $is_portal      = 1;
+    $monarch_home   = '/usr/local/groundwork/core/monarch';
+}
+else {
+    print "\n\tMonarch $version Update";
+    print "\n=============================================================\n";
+    print "\n\tReading configuration file ...\n";
+
+    until ($monarch_home) {
+	if ( -e "/usr/local/groundwork/core/monarch/lib/MonarchConf.pm" ) {
+	    $monarch_home = "/usr/local/groundwork/core/monarch";
+	    print "\n\tPlease enter the Monarch installation path [ $monarch_home ] : ";
+	    my $input = <STDIN>;
+	    chomp $input;
+	    if ($input) { $monarch_home = $input }
+	    my $monarch_test = $monarch_home . '/lib/MonarchConf.pm';
+	    unless ( -e $monarch_test ) {
+		print "\n\tError: Cannot locate MonarchConf.pm in path $monarch_home [/lib] ...\n";
+		$monarch_home = 0;
+	    }
+	}
+	else {
+	    print "\n\tPlease enter the Monarch installation path : ";
+	    my $input = <STDIN>;
+	    chomp $input;
+	    if ($input) { $monarch_home = $input }
+	    my $monarch_test = $monarch_home . '/lib/MonarchConf.pm';
+	    unless ( -e $monarch_test ) {
+		print "\n\tError: Cannot locate MonarchConf.pm in path $monarch_home [/lib] ...\n";
+		$monarch_home = 0;
+	    }
+	}
+    }
+    open( FILE, '<', "$monarch_home/lib/MonarchConf.pm" );
+    while ( my $line = <FILE> ) {
+	$line =~ s/\'|\"|;//g;
+	if ( $line =~ /\s*\$dbhost\s*=\s*(\S+)/ )   { $dbhost   = $1 }
+	if ( $line =~ /\s*\$database\s*=\s*(\S+)/ ) { $database = $1 }
+	if ( $line =~ /\s*\$dbuser\s*=\s*(\S+)/ )   { $user     = $1 }
+	if ( $line =~ /\s*\$dbpass\s*=\s*(\S+)/ )   { $passwd   = $1 }
+    }
+    close(FILE);
+}
+
+##############################################################################
+# Connect to DB
+##############################################################################
+
+print "\n\tConnecting to $database with user $user ...\n" unless $is_portal;
+
+my $dsn = "DBI:mysql:$database:$dbhost";
+my $dbh = undef;
+# We turn PrintError off because RaiseError is on and we don't want duplicate messages printed.
+eval { $dbh = DBI->connect( $dsn, $user, $passwd, { 'RaiseError' => 1, 'PrintError' => 0 } ) };
+if ($@) {
+    chomp $@;
+    die "\n\tERROR: connect failed ($@)\n";
+}
+
+##############################################################################
+# Supporting Subroutines
+##############################################################################
+
+sub parse_xml($) {
+    my $data       = shift;
+    my %properties = ();
+    if ($data) {
+	my $parser = XML::LibXML->new();
+	my $doc    = $parser->parse_string($data);
+	my @nodes  = $doc->findnodes("//prop");
+	foreach my $node (@nodes) {
+	    if ( $node->hasAttributes() ) {
+		my $property = $node->getAttribute('name');
+		my $value    = $node->textContent;
+		$value =~ s/\s+$|\n//g;
+		if ( $property =~ /command$/ ) {
+		    my $command_line = '';
+		    if ($value) {
+			my @command = split( /!/, $value );
+			$properties{$property} = $command[0];
+			if ( $command[1] ) {
+			    foreach my $c (@command) {
+				$command_line .= "$c!";
+			    }
+			}
+		    }
+		    $command_line =~ s/!$//;
+		    $properties{'command_line'} = $command_line;
+		}
+		elsif ( $property =~ /last_notification$/ ) {
+		    my $value = $node->textContent;
+		    $value =~ s/\s+$|\n//g;
+		    if ( $value == 0 ) {
+			$properties{$property} = '-zero-';
+		    }
+		    else {
+			$properties{$property} = $value;
+		    }
+		}
+		else {
+		    $properties{$property} = $value;
+		}
+	    }
+	}
+	return %properties;
+    }
+    else {
+	$properties{'error'} = "Empty String (parse_xml)";
+    }
+}
+
+##############################################################################
+# Modify Existing Tables
+##############################################################################
+
+print "\n\tModifying tables ...\n\n";
+
+#-----------------------------------------------------------------------------
+# GWMON-9514:  fix the escaping of semicolons in the command-line definitions
+# of the host-notify-by-sendemail and service-notify-by-sendemail commands
+#-----------------------------------------------------------------------------
+
+# All backslashes are doubled in both the match and replacement strings, because the q{} quoting
+# we use here still does recognize and collapse double-backslashes (interpolate "\\" as "\").
+my %sendemail_commands = (
+    q{host-notify-by-sendemail} =>
+	[
+	q{/usr/bin/printf "%b" "<html>\\n<table width='auto' style='background-color: #E6DBC3; min-width: 350px;'>\\n<caption style='font-weight: bold; background-color: #B39962;'><b>GroundWork Host<br>$NOTIFICATIONTYPE$ Notification</b></caption>\\n<tr>\\n<td style='background-color: #CCB98F;'>Host:</td>\\n<td><b><a href='http://$USER32$/portal-statusviewer/urlmap?host=$HOSTNAME$'>$HOSTNAME$</a> ($HOSTADDRESS$)</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F;'>Host State:</td>\\n<td style='background-color: #F3EDE1;'><b>$HOSTSTATE$</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F;'>Host Info:</td>\\n<td><b>$HOSTOUTPUT$</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F;'>Time:</td>\\n<td><b>$LONGDATETIME$</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F;'>Host Notes:</td>\\n<td><b>`echo '$HOSTNOTES$' | sed 's/<br>/\\\\n/g'`</b></td>\\n</tr>\\n</table>\\n</html>\\n" | /usr/local/groundwork/common/bin/sendEmail -s $USER13$ -q -f $ADMINEMAIL$ -t $CONTACTEMAIL$ -u "[GW] $NOTIFICATIONTYPE$ alert: $HOSTNAME$ is $HOSTSTATE$"},
+	q{/usr/bin/printf "%b" "<html>\\n<table width='auto' style='background-color: #E6DBC3"\\;" min-width: 350px'>\\n<caption style='font-weight: bold"\\;" background-color: #B39962'><b>GroundWork Host<br>$NOTIFICATIONTYPE$ Notification</b></caption>\\n<tr>\\n<td style='background-color: #CCB98F'>Host:</td>\\n<td><b><a href='http://$USER32$/portal-statusviewer/urlmap?host=$HOSTNAME$'>$HOSTNAME$</a> ($HOSTADDRESS$)</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F'>Host State:</td>\\n<td style='background-color: #F3EDE1'><b>$HOSTSTATE$</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F'>Host Info:</td>\\n<td><b>$HOSTOUTPUT$</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F'>Time:</td>\\n<td><b>$LONGDATETIME$</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F'>Host Notes:</td>\\n<td><b>`echo '$HOSTNOTES$' | sed 's/<br>/\\\\n/g'`</b></td>\\n</tr>\\n</table>\\n</html>\\n" | /usr/local/groundwork/common/bin/sendEmail -s $USER13$ -q -f $ADMINEMAIL$ -t $CONTACTEMAIL$ -u "[GW] $NOTIFICATIONTYPE$ alert: $HOSTNAME$ is $HOSTSTATE$"}
+	],
+    q{service-notify-by-sendemail} =>
+	[
+	q{/usr/bin/printf "%b" "<html>\\n<table width='auto' style='background-color: #E6DBC3; min-width: 350px;'>\\n<caption style='font-weight: bold; background-color: #B39962;'><b>GroundWork Service<br>$NOTIFICATIONTYPE$ Notification</b></caption>\\n<tr>\\n<td style='background-color: #CCB98F;'>Host:</td>\\n<td><b><a href='http://$USER32$/portal-statusviewer/urlmap?host=$HOSTNAME$'>$HOSTNAME$</a> ($HOSTADDRESS$)</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F;'>Host State:</td>\\n<td><b>$HOSTSTATE$</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F;'>Service:</td>\\n<td><b><a href='http://$USER32$/portal-statusviewer/urlmap?host=$HOSTNAME$&service=$SERVICEDESC$'>$SERVICEDESC$</a></b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F;'>Service State:</td>\\n<td style='background-color: #F3EDE1;'><b>$SERVICESTATE$</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F;'>Service Info:</td>\\n<td><b>$SERVICEOUTPUT$</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F;'>Time:</td>\\n<td><b>$LONGDATETIME$</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F;'>Service Notes:</td>\\n<td><b>`echo '$SERVICENOTES$' | sed 's/<br>/\\\\n/g'`</b></td>\\n</tr>\\n</table>\\n</html>\\n" | /usr/local/groundwork/common/bin/sendEmail -s $USER13$ -q -f $ADMINEMAIL$ -t $CONTACTEMAIL$ -u "[GW] $NOTIFICATIONTYPE$ alert: $HOSTNAME$/$SERVICEDESC$ is $SERVICESTATE$"},
+	q{/usr/bin/printf "%b" "<html>\\n<table width='auto' style='background-color: #E6DBC3"\\;" min-width: 350px'>\\n<caption style='font-weight: bold"\\;" background-color: #B39962'>GroundWork Service<br>$NOTIFICATIONTYPE$ Notification</caption>\\n<tr>\\n<td style='background-color: #CCB98F'>Host:</td>\\n<td><b><a href='http://$USER32$/portal-statusviewer/urlmap?host=$HOSTNAME$'>$HOSTNAME$</a> ($HOSTADDRESS$)</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F'>Host State:</td>\\n<td><b>$HOSTSTATE$</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F'>Service:</td>\\n<td><b><a href='http://$USER32$/portal-statusviewer/urlmap?host=$HOSTNAME$&service=$SERVICEDESC$'>$SERVICEDESC$</a></b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F'>Service State:</td>\\n<td style='background-color: #F3EDE1'><b>$SERVICESTATE$</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F'>Service Info:</td>\\n<td><b>$SERVICEOUTPUT$</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F'>Time:</td>\\n<td><b>$LONGDATETIME$</b></td>\\n</tr>\\n<tr>\\n<td style='background-color: #CCB98F'>Service Notes:</td>\\n<td><b>`echo '$SERVICENOTES$' | sed 's/<br>/\\\\n/g'`</b></td>\\n</tr>\\n</table>\\n</html>\\n" | /usr/local/groundwork/common/bin/sendEmail -s $USER13$ -q -f $ADMINEMAIL$ -t $CONTACTEMAIL$ -u "[GW] $NOTIFICATIONTYPE$ alert: $HOSTNAME$/$SERVICEDESC$ is $SERVICESTATE$"}
+	]
+);
+
+foreach my $name (sort keys %sendemail_commands) {
+    $sqlstmt = "select command_id, data from commands where name='$name' and type='notify'";
+    $sth     = $dbh->prepare($sqlstmt);
+    $sth->execute();
+    while ( my @values = $sth->fetchrow_array() ) {
+	my %command = parse_xml( $values[1] );
+	# We only patch up an exact match to our original error, to avoid
+	# potentially messing up any other customer-specific configuration.
+	if ( $command{'command_line'} eq $sendemail_commands{$name}[0] ) {
+	    my $data = qq(<?xml version="1.0" ?>
+<data>
+ <prop name="command_line"><![CDATA[$sendemail_commands{$name}[1]]]>
+ </prop>
+</data>);
+	    $data = $dbh->quote($data);
+	    $dbh->do( "update commands set data = $data where command_id = '$values[0]'" );
+	    print "\tThe $name command has been fixed.\n";
+	}
+	else {
+	    print "\tThe $name command has NOT been fixed;\n";
+	    print "\t    it did not match the original string.\n";
+	}
+    }
+    $sth->finish;
+}
+
+##############################################################################
+# Done.
+##############################################################################
+
+$all_is_done = 1;
+
+END {
+    $dbh->disconnect() if $dbh;
+    if (!$all_is_done) {
+	print "\n";
+	print "\t====================================================================\n";
+	print "\t    WARNING:  monarch database migration did not fully complete!\n";
+	print "\t====================================================================\n";
+	print "\n";
+	exit 1;
+    }
+}
+
+print "\n\tModifications complete.\n\n";
+

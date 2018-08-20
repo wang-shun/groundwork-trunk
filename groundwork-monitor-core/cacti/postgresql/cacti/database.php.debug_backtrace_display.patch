@@ -1,0 +1,16 @@
+*** cacti.orig/htdocs/lib/database.php	Fri Oct  5 02:24:47 2012
+--- cacti/htdocs/lib/database.php	Fri Nov  2 10:31:36 2012
+***************
+*** 363,369 ****
+--- 363,373 ----
+  		// FIX MAJOR:  take out this call to debug_print_backtrace(); in a later release;
+  		// it's left in here now because it will provide valuable feedback in our first
+  		// deployments under PostgreSQL, if we overlooked anything in the porting effort
++ 		ob_start();
+  		debug_print_backtrace();
++ 		$trace = ob_get_contents();
++ 		ob_end_clean();
++ 		print(str_replace("\n#", '<br>#', $trace) . '<br>');
+  		cacti_log("ERROR: SQL Save Command Failed for Table '$table_name'.  Error was '" . $cnn_id->ErrorMsg() . "'", false);
+  		return 0;
+  	}

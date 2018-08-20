@@ -1,0 +1,127 @@
+<!-- Use this file to deploy some handlers/chains and services      -->
+<!-- Two ways to do this:                                           -->
+<!--   java org.apache.axis.client.AdminClient deploy.wsdd          -->
+<!--      after the axis server is running                          -->
+<!-- or                                                             -->
+<!--   java org.apache.axis.utils.Admin client|server deploy.wsdd   -->
+<!--      from the same directory that the Axis engine runs         -->
+
+<deployment
+    xmlns="http://xml.apache.org/axis/wsdd/"
+    xmlns:java="http://xml.apache.org/axis/wsdd/providers/java">
+    
+<!-- Services from CategoryService WSDL service -->   
+    <service name="wscategory" provider="java:RPC" style="rpc" use="literal">
+      <wsdlFile>/WEB-INF/fwscategory.wsdl</wsdlFile>
+      <parameter name="wsdlTargetNamespace" value="urn:fws"/>
+      <parameter name="wsdlServiceElement" value="WSCategoryService"/>
+      <parameter name="schemaUnqualified" value="http://model.ws.foundation.groundwork.org"/>
+      <parameter name="wsdlServicePort" value="wscategory"/>
+      <parameter name="className" value="org.groundwork.foundation.ws.impl.CategorySoapBindingImpl"/>
+      <parameter name="wsdlPortType" value="WSCategory"/>
+      <parameter name="typeMappingVersion" value="1.2"/>
+      <operation name="getRootCategories" qname="operNS:getRootCategories" xmlns:operNS="urn:fws" returnQName="getRootCategoriesReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscategory" >
+        <parameter qname="entityTypeName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="orderBy" type="tns:SortCriteria" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="retrieveChildren" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="namePropertyOnly" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      
+      <operation name="getCategoryEntities" qname="operNS:getCategoryEntities" xmlns:operNS="urn:fws" returnQName="getCategoryEntitiesReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscategory" >
+      	<parameter qname="categoryName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+       	<parameter qname="entityTypeName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="startRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="endRange" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="orderBy" type="tns:SortCriteria" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="retrieveChildren" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="namePropertyOnly" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>
+      
+      <operation name="getCategoryByName" qname="operNS:getCategoryByName" xmlns:operNS="urn:fws" returnQName="getCategoryByNameReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscategory" >
+        <parameter qname="categoryName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+       	<parameter qname="entityTypeName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>       
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>  
+      
+      <operation name="getCategories" qname="operNS:getCategories" xmlns:operNS="urn:fws" returnQName="getCategoriesReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscategory" >
+        <parameter qname="filter" type="tns:Filter" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      	<parameter qname="orderBy" type="tns:SortCriteria" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+        <parameter qname="retrieveChildren" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="namePropertyOnly" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>     
+      
+      <operation name="getCategoriesByEntityType" qname="operNS:getCategoriesByEntityType" xmlns:operNS="urn:fws" returnQName="getCategoriesByEntityTypeReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscategory" >
+       	<parameter qname="entityTypeName" type="tns:string" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>      
+        <parameter qname="retrieveChildren" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <parameter qname="namePropertyOnly" type="tns:boolean" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>        
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>      
+      
+      <operation name="getCategoryById" qname="operNS:getCategoryById" xmlns:operNS="urn:fws" returnQName="getCategoryByIdReturn" returnType="rtns:WSFoundationCollection" xmlns:rtns="http://model.ws.foundation.groundwork.org" soapAction="/foundation-webapp/services/wscategory" >
+        <parameter qname="categoryId" type="tns:int" xmlns:tns="http://www.w3.org/2001/XMLSchema"/>
+        <fault name="WSFoundationException" qname="fns:WSFoundationException" xmlns:fns="http://model.ws.foundation.groundwork.org" class="org.groundwork.foundation.ws.model.impl.WSFoundationException" type="tns:WSFoundationException" xmlns:tns="http://model.ws.foundation.groundwork.org"/>
+      </operation>        
+      
+      <parameter name="allowedMethods" value="getRootCategories getCategoryEntities getCategoryByName getCategories getCategoriesByEntityType getCategoryById"/>
+      <parameter name="scope" value="Session"/>
+      
+	<typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:OrderBy"
+        type="java:org.groundwork.foundation.ws.model.impl.SortCriteria"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Filter"
+        type="java:org.groundwork.foundation.ws.model.impl.Filter"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationException"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationException"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:WSFoundationCollection"
+        type="java:org.groundwork.foundation.ws.model.impl.WSFoundationCollection"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:Category"
+        type="java:org.groundwork.foundation.ws.model.impl.Category"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+      
+      <typeMapping
+        xmlns:ns="http://model.ws.foundation.groundwork.org"
+        qname="ns:CategoryEntity"
+        type="java:org.groundwork.foundation.ws.model.impl.CategoryEntity"
+        serializer="org.apache.axis.encoding.ser.BeanSerializerFactory"
+        deserializer="org.apache.axis.encoding.ser.BeanDeserializerFactory"
+        encodingStyle=""
+      />
+  </service>   
+    
+</deployment>

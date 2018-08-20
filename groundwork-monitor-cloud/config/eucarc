@@ -1,0 +1,13 @@
+EUCA_KEY_DIR=$(dirname $(readlink -f ${BASH_SOURCE}))
+export S3_URL=http://172.28.115.213:8773/services/Walrus
+export EC2_URL=http://172.28.115.213:8773/services/Eucalyptus
+export EC2_PRIVATE_KEY=${EUCA_KEY_DIR}/euca2-admin-618532fa-pk.pem
+export EC2_CERT=${EUCA_KEY_DIR}/euca2-admin-618532fa-cert.pem
+export EC2_JVM_ARGS=-Djavax.net.ssl.trustStore=${EUCA_KEY_DIR}/jssecacerts
+export EUCALYPTUS_CERT=${EUCA_KEY_DIR}/cloud-cert.pem
+export EC2_ACCESS_KEY='WKy3rMzOWPouVOxK1p3Ar1C2uRBwa2FBXnCw'
+export EC2_SECRET_KEY='AM2fuuYM37O2p5OVHvSY1SKem8yjAailroCOQ'
+# This is a bogus value; Eucalyptus does not need this but client tools do.
+export EC2_USER_ID='000100729354'
+alias ec2-bundle-image="ec2-bundle-image --cert ${EC2_CERT} --privatekey ${EC2_PRIVATE_KEY} --user 000100729354 --ec2cert ${EUCALYPTUS_CERT}"
+alias ec2-upload-bundle="ec2-upload-bundle -a ${EC2_ACCESS_KEY} -s ${EC2_SECRET_KEY} --url ${S3_URL} --ec2cert ${EUCALYPTUS_CERT}"

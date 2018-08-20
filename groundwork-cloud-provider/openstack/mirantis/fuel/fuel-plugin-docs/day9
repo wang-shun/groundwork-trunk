@@ -1,0 +1,35 @@
+Hans,
+
+You know most of this already, but I'm repeating it here to make
+sure everyone is on the same page.
+
+Today I uploaded the plugin to the Mirantis Labs machines and tested
+installing and uninstalling it from the Fuel Master.  That worked
+just fine.  However, I found that this Fuel Master was running Fuel
+7.0, so I adapted the plugin to say it supports both 7.0 and 8.0
+(instead of just 8.0), and downgraded the plugin packaging version
+from 4.0.0 to 3.0.0 as was then necessary.  I have no idea exactly
+what the difference in package formats is, nor of what we might
+give up by insisting on compatibility with the older Fuel release.
+
+Then I tried to move to deploy the plugin to a compute node, but
+could find no clear instructions in either the Fuel Plugin SDK
+or the Fuel User Guide (version 8.0) for that purpose.  So I have
+asked Mirantis for help.  They can see all of my installed plugin
+files on the 172.16.1.2 machine, if that helps.
+
+I do not see my plugin listed anywhere in the Fuel web UI, and I
+have no clear idea why.  I do see it listed in "fuel plugins --list"
+output on the Fuel Master.
+
+Given that I was blocked on that path, I turned to reviewing the
+Test-document templates provided by Mirantis:
+
+http://content.mirantis.com/rs/451-RBY-185/images/TestPlanforPluginnameFuelPlugin.docx
+http://content.mirantis.com/rs/451-RBY-185/images/TestReportforPluginnameFuelPlugin.docx
+
+I scanned through these documents, but it's not clear to me how we
+can implement sensible tests for our monitoring plugin, past the fact
+that it gets installed and gets deployed in a simple environment.
+
+Glenn

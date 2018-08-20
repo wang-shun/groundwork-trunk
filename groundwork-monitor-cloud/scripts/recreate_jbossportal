@@ -1,0 +1,174 @@
+#!/bin/bash -e
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+# The Perl part of this script is wrapped in an ordinary shell script
+# so we can call the whole thing (source it) from shell contexts, such
+# as including it within RPM pre/post install/uninstall scripts.
+
+/usr/local/groundwork/perl/bin/perl << 'eof'
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+use strict;
+
+my $jbossportal_credentials_path = '/usr/local/groundwork/foundation/container/webapps/jboss/portal-ds.xml';
+my $mysqladmin_path              = '/usr/local/groundwork/mysql/bin/mysqladmin.bin';
+my $mysql_socket                 = '/usr/local/groundwork/mysql/tmp/mysql.sock';
+my $safe_directory               = '/usr/local/groundwork/tmp';
+
+main() or die "ERROR:  Re-creation of the jbossportal database probably failed.\n";
+exit 0;
+
+sub main {
+    print "NOTICE:  Bouncing GroundWork Services around re-creation of the jbossportal database.\n";
+    recreate_jbossportal_database();
+}
+
+sub recreate_jbossportal_database {
+    my $credentials = db_credentials('jbossportal', $jbossportal_credentials_path);
+    return 0 if not $credentials;
+    my $credentials_path = make_db_credentials_file($credentials, $safe_directory);
+    return 0 if not $credentials_path;
+
+    my $mysqladmin_command   = db_access_command($credentials, $credentials_path);
+    my $mysql_drop_command   = "$mysqladmin_command drop jbossportal";
+    my $mysql_create_command = "$mysqladmin_command create jbossportal";
+
+    my $wait_status = 0;
+    $wait_status |= system '/usr/local/groundwork/ctlscript.sh stop gwservices';
+    print "Dropping the jbossportal database\n";
+    $wait_status |= system "/bin/echo yes | $mysql_drop_command";
+    print "Creating the jbossportal database\n";
+    $wait_status |= system $mysql_create_command;
+    print "Checking and starting GroundWork Services\n";
+    $wait_status |= system '/usr/local/groundwork/ctlscript.sh start gwservices';
+    kill_db_credentials_file($credentials_path);
+    return $wait_status ? 0 : 1;
+}
+
+sub db_access_command {
+    my $credentials      = shift;
+    my $credentials_path = shift;
+
+    my $db_host = $credentials->{db_host};
+    my $db_port = $credentials->{db_port};
+    my $db_sock = $credentials->{db_sock};
+    my $db_name = $credentials->{db_name};
+    my $db_user = $credentials->{db_user};
+    my $db_pass = $credentials->{db_pass};
+    my $db_sock_option = $db_sock ? "mysql_socket=$db_sock;" : '';
+
+    # The $user_option and $pass_option are deprecated; we pass credentials via a safe file instead.
+    my $host_option = "--host=$db_host";
+    my $port_option = $db_sock ? '' : "--port=$db_port";
+    my $sock_option = $db_sock ? "--socket=$mysql_socket" : '';
+    my $user_option = "--user=$db_user";
+    my $pass_option = "--password=$db_pass";
+
+    return "$mysqladmin_path --defaults-extra-file=$credentials_path $host_option $port_option $sock_option";
+}
+
+sub kill_db_credentials_file {
+    my $credentials_path = shift;
+    unlink $credentials_path if $credentials_path =~ m{^$safe_directory/};
+}
+
+sub db_credentials {
+    my $database_name    = shift;
+    my $credentials_file = shift;
+
+    my $db_host = undef;
+    my $db_port = undef;
+    my $db_sock = undef;
+    my $db_name = undef;
+    my $db_user = undef;
+    my $db_pass = undef;
+
+    # Perhaps in some future release, we will parse the XML as such, to validate the
+    # entire construct, and verify that we are analyzing the correct section of the
+    # file.  In the meantime, we'll just go with a quick and dirty analysis here.
+    if ( !open(CREDENTIALS, '<', $credentials_file) ) {
+	print "ERROR:  Unable to open credentials file $credentials_file ($!)\n";
+	return undef;
+    }
+    while (my $line = <CREDENTIALS>) {
+	if ($line =~ m{<connection-url>jdbc:mysql://(\w+):(\d+)/(\w+)\?[^<]*</connection-url>}) {
+	    $db_host = $1;
+	    $db_port = $2;
+	    $db_name = $3;
+	}
+	if ($line =~ m{<user-name>(\S+)</user-name>}) {
+	    $db_user = $1;
+	}
+	if ($line =~ m{<password>(\S+)</password>}) {
+	    $db_pass = $1;
+	}
+    }
+    close CREDENTIALS;
+
+    if ( !defined($db_host)
+      || !defined($db_port)
+      || !defined($db_name)
+      || !defined($db_user)
+      || !defined($db_pass) ) {
+        print "ERROR:  Cannot find \"$database_name\" database access parameters.\n";
+        return undef;
+    }
+
+    my %credentials = ();
+    $credentials{db_host} = $db_host;
+    $credentials{db_port} = $db_port;
+    $credentials{db_sock} = $db_sock;
+    $credentials{db_name} = $db_name;
+    $credentials{db_user} = $db_user;
+    $credentials{db_pass} = $db_pass;
+    return \%credentials;
+}
+
+sub make_db_credentials_file {
+    my $credentials              = shift;
+    my $db_credentials_file_base = shift;
+
+    my $db_name = $credentials->{db_name};
+    my $db_user = $credentials->{db_user};
+    my $db_pass = $credentials->{db_pass};
+
+    # FIX LATER:  Possibly use File::Temp to create the temporary file, both for
+    # security reasons and for automated cleanup under exception conditions.
+
+    my $db_credentials_file_path = "$db_credentials_file_base/${db_name}_$$.cnf";
+    my $temporary_file_path      = "$db_credentials_file_path.tmp";
+    my $temp_file                = undef;
+    if (!open($temp_file, '>', $temporary_file_path)) {
+        print "FATAL:  Cannot create credentials file \"$temporary_file_path\" ($!).\n";
+        return undef;
+    }
+    # We'd like to use the file handle on the chmod() call instead of the filename, but that
+    # depends on Perl recognizing OS support for the fchmod() system call, which is apparently
+    # not the case for Perl v5.8.5 under RHEL4.4 (at least).  Later releases, such as Perl v5.8.8
+    # under CentOS 5.3, do support this, but we want to be portable across platforms.
+    my $count = chmod(0600, $temporary_file_path);
+    if ($count != 1) {
+        print "FATAL:  Cannot change mode of credentials file \"$temporary_file_path\" ($!).";
+        close $temp_file;
+        unlink $temporary_file_path;
+        return undef;
+    }
+    print $temp_file "[mysqladmin]\n";
+    print $temp_file "user=$db_user\n";
+    print $temp_file "password=$db_pass\n";
+    if (not close($temp_file)) {
+        print "FATAL:  Cannot close credentials file \"$temporary_file_path\" ($!).\n";
+        unlink $temporary_file_path;
+        return undef;
+    }
+    if (not rename($temporary_file_path, $db_credentials_file_path)) {
+        print "FATAL:  Cannot rename credentials file \"$temporary_file_path\" ($!).\n";
+        unlink $temporary_file_path, $db_credentials_file_path;
+        return undef;
+    }
+
+    return $db_credentials_file_path;
+}
+eof

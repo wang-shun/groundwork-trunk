@@ -1,0 +1,2576 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright (C) 2009 eXo Platform SAS. This is free software; you can 
+	redistribute it and/or modify it under the terms of the GNU Lesser General 
+	Public License as published by the Free Software Foundation; either version 
+	2.1 of the License, or (at your option) any later version. This software 
+	is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
+	without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+	PURPOSE. See the GNU Lesser General Public License for more details. You 
+	should have received a copy of the GNU Lesser General Public License along 
+	with this software; if not, write to the Free Software Foundation, Inc., 
+	51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA, or see the FSF site: 
+	http://www.fsf.org. -->
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.exoplaform.org/xml/ns/kernel_1_2.xsd http://www.exoplaform.org/xml/ns/kernel_1_2.xsd"
+	xmlns="http://www.exoplaform.org/xml/ns/kernel_1_2.xsd">
+
+
+
+	<!-- <component> <key>org.exoplatform.application.gadget.GadgetRegistryService</key> 
+		<type>org.exoplatform.application.gadget.jcr.GadgetRegistryServiceImpl</type> 
+		<init-params> <value-param> <name>gadgets.country</name> <description>US</description> 
+		<value>US</value> </value-param> <component> <key>org.exoplatform.application.gadget.SourceStorage</key> 
+		<type>org.exoplatform.application.gadget.impl.SourceStorageImpl</type> </component> 
+		<component> <key>org.exoplatform.application.gadget.GadgetRegistryService</key> 
+		<type>org.exoplatform.application.gadget.impl.GadgetRegistryServiceImpl</type> 
+		<init-params> <value-param> <name>gadgets.country</name> <description>US</description> 
+		<value>US</value> </value-param> <value-param> <name>gadgets.language</name> 
+		<description>en</description> <value>en</value> </value-param> <value-param> 
+		<name>gadgets.moduleId</name> <description>0</description> <value>0</value> 
+		</value-param> <value-param> <name>gadgets.hostName</name> <description>Gadget 
+		server url</description> <value>eXoGadgetServer/gadgets</value> </value-param> 
+		<properties-param> <name>developerInfo</name> <description>The group that 
+		is allowed to develop gadgets</description> <property name="developer.group" 
+		value="/platform/administrators"/> </properties-param> </init-params> </component> -->
+
+	<component>
+		<key>org.exoplatform.application.gadget.SourceStorage</key>
+		<type>org.exoplatform.application.gadget.impl.SourceStorageImpl</type>
+		<!-- <init-params> <properties-param> <name>location</name> <description>The 
+			location store source of gadgets</description> <property name="repository" 
+			value="repository"/> <property name="workspace" value="gadgets"/> <property 
+			name="store.path" value="/"/> </properties-param> </init-params> -->
+	</component>
+
+	<component>
+		<key>org.exoplatform.application.gadget.GadgetRegistryService</key>
+		<type>org.exoplatform.application.gadget.impl.GadgetRegistryServiceImpl
+		</type>
+		<init-params>
+			<value-param>
+				<name>gadgets.country</name>
+				<description>US</description>
+				<value>US</value>
+			</value-param>
+			<value-param>
+				<name>gadgets.language</name>
+				<description>en</description>
+				<value>en</value>
+			</value-param>
+			<value-param>
+				<name>gadgets.moduleId</name>
+				<description>0</description>
+				<value>0</value>
+			</value-param>
+			<value-param>
+				<name>gadgets.hostName</name>
+				<description>Gadget server url</description>
+				<value>eXoGadgetServer/gadgets</value>
+			</value-param>
+			<properties-param>
+				<name>developerInfo</name>
+				<description>The group that is allowed to develop gadgets
+				</description>
+				<property name="developer.group" value="/GWAdmin" />
+			</properties-param>
+		</init-params>
+	</component>
+
+	<component>
+		<key>org.exoplatform.application.gadget.GadgetDeployer</key>
+		<type>org.exoplatform.application.gadget.GadgetDeployer</type>
+	</component>
+
+	<component>
+		<key>org.exoplatform.application.registry.ApplicationRegistryService
+		</key>
+		<type>org.exoplatform.application.registry.impl.ApplicationRegistryServiceImpl
+		</type>
+		<component-plugins>
+			<component-plugin>
+				<name>new.portal.portlets.registry</name>
+				<set-method>initListener</set-method>
+				<type>org.exoplatform.application.registry.ApplicationCategoriesPlugins
+				</type>
+				<description>this listener init the portlets are registered in
+					PortletRegister
+				</description>
+				<init-params>
+
+
+					<!-- gw -->
+					<object-param>
+						<name>groundwork</name>
+						<description>Groundwork Portlets</description>
+						<object type="org.exoplatform.application.registry.ApplicationCategory">
+							<field name="name">
+								<string>groundwork</string>
+							</field>
+							<field name="displayName">
+								<string>Groundwork Portlets</string>
+							</field>
+							<field name="description">
+								<string>A list of portlets used by groundwork</string>
+							</field>
+							<field name="accessPermissions">
+								<collection type="java.util.ArrayList" item-type="java.lang.String">
+									<value>
+										<string>*:/GWAdmin</string>
+									</value>
+									<value>
+										<string>*:/GWOperator</string>
+									</value>
+									<value>
+										<string>*:/GWUser</string>
+									</value>
+								</collection>
+							</field>
+							<field name="applications">
+								<collection type="java.util.ArrayList">
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>GroundworkLicensePortlet</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Groundwork License</string>
+											</field>
+											<field name="description">
+												<string>Groundwork License page for license validation
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>gatein-portal-extension/GroundworkLicensePortlet
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>whatsNextPagePortlet</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>WhatsNext</string>
+											</field>
+											<field name="description">
+												<string>What is next portlet. Shortcuts to applications
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/whatsNextPagePortlet</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>EventPortlet</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Event Portlet</string>
+											</field>
+											<field name="description">
+												<string>Events portlet is an embedded Event Console
+													application which provides an event list for the entire
+													network or
+													for selected host group along with the capability
+													of applying
+													actions
+													(e.g. Accept Log Message, Notify Log
+													Message, Nagios
+													Acknowledge),
+													sorting, and pausing incoming
+													events. This portlet is viewable at
+													the
+													host group, service
+													group, host and service levels in Status
+													Viewer.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/EventPortlet</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>HostGroupHealth</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>HostGroup Health</string>
+											</field>
+											<field name="description">
+												<string>Host Group Health portlet provides quick status for
+													the selected host group’s host and service availability. A
+													color
+													coded status indicator shows the host group's, as a
+													parent node,
+													most
+													critical state.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/HostGroupHealth</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>hostGroup-status</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>HostGroup Summary</string>
+											</field>
+											<field name="description">
+												<string>Host Group Summary portlet shows monitoring
+													statistics at the Entire Network level with drill-down
+													capability for
+													viewing detailed data. Displayed graphs
+													provide an at-a-glance
+													filtered view of your overall host
+													group status.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/hostGroup-status</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>hostHealth</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Host Health</string>
+											</field>
+											<field name="description">
+												<string>Host Health portlet provides quick status and
+													information for the selected host. A color-coded status
+													indicator
+													shows the current state of selected host. In
+													addition, the time
+													the
+													host has been in the current state,
+													and the number of Groups
+													and
+													Parents for this host - are
+													conveniently listed.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/hostHealth</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>HostInformation</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Host Information</string>
+											</field>
+											<field name="description">
+												<string>Host Information portlet shows detailed status and
+													check information. Here you can directly schedule downtime
+													or disable
+													notifications, and schedule or disable checks.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/HostInformation</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>HostListPortlet</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Host List</string>
+											</field>
+											<field name="description">
+												<string>Host List portlet provides a listing and status of
+													the host group's hosts. Each device name (Host Name) can be
+													selected
+													to drill-down into for more detail, and each host
+													problem can
+													be
+													directly acknowledged.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/HostListPortlet</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>host-status</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Host Summary</string>
+											</field>
+											<field name="description">
+												<string>Host Summary portlet shows monitoring statistics at
+													the Entire Network and Host Group levels with drill-down
+													capability
+													for viewing detailed data. Displayed graphs
+													provide an
+													at-a-glance
+													filtered view of your overall host
+													status representing segments of
+													host states.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/host-status</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>monitoringPerformance</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Monitoring Performance</string>
+											</field>
+											<field name="description">
+												<string>Monitoring Performance portlet shows the
+													performance
+													monitoring graphs and statistics in form of dial charts.
+													It
+													communicates with “Nagios Performance” JMS topic to show
+													graphs
+													for Service Latency, Execution and Checks. It also
+													displays
+													various
+													statistical data like Active and Passive
+													Service Checks per 1/5/15
+													minutes.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/monitoringPerformance</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NetworkServicePlugin</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Network Service</string>
+											</field>
+											<field name="description">
+												<string>Network Service Plugin Portlet shows Groundwork
+													Notifications and Installation Information to the user.
+													“Notification
+													Service” needs to be enabled by administrator
+													in order to display
+													various notifications from groundwork.
+													“Build Installation
+													Information” includes information like
+													Installer Name
+													(build version
+													currently installed),
+													Installation Date, etc.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/NetworkServicePlugin</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>PerfMeasurement</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Performance Measurement</string>
+											</field>
+											<field name="description">
+												<string>Performance Measurement portlet provides RRD
+													graphs
+													for the various host services. Time filters like Today,
+													Last
+													24 Hours, Last 30 Days etc can be chosen as per the
+													user
+													needs. The
+													integrated performance graphs display
+													time-series data such as;
+													network bandwidth, CPU
+													utilization, machine-room
+													temperature,
+													transaction response
+													times, and server load averages. These graphs
+													are viewable
+													at the host and service levels.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/PerfMeasurement</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>ServiceAvailability</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Service Availability (Recent State Changes)</string>
+											</field>
+											<field name="description">
+												<string>Service Availability displays color-coded status
+													for
+													a selected service. The name of the service and the
+													colored
+													horizontal bar show this service's availability by status
+													color. The
+													Time selector enables the user to change the
+													present time
+													period for
+													the graph.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/ServiceAvailability</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>serviceGroupHealth</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>ServiceGroup Health</string>
+											</field>
+											<field name="description">
+												<string>Service Group Health portlet provides quick status
+													for the selected service group’s service availability. A
+													color coded
+													status indicator shows the service group's, as a parent node,
+													most
+													critical state.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/serviceGroupHealth</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>servicesgroup-status</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>ServiceGroup Summary</string>
+											</field>
+											<field name="description">
+												<string>Service Group Summary portlet shows monitoring
+													statistics at the Entire Network level with drill-down
+													capability for
+													viewing detailed data. These graphs provide an at-a-glance
+													filtered
+													view of your overall service group status.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/servicesgroup-status</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>serviceHealth</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Service Health</string>
+											</field>
+											<field name="description">
+												<string>Service Health portlet provides quick status and
+													information for the selected service. A color-coded status
+													indicator
+													shows the service state along with the time the service has been
+													in
+													the current state. Host and number of Groups associated with
+													this
+													service are also displayed, both of which you can drill-down into
+													for
+													more detailed information.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/serviceHealth</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>ServiceInformation</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Service Information</string>
+											</field>
+											<field name="description">
+												<string>Service Status Information portlet shows detailed
+													status and check information for the selected service. Here
+													you can
+													directly schedule downtime or disable notifications, schedule or
+													disable checks and can acknowledge service problem.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/ServiceInformation</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>serviceList</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Service List</string>
+											</field>
+											<field name="description">
+												<string>Service List portlet lists the services and their
+													status. Each Service Name can be selected to drill-down for
+													more
+													detail, and each service problem can be directly acknowledged.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/serviceList</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>service-status</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Service Summary</string>
+											</field>
+											<field name="description">
+												<string>Service Summary portlet shows monitoring
+													statistics at the Entire Network, Host Group, Service Group and Host
+													levels with drill-down capability for viewing detailed
+													data. These
+													graphs provide an at-a-glance filtered view of your overall
+													service
+													status representing segments of service states.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/service-status</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>Seurat</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Seurat View</string>
+											</field>
+											<field name="description">
+												<string>Seurat view offers an overall view of a Host Groups
+													Hosts status sortable by Host Name, Status, Last State
+													Change. Along
+													with this, it provides ability to drill down to “host details”
+													by
+													right-clicking on any of the displayed host - where one can have a
+													view of services under that host and can acknowledge problems
+													for
+													that host and services.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/Seurat</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<!-- END OF GROUNDWORK APPLICATIONS -->
+
+									<!-- Performance Viewer -->
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>GroundWorkPerformanceView</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Performance Viewer application. Portlet to create views containing
+												local RRD files.</string>
+											</field>
+											<field name="description">
+												<string>Performance Viewer</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/GroundWorkPerformanceView
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>CustomGroups</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Custom Groups</string>
+											</field>
+											<field name="description">
+												<string>Custom Group management portlet.
+												A Custom Group is a collection of host group or service group objects at 
+												the user interface level, as shown in the Status image to the right. 
+												You can also see that the monitor status gets bubbled-up to the top from the 
+												host groups and service groups.
+												Custom Groups allow for more freedom to group business functions, locations
+												or infrastructure setup (e.g. workstations, servers, services) and make them more user accessible.</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/CustomGroups</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NetworkServicePlugin</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Network Service and installation Information
+												</string>
+											</field>
+											<field name="description">
+												<string>Network Service Plugin Portlet shows Groundwork
+													Notifications and Installation Information to the user.
+													“Notification
+													Service” needs to be enabled by administrator
+													in order to display
+													various notifications from groundwork.
+													“Build Installation
+													Information” includes information like
+													Installer Name
+													(build version
+													currently installed),
+													Installation Date, etc.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/NetworkServicePlugin</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									
+									<!--  GroundWork Views -->
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>nagvis-portlet-view</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>GroundWork Views</string>
+											</field>
+											<field name="description">
+												<string>The Views portlet provides access to NagVis,
+												a visualization add-on for Nagios. NagVis can be used
+												to visualize Nagios Data, e.g. to display IT processes
+												like a mail system or a network infrastructure.</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/nagvis-portlet-view</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>cloudhubview</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>GroundWork Cloud Hub</string>
+											</field>
+											<field name="description">
+												<string>GroundWork Cloud Hub agent for monitoring virtual
+													environments
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/cloudhubview</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+                                    <value>
+                                        <object type="org.exoplatform.application.registry.Application">
+                                            <field name="applicationName">
+                                                <string>nethubview</string>
+                                            </field>
+                                            <field name="categoryName">
+                                                <string>groundwork</string>
+                                            </field>
+                                            <field name="displayName">
+                                                <string>GroundWork Net Hub</string>
+                                            </field>
+                                            <field name="description">
+                                                <string>GroundWork Net Hub agent for monitoring software
+                                                    defined networks (SDN)
+                                                </string>
+                                            </field>
+                                            <field name="type">
+                                                <string>portlet</string>
+                                            </field>
+                                            <field name="contentId">
+                                                <string>portal-groundwork-base/nethubview</string>
+                                            </field>
+                                            <field name="accessPermissions">
+                                                <collection type="java.util.ArrayList" item-type="java.lang.String">
+                                                    <value>
+                                                        <string>*:/GWRoot</string>
+                                                    </value>
+                                                </collection>
+                                            </field>
+                                        </object>
+                                    </value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>FoundationAdministration</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>Foundation Administration</string>
+											</field>
+											<field name="description">
+												<string>Foundation Administration</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/FoundationAdministration
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosTacticalView</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosTacticalView</string>
+											</field>
+											<field name="description">
+												<string>NagiosTacticalView</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosTacticalView</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosHostsView</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosHostsView</string>
+											</field>
+											<field name="description">
+												<string>NagiosHostsView</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosHostsView</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosServiceOverviewView</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosServiceOverviewView</string>
+											</field>
+											<field name="description">
+												<string>NagiosServiceOverviewView</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosServiceOverviewView
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosServiceDetailView</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosServiceDetailView</string>
+											</field>
+											<field name="description">
+												<string>NagiosServiceDetailView</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosServiceDetailView
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosServiceSummaryView</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosServiceSummaryView</string>
+											</field>
+											<field name="description">
+												<string>NagiosServiceSummaryView</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosServiceSummaryView
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosStatusGridView</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosStatusGridView</string>
+											</field>
+											<field name="description">
+												<string>NagiosStatusGridView</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosStatusGridView</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosServiceProblemsView</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosServiceProblemsView</string>
+											</field>
+											<field name="description">
+												<string>NagiosServiceProblemsView</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosServiceProblemsView
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosHostProblemsView</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosHostProblemsView</string>
+											</field>
+											<field name="description">
+												<string>NagiosHostProblemsView</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosHostProblemsView
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosOutagesView</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosOutagesView</string>
+											</field>
+											<field name="description">
+												<string>NagiosOutagesView</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosOutagesView</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosCommentsView</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosCommentsView</string>
+											</field>
+											<field name="description">
+												<string>NagiosCommentsView</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosCommentsView</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosScheduledDowntimeView</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosScheduledDowntimeView</string>
+											</field>
+											<field name="description">
+												<string>NagiosScheduledDowntimeView</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosScheduledDowntimeView
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosEventLog</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosEventLog</string>
+											</field>
+											<field name="description">
+												<string>NagiosEventLog</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosEventLog</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosStatusMap</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosStatusMap</string>
+											</field>
+											<field name="description">
+												<string>NagiosStatusMap</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosStatusMap</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosTrendReport</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosTrendReport</string>
+											</field>
+											<field name="description">
+												<string>NagiosTrendReport</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosTrendReport</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosAvailabilityReport</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosAvailabilityReport</string>
+											</field>
+											<field name="description">
+												<string>NagiosAvailabilityReport</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosAvailabilityReport
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosNotificationsReport</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosNotificationsReport</string>
+											</field>
+											<field name="description">
+												<string>NagiosNotificationsReport</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosNotificationsReport
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosPerformanceInfo</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosPerformanceInfo</string>
+											</field>
+											<field name="description">
+												<string>NagiosPerformanceInfo</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosPerformanceInfo
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>NagiosProcessInfo</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NagiosProcessInfo</string>
+											</field>
+											<field name="description">
+												<string>NagiosProcessInfo</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/NagiosProcessInfo</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<!-- Nagios -->
+									<!--  GroundWOrk NMS -->
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>Cacti</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NMS Cacti</string>
+											</field>
+											<field name="description">
+												<string>NMS Cacti
+												Cacti is a complete RRDtool-based graphing solution. Cacti can be 
+												used to collect metric data, especially from network nodes. The GroundWork
+												Monitor Cacti integration module provides thresholding and
+												centralized control of notifications.</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/Cacti
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>Nedi</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NMS Nedi</string>
+											</field>
+											<field name="description">
+												<string>NMS Nedi
+												NeDi uses SNMP and information container in device CDP, CAM and ARP
+												tables to step from device to device. Along the way it identifies
+												any nodes attached to those devices. Device configurations can also be
+												pulled and stored for comparison between executions of NeDi.
+												Changes can be communicated to network administrators. 
+												GroundWork Monitor uses data from NeDi to populate the Configuration tool (Monarch)
+												for monitoring using Nagios. Additionally, GroundWork Monitor NMS uses
+												NeDi to support efficient discovery of network devices and nodes.</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/Nedi
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>Weathermap</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NMS Weathermap -- 
+												Weathermap is a network visualisation tool, to take data
+												you already have and show you an overview of your network in map form.
+												</string>
+											</field>
+											<field name="description">
+												<string>NMS Weathermap</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/Weathermap
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>ntop</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>NMS ntop</string>
+											</field>
+											<field name="description">
+												<string>NMS ntop -- ntop shows the current network usage.
+												It displays a list of hosts that are currently using the 
+												network and reports information concerning the (IP and non-IP)
+												traffic generated and received by each host</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-groundwork-base/ntop
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<!--  End GroundWork NMS -->
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>HostAvailability</string>
+											</field>
+											<field name="categoryName">
+												<string>groundwork</string>
+											</field>
+											<field name="displayName">
+												<string>HostAvailability</string>
+											</field>
+											<field name="description">
+												<string>Host Availability displays color-coded status for a
+													selected host. The name of the host and number of services
+													are listed
+													first (e.g. local host (23 Services)), and the
+													colored
+													horizontal
+													bars show the host's availability by
+													status color. The Time
+													selector
+													enables the user to change
+													the present time period for the graph.
+												</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>portal-statusviewer/HostAvailability
+												</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+								</collection>
+							</field>
+						</object>
+					</object-param>
+					
+
+
+					<!-- end gw -->
+
+
+
+
+					<object-param>
+						<name>administration</name>
+						<description>description</description>
+						<object type="org.exoplatform.application.registry.ApplicationCategory">
+							<field name="name">
+								<string>Administration</string>
+							</field>
+							<field name="displayName">
+								<string>Administration</string>
+							</field>
+							<field name="description">
+								<string>application for administration</string>
+							</field>
+							<field name="accessPermissions">
+								<collection type="java.util.ArrayList" item-type="java.lang.String">
+									<value>
+										<string>*:/GWRoot</string>
+									</value>
+								</collection>
+							</field>
+							<field name="applications">
+								<collection type="java.util.ArrayList">
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>ApplicationRegistryPortlet</string>
+											</field>
+											<field name="categoryName">
+												<string>administration</string>
+											</field>
+											<field name="displayName">
+												<string>Application Registry</string>
+											</field>
+											<field name="description">
+												<string>Application Registry</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>exoadmin/ApplicationRegistryPortlet</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>OrganizationPortlet</string>
+											</field>
+											<field name="categoryName">
+												<string>administration</string>
+											</field>
+											<field name="displayName">
+												<string>Organization Management</string>
+											</field>
+											<field name="description">
+												<string>Organization Management</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>exoadmin/OrganizationPortlet</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="applicationName">
+												<string>AccountPortlet</string>
+											</field>
+											<field name="categoryName">
+												<string>administration</string>
+											</field>
+											<field name="displayName">
+												<string>New Account</string>
+											</field>
+											<field name="description">
+												<string>New Account</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>exoadmin/AccountPortlet</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWRoot</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+								</collection>
+							</field>
+						</object>
+					</object-param>
+
+					<object-param>
+						<name>web</name>
+						<description>description</description>
+						<object type="org.exoplatform.application.registry.ApplicationCategory">
+							<field name="name">
+								<string>web</string>
+							</field>
+							<field name="displayName">
+								<string>web</string>
+							</field>
+							<field name="description">
+								<string>BasicPortlets</string>
+							</field>
+							<field name="accessPermissions">
+								<collection type="java.util.ArrayList" item-type="java.lang.String">
+									<value>
+										<string>*:/GWAdmin</string>
+									</value>
+									<value>
+										<string>*:/GWOperator</string>
+									</value>
+									<value>
+										<string>*:/GWUser</string>
+									</value>
+								</collection>
+							</field>
+							<field name="applications">
+								<collection type="java.util.ArrayList">
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="categoryName">
+												<string>web</string>
+											</field>
+											<field name="applicationName">
+												<string>IFramePortlet</string>
+											</field>
+											<field name="displayName">
+												<string>IFrame</string>
+											</field>
+											<field name="description">
+												<string>IFrame</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>web/IFramePortlet</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="categoryName">
+												<string>web</string>
+											</field>
+											<field name="applicationName">
+												<string>SiteMapPortlet</string>
+											</field>
+											<field name="displayName">
+												<string>SiteMap</string>
+											</field>
+											<field name="description">
+												<string>SiteMap</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>web/SiteMapPortlet</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+								</collection>
+							</field>
+						</object>
+					</object-param>
+
+					<object-param>
+						<name>dashboard</name>
+						<description>description</description>
+						<object type="org.exoplatform.application.registry.ApplicationCategory">
+							<field name="name">
+								<string>dashboard</string>
+							</field>
+							<field name="displayName">
+								<string>Dashboard</string>
+							</field>
+							<field name="description">
+								<string>Dashboard</string>
+							</field>
+							<field name="accessPermissions">
+								<collection type="java.util.ArrayList" item-type="java.lang.String">
+									<value>
+										<string>*:/GWAdmin</string>
+									</value>
+									<value>
+										<string>*:/GWOperator</string>
+									</value>
+									<value>
+										<string>*:/GWUser</string>
+									</value>
+								</collection>
+							</field>
+							<field name="applications">
+								<collection type="java.util.ArrayList">
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="categoryName">
+												<string>dashboard</string>
+											</field>
+											<field name="applicationName">
+												<string>DashboardPortlet</string>
+											</field>
+											<field name="displayName">
+												<string>Dashboard Portlet</string>
+											</field>
+											<field name="description">
+												<string>Dashboard Portlet</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>dashboard/DashboardPortlet</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="categoryName">
+												<string>dashboard</string>
+											</field>
+											<field name="applicationName">
+												<string>GadgetPortlet</string>
+											</field>
+											<field name="displayName">
+												<string>Gadget Wrapper Portlet</string>
+											</field>
+											<field name="description">
+												<string>Gadget Wrapper Portlet</string>
+											</field>
+											<field name="type">
+												<string>portlet</string>
+											</field>
+											<field name="contentId">
+												<string>dashboard/GadgetPortlet</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+								</collection>
+							</field>
+						</object>
+					</object-param>
+
+					<object-param>
+						<name>Gadgets</name>
+						<description>Gadgets</description>
+						<object type="org.exoplatform.application.registry.ApplicationCategory">
+							<field name="name">
+								<string>Gadgets</string>
+							</field>
+							<field name="displayName">
+								<string>Gadgets</string>
+							</field>
+							<field name="description">
+								<string>Gadgets</string>
+							</field>
+							<field name="accessPermissions">
+								<collection type="java.util.ArrayList" item-type="java.lang.String">
+									<value>
+										<string>*:/GWAdmin</string>
+									</value>
+									<value>
+										<string>*:/GWOperator</string>
+									</value>
+									<value>
+										<string>*:/GWUser</string>
+									</value>
+								</collection>
+							</field>
+							<field name="applications">
+								<collection type="java.util.ArrayList">
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="categoryName">
+												<string>Gadgets</string>
+											</field>
+											<field name="applicationName">
+												<string>Todo</string>
+											</field>
+											<field name="displayName">
+												<string>Todo</string>
+											</field>
+											<field name="description">
+												<string>ToDo Gadget, easily manage and track your daily
+													to-do list.
+												</string>
+											</field>
+											<field name="type">
+												<string>gadget</string>
+											</field>
+											<field name="contentId">
+												<string>Todo</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="categoryName">
+												<string>Gadgets</string>
+											</field>
+											<field name="applicationName">
+												<string>Calendar</string>
+											</field>
+											<field name="displayName">
+												<string>Calendar</string>
+											</field>
+											<field name="description">
+												<string>What date is it? Use this cool calendar to keep
+													track of the date in style.
+													You can switch easily between
+													daily, monthly or yearly view.
+												</string>
+											</field>
+											<field name="type">
+												<string>gadget</string>
+											</field>
+											<field name="contentId">
+												<string>Calendar</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="categoryName">
+												<string>Gadgets</string>
+											</field>
+											<field name="applicationName">
+												<string>Calculator</string>
+											</field>
+											<field name="displayName">
+												<string>Calculator</string>
+											</field>
+											<field name="description">
+												<string>This simple and useful calculator lets you perform
+													most of the basic
+													arithmetic operations.
+												</string>
+											</field>
+											<field name="type">
+												<string>gadget</string>
+											</field>
+											<field name="contentId">
+												<string>Calculator</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+									<value>
+										<object type="org.exoplatform.application.registry.Application">
+											<field name="categoryName">
+												<string>Gadgets</string>
+											</field>
+											<field name="applicationName">
+												<string>rssAggregator</string>
+											</field>
+											<field name="displayName">
+												<string>Rss Reader</string>
+											</field>
+											<field name="description">
+												<string>Rss Reader</string>
+											</field>
+											<field name="type">
+												<string>gadget</string>
+											</field>
+											<field name="contentId">
+												<string>rssAggregator</string>
+											</field>
+											<field name="accessPermissions">
+												<collection type="java.util.ArrayList" item-type="java.lang.String">
+													<value>
+														<string>*:/GWAdmin</string>
+													</value>
+													<value>
+														<string>*:/GWOperator</string>
+													</value>
+													<value>
+														<string>*:/GWUser</string>
+													</value>
+												</collection>
+											</field>
+										</object>
+									</value>
+								</collection>
+							</field>
+						</object>
+					</object-param>
+				</init-params>
+			</component-plugin>
+		</component-plugins>
+	</component>
+
+	<external-component-plugins>
+		<target-component>org.exoplatform.commons.chromattic.ChromatticManager
+		</target-component>
+		<component-plugin>
+			<name>chromattic</name>
+			<set-method>addLifeCycle</set-method>
+			<type>org.exoplatform.application.registry.impl.ApplicationRegistryChromatticLifeCycle
+			</type>
+			<init-params>
+				<value-param>
+					<name>domain-name</name>
+					<value>app</value>
+				</value-param>
+				<value-param>
+					<name>workspace-name</name>
+					<value>portal-system</value>
+				</value-param>
+				<values-param>
+					<name>entities</name>
+					<value>org.exoplatform.application.registry.impl.ContentRegistry
+					</value>
+					<value>org.exoplatform.application.registry.impl.CategoryDefinition
+					</value>
+					<value>org.exoplatform.application.registry.impl.ContentDefinition
+					</value>
+					<value>org.exoplatform.application.gadget.impl.GadgetRegistry
+					</value>
+					<value>org.exoplatform.application.gadget.impl.GadgetDefinition
+					</value>
+					<value>org.exoplatform.application.gadget.impl.LocalGadgetData
+					</value>
+					<value>org.exoplatform.application.gadget.impl.RemoteGadgetData
+					</value>
+					<!-- <value>org.exoplatform.application.gadget.impl.NTFolder</value> 
+						<value>org.exoplatform.application.gadget.impl.NTFile</value> <value>org.exoplatform.application.gadget.impl.NTResource</value> -->
+				</values-param>
+				<properties-param>
+					<name>options</name>
+					<property name="org.chromattic.api.Option.root_node.path"
+						value="/production" />
+					<property name="org.chromattic.api.Option.root_node.create"
+						value="true" />
+				</properties-param>
+			</init-params>
+		</component-plugin>
+	</external-component-plugins>
+
+
+</configuration>

@@ -1,0 +1,35 @@
+--- nagios-plugins-1.4.13/plugins/check_procs.c	2008-07-08 02:31:04.000000000 -0700
++++ nagios-plugins-1.4.13_mod/plugins/check_procs.c	2010-03-26 01:22:24.354887482 -0700
+@@ -108,6 +108,7 @@
+ 	char *procprog;
+ 
+ 	pid_t mypid = 0;
++	pid_t parentpid = 0;
+ 	int procuid = 0;
+ 	pid_t procpid = 0;
+ 	pid_t procppid = 0;
+@@ -152,6 +153,11 @@
+ 
+ 	/* get our pid */
+ 	mypid = getpid();
++	/* 
++	 * Also record parent PID. we want to igonre self and parent when 
++	 * filtering the list of processes.
++	 */
++	parentpid = getppid();
+ 
+ 	/* Set signal handling and alarm timeout */
+ 	if (signal (SIGALRM, timeout_alarm_handler) == SIG_ERR) {
+@@ -207,6 +213,12 @@
+ 
+ 			/* Ignore self */
+ 			if (mypid == procpid) continue;
++			/* 
++			 * Ignore parent. When this plugin is invoked via shell, the shell
++			 * will be the parent. The shell command can also have the
++			 * pattern we may be looking for.
++			 */ 
++			if (parentpid == procpid) continue;
+ 
+ 			if ((options & STAT) && (strstr (statopts, procstat)))
+ 				resultsum |= STAT;

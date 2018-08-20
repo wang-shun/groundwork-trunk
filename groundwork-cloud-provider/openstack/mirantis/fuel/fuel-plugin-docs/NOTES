@@ -1,0 +1,51 @@
+The deploy script is installed on the GW machine as:
+/etc/fuel/plugins/fuel-plugin-groundwork-monitor-7.1/deploy.sh
+
+The deploy script is properly logging its actions here:
+/var/log/fuel-plugin-groundwork-monitor/deployment.log
+although the Fuel UI says to look somewhere in "Astute logs".
+I have no idea where to look for those.
+
+The deploy script is not obtaining the admin password; it is
+empty within the script, despite being present in the
+/etc/astute.yaml -> /etc/groundwork_monitor.yaml file:
+
+fuel-plugin-groundwork-monitor:
+ postgresql_admin_password: '123'
+
+That's been fixed now.
+
+The password is stored in that file, which is a security problem.
+The only saving grace is that the file is owned by root, with
+600 permissions.
+
+On the Fuel Master, the password is stored in at least these files:
+
+    /var/log/docker-logs/astute/astute.log
+    /var/log/docker-logs/nailgun/api.log
+    /var/lib/fuel/container_data/8.0/postgres/data/base/16387/18689
+    /var/lib/fuel/container_data/8.0/postgres/data/pg_xlog/000000010000000000000004
+
+But I have to question why PostgreSQL got installed on the Fuel Master,
+when it isn't even part of the trial plugin yet.  Apparently, Fuel
+uses PostgreSQL.
+It can also end up stored here:
+
+/root/.viminfo
+
+if searched for directly in vim.
+
+Complete list of "*groundwork*" files on the machine being deployed:
+-rw-r--r-- 1 root root    51 May 22 00:15 /var/lib/apt/lists/10.20.0.2:8080_plugins_fuel-plugin-groundwork-monitor-7.1_repositories_ubuntu_Release
+-rw-r--r-- 1 root root     0 May 22 00:15 /var/lib/apt/lists/10.20.0.2:8080_plugins_fuel-plugin-groundwork-monitor-7.1_repositories_ubuntu_Packages
+drwxr-xr-x 2 root root  4096 May 22 00:26 /var/log/fuel-plugin-groundwork-monitor
+drwxr-xr-x 2 root root  4096 May 22 00:25 /etc/fuel/plugins/fuel-plugin-groundwork-monitor-7.1
+-rw------- 1 root root 22617 May 22 00:25 /etc/groundwork_monitor.yaml
+-rw-r--r-- 1 root root    91 May 22 00:25 /etc/apt/sources.list.d/fuel-plugin-groundwork-monitor-7.1.0.list
+-rw-r--r-- 1 root root    81 May 22 00:25 /etc/apt/preferences.d/fuel-plugin-groundwork-monitor-7.1.0.pref
+
+Getting these errors:
+2016-05-22 00:26:06 +0000 Puppet (warning): The use of mutating operations on Array/Hash is deprecated at /etc/puppet/modules/osnailyfacter/modular/globals/globals.pp:388. See http://links.puppetlabs.com/puppet-mutation-deprecation
+
+The BitRock installer does not appear to have been copied
+over to the deployed machine.

@@ -1,0 +1,296 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0014)about:internet -->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Adobe RoboHelp 8" />
+<title>Configuring Insight Reports</title>
+<link rel="StyleSheet" href="../Bookshelf.css" type="text/css" />
+<script type="text/javascript" language="JavaScript">
+//<![CDATA[
+function ehlp_showtip(current,e,text)
+{
+  if ((parseInt(navigator.appVersion) == 4) && (navigator.appName == 'Netscape'))
+  {
+    document.tooltip.document.write("<layer bgColor='yellow' style='border:1px solid black;font-size:12px;'>"+ text + "<\/layer>");
+    document.tooltip.document.close();
+    document.tooltip.left=e.pageX+5;
+    document.tooltip.top=e.pageY+5;
+    document.tooltip.visibility="show";
+  }
+}
+function ehlp_hidetip()
+{
+  document.tooltip.visibility="hidden";
+}
+//]]>
+</script>
+<script type="text/javascript" language="JavaScript">
+//<![CDATA[
+function reDo() {
+  if (innerWidth != origWidth || innerHeight != origHeight)
+     location.reload();
+}
+if ((parseInt(navigator.appVersion) == 4) && (navigator.appName == "Netscape")) {
+        origWidth = innerWidth;
+        origHeight = innerHeight;
+        onresize = reDo;
+}
+onerror = null; 
+//]]>
+</script>
+<style type="text/css">
+/*<![CDATA[*/
+<!--
+div.WebHelpPopupMenu { position:absolute;
+left:0px;
+top:0px;
+z-index:4;
+visibility:hidden; }
+-->
+/*]]>*/
+</style>
+
+<script type="text/javascript" language="javascript1.2" src="../whmsg.js">
+</script>
+<script type="text/javascript" language="javascript" src="../whver.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../whproxy.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../whutils.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../whlang.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../whtopic.js">
+</script>
+</head>
+<body>
+<script type="text/javascript" language="javascript1.2">
+//<![CDATA[
+<!--
+if (window.gbWhTopic)
+{
+        var strUrl = document.location.href;
+        var bc = 0;
+        var n = strUrl.toLowerCase().indexOf("bc-");
+        if(n != -1)
+        {
+                document.location.href = strUrl.substring(0, n);
+                bc = strUrl.substring(n+3);
+        }
+
+        if (window.addTocInfo)
+        {
+        addTocInfo("DEVELOPER REFERENCE\nConfiguring Insight Reports");
+addButton("show",BTN_TEXT,"Show Table of Contents","","","","",0,0,"","","");
+
+        }
+        if (window.writeBtnStyle)
+                writeBtnStyle();
+
+        if (window.writeIntopicBar)
+                writeIntopicBar(1);
+
+        
+        
+
+        if (window.setRelStartPage)
+        {
+        setRelStartPage("../Bookshelf.htm");
+
+                autoSync(0);
+                sendSyncInfo();
+                sendAveInfoOut();
+        }
+}
+else
+        if (window.gbIE4)
+                document.location.reload();
+
+//-->
+//]]>
+</script><script type="text/javascript" language="javascript">
+//<![CDATA[
+document.write("<p  style=\"text-align:right;color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;\">");
+AddMasterBreadcrumbs("../Bookshelf.htm", "color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;", "&gt;", "Home", "../Welcome_to_GroundWork_Monitor/index.htm");
+document.write("<a style=\"color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;\" href=\"developer_aboutdeveloperreference.htm\">DEVELOPER REFERENCE<\/a> &gt; Configuring Insight Reports<\/p>");
+//]]>
+</script>
+<p>&#160;</p>
+<h1><img src="../Shared_Images/square.gif" alt="square.gif" style="border: none;" width="15" height="15" border="0" /> Developer Reference</h1>
+<h3 align="right"><a href="developer_aboutdeveloperreference.htm" title="Topic Home" onmouseover="if ((parseInt(navigator.appVersion) == 4) &amp;&amp; (navigator.appName == 'Netscape')) ehlp_showtip(this,event,'Topic Home');" onmouseout="if ((parseInt(navigator.appVersion) == 4) &amp;&amp; (navigator.appName == 'Netscape')) ehlp_hidetip();"><img src="../Shared_Images/homeicon.gif" alt="homeicon.gif" style="border: none;" width="33" height="27" border="0" /></a> <img src="../Shared_Images/printicon.gif" onclick="window.print()" alt="Print Page" title="Print Page" style="border: none;" width="31" height="27" border="0" /> <a href="mailto:support@groundworkopensource.com?subject=Coonfiguring Insight Reports" title="Send Comments"><img src="../Shared_Images/commentsicon.gif" alt="commentsicon.gif" style="border: none;" width="33" height="27" border="0" /></a></h3>
+<h2>Configuring Insight Reports</h2>
+<p>The configuration file located in /<span class="CodeInline">usr/local/groundwork/core/reports/etc/gwir.cfg</span> contains the settings used by the Insight Report CGIs and data load programs. The default contents and descriptions are shown below.</p>
+<p class="CodeGroup"># Configuration file for Nagios reports.<br />
+# This file is used by the following programs:<br />
+# dashboard_data_load.pl - Updates the reports database with Nagios log data.<br />
+# dashboard_lwp_load.pl - Updates the reports database with Nagios availability report data.<br />
+# nagios_alarms1.pl - CGI program that generates the alerts report page.<br />
+# nagios_notifications1.pl - CGI program that generates the notifications report page.<br />
+# nagios_outages1.pl - CGI program that generates the outage report page.<br />
+####################################################################################<br />
+#<br />
+# Global properties<br />
+#<br />
+####################################################################################<br />
+# Database parameters. Used to connect to the Status Viewer database<br />
+dbusername = root<br />
+dbpassword =<br />
+dbname = dashboard<br />
+dbhost = localhost<br />
+#<br />
+#<br />
+# Version of Nagios. This is used to determine the format of the status and event logs.<br />
+# Should be 1 or 2<br />
+nagios_version = 2;<br />
+####################################################################################<br />
+#<br />
+# CGI parameters<br />
+#<br />
+####################################################################################<br />
+# Directory to place the generated graph image files<br />
+graphdirectory = /usr/local/groundwork/apache2/htdocs/reports<br />
+#<br />
+# Relative URL to access the generated graph image files<br />
+graphhtmlref = /reports<br />
+####################################################################################<br />
+#<br />
+# Nagios log data load parameters<br />
+#<br />
+####################################################################################<br />
+# The main nagios.cfg configuration file. The data load program will read this file to get<br />
+# all the other nagios configuration files that are reference. All the reference files will<br />
+# then be read to identify host group directives. The host group and host members are identified<br />
+# and used in the reports.<br />
+nagios_cfg_file = /usr/local/groundwork/nagios/etc/nagios.cfg<br />
+#<br />
+# Nagios event log file. This is read by the event feeder and contains an entry<br />
+# for nagios actions. The HOST ALERT, HOST NOTIFICATION, SERVICE ALERT and<br />
+# SERVICE NOTIFICATION event logs are read and inserted into the status viewer database.<br />
+nagios_event_log = /usr/local/groundwork/nagios/var/nagios.log<br />
+#<br />
+# This is the log file for the dashboard_data_load.pl program.<br />
+# Debug and informational messages will be contained here<br />
+dashboard_data_log = /usr/local/groundwork/reports/utils/log/dashboard_data.log<br />
+#<br />
+# Debug setting for the dashboard data load program<br />
+# Set to 1 to write debug messages to the dashboard_data_log file<br />
+dashboard_data_debug = 1<br />
+####################################################################################<br />
+# Nagios availability data load parameters<br />
+# There are two methods for getting this data.<br />
+# - The lwp method uses Perl LWP to open a browser to the Nagios availability<br />
+# reports.<br />
+# - The avail method execute the report cgi local and read the output. This is the<br />
+# default method since it will work if JBoss Portal Single Sign authorization is on.<br />
+####################################################################################<br />
+# Debug flag for status feeder. Set to 1 to write debug messages to the feeder_status_log file<br />
+dashboard_lwp_debug = 1<br />
+#<br />
+# LWP method - IP Address of the nagios server. Used to call the Nagios availability report cgi<br />
+nagios_server_address = localhost<br />
+nagios_server_port = 80<br />
+#<br />
+# LWP method - Nagios security realm. This is on the userid/password dialog box when accessing a secure Nagios page.<br />
+nagios_realm = Nagios Access<br />
+# LWP method - Authorized user ID to access Nagios reports page.<br />
+nagios_user = nagiosadmin<br />
+# Authorized password to access Nagios reports page.<br />
+nagios_password = nagiosadmin<br />
+# This is the log file for the dashboard_lwp_load.pl program.<br />
+# Debug and informational messages will be contained here<br />
+dashboard_lwp_log = /usr/local/groundwork/reports/utils/log/dashboard_lwp.log<br />
+#<br />
+# Debug flag for status feeder. Set to 1 to write debug messages to the feeder_status_log file<br />
+dashboard_avail_debug = 1<br />
+# This is the log file for the dashboard_lwp_load.pl program.<br />
+# Debug and informational messages will be contained here<br />
+dashboard_avail_log = /usr/local/groundwork/reports/utils/log/dashboard_avail.log<br />
+# The directory where the Nagios report CGI is located<br />
+#<br />
+nagios_cgi_dir = /usr/local/groundwork/apache2/cgi-bin/nagios</p>
+<h3>Data Load Scripts</h3>
+<p>The data gathering process analyzes Nagios data and loads it into the database dashboard. There are two scripts that control this process.</p>
+<ol>
+<li class="p-Numbering">
+<p class="Numbering"><b style="font-weight: bold;">dashboard_data_load.pl</b><br />
+This script reads the nagios.log file and loads alert and Notification entries into the dashboard database. The following options are available.</p>
+<p>-c &lt;configuration file&gt;<br />
+Configuration file containing the settings for the report load process. Default is: <span class="CodeInline">/usr/local/groundwork/core/reports/etc/gwir.cfg</span></p>
+<p>-a &lt;DIRECTORY&gt;<br />
+Read all files in this log directory. Typically used to read all log files in an archive directory. For example, <span class="CodeInline">/usr/local/groundwork/nagios/var/archives</span> will process all files in the Nagios archive directory.</p>
+<p>-C &lt;NAGIOS CONTACT GROUP CONFIG FILE&gt;<br />
+Nagios config file containing Contact Group definitions. This program will run if this is not set, however the Notification Contact reports will not work properly. The default is: &#160;<span class="CodeInline">/usr/local/groundwork/nagios/etc/contactgroups.cfg</span></p>
+<p>-f &lt;NAGIOS LOG FILE&gt;<br />
+Read this Nagios log file. The default is: &#160;<span class="CodeInline">/usr/local/groundwork/nagios/var/nagios.log</span></p>
+<p>-L &lt;OUTPUT LOG&gt;<br />
+Log file containing status messages from this program. The default is: &#160;<span class="CodeInline">/usr/local/groundwork/nagios/var /dashboard.log</span></p>
+<p>-H &lt;NAGIOS HOST GROUP CONFIG FILE&gt;<br />
+Nagios config file containing Host Group definitions. This program will run if this is not set, however Host Group reports will not work properly. The default is: <span class="CodeInline">/usr/local/groundwork/nagios/etc /hostgroups.cfg</span></p>
+<p>-d<br />
+Debug mode. Will log additional messages to the log file.</p>
+<p>-h or -help<br />
+Displays help message.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering"><b style="font-weight: bold;">dashboard_avail_load.pl</b><br />
+This script executes an http get to open the report page from the Nagios CGI user interface. The detailed report information from this page is processed by the script and loaded into the dashboard database. The following options are available.</p>
+<p>-c &lt;configuration file&gt;<br />
+Configuration file containing the settings for the report load process. Default is: &#160;<span class="CodeInline">/usr/local/groundwork/core/reports/etc/gwir.cfg</span></p>
+<p>-L &lt;OUTPUT LOG&gt;<br />
+Log file containing status messages from this program. The default is: <span class="CodeInline">/usr/local/groundwork/feeder/log/dashboard_lwp.log</span></p>
+<p>-s &lt;YYYYMMDD&gt;<br />
+Start day (Default to yesterday, 00 hours)</p>
+<p>-e &lt;YYYYMMDD&gt;<br />
+End day (Default to yesterday, 24 hours)</p>
+<p>-d<br />
+Debug mode. Will log additional log messages in the output log file.</p>
+</li>
+</ol>
+<h3>Scheduling Report Updates</h3>
+<p>By default, the <span class="CodeInline">dashboard_data_load.pl</span> script is scheduled to run every night at midnight. The <span class="CodeInline">dashboard_lwp_load.pl</span> script is scheduled to run every day at 1:00 AM. To modify the schedule:</p>
+<ol>
+<li class="p-Numbering">
+<p class="Numbering">Open a session to the GroundWork server using ID root.</p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">Issue the command to edit crontab entries: <span class="CodeInline">crontab -u nagios -e</span></p>
+</li>
+<li class="p-Numbering">
+<p class="Numbering">A vi editor session will open showing the crontab entries for Nagios. Look for the following entries:</p>
+</li>
+</ol>
+<p class="GroupCode2">59 23 * * * /usr/local/groundwork/reports/utils/dashboard_data_load.pl<br />
+/usr/local/groundwork/reports/utils/log/dashboard_data_load.log 2&gt;&lt;1<br />
+0 1 * * * /usr/local/groundwork/reports/utils/dashboard_lwp_load.pl &gt;<br />
+/usr/local/groundwork/reports/utils/log/dashboard_avail_load.log 2&gt;&lt;1</p>
+<ol start="4" type="1">
+<li class="p-Numbering">
+<p class="Numbering">Change the crontab entry to the appropriate schedule. For example, to schedule an execution at 11:59pm, change the entry to the following:</p>
+</li>
+</ol>
+<p class="GroupCode2">59 23 * * * /usr/local/groundwork/reports/utils/dashboard_data_load.pl<br />
+/usr/local/groundwork/reports/utils/log/dashboard_data_load.log 2&gt;&lt;1</p>
+<div style="width: 100%; position: relative;" id="footer">
+<p class="Footer" style="font-size: 7pt; line-height: Normal; margin-top: 6pt; margin-bottom: 4pt;">GroundWork, Inc. ©2011</p>
+</div>
+<script type="text/javascript" language="JavaScript">
+//<![CDATA[
+ if ((parseInt(navigator.appVersion) == 4) && (navigator.appName == 'Netscape'))
+  document.write("<div id='tooltip' class='WebHelpPopupMenu'><\/div>");
+//]]>
+</script><script type="text/javascript" language="javascript1.2">
+//<![CDATA[
+<!--
+if (window.writeIntopicBar)
+        writeIntopicBar(0);
+
+
+highlightSearch();
+//-->
+//]]>
+</script>
+</body>
+</html>

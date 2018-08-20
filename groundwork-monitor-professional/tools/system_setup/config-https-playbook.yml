@@ -1,0 +1,539 @@
+---
+- hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    servername: "{{ ansible_fqdn }}"
+    jossoservername: "{{ servername }}"
+    jossoendpoint: "localhost:8888"
+    redirect: true
+    secure_enabled: "true"
+    dual_jboss: false
+    frontend_jboss_port: 8080
+    backend_jboss_port: 8080
+    influxdb_port: 8086
+    protocol: https
+    proxy_port: 443
+    db_host: localhost
+    db_host_idm: "{{ db_host }}"
+    use_cname: false
+    create_certs: true
+    update_java_cert: false
+    update_java_cacert: false
+    cacert: false
+    cakey: false
+    caname: groundwork-ca
+    groundwork_path: /usr/local/groundwork
+    java_keystore_path: "{{groundwork_path}}/java/jre/lib/security/cacerts"
+    java_keystore_pass: changeit
+    grafana_installed: false
+    openssl_csr_path: "{{groundwork_path}}/tmp/{{ servername }}.csr"
+    openssl_cert_path: "{{groundwork_path}}/common/openssl/certs/{{ servername }}.pem"
+    apache_cert_link: "{{groundwork_path}}/apache2/conf/server.crt"
+    openssl_key_path: "{{groundwork_path}}/common/openssl/private/{{ servername }}.key"
+    apache_key_link: "{{groundwork_path}}/apache2/conf/server.key"
+    openssl_cacert_path: "{{groundwork_path}}/common/openssl/certs/{{caname}}.pem"
+    openssl_cakey_path: "{{groundwork_path}}/common/openssl/private/{{caname}}.key"
+    apache_cacert_link: "{{groundwork_path}}/apache2/conf/server-ca.crt"
+    htdocs_cacert_path: "{{groundwork_path}}/apache2/htdocs/{{caname}}.crt"
+  tasks:
+  - name: gather facts
+    setup:
+      filter: ansible_*
+    tags:
+      - checks
+  - name: check if dual jboss
+    stat:
+      path: "{{groundwork_path}}/foundation/container/jpp2/"
+    register: jpp2_path
+    tags:
+      - checks
+  - set_fact:
+      dual_jboss: true
+      frontend_jboss_port: 8180
+    when: jpp2_path.stat.isdir is defined and jpp2_path.stat.isdir
+    tags:
+      - checks
+  - name: check if grafana is installed
+    stat:
+      path: "{{groundwork_path}}/grafana/"
+    register: grafana_path
+    tags:
+      - checks
+  - set_fact:
+      grafana_installed: true
+    when: grafana_path.stat.isdir is defined and grafana_path.stat.isdir
+  - set_fact:
+      use_cname: true
+    when: servername != ansible_fqdn
+    tags:
+      - checks
+  - name: generate certs
+    shell: '{{groundwork_path}}/tools/make_cert.sh -h "{{ servername }}"'
+    args:
+      creates: "{{ openssl_cert_path }}"
+    when: create_certs == true
+    notify: "c_rehash the openssl certstore"
+    tags:
+      - createcerts
+  - name: symlink server.crt
+    file:
+      src: "{{ openssl_cert_path }}"
+      dest: "{{ apache_cert_link }}"
+      owner: root
+      group: nagios
+      state: link
+    notify: "restart apache"
+    tags:
+      - installcerts
+  - name: symlink server.key
+    file:
+      src: "{{ openssl_key_path }}"
+      dest: "{{ apache_key_link }}"
+      owner: root
+      group: nagios
+      state: link
+    notify: "restart apache"
+    tags:
+      - installcerts
+  - name: check if using a CA cert
+    stat:
+      path: "{{ openssl_cacert_path }}"
+    register: cacert_path
+    tags:
+      - installcerts
+  - set_fact:
+      cacert: true
+    tags:
+      - installcerts
+    when: cacert_path.stat.exists
+  - name: check if CA cert key present
+    stat:
+      path: "{{ openssl_cakey_path }}"
+    register: cakey_path
+    tags:
+      - installcerts
+  - set_fact:
+      cakey: true
+    tags:
+      - installcerts
+    when: cakey_path.stat.exists
+  - name: symlink server-ca.crt
+    file:
+      src: "{{ openssl_cacert_path }}"
+      dest: "{{ apache_cacert_link }}"
+      owner: root
+      group: nagios
+      state: link
+    notify: "restart apache"
+    tags:
+      - installcerts
+    when: cacert
+  - name: symlink cacert to htdocs
+    file:
+      src: "{{ openssl_cacert_path }}"
+      dest: "{{ htdocs_cacert_path }}"
+      owner: root
+      group: nagios
+      state: link
+    tags:
+      - installcerts
+    when: cacert
+  - name: certificate permissions
+    file:
+      path: "{{ openssl_cert_path }}"
+      owner: root
+      group: nagios
+      mode: 0644
+    tags:
+      - createcerts
+      - installcerts
+  - name: certificate key permissions
+    file:
+      path: "{{ openssl_key_path }}"
+      owner: root
+      group: nagios
+      mode: 0640
+    tags:
+      - createcerts
+      - installcerts
+  - name: ca certificate permissions
+    file:
+      path: "{{ openssl_cacert_path }}"
+      owner: root
+      group: nagios
+      mode: 0644
+    tags:
+      - createcerts
+      - installcerts
+    when: cacert
+  - name: ca key permissions
+    file:
+      path: "{{ openssl_cakey_path }}"
+      owner: root
+      group: root
+      mode: 0600
+    tags:
+      - createcerts
+      - installcerts
+    when: cakey
+  - name: check sha1 hash of java keystore alias matching server.crt
+    shell: "{{groundwork_path}}/java/bin/keytool -list -keystore {{ java_keystore_path }} -storepass {{ java_keystore_pass }} -alias {{ servername }} | grep SHA1 | awk '{ print $NF }'"
+    register: java_cert_sha1
+    ignore_errors: yes
+    tags:
+      - installcerts
+  - name: check sha1 hash of server.crt
+    shell: "{{ groundwork_path }}/common/bin/openssl x509 -fingerprint -noout -sha1 < {{ openssl_cert_path }} | cut -d'=' -f2"
+    register: file_cert_sha1
+    when: java_cert_sha1.rc == 0
+    tags:
+      - installcerts
+  - name: check if alias for server.crt needs to be removed
+    set_fact:
+      update_java_cert: true
+    when: java_cert_sha1.stdout != file_cert_sha1.stdout
+    tags:
+      - installcerts
+  - name: remove old server.crt from java keystore
+    java_cert:
+      executable: "{{groundwork_path}}/java/bin/keytool"
+      keystore_path: "{{ java_keystore_path }}"
+      keystore_pass: "{{ java_keystore_pass }}"
+      cert_alias: "{{ servername }}"
+      cert_path: "{{ openssl_cert_path }}"
+      state: absent
+    when: update_java_cert
+    notify: "restart web services"
+    tags:
+      - installcerts
+  - name: import server.crt to the java keystore
+    java_cert:
+      executable: "{{groundwork_path}}/java/bin/keytool"
+      keystore_path: "{{ java_keystore_path }}"
+      keystore_pass: "{{ java_keystore_pass }}"
+      cert_alias: "{{ servername }}"
+      cert_path: "{{ openssl_cert_path }}"
+      state: present
+    notify: "restart web services"
+    tags:
+      - installcerts
+  - name: check sha1 hash of java keystore alias matching server-ca.crt
+    shell: "{{groundwork_path}}/java/bin/keytool -list -keystore {{ java_keystore_path }} -storepass {{ java_keystore_pass }} -alias {{ caname }} | grep SHA1 | awk '{ print $NF }'"
+    register: java_cacert_sha1
+    ignore_errors: yes
+    tags:
+      - installcerts
+  - name: check sha1 hash of server-ca.crt
+    shell: "{{ groundwork_path }}/common/bin/openssl x509 -fingerprint -noout -sha1 < {{ openssl_cacert_path }} | cut -d'=' -f2"
+    register: file_cacert_sha1
+    when: java_cacert_sha1.rc == 0
+    tags:
+      - installcerts
+  - name: check if alias for server.crt needs to be removed
+    set_fact:
+      update_java_cacert: true
+    when: java_cacert_sha1.stdout != file_cacert_sha1.stdout
+    tags:
+      - installcerts
+  - name: remove old server-ca.crt from java keystore
+    java_cert:
+      executable: "{{groundwork_path}}/java/bin/keytool"
+      keystore_path: "{{ java_keystore_path }}"
+      keystore_pass: "{{ java_keystore_pass }}"
+      cert_alias: "{{ caname }}"
+      cert_path: "{{ openssl_cacert_path }}"
+      state: absent
+    when: update_java_cacert
+  - name: import server-ca.crt to the java keystore
+    java_cert:
+      executable: "{{groundwork_path}}/java/bin/keytool"
+      keystore_path: "{{ java_keystore_path }}"
+      keystore_pass: "{{ java_keystore_pass }}"
+      cert_alias: "{{ caname }}"
+      cert_path: "{{ openssl_cacert_path }}"
+      state: present
+    notify: "restart web services"
+    tags:
+      - installcerts
+    when: cacert_path.stat.exists
+  - name: apache2/conf/httpd.conf
+    template:
+      src: httpd.conf.j2
+      dest: "{{groundwork_path}}/apache2/conf/httpd.conf"
+      owner: nagios
+      group: nagios
+      mode: 0644
+    notify: "restart apache"
+    tags:
+      - configs
+  - name: apache2/conf/extra/httpd-ssl.conf
+    template:
+      src: httpd-ssl.conf.j2
+      dest: "{{groundwork_path}}/apache2/conf/extra/httpd-ssl.conf"
+      owner: nagios
+      group: nagios
+      mode: 0644
+    notify: "restart apache"
+    tags:
+      - configs
+  - name: apache2/conf/groundwork/foundation-ui.conf
+    replace:
+      path: "{{groundwork_path}}/apache2/conf/groundwork/foundation-ui.conf"
+      regexp: 'https?://.*/josso/signon/log'
+      replace: '{{protocol}}://{{jossoservername}}/josso/signon/log'
+    notify: "restart apache"
+    tags:
+      - configs
+  - name: apache2/conf/groundwork/apache2-noma.conf
+    replace:
+      path: "{{groundwork_path}}/apache2/conf/groundwork/apache2-noma.conf"
+      regexp: 'https?://.*/josso/signon/log'
+      replace: '{{protocol}}://{{jossoservername}}/josso/signon/log'
+    notify: "restart apache"
+    tags:
+      - configs
+  - name: config/cacti.properties
+    template:
+      src: cacti.properties.j2
+      dest: "{{groundwork_path}}/config/cacti.properties"
+      owner: nagios
+      group: nagios
+      mode: 0600
+    notify: "restart web services"
+    tags:
+      - configs
+  - name: config/ntop.properties
+    template:
+      src: ntop.properties.j2
+      dest: "{{groundwork_path}}/config/ntop.properties"
+      owner: nagios
+      group: nagios
+      mode: 0640
+    notify: "restart web services"
+    tags:
+      - configs
+  - name: noma/etc/NoMa.yaml
+    replace:
+      path: "{{groundwork_path}}/noma/etc/NoMa.yaml"
+      regexp: 'https?://.*/portal-statusviewer'
+      replace: '{{ protocol }}://{{ servername }}/portal-statusviewer'
+    notify: "restart web services"
+    tags:
+      - configs
+  - name: config/status-viewer.properties
+    replace:
+      path: "{{groundwork_path}}/config/status-viewer.properties"
+      regexp: 'secure.access.enabled=.*'
+      replace: 'secure.access.enabled={{ secure_enabled }}'
+    notify: "restart web services"
+    tags:
+      - configs
+  - name: config/report-viewer.properties
+    template:
+      src: report-viewer.properties.j2
+      dest: "{{groundwork_path}}/config/report-viewer.properties"
+      owner: nagios
+      group: nagios
+      mode: 0640
+    notify: "restart web services"
+    tags:
+      - configs
+  - name: foundation/container/jpp/standalone/configuration/gatein/configuration.properties
+    template:
+      src: configuration.properties.j2
+      dest: "{{groundwork_path}}/foundation/container/jpp/standalone/configuration/gatein/configuration.properties"
+      owner: nagios
+      group: nagios
+      mode: 0640
+    notify: "restart web services"
+    tags:
+      - configs
+  - name: foundation/container/jpp/modules/org/josso/generic-ee/agent/main/josso-agent-config.xml
+    template:
+      src: josso-agent-config.xml.j2
+      dest: "{{groundwork_path}}/foundation/container/jpp/modules/org/josso/generic-ee/agent/main/josso-agent-config.xml"
+      owner: nagios
+      group: nagios
+      mode: 0644
+    notify: "restart web services"
+    tags:
+      - configs
+  - name: foundation/container/josso-1.8.4/conf/server.xml
+    template:
+      src: server.xml.j2
+      dest: "{{groundwork_path}}/foundation/container/josso-1.8.4/conf/server.xml"
+      owner: nagios
+      group: nagios
+      mode: 0644
+    notify: "restart web services"
+    tags:
+      - configs
+  - name: foundation/container/jpp/standalone/configuration/standalone.xml
+    template:
+      src: jpp-standalone.xml.j2
+      dest: "{{groundwork_path}}/foundation/container/jpp/standalone/configuration/standalone.xml"
+      owner: nagios
+      group: nagios
+      mode: 0644
+    notify: "restart web services"
+    tags:
+      - configs
+  - name: foundation/container/jpp/dual-jboss-installer/standalone.xml
+    template:
+      src: jpp-dual-jboss-installer-standalone.xml.j2
+      dest: "{{groundwork_path}}/foundation/container/jpp/dual-jboss-installer/standalone.xml"
+      owner: nagios
+      group: nagios
+      mode: 0644
+    notify: "restart web services"
+    tags:
+      - configs
+  - name: foundation/container/jpp/dual-jboss-installer/standalone2.xml
+    template:
+      src: jpp2-dual-jboss-installer-standalone.xml.j2
+      dest: "{{groundwork_path}}/foundation/container/jpp/dual-jboss-installer/standalone2.xml"
+      owner: nagios
+      group: nagios
+      mode: 0644
+    notify: "restart web services"
+    tags:
+      - configs
+  - name: foundation/container/jpp2/standalone/configuration/standalone.xml
+    template:
+      src: jpp2-standalone.xml.j2
+      dest: "{{groundwork_path}}/foundation/container/jpp2/standalone/configuration/standalone.xml"
+      owner: nagios
+      group: nagios
+      mode: 0644
+    when: dual_jboss == true
+    notify: "restart web services"
+    tags:
+      - configs
+      - dualjboss
+  - name: update cloudhub hostname
+    xml:
+      path: "{{ item }}"
+      xpath: /vema/gwos/gwosServer
+      value: "{{ servername }}"
+    with_fileglob:
+      - "{{groundwork_path}}/config/cloudhub/cloudhub-*.xml"
+    notify: "restart web services"
+    tags:
+      - configs
+  - name: update cloudhub protocol
+    xml:
+      path: "{{ item }}"
+      xpath: /vema/gwos/gwosSSLEnabled
+      value: "{{ secure_enabled }}"
+    with_fileglob:
+      - "{{groundwork_path}}/config/cloudhub/cloudhub-*.xml"
+    notify: "restart web services"
+    tags:
+      - configs
+  - name: run grafbridge-control
+    shell: '{{groundwork_path}}/grafana/scripts/grafbridge-control -rename_server "{{ servername }}"'
+    register: grafbridge_control_result
+    ignore_errors: yes
+    when: grafana_installed == true and use_cname == true
+    notify:
+      - "restart grafbridge"
+      - "restart web services"
+    tags:
+      - grafbridge
+  - name: run grafbridge-control
+    shell: "{{groundwork_path}}/grafana/scripts/grafbridge-control -ssl enable"
+    ignore_errors: yes
+    register: grafbridge_control_result
+    when: grafana_installed == true
+    notify:
+      - "restart grafbridge"
+      - "restart web services"
+    tags:
+      - grafbridge
+  - name: grafana/conf/defaults.ini
+    replace:
+      path: "{{groundwork_path}}/grafana/conf/defaults.ini"
+      regexp: "^ root_url = .*"
+      replace: " root_url = {{ protocol }}://{{ servername }}/grafana"
+    when: grafbridge_control_result.rc is defined and grafbridge_control_result.rc > 0
+    notify:
+      - "restart grafbridge"
+    tags:
+      - grafbridge
+      - configs
+  - name: influxdb/etc/influxdb.conf
+    replace:
+      path: "{{groundwork_path}}/influxdb/etc/influxdb.conf"
+      regexp: "^  https-enabled = .*"
+      replace: "  https-enabled = {{ secure_enabled }}"
+    when: grafbridge_control_result.rc is defined and grafbridge_control_result.rc > 0
+    notify:
+      - "restart grafbridge"
+    tags:
+      - grafbridge
+      - configs
+  - name: config/influxdb.properties
+    replace:
+      path: "{{groundwork_path}}/config/influxdb.properties"
+      regexp: "^url = .*"
+      replace: "url = {{ protocol }}://{{ servername }}:{{ influxdb_port }}"
+    when: grafbridge_control_result.rc is defined and grafbridge_control_result.rc > 0
+    notify:
+    - "restart web services"
+    tags:
+      - grafbridge
+      - configs
+  - name: config/foundation.properties - collage.metrics.influxdb.url
+    replace:
+      path: "{{groundwork_path}}/config/foundation.properties"
+      regexp: "^collage.metrics.influxdb.url.*"
+      replace: "collage.metrics.influxdb.url={{ protocol }}://{{ servername }}:{{ influxdb_port }}"
+    when: grafbridge_control_result.rc is defined and grafbridge_control_result.rc > 0
+    notify:
+      - "restart web services"
+    tags:
+      - grafbridge
+      - configs
+  - name: update grafana datasources
+    shell: '{{groundwork_path}}/tools/system_setup/scripts/update-graf-ds.py --protocol "{{ protocol }}" --servername "{{ servername }}"'
+    when: grafbridge_control_result.rc is defined and grafbridge_control_result.rc > 0
+    notify:
+      - "restart grafbridge"
+  handlers:
+  - name: restart grafana
+    shell: /etc/init.d/groundwork restart grafana
+    listen: "restart grafbridge"
+    tags:
+      - grafbridge
+      - ctrl
+  - name: restart influxdb
+    shell: /etc/init.d/groundwork restart influxdb
+    listen: "restart grafbridge"
+    tags:
+      - grafbridge
+      - ctrl
+  - name: stop gwservices
+    shell: /etc/init.d/groundwork stop gwservices
+    listen: "restart web services"
+    tags:
+      - ctrl
+  - name: c_rehash the openssl certstore
+    shell: "{{groundwork_path}}/common/bin/c_rehash"
+    args:
+      chdir: "{{groundwork_path}}/"
+    listen: "restart apache"
+    tags:
+      - installcerts
+  - name: restart apache
+    shell: "{{groundwork_path}}/apache2/bin/apachectl -t && /etc/init.d/groundwork restart apache"
+    listen: "restart web services"
+    tags:
+      - ctrl
+  - name: start gwservices - this can take a while
+    shell: /etc/init.d/groundwork start
+    register: gwservices_result
+    failed_when: "'FAILED' in gwservices_result.stdout"
+    listen: "restart web services"
+    tags:
+      - ctrl

@@ -1,0 +1,69 @@
+--- common/bin/gphelp.orig	2016-11-08 10:48:09.000000000 -0800
++++ common/bin/gphelp	2016-11-12 01:22:36.000000000 -0800
+@@ -308,7 +308,7 @@
+   return if (! /$help/);
+ 
+   $_ = $current;
+-  s/\\b{(.)}/\\$1/; s/\{\}//g;
++  s/\\b\{(.)\}/\\$1/; s/\{\}//g;
+   s/\\pow/^/; s/\\%/%/; s/\\bs/\\/; s/\\\#/\#/g;
+   s,\+\$/\$-,+/-,;
+   if (/ /) { push(@sentence_list,$_); } else { push(@list,$_); }
+@@ -632,7 +632,7 @@
+   s/\\fun\s*\{([^{}]*)\}\s*\{((?:[^{}]|\{[^{}]*\})*)\}\s*\{((?:[^{}]|\{[^{}]*\})*)\}/\\kbd{$1 \\key{$2}($3)}\\sidx{$2}/g;
+ 
+   s/\\\\(?=[a-zA-Z])/\\bs /g;
+-  s/\\b{}\\b{}/\\bs\\bs /g;
++  s/\\b\{\}\\b\{\}/\\bs\\bs /g;
+   s/\\\\/\\bs/g;
+   s/(\'\'|\`\`)/"/g unless $to_pod;     # (english) double quotes
+   # asymptotic or isomorphic (~) [beware of ties]
+@@ -644,16 +644,16 @@
+   s/\\(~|tilde)/~/g;
+ 
+   s/\\(equiv)(?![a-zA-Z])/ = /g;
+-  s/\\`a/$tr{agrave}/; s/\\`{a}/$tr{agrave}/;
+-  s/\\"o/$tr{ouml}/;   s/\\"{o}/$tr{ouml}/;
+-  s/\\"u/$tr{uuml}/;   s/\\"{u}/$tr{uuml}/;
+-  s/\\'e/$tr{eacute}/; s/\\'{e}/$tr{eacute}/;
++  s/\\`a/$tr{agrave}/; s/\\`\{a\}/$tr{agrave}/;
++  s/\\"o/$tr{ouml}/;   s/\\"\{o\}/$tr{ouml}/;
++  s/\\"u/$tr{uuml}/;   s/\\"\{u\}/$tr{uuml}/;
++  s/\\'e/$tr{eacute}/; s/\\'\{e\}/$tr{eacute}/;
+ 
+   s/(^|[^\\])%.*/$1/g;		        # comments
+   s/\\vadjust\s*\{\s*\\penalty\s*\d+\s*\}//g;
+ 
+   # We do not strip %\n, thus:
+-  s/\\kbd{\n\s*/\\kbd{/g;
++  s/\\kbd\{\n\s*/\\kbd{/g;
+   s/\$\\bf(\b|(?=[\d_]))\s*([^\$]+)\$/\$$tr{startbcode}$1$tr{endbcode}\$/g;
+   s/\$/$tr{dollar}/g;		        # math mode
+   s/\t/ /g; s/\\,//g; s/\\[ ;]/ /g;     # various spaces
+@@ -663,7 +663,7 @@
+   s/\\TeX\{\}/TeX/g;
+   s/\\TeX(\W)/TeX$1/g;
+   s/ *\\circ\b */ o /g;
+-  s/\\d?frac{\s*((?:[^{}]|\{[^{}]*\})*)}{\s*((?:[^{}]|\{[^{}]*\})*)}/($1)\/($2)/g;
++  s/\\d?frac\{\s*((?:[^{}]|\{[^{}]*\})*)\}\{\s*((?:[^{}]|\{[^{}]*\})*)\}/($1)\/($2)/g;
+   s(\\d?frac\s*(\d)\s*(\d))(($1/$2))g;
+   s[{\s*(\w)\s*\\over(?![a-zA-Z])\s*(\w)\s*}]{($1/$2)}g;
+   s[{\s*((?:[^{}]|\{[^{}]*\})*)\\over(?![a-zA-Z])\s*((?:[^{}]|\{[^{}]*\})*)}][($1)/($2)]g;
+@@ -771,7 +771,7 @@
+ 
+   s/\\var\{([^\}]*)\}/$tr{startit}$1$tr{endit}/g;
+   s/\\fl(?![a-zA-Z])/$tr{startit}flag$tr{endit}/g;
+-  s/\\b{([^}]*)}/$tr{startcode}\\$1$tr{endcode}/g;
++  s/\\b\{([^}]*)\}/$tr{startcode}\\$1$tr{endcode}/g;
+   s/\\kbdsidx/\\sidx/g;
+   s/\\sidx\{[^\}]*\}//g unless $to_pod;
+   s/\\[a-zA-Z]*idx\{([^\}]*)\}/$1/g unless $to_pod;
+@@ -971,7 +971,7 @@
+ # s/\\(?:key|li)\s*{(.*)}\s*{}[ \t]*\n/\n\n=back\n\n$1\n\n=over\n\n/mgs;
+ # s/\\(key|var)(?![a-zA-Z])\s*{(\w+)}/C<$2>/mg;
+   s/\\var\s*{X<(\w+)>(\w+)}/X<$1>$tr{startcode}$2$tr{endcode}/mg;
+-  s/\\var\s*{f{}lag}/$tr{startcode}flag$tr{endcode}/mg;
++  s/\\var\s*\{f\{\}lag\}/$tr{startcode}flag$tr{endcode}/mg;
+ 
+   s/\\metax(?![a-zA-Z])\s*{(.*)}\s*{\s*(\w+)(?=C\<)(.*)}[ \t]*\n/\n\n=item C<L<$2>$3>\n\n$1\n\n/mg;
+   s/\\metax(?![a-zA-Z])\s*{(.*)}\s*{(.*)}[ \t]*\n/\n\n=item C<$2>\n\n$1\n\n/mg;

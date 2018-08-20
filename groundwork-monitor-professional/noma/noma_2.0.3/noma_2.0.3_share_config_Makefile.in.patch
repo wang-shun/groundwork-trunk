@@ -1,0 +1,47 @@
+*** noma_2.0.3/share/config/Makefile.in.orig	Mon Nov 21 03:25:24 2011
+--- noma_2.0.3/share/config/Makefile.in	Wed Aug 29 16:59:14 2012
+***************
+*** 1,6 ****
+--- 1,7 ----
+  SUBST = @abs_top_builddir@/subst.sh
+  INSTALL=@INSTALL@
+  INSTALLOPTS=@INSTALLOPTS@
++ PUBLIC_MODE = -m 644
+  datarootdir = @datarootdir@
+  sysconfdir = @prefix@/etc
+  prefix = @prefix@
+***************
+*** 8,14 ****
+  
+  all: noma
+  
+! FILES := $(patsubst %.in,%,$(filter-out Makefile.in,$(wildcard *.in)))
+  RELDIR := $(prefix)/$(subst @abs_top_builddir@/,,$(CURDIR))
+  
+  noma: $(FILES)
+--- 9,16 ----
+  
+  all: noma
+  
+! PUBLIC_FILES := $(patsubst %.in,%,$(filter-out Makefile.in,$(wildcard *.in)))
+! FILES := $(PUBLIC_FILES)
+  RELDIR := $(prefix)/$(subst @abs_top_builddir@/,,$(CURDIR))
+  
+  noma: $(FILES)
+***************
+*** 21,27 ****
+  
+  install: noma
+  	$(INSTALL) $(INSTALLOPTS) -d $(RELDIR)
+! 	$(INSTALL) $(INSTALLOPTS) -t $(RELDIR) $(FILES)
+  
+  .PHONY: install
+  
+--- 23,29 ----
+  
+  install: noma
+  	$(INSTALL) $(INSTALLOPTS) -d $(RELDIR)
+! 	$(INSTALL) $(INSTALLOPTS) $(PUBLIC_MODE) -t $(RELDIR) $(PUBLIC_FILES)
+  
+  .PHONY: install
+  

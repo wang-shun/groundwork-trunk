@@ -1,0 +1,148 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0014)about:internet -->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Adobe RoboHelp 8" />
+<title>Syslog Processing</title>
+<link rel="StyleSheet" href="../Bookshelf.css" type="text/css" />
+<script type="text/javascript" language="JavaScript">
+//<![CDATA[
+function reDo() {
+  if (innerWidth != origWidth || innerHeight != origHeight)
+     location.reload();
+}
+if ((parseInt(navigator.appVersion) == 4) && (navigator.appName == "Netscape")) {
+        origWidth = innerWidth;
+        origHeight = innerHeight;
+        onresize = reDo;
+}
+onerror = null; 
+//]]>
+</script>
+<style type="text/css">
+/*<![CDATA[*/
+<!--
+div.WebHelpPopupMenu { position:absolute;
+left:0px;
+top:0px;
+z-index:4;
+visibility:hidden; }
+-->
+/*]]>*/
+</style>
+
+<script type="text/javascript" language="javascript1.2" src="../whmsg.js">
+</script>
+<script type="text/javascript" language="javascript" src="../whver.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../whproxy.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../whutils.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../whlang.js">
+</script>
+<script type="text/javascript" language="javascript1.2" src="../whtopic.js">
+</script>
+</head>
+<body>
+<script type="text/javascript" language="javascript1.2">
+//<![CDATA[
+<!--
+if (window.gbWhTopic)
+{
+        var strUrl = document.location.href;
+        var bc = 0;
+        var n = strUrl.toLowerCase().indexOf("bc-");
+        if(n != -1)
+        {
+                document.location.href = strUrl.substring(0, n);
+                bc = strUrl.substring(n+3);
+        }
+
+        if (window.addTocInfo)
+        {
+        addTocInfo("MESSAGE PROCESSING\nSyslog Processing");
+addButton("show",BTN_TEXT,"Show Table of Contents","","","","",0,0,"","","");
+
+        }
+        if (window.writeBtnStyle)
+                writeBtnStyle();
+
+        if (window.writeIntopicBar)
+                writeIntopicBar(1);
+
+        
+        
+
+        if (window.setRelStartPage)
+        {
+        setRelStartPage("../Bookshelf.htm");
+
+                autoSync(0);
+                sendSyncInfo();
+                sendAveInfoOut();
+        }
+}
+else
+        if (window.gbIE4)
+                document.location.reload();
+
+//-->
+//]]>
+</script><script type="text/javascript" language="javascript">
+//<![CDATA[
+document.write("<p  style=\"text-align:right;color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;\">");
+AddMasterBreadcrumbs("../Bookshelf.htm", "color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;", "&gt;", "Home", "../Welcome_to_GroundWork_Monitor/index.htm");
+document.write("<a style=\"color:#0000ff;font-family:Arial;font-size:7pt;font-weight: normal;font-style: normal;text-decoration: none;\" href=\"messageprocessing_aboutmessageprocessing.htm\">MESSAGE PROCESSING<\/a> &gt; Syslog Processing<\/p>");
+//]]>
+</script>
+<p>&#160;</p>
+<h1><img src="../Shared_Images/square.gif" alt="square.gif" style="border: none;" width="15" height="15" border="0" /> Message Processing</h1>
+<h3 align="right"><a href="messageprocessing_aboutmessageprocessing.htm"><img src="../Shared_Images/homeicon.gif" alt="homeicon.gif" style="border: none;" width="33" height="27" border="0" /></a> <img src="../Shared_Images/printicon.gif" onclick="window.print()" alt="Print Page" title="Print Page" style="border: none;" width="31" height="27" border="0" /> <a href="mailto:support@groundworkopensource.com?subject=Syslog Processing" title="Send Comments"><img src="../Shared_Images/commentsicon.gif" alt="commentsicon.gif" style="border: none;" width="33" height="27" border="0" /></a></h3>
+<h2>Syslog Processing</h2>
+<p>The Syslog processor is a module of open source packages that will enable remote syslog messages to be forwarded to the GroundWork server and post error messages on the operator console when predefined errors occur. The syslog process consists of the following components and is displayed in the diagram below:</p>
+<h3>Syslog-NG</h3>
+<p>This package is installed on the GroundWork server. It allows remote systems to use the syslog facility to direct log messages to a directory on the GroundWork server. Configuration files will define which log messages are directed to GroundWork and which programs to call when those messages are found.</p>
+<h3>GroundWork Foundation Database</h3>
+<p>A plugin will send event messages to the Foundation LogMessage table. An operator can view a history of log messages by using the Console application. An application type of SYSLOG is predefined in Foundation so the operator may view all SYSLOG messages in the Console. GroundWork's SYSLOG Service Profile which includes Nagios SYSLOG trap plugins executes the following process:</p>
+<ul style="list-style: url('../Shared_Images/bullet01.gif');">
+<li class="p-Bullet1">
+<p class="Bullet1">Reads the designated syslog file on a scheduled basis. Each time the plugin is called, it will read from the last position to the end of the file.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">Compares each line with a match file containing regular expressions. If the regular expression matches, an exception condition is flagged.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">Sends the exception event to be logged in the Foundation database.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">Queries Foundation for number of SYSLOG exception events associated with each Host. It reports the number of exception conditions in the Service output and will set the Service status to the highest severity of the matched message.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">Sends the last matched message to a passive Service named <span class="CodeInline">SYSLOG_last.</span> This Service can be used for Notification or event handling.</p>
+</li>
+<li class="p-Bullet1">
+<p class="Bullet1">Configuration definitions for the summary Service and the passive Service check.</p>
+</li>
+</ul>
+<p class="Caption">Figure: Syslog Processing</p>
+<p class="Figure"><img src="Assets/messageprocessing_monitoringtechniquessyslogintegration.gif" alt="messageprocessing_monitoringtechniquessyslogintegration.gif" style="border: none;" width="468" height="264" border="0" /></p>
+<div style="width: 100%; position: relative;" id="footer">
+<p class="Footer" style="font-size: 7pt; line-height: Normal; margin-top: 6pt; margin-bottom: 4pt;">GroundWork, Inc. ©2011</p>
+</div>
+<script type="text/javascript" language="javascript1.2">
+//<![CDATA[
+<!--
+if (window.writeIntopicBar)
+        writeIntopicBar(0);
+
+
+highlightSearch();
+//-->
+//]]>
+</script>
+</body>
+</html>

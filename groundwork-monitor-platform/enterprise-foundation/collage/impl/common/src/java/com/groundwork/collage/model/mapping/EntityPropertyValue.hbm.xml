@@ -1,0 +1,123 @@
+<?xml version="1.0"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Inc. info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+-->
+<!DOCTYPE hibernate-mapping PUBLIC
+    "-//Hibernate/Hibernate Mapping DTD 2.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd" >
+    
+<hibernate-mapping default-lazy="false" >
+<!-- 
+	Updated to include Minimum/Maximum/Average values
+	$Id: LogPerformanceData.hbm.xml 4495 2006-09-29 05:04:49 +0000 (Fri, 29 Sep 2006) rruttimann $  
+-->
+
+<class 
+    name="com.groundwork.collage.model.impl.EntityPropertyValue" 
+    table="EntityProperty"
+>
+    <composite-id>
+        <key-property 
+            name="objectId" 
+            column="ObjectID" 
+            type="java.lang.Integer"
+        />
+        <key-property 
+            name="propertyTypeId"             
+            column="PropertyTypeID" 
+            type="java.lang.Integer"
+        />
+        
+        <key-property 
+            name="entityTypeId"             
+            column="EntityTypeID" 
+            type="java.lang.Integer"
+        />        
+    </composite-id>            
+    
+    <property
+        name="name"
+        type="java.lang.String"
+        column="ValueString"
+        not-null="true"
+        length="128"
+        formula="( select pt.Name from PropertyType pt where pt.PropertyTypeID = PropertyTypeID )"        
+    />
+         
+    <property
+        name="valueString"
+        type="java.lang.String"
+        column="ValueString"
+        not-null="false"
+        length="4096"
+    />
+    
+    <property
+        name="valueDate"
+        type="java.util.Date"
+        column="ValueDate"
+        not-null="false"
+        length="19"
+    />
+    
+    <property
+        name="valueBoolean"
+        type="java.lang.Boolean"
+        column="ValueBoolean"
+        not-null="false"
+    />
+    
+    <property
+        name="valueInteger"
+        type="java.lang.Integer"
+        column="ValueInteger"
+        not-null="false"
+        length="11"
+    />
+    
+    <property
+        name="valueLong"
+        type="java.lang.Long"
+        column="ValueLong"
+        not-null="false"
+    />
+        
+    <property
+        name="valueDouble"
+        type="java.lang.Double"
+        column="ValueDouble"
+        not-null="false"
+        length="22"
+    />
+       
+    <property
+        name="createdOn"
+        type="java.util.Date"
+        column="CreatedOn"
+        not-null="true"
+        length="19"
+    />       
+    
+    <property
+        name="lastEditedOn"
+        type="java.util.Date"
+        column="LastEditedOn"
+        not-null="true"
+        length="19"
+    />                 
+</class>
+</hibernate-mapping>

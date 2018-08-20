@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<jsp:root version="1.2" xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<jsp:directive.page contentType="text/html;charset=ISO-8859-1"
+		pageEncoding="ISO-8859-1" />
+	<f:view>
+		<ice:outputDeclaration doctypeRoot="HTML"
+			doctypePublic="-//W3C//DTD HTML 4.01 Transitional//EN"
+			doctypeSystem="http://www.w3.org/TR/html4/loose.dtd" />
+		<f:loadBundle basename="#{localeBean.baseName}" var="message" />
+		<!--  error mesasge -->
+		<ice:panelGroup rendered="#{searchHandler.error}"
+			id="STpanelsSearchError">
+			<ui:include src="/jsp/error.jspx">
+				<ui:param name="errorMessage" value="#{searchHandler.errorMessage}" />
+			</ui:include>
+			<ice:commandButton id="STretryNow"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{searchHandler.reloadPage}"></ice:commandButton>
+		</ice:panelGroup>
+		<ice:panelGroup rendered="#{!searchHandler.error}"
+			id="STpanelsSearchPage">
+			<!-- search panels -->
+			<ice:panelGrid columns="2" id="STpanelsSearchOptions">
+				<ice:inputText id="STtxtSearchQuery" size="30"
+					value="#{searchHandler.searchQuery}"
+					style="width: 150px; font-size: 12px height:20px;"
+					action="#{searchHandler.searchAction}"></ice:inputText>
+				<ice:commandButton type="submit" id="STsearchTreePortlet_btnSearch"
+					value="#{message['com_groundwork_portal_statusviewer_btnSearch_caption']}"
+					style="height:18px;"
+					actionListener="#{searchHandler.search}"></ice:commandButton>
+			</ice:panelGrid>
+			<br />
+			<!--  info message for no results-->
+			<ice:panelGroup rendered="#{searchHandler.showMessage}"
+				id="STpanelsSearchMessageNoResult">
+				<ui:include src="/jsp/info.jspx">
+					<ui:param name="infoMessage"
+						value="#{message['com_groundwork_portal_statusviewer_search_result_empty']} #{searchHandler.searchQuery}" />
+				</ui:include>
+			</ice:panelGroup>
+			<ice:panelGroup id="STpanelsSortOptions"
+				rendered="#{searchHandler.searchResultCount gt '0'}">
+				<ice:outputText id="STtxtSearchCount"
+					value="#{searchHandler.searchResultCount} #{message['com_groundwork_portal_statusviewer_txtResult']}"
+					style="font-weight: bold" />
+				<br />
+				<ice:panelGrid id="STpanelgridSearchSort" columns="3">
+					<ice:outputLabel id="STlblSortSelect" for="STmenuSortSelect"
+						value="#{message['com_groundwork_portal_statusviewer_lblSortSelect']}"
+						style="font-weight: normal" />
+
+					<!-- selectOneMenu drop down : Sorting options -->
+					<ice:selectOneMenu id="STmenuSortSelect"
+						style="width:100px; font-size: 11px; height:20px;"
+						value="#{searchHandler.selectedSortOption}">
+						<f:selectItem id="STmenuitemSortSelect" itemValue=""
+							itemLabel="#{message['com_groundwork_portal_statusviewer_listitemSortSelect']}"
+							itemDisabled="true" />
+						<f:selectItems id="STmenuitemsSortSelect"
+							value="#{searchHandler.sortingOptions}" />
+					</ice:selectOneMenu>
+					<ice:commandButton id="STbtnApply" style="width:35px; height:18px;"
+						value="#{message['com_groundwork_portal_statusviewer_btnApply']}"
+						actionListener="#{searchHandler.sortSearchResults}"></ice:commandButton>
+				</ice:panelGrid>
+			</ice:panelGroup>
+				<!-- Data table to show search results.-->
+				<ice:dataTable id="STtblResults" var="networkEntity"
+					value="#{searchHandler.searchResultList}" style="white-space:nowrap;">
+					<ice:column id="STcolumnStatus" style="height:34px; width:15px;">
+						<ice:graphicImage id="STimgStatus"
+							value="#{networkEntity.status.iconPath}"></ice:graphicImage>
+					</ice:column>
+					<ice:column id="STcolumnNodeNames">
+						<!-- Link (Rendered as href in HTML)-->
+						<ice:commandLink id="lnkSearchNdClick"
+							actionListener="#{navigationBean.navigationBeanActionListener}">
+							<f:param value="#{networkEntity.type.subPageName}"
+								name="nodeView" />
+							<f:param value="#{networkEntity.name}" name="nodeNameValue" />
+							<f:param value="#{networkEntity.objectId}" name="nodeId" />
+							<!-- dummy url param to make it not null -->
+							<f:param value="dummyurlparam" name="url" />
+							<!-- <f:param value="#{objectId.parentInfo}" name="parentInfo" /> -->
+							<!-- Link Text -->
+							<ice:outputText id="STsrchNdClick"
+								value="#{networkEntity.name}"
+								styleClass="cust_link_text_color"
+								title="header=[#{networkEntity.name} #{message['com_groundwork_portal_statusviewer_networktree_tooltip_summary']}] body=[#{networkEntity.toolTip}]" />
+						</ice:commandLink>
+						<ice:panelGroup id="STpanelLastUpdate"
+							rendered="#{networkEntity.type.typeName=='Host' || networkEntity.type.typeName=='Service'}">
+							<ice:outputText id="STtxtLastUpdate"
+								style="font-size: 9px; font-weight:normal;"
+								value="#{message['com_groundwork_portal_statusviewer_txtLastUpdate']}: " />
+							<ice:outputText id="STtxtLastUpdate"
+								style="font-size: 8px; font-weight:normal;"
+								value="#{networkEntity.formattedLastCheckForSearch}" />
+						</ice:panelGroup>
+					</ice:column>
+				</ice:dataTable>
+
+			<!-- Popup: Warning: excessive results-->
+			<ice:panelPopup id="STpanelPopupForWarning" autoPosition="manual"
+				styleClass="icePnlPopTbl" modal="true"
+				visible="#{searchHandler.popupVisible}"
+				style="z-index:999; top: 25%; left: 400px; width: 400px; height: 200px; position:relative; background: #FFFFFF;">
+				<f:facet name="header">
+					<ice:panelGrid id="STpanelWarnClose" cellspacing="0"
+						cellpadding="0" columns="2" width="100%"
+						columnClasses="txtleft,icePnlPopHdr">
+						<ice:column id="STpanelWarnCloseCol1">
+							<ice:outputText id="STtxtWarningTitle"
+								style="font-weight:bold; padding-top: 5px; padding-left: 5px;"
+								value="#{message['com_groundwork_portal_statusviewer_searchWarning']}"></ice:outputText>
+						</ice:column>
+						<ice:column id="STpanelWarnCloseCol2">
+
+							<div class="cust_poupmodes"><span title="Close Window">
+							<ice:commandButton id="STLinkCloseBtn" type="button"
+								image="/css/css-images/popup_modeBtn_close.gif"
+								action="#{searchHandler.closePopup}"
+								title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+								alt="Close" /> </span></div>
+
+						</ice:column>
+					</ice:panelGrid>
+				</f:facet>
+				<f:facet name="body">
+					<ice:panelGroup id="STpanelWarningContents">
+						<ice:panelGroup id="STpanelgroupPopupHost"
+							style="padding-top: 5px; padding-left: 5px;">
+							<ice:outputText id="STtxtProlog"
+								value="#{searchHandler.searchResultsWarningProlog} "></ice:outputText>
+						"<ice:outputText id="STtxtQuery" style="font-weight:bold;"
+								value="#{searchHandler.searchQuery}"></ice:outputText>"
+						<ice:outputText id="STtxtEpilog"
+								value=" #{searchHandler.searchResultsWarningEpilog}"></ice:outputText>
+						</ice:panelGroup>
+						<div class="gen_div_right"><ice:commandButton
+							id="STbtnClose" action="#{searchHandler.closePopup}"
+							title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+							styleClass="iceCmdBtn portlet-filter-button"
+							value="#{message['com_groundwork_portal_statusviewer_commandButton_close']}"></ice:commandButton>
+						</div>
+					</ice:panelGroup>
+				</f:facet>
+			</ice:panelPopup>
+		</ice:panelGroup>
+	</f:view>
+</jsp:root>

@@ -1,0 +1,55 @@
+--------------------------------------------------
+How to update NMS war file, Installer, and Dev-website:
+--------------------------------------------------
+
+  ssh root@arizona
+  cd /home/nagios
+  rm -rf groundwork-nms-2.1.2
+  svn co http://geneva/groundwork-professional/trunk/monitor-nms/nms-2.1.2 groundwork-nms-2.1.2
+  cd groundwork-nms-2.1.2
+  maven clean build
+  cp -p target/groundwork-nms-2.1.2.war ../nms-installer/src
+  cd ../nms-installer
+  mv RH4-32bit-packages packages
+  mv *-packages /tmp
+  cd ..
+  mv nms-installer groundwork-nms-installer-2.1.2
+  tar zcf groundwork-nms-2.1.2-154.rhel4.i386.tar.gz groundwork-nms-installer-2.1.2
+  scp -p  groundwork-nms-2.1.2-154.rhel4.i386.tar.gz root@morat:/var/www/html/tools/DEVELOPMENT/builds/RH4/32bit
+  rm -rf  groundwork-nms-installer-2.1.2/packages
+  mv /tmp/RH4-64bit-packages groundwork-nms-installer-2.1.2/packages
+  tar scf groundwork-nms-2.1.2-99.rhel4_64.x86_64.tar.gz groundwork-nms-installer-2.1.2
+  scp -rp groundwork-nms-2.1.2-99.rhel4_64.x86_64.tar.gz root@morat:/var/www/html/tools/DEVELOPMENT/builds/RH4/64bit
+  rm -rf  groundwork-nms-installer-2.1.2/packages
+  mv /tmp/RH5-32bit-packages groundwork-nms-installer-2.1.2/packages
+  tar scf groundwork-nms-2.1.2-99.rhel4_64.x86_64.tar.gz groundwork-nms-installer-2.1.2
+  scp -rp groundwork-nms-2.1.2-99.rhel4_64.x86_64.tar.gz root@morat:/var/www/html/tools/DEVELOPMENT/builds/RH5/32bit
+  rm -rf  groundwork-nms-installer-2.1.2/packages
+  mv /tmp/RH5-64bit-packages groundwork-nms-installer-2.1.2/packages
+  tar zcf groundwork-nms-2.1.2-100.rhel5_64.x86_64.tar.gz groundwork-nms-installer-2.1.2
+  scp -rp groundwork-nms-2.1.2-100.rhel5_64.x86_64.tar.gz root@morat:/var/www/html/tools/DEVELOPMENT/builds/RH5/64bit
+  rm -rf  groundwork-nms-installer-2.1.2/packages
+  mv /tmp/SUSE-32bit-packages groundwork-nms-installer-2.1.2/packages
+  tar zcf groundwork-nms-2.1.2-123.sles10.i586.tar.gz groundwork-nms-installer-2.1.2
+  scp -rp groundwork-nms-2.1.2-123.sles10.i586.tar.gz root@morat:/var/www/html/tools/DEVELOPMENT/builds/SUSE10/32bit
+  rm -rf  groundwork-nms-installer-2.1.2/packages
+  mv /tmp/SUSE-64bit-packages groundwork-nms-installer-2.1.2/packages
+  tar zcf groundwork-nms-2.1.2-122.sles10_64.x86_64.tar.gz groundwork-nms-installer-2.1.2
+  scp -rp groundwork-nms-2.1.2-122.sles10_64.x86_64.tar.gz root@morat:/var/www/html/tools/DEVELOPMENT/builds/SUSE10/64bit
+  
+Note: Depends on any add/remove files, the folowing file has to be updated:
+groundwork-nms-installer-2.1.2/run_install.sh
+
+
+-------------------------------------
+How to update NMS Installer at QA website:
+-------------------------------------
+  
+Note: Part 2 and 3 are for the first NMS update.
+      There is no need to go through 2 and 3 for the next NMS update.
+ 
+1.  ssh root@morat
+2.  mv /var/www/html/index.cgi /var/www/html/index.cgi.orig
+3.  mv /var/www/html/nms-index.cgi /var/www/html/index.cgi
+4.  /var/www/html/builds/UpdateQA-nms.sh
+  

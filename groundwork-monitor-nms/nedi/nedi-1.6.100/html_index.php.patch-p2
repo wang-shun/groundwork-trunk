@@ -1,0 +1,53 @@
+--- nedi/html/index.php.orig	2016-04-09 04:31:26.000000000 -0700
++++ nedi/html/index.php	2016-09-18 12:45:19.714385934 -0700
+@@ -40,13 +40,49 @@
+ 	$goto = $authurls[0];
+ }
+ 
++/* GWM: Check user and add if not present. */
++
++/* Use current authenticated tomcat user. */
++$remote_user = $_SERVER['REMOTE_USER'];
++$link = DbConnect($dbhost,$dbuser,$dbpass,$dbname); # moved for SSO from below
++if (empty($_POST['user']) && $remote_user) {
++	$passwd = hash("sha256","NeDi".$remote_user.$remote_user);                              # Salt & pw
++	$query = sprintf("SELECT password FROM users WHERE usrname='%s'", DbEscapeString($link,$remote_user));
++	$res = DbQuery($link,$query,'r');
++	if (!$res) {
++		die("ERROR:  Cannot access the $dbhost database.");
++	}
++	if (DbNumRows($res) == 0) {
++		$now = time();
++		# FIX LATER:  This query must be revisited with each NeDi release, to
++		# make sure all the inserted column names and values match up with the
++		# then-current definition of the "users" table.
++		# (*) The groups value of 63 includes all known groups, as a bitmask.
++		#     (See $gnam in the User-Management.php code.)
++		# (*) The miscopts value of 3 seems to mean "Medium" graphs.
++		# (*) "146" at the end of the dateformat value refers to a listing of
++		#     timezones in the nedi/html/inc/timezones.php file (America/Los_Angeles).
++		#     In theory, we could use date_default_timezone_get() to find the local
++		#     timezone, ignore a possible returned value of "UTC", look up the
++		#     returned value in the $tzone array and use that key here, or if we
++		#     got "UTC" or cannot find the local timezone in $tzone, default to
++		#     "146" as no worse than any alternative default.
++		$u_query = sprintf("insert into users (usrname, password, groups, email, phone, ".DbEscapeIdentifier($link,'time').", lastlogin, comment, language, theme, volume, columns, msglimit, miscopts, dateformat, viewdev) values('%s', '%s', 63, '', '', '" . $now . "', '" . $now . "', 'GWM User', 'english', 'groundwork', default, 7, default, 3, 'Y M j, H:i146', '')", DbEscapeString($link,$remote_user), DbEscapeString($link,$passwd));
++		$res = DbQuery($link,$u_query,'r');
++		$_POST['user'] = $remote_user;
++		$_POST['pass'] = $remote_user;
++	} else {
++		$_POST['user'] = $remote_user;
++		$_POST['pass'] = $remote_user;
++	}
++}
++
+ $user = isset($_GET['user'])  ? $_GET['user'] : '';
+ $user = isset($_POST['user']) ? $_POST['user'] : $user;
+ if( preg_match('/^\/C=/',$user) and isset($_SERVER['SSL_CLIENT_S_DN_CN']) ){				# Use $_SERVER['SSL_CLIENT_S_DN_CN'] if username starts with "/C=" (Certificate) as suggested by Daniel
+ 	$user = $_SERVER['SSL_CLIENT_S_DN_CN'];
+ }
+ 
+-$link   = DbConnect($dbhost,$dbuser,$dbpass,$dbname);
+ $status = "<h4>Invalid Credentials!</h4>";
+ if( strstr($guiauth,'sso') ) {										# SSO Code based on Juergen Vigna's idea
+ 	if( isset($_SERVER['HTTP_AUTH_USER']) ){

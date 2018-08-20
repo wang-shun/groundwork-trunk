@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  ~ JOSSO: Java Open Single Sign-On
+  ~
+  ~ Copyright 2004-2009, Atricore, Inc.
+  ~
+  ~ This is free software; you can redistribute it and/or modify it
+  ~ under the terms of the GNU Lesser General Public License as
+  ~ published by the Free Software Foundation; either version 2.1 of
+  ~ the License, or (at your option) any later version.
+  ~
+  ~ This software is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  ~ Lesser General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU Lesser General Public
+  ~ License along with this software; if not, write to the Free
+  ~ Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+  ~ 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+  ~
+  -->
+<s:beans xmlns:s="http://www.springframework.org/schema/beans"
+         xmlns:db-istore="urn:org:josso:db:identitystore"
+         xmlns:memory-istore="urn:org:josso:memory:identitystore"
+         xmlns:db-sstore="urn:org:josso:db:sessionstore"
+         xmlns:memory-sstore="urn:org:josso:memory:sessionstore"
+         xmlns:db-astore="urn:org:josso:db:assertionstore"
+         xmlns:memory-astore="urn:org:josso:memory:assertionstore"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+        urn:org:josso:db:identitystore http://www.josso.org/schema/josso-db-identitystore.xsd
+        urn:org:josso:memory:identitystore http://www.josso.org/schema/josso-memory-identitystore.xsd
+        urn:org:josso:db:sessionstore http://www.josso.org/schema/josso-db-sessionstore.xsd
+        urn:org:josso:memory:sessionstore http://www.josso.org/schema/josso-memory-sessionstore.xsd
+        urn:org:josso:db:assertionstore http://www.josso.org/schema/josso-db-assertionstore.xsd
+        urn:org:josso:memory:assertionstore http://www.josso.org/schema/josso-memory-assertionstore.xsd
+        "
+        >
+
+    <!-- ===================================================================== -->
+    <!-- JOSSO Identity Store, the id is very important because it is          -->
+    <!-- referenced by the session manager and who knows where else            -->
+    <!-- ===================================================================== -->
+
+<db-istore:jdbc-store
+           id="josso-identity-store"
+           driverName="org.postgresql.Driver"
+           connectionURL="jdbc:postgresql://localhost:5432/jbossportal?prepareThreshold=1"
+           connectionName="jboss"
+           connectionPassword="jboss"
+           userQueryString="SELECT jbp_uname AS NAME FROM jbp_users WHERE jbp_uname = ?;"
+           rolesQueryString="SELECT jbp_roles.jbp_name AS ROLE FROM jbp_roles INNER JOIN jbp_role_membership AS jrm ON jrm.jbp_rid = jbp_roles.jbp_rid INNER JOIN jbp_users AS users ON users.jbp_uid = jrm.jbp_uid WHERE users.jbp_uname = ? UNION SELECT 'Authenticated' AS ROLE;"
+           credentialsQueryString="SELECT jbp_uname AS USERNAME, jbp_password AS PASSWORD FROM jbp_users WHERE jbp_uname = ? and jbp_enabled;"
+           userPropertiesQueryString="SELECT jbp_name AS NAME, jbp_value AS VALUE FROM jbp_user_prop AS props INNER JOIN jbp_users AS users ON users.jbp_uid = props.jbp_uid WHERE jbp_uname = ?;"
+           resetCredentialDml="UPDATE jbp_users SET jbp_password = ? WHERE jbp_uname = ?;"
+           relayCredentialQueryString="SELECT jbp_uname AS LOGIN FROM jbp_users WHERE #?# = ?;"
+/>
+
+
+
+    <!-- ===================================================================== -->
+    <!-- JOSSO Session Store, the id is very important because it is           -->
+    <!-- referenced by the session manager and who knows where else            -->
+    <!-- ===================================================================== -->
+    <memory-sstore:memory-store id="josso-session-store"/>
+
+
+
+    <!-- ===================================================================== -->
+    <!-- JOSSO Assertion Store, the id is very important because it is         -->
+    <!-- referenced by the assertion manager and who knows where elese         -->
+    <!-- ===================================================================== -->
+
+    <!-- Change the store implementation if you want to use DB Assertion stores (useful for clustesr and failover) -->
+
+    <memory-astore:memory-store id="josso-assertion-store"/>
+
+
+</s:beans>

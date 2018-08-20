@@ -1,0 +1,427 @@
+#!/bin/csh -f
+
+# ========================================================================
+
+# Copyright (c) 2007 GroundWork Open Source, Inc.  All rights reserved.
+# Use is subject to GroundWork commercial license terms.
+
+# This script encapsulates all our knowledge about how to compile
+# Nagios plugins under recent versions of Solaris.  It has been
+# tested on SPARC/Solaris 5.6, SPARC/Solaris 9, SPARC/Solaris 10,
+# and Solaris Express x86 (Solaris Nevada snv_55b X86).
+
+# ========================================================================
+
+# How to use this script:
+# (*) Put the nagios-plugins-{version}.tar.gz file in the same directory
+#     alongside this script.
+# (*) Edit the value of NAGIOS_PLUGINS below.
+# (*) Edit the value of PLUGINS_PREFIX below.
+# (*) Possibly make platform-specific adjustments (see below).
+# (*) Run this script.
+# (*) Ignore the created directories and files, including the final Nagios
+#     plugins package.  Instead, use the GDMA package created by the
+#     parent makefile, which will include all the plugins created here.
+
+# ========================================================================
+
+# Note that on all platforms, successful compilation of the Nagios plugins
+# depends on having the Solaris Companion CD software installed along with
+# the base operating system.  The Solaris Express Developer Edition, which
+# comes on a single DVD, already has this software bundled in.  Older
+# releases of Solaris require this software to be installed from the
+# separate Solaris Companion CD for that release of Solaris.
+#
+# Also, at run time, certain of the libraries from the Solaris Companion CD
+# must be present.  For instance:
+#
+# On Solaris 9, you will need the SFWoldap package installed, which provides:
+#     /opt/sfw/lib/liblber.so.2
+#     /opt/sfw/lib/liblber.so.2.0.122
+#     /opt/sfw/lib/libldap.so.2
+#     /opt/sfw/lib/libldap.so.2.0.122
+#
+# On Solaris 10, you will need the SMCossl package installed, which provides:
+#     /usr/local/ssl/lib/libcrypto.so.0.9.8
+#     /usr/local/ssl/lib/libssl.so.0.9.8
+# or the SUNWopenssl-libraries package installed, which provides:
+#     /usr/sfw/lib/libcrypto.so.0.9.7
+#     /usr/sfw/lib/libssl.so.0.9.7
+
+# Note:  Stuff to be decided beforehand:
+# (1) What version of GCC to use.  (It doesn't matter much to the end-user,
+#     since everything compiled here ends up as a complete binary, not as
+#     a library to be linked with.  But we should still understand this
+#     choice as it might relate to possible compiler bugs in different
+#     versions of GCC.)
+# (2) What extra plugins to generate, that require additional software to
+#     compile against that is not supplied in the plugins distribution.
+
+# ========================================================================
+
+# Platform-specific adjustments:
+#
+# Solaris 9 and Solaris 10 ship with a broken file that needs to be fixed before the
+# complete build will succeed.  Here's the one difference, under Solaris 9:
+#
+#     % diff /opt/sfw/lib/libldap.la.orig /opt/sfw/lib/libldap.la
+#     17c17
+#     < dependency_libs=' /export/builds/s9-release/s9_u7ccd_03/usr/src/cmd/openldap/openldap-2.1.22/libraries/liblber/liblber.la -lresolv -lgen -lnsl -lsocket -ldl '
+#     ---
+#     > dependency_libs=' /opt/sfw/lib/liblber.la -lresolv -lgen -lnsl -lsocket -ldl '
+#
+# and under Solaris 10:
+#     % diff /opt/sfw/lib/libldap.la.orig /opt/sfw/lib/libldap.la
+#     17c17
+#     < dependency_libs=' /export/builds/s10-release/s10_ccd_03/usr/src/cmd/openldap/openldap-2.2.17/libraries/liblber/liblber.la -lresolv -lgen -lnsl -lsocket -lsasl -lssl -lcrypto '
+#     ---
+#     > dependency_libs=' /opt/sfw/lib/liblber.la -lresolv -lgen -lnsl -lsocket -lsasl -lssl -lcrypto '
+#
+# So let's not get all the way to building, and failing with some mysterious
+# error messages, without suggesting that we know what the real problem is:
+
+# The /opt/sfw/lib/libldap.la file doesn't exist in Solaris 5.6, but the back-quotes
+# will still be evaluated in the next statement even though they're supposedly protected
+# by the && operator.  It doesn't seem to do any damage, though.
+if ((`uname -r` == 5.9  && `fgrep dependency_libs /opt/sfw/lib/libldap.la | fgrep -c /export/builds/s9-release`) || \
+    (`uname -r` == 5.10 && `fgrep dependency_libs /opt/sfw/lib/libldap.la | fgrep -c /export/builds/s10-release`)) then
+    echo "========================================================================"
+    echo "ERROR:  The /opt/sfw/lib/libldap.la file must be edited before this code"
+    echo "        can be compiled.  See the $0 script"
+    echo "        for details.  Aborting\!"
+    echo "========================================================================"
+    exit 1
+endif
+
+# ========================================================================
+
+set print_usage = 0
+
+while ($#argv > 0)
+    set option = "$argv[1]"
+    if ("@$option" == "@-r" && $#argv > 1) then
+	set PLUGINS_RELEASE = "$argv[2]"
+	shift
+	shift
+    else if ("@$option" == "@-p" && $#argv > 1) then
+	set PLUGINS_PREFIX = "$argv[2]"
+	shift
+	shift
+    else
+	set print_usage = 1
+	shift
+    endif
+end
+
+if (! $?PLUGINS_RELEASE || ! $?PLUGINS_PREFIX) then
+    set print_usage = 1
+endif
+
+if ($print_usage) then
+    echo "Usage:    $0 -r {plugins_version} -p {plugins_prefix}"
+    echo "Example:  $0 -r 1.4.10 -p /opt/groundwork/gdma"
+    exit 1
+endif
+
+# ========================================================================
+
+# Set the plugins version number here to the release you're using.
+set NAGIOS_PLUGINS = nagios-plugins-$PLUGINS_RELEASE
+
+# The standard location for this code, as originally provided, is under /usr/local/ .
+# For our deployment purposes, we put the installed code in a nonstandard location
+# (/opt/groundwork/gdma/).  Actually, they get installed here:
+#
+#     $PLUGINS_PREFIX/libexec/
+#
+# The prefix ends up embedded in most of the plugins, so in the final compilation
+# it must be set correctly here for whatever path will be used at install time.
+
+# We normally don't bother to install the software during this build, because that
+# requires permissions in the /opt/groundwork file tree, which we probably don't
+# have while we build this as an ordinary user.
+set do_install = 0
+
+set DESIRED_USER  = root
+set DESIRED_GROUP = bin
+
+set CURRENT_USER  = `/usr/xpg4/bin/id -un`
+set CURRENT_GROUP = `/usr/xpg4/bin/id -Gn`
+if ("$CURRENT_USER" == root || "$CURRENT_USER" == $DESIRED_USER) then
+    if ("`/usr/xpg4/bin/id -un $DESIRED_USER`" == $DESIRED_USER) then
+	set INSTALL_USER  = $DESIRED_USER
+	set INSTALL_GROUP = $DESIRED_GROUP
+    else
+	set INSTALL_USER  = $CURRENT_USER
+	set INSTALL_GROUP = $CURRENT_GROUP
+	if ($do_install) then
+	    echo "================================================================"
+	    echo "WARNING:  User '$DESIRED_USER' does not exist; will use the"
+	    echo "          build user ($INSTALL_USER) and group ($INSTALL_GROUP) instead"
+	    echo "          for the owner/group of the installed files."
+	    echo "================================================================"
+	endif
+    endif
+else
+    set INSTALL_USER  = $CURRENT_USER
+    set INSTALL_GROUP = $CURRENT_GROUP
+    if ($do_install) then
+	echo "========================================================================"
+	echo -n "WARNING:  You are not building as"
+	if ("$DESIRED_USER" != root) then
+	    echo " either"
+	endif
+	echo -n " 'root'"
+	if ("$DESIRED_USER" != root) then
+	    echo -n " or '$DESIRED_USER'"
+	endif
+	echo ";"
+	echo "          will use the build user ($INSTALL_USER) and group ($INSTALL_GROUP)"
+	echo "          instead for the owner/group of the installed files."
+	echo "========================================================================"
+    endif
+endif
+
+if ("$CURRENT_USER" != root) then
+    echo "================================================================"
+    echo "WARNING:  You are not building as 'root'.  Any setuid plugins"
+    echo "          (including check_dhcp and check_icmp) will not appear"
+    echo -n "          in the"
+    if ($do_install) then
+	echo -n " installed or"
+    endif
+    echo " packaged software."
+    echo "          However, note that the package produced at this time"
+    echo "          is just the standard Nagios plugins package, not the"
+    echo "          full GDMA package, which will include setuid plugins."
+    echo "          So building as 'root' is definitely not recommended."
+    echo "================================================================"
+endif
+
+# ========================================================================
+
+setenv PLUGIN_MAKE_PROCESS $$
+set parent_dir = $cwd
+onintr abort
+
+if ( ! -f $NAGIOS_PLUGINS.tar.gz ) then
+    echo "========================================================================"
+    echo "ERROR:  The Nagios plugins source code ($NAGIOS_PLUGINS.tar.gz)"
+    echo "        is not available here; aborting\!"
+    echo "========================================================================"
+    exit 1
+endif
+
+if ( `uname -s` != SunOS ) then
+    echo "========================================================================"
+    echo "ERROR:  This script is only designed to be run under Solaris; aborting\!"
+    echo "========================================================================"
+    exit 1
+endif
+
+# The commands specified here are demonstrated to work when compiling the
+# Nagios Plugins 1.4.10 release.  In some cases, alternative commands might
+# work, such as using /usr/xpg4/bin/grep instead of /usr/sfw/bin/ggrep .
+# However, such alternatives have not been thoroughly tested.
+switch (`uname -r`)
+    case 5.6:
+	set gunzip = /usr/local/bin/gunzip
+	set ggrep  = /usr/bin/grep
+	set gmake  = /usr/ccs/bin/make
+	set gcc    = /usr/local/bin/gcc
+	breaksw
+    case 5.8:
+	set gunzip = /usr/bin/gunzip
+	set ggrep  = /usr/bin/grep
+	set gmake  = /opt/sfw/bin/gmake
+	set gcc    = /opt/sfw/bin/gcc
+	breaksw
+    case 5.9:
+	set gunzip = /usr/bin/gunzip
+	set ggrep  = /usr/sfw/bin/ggrep
+	set gmake  = /opt/sfw/bin/gmake
+	set gcc    = /opt/sfw/bin/gcc
+	breaksw
+    case 5.10:
+	set gunzip = /usr/bin/gunzip
+	set ggrep  = /usr/sfw/bin/ggrep
+	set gmake  = /usr/sfw/bin/gmake
+	set gcc    = /usr/sfw/bin/gcc
+	breaksw
+    case 5.11:
+	set gunzip = /usr/bin/gunzip
+	set ggrep  = /usr/sfw/bin/ggrep
+	set gmake  = /usr/sfw/bin/gmake
+	set gcc    = /usr/sfw/bin/gcc
+	breaksw
+    default:
+	echo "========================================================================"
+	echo "ERROR:  This script has only been ported so far to Solaris 5.6,"
+	echo "        Solaris 8 through Solaris 10, and Solaris Express.  Aborting\!"
+	echo "========================================================================"
+	exit 1
+	breaksw
+endsw
+
+foreach program ($gunzip $ggrep $gmake $gcc)
+    if ( ! -f $program ) then
+	echo "========================================================================"
+	echo "ERROR:  You don't have `basename $program` installed on your machine"
+	echo "        in the expected location ($program); aborting\!"
+	echo "========================================================================"
+	exit 1
+    endif
+end
+
+# ========================================================================
+
+rm -rf $NAGIOS_PLUGINS
+$gunzip -c $NAGIOS_PLUGINS.tar.gz | tar xfle -
+cd $NAGIOS_PLUGINS
+
+if ( $cwd =~ *,* ) then
+    echo "========================================================================"
+    echo "The build pathname is:"
+    echo "    $cwd"
+    echo "BUILD ERROR:  This path contains a comma, which will interfere with the"
+    echo "configuration phase of the build.  Try again under some other directory."
+    echo "========================================================================"
+    exit 1
+endif
+
+# We have to patch up our compilation environment to match what is expected
+# by the Nagios plugins code, since the native build of that code is not
+# internally ported to the platforms we're trying to build on here.  The
+# configuration process may depend on the GNU grep -E option, the compilation
+# process depends in some way on features of GNU make, and Sun puts some of
+# their build tools and third-party tools in out-of-the-way locations.
+#
+mkdir /tmp/gnu_$PLUGIN_MAKE_PROCESS
+ln -s $ggrep /tmp/gnu_$PLUGIN_MAKE_PROCESS/grep
+ln -s $gmake /tmp/gnu_$PLUGIN_MAKE_PROCESS/make
+set path = (/tmp/gnu_$PLUGIN_MAKE_PROCESS /usr/ccs/bin /usr/sfw/bin $path)
+
+# FIX MAJOR:  The README for the plugins says:
+#
+#	1) Run the configure script to initialize variables and create a Makefile, etc.
+#
+#	      ./configure --prefix=BASEDIRECTORY --with-cgiurl=SOMEURL
+#
+#	   a) Replace BASEDIRECTORY with the path of the directory under which Nagios
+#	      is installed (default is '/usr/local/nagios')
+#	   b) Replace CGIURL with the path used to access the Nagios CGIs with
+#	      a web browser (default is '/nagios/cgi-bin')
+#
+# Should we be appling a --with-cgiurl=SOMEURL option to our configure?
+# What practical effect would it have?  Why would this URL be buried in any
+# of the plugins?
+
+# We need to clue in the configuration that certain header files and libraries
+# are contained in places it would not ordinarily look.
+setenv CPPFLAGS "-I/opt/sfw/include"
+setenv LDFLAGS  "-L/opt/sfw/lib"
+
+if (`uname -r` == 5.10) then
+    # ...
+    # On Solaris 10 3/05, these extra directories seem to not be needed, but
+    # on Solaris 10 6/06, they're useful.
+    setenv CPPFLAGS "$CPPFLAGS -I/usr/sfw/include"
+    setenv LDFLAGS  "$LDFLAGS  -L/usr/sfw/lib"
+
+    # Okay, we're about to lie about what compiler we'll use on this platform.
+    # The reason is that "/usr/sfw/bin/mysql_config --cflags", which is used to
+    # compile the check_mysql plugin, emits flags which assume the use of the
+    # Sun C compiler.  At least, that's true on Solaris 10 6/06.
+    set gcc = cc
+
+    # This path to the Sun C compiler is specific to our initial build machine.
+    # We will change this later when we get a formal build machine.
+    set path = (/opt/SPROexpress/opt/SUNWspro/bin $path)
+
+    # gcc somehow finds the math library when it needs it, but Sun cc requires
+    # an explicit mention.
+    setenv LDFLAGS "$LDFLAGS -lm"
+endif
+
+# The use of gcc instead of Sun's own cc must be forced, because some of the
+# Makefiles use compiler-specific options such as -Wall.  It might be possible
+# to instead use the recently-released Sun Studio 12 C compiler, which has more
+# GCC compatibility built in, but we have not tested that possibility.
+#
+./configure CC=$gcc --prefix=$PLUGINS_PREFIX --with-nagios-user=$INSTALL_USER --with-nagios-group=$INSTALL_GROUP >& ,conf-log
+
+set saved_status = $status
+if ($saved_status != 0) then
+    echo "========================================================================"
+    echo "ERROR:  The configuration phase failed; exiting\!  For details, check:"
+    echo "        $NAGIOS_PLUGINS/,conf-log"
+    echo "        $NAGIOS_PLUGINS/config.log"
+    echo "========================================================================"
+    exit $saved_status
+endif
+
+make >& ,make-build-log
+set saved_status = $status
+if ($saved_status != 0) then
+    echo "========================================================================"
+    echo "ERROR:  The make phase failed; exiting\!  For details, check:"
+    echo "        $NAGIOS_PLUGINS/,make-build-log"
+    echo "        $NAGIOS_PLUGINS/,conf-log"
+    echo "        $NAGIOS_PLUGINS/config.log"
+    echo "========================================================================"
+    exit $saved_status
+endif
+
+if ($do_install) then
+    make install >& ,make-install-log
+    set saved_status = $status
+    if ($saved_status != 0) then
+	echo "========================================================================"
+	echo "ERROR:  The install phase failed; exiting\!  For details, check:"
+	echo "        $NAGIOS_PLUGINS/,make-install-log"
+	echo "        $NAGIOS_PLUGINS/,make-build-log"
+	echo "        $NAGIOS_PLUGINS/,conf-log"
+	echo "        $NAGIOS_PLUGINS/config.log"
+	echo "========================================================================"
+	exit $saved_status
+    endif
+endif
+
+echo | make solpkg >& ,make-solpkg-log
+set saved_status = $status
+if ($saved_status != 0) then
+    echo "========================================================================"
+    echo "ERROR:  The packaging phase failed; exiting\!  For details, check:"
+    echo "        $NAGIOS_PLUGINS/,make-solpkg-log"
+    if ($do_install) then
+	echo "        $NAGIOS_PLUGINS/,make-install-log"
+    endif
+    echo "        $NAGIOS_PLUGINS/,make-build-log"
+    echo "        $NAGIOS_PLUGINS/,conf-log"
+    echo "        $NAGIOS_PLUGINS/config.log"
+    echo "========================================================================"
+    exit $saved_status
+endif
+mv ${NAGIOS_PLUGINS}-sol*-*-local ..
+
+# This is obsolete code.
+if (0) then
+    # Now make a Solaris package out of the built files.
+    set LOCAL_PLUGINS_PREFIX = `echo $PLUGINS_PREFIX | sed 's,^/,,'`
+    cd pkg/solaris
+    /bin/rm -f prototype
+    /bin/rm -rf $LOCAL_PLUGINS_PREFIX
+    mkdir -p    $LOCAL_PLUGINS_PREFIX
+    cp -pr $PLUGINS_PREFIX/libexec $LOCAL_PLUGINS_PREFIX
+    echo 1 | solpkg $LOCAL_PLUGINS_PREFIX
+    mv `dirname $LOCAL_PLUGINS_PREFIX`/${NAGIOS_PLUGINS}-sol*-*-local ../../..
+endif
+
+cleanup:
+rm -rf /tmp/gnu_$PLUGIN_MAKE_PROCESS
+exit $saved_status
+
+abort:
+cd $parent_dir
+rm -rf /tmp/gnu_$PLUGIN_MAKE_PROCESS $parent_dir/$NAGIOS_PLUGINS
+exit 1

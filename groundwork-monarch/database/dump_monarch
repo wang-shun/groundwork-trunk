@@ -1,0 +1,146 @@
+#!/bin/bash -e
+
+# This script is used to convert the local monarch database to create a copy of
+# monarch.sql that could be directly checked into Subversion for use in future
+# product builds.  It may be invoked on both pre-GW5.3 and GW5.3-or-later databases
+# (which is to say, it knows how to find mysqldump either way).
+
+# ----------------------------------------------------------------------
+# Capturing a copy of the monarch database for archiving into our builds
+# ----------------------------------------------------------------------
+#
+# Inasmuch as the result file is supposed to be useable for creating a GroundWork
+# Community Edition monarch database, not just a Professional Edition database,
+# you must start with the Bitrock package for the Community Edition.  Install it,
+# then shut down the entire GroundWork system, then start only the mysql component:
+#
+#     /usr/local/groundwork/ctlscript.sh stop
+#     /usr/local/groundwork/ctlscript.sh start mysql
+#
+# Then apply whatever migration scripts you have put in place to upgrade an existing
+# installation, to edit the database schema or to modify table content.  Only then
+# does it make sense to run this dump_monarch script.
+
+print_usage() {
+    echo "usage:  dump_monarch -d         > monarch_dump.sql"
+    echo "or:     dump_monarch {dumpfile} > monarch_dump.sql"
+    echo "where:  -d means to invoke the local mysqldump to collect data"
+    echo "        {dumpfile} is an existing file from your own run of mysqldump"
+}
+
+if [ $# != 1 ]; then
+    print_usage
+    exit 1
+fi
+
+old_mysqldump_bin=/usr/bin/mysqldump
+new_mysqldump_bin=/usr/local/groundwork/mysql/bin/mysqldump
+old_mysqldump="$old_mysqldump_bin --socket=/var/lib/mysql/mysql.sock"
+new_mysqldump="$new_mysqldump_bin --socket=/usr/local/groundwork/mysql/tmp/mysql.sock"
+
+if [ -f $new_mysqldump_bin ]; then
+    cur_mysqldump="$new_mysqldump"
+else
+    cur_mysqldump="$old_mysqldump"
+fi
+
+if [ "$1" = "-d" ]; then
+    # We limit the net_buffer_length (cut it in half from its usual value) so that
+    # extra "insert" statements are generated for very long data dumps.  This makes it
+    # possible to add characters to the dump file via our editing below so the output
+    # is human-readable, and still end up with a dump file that can be read back by an
+    # unaltered mysqld server (i.e., one without an altered max_allowed_packet value).
+    mysqldump_cmd="$cur_mysqldump -u root -p --net_buffer_length=512K monarch"
+    echo "You will be prompted for the MySQL root-account password." 1>&2
+elif [ `expr match "$1" -` -eq 1 ]; then
+    # Bad command-line option.
+    print_usage
+    exit 1
+else
+    # The caller already ran mysqldump; our only duty here is to reformat its output.
+    mysqldump_cmd="cat $1"
+fi
+
+# First, we prepend our legal/copyright notice.
+cat << EOF
+--
+-- Copyright 2007-2011 GroundWork Open Source, Inc. (GroundWork)
+-- All rights reserved. This program is free software; you can redistribute it and/or
+-- modify it under the terms of the GNU General Public License version 2 as published
+-- by the Free Software Foundation.
+--
+-- This program is distributed in the hope that it will be useful, but WITHOUT ANY
+-- WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+-- PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License along with this
+-- program; if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+-- Fifth Floor, Boston, MA 02110-1301, USA.
+--
+EOF
+
+# The transformations we make do the following:
+# (1) Introduce newlines between successive rows to be inserted into tables.
+#     This is a huge win for readability.
+# (2) Introduce a newline before the first row to be inserted into a table,
+#     for consistent alignment with the rest of the rows.
+# (3) Drop the table-level AUTO_INCREMENT value which mysqldump produces as a
+#     means of reserving initial sequence values in the table for use with the
+#     rows which are inserted immediately after the table is created.  We delete
+#     this specification because it is fragile:  it is unlikely that someone who
+#     is maintaining the output file manually, by adding new rows to the table
+#     in the INSERT INTO section for that table, will think to update this initial
+#     table-level AUTO_INCREMENT value, leaving it inconsistent with the rest of
+#     the file.  Dropping this value should have no untoward effect; all it will
+#     do is cause the same value to be computed dynamically as the initial set of
+#     rows is inserted.
+# (4) Drop the insertion of rows into the "datatype" and "host_service" tables.
+#     Those lines are inserted into the tables during initial startup after
+#     Bitrock package installation, and they do not belong in the checked-in
+#     copy of the monarch.sql file.  The patterns we use for this deletion match
+#     the comments before and after the insertion statements rather than the
+#     insertion statements themselves, primarily so we are not subject to
+#     accidentally matching some part of an inserted row rather than the entire
+#     INSERT INTO statement.  Note that this makes us subject to changes in how
+#     mysqldump generates these comments, so this strategy needs to be
+#     re-validated whenever we upgrade the version of MySQL that we are using.
+# (5) Drop the insertion of rows into the "sessions" table, as this is all
+#     site-local transient information.
+# (6) We drop these lines:
+#
+#         CREATE DATABASE /*!32312 IF NOT EXISTS*/ `monarch` /*!40100 DEFAULT CHARACTER SET latin1 */;
+#         USE `monarch`;
+#
+#     Without these lines, we can plop all these tables down in a different
+#     database, when the need for that arises.  This also makes it necessary
+#     to specify the database on the mysql command line when you import the
+#     dump, which is a good practice.  The only downside here is that this
+#     command would have set the default character set as we wish it to be,
+#     and otherwise we are depending on some other facility to get this right.
+#     Perhaps a future version of this dump_monarch script could probe for and
+#     correct this setting if it is found to be set otherwise.
+# (7) We drop certain rows that are now obsolete, or that don't belong in the
+#     Community Edition, as an automated check to ensure we are checking in a
+#     completely clean copy of the dump file.
+#     Community Edition now allows bronx event broker to be running. These
+#     previously disallowed lines are now allowed. 
+
+$mysqldump_cmd \
+    | sed -e 's/),(/),\n\t(/g' -e 's/ VALUES (/ VALUES\n\t(/' -e 's/AUTO_INCREMENT=[0-9]\+ //' \
+    | awk '
+	/ALTER TABLE `datatype` DISABLE KEYS/,/ALTER TABLE `datatype` ENABLE KEYS/{next}
+	/ALTER TABLE `host_service` DISABLE KEYS/,/ALTER TABLE `host_service` ENABLE KEYS/{next}
+	/ALTER TABLE `sessions` DISABLE KEYS/,/ALTER TABLE `sessions` ENABLE KEYS/{next}
+	/-- Current Database: `monarch`/{next}
+	/CREATE DATABASE/{next}
+	/USE `.*`;/{next}
+	/'aggregate_status_updates'/{next}
+	/'comment_file'/{next}
+	/'downtime_file'/{next}
+#	/'broker_module'/{next}
+#	/'event_broker_options'/{next}
+	/'misc_name'/{next}
+	/'misc_value'/{next}
+	{print}
+    '
+

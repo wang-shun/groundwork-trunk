@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions targetNamespace="urn:fws"
+	xmlns:fwsmodel="http://model.ws.foundation.groundwork.org"
+	xmlns:apachesoap="http://xml.apache.org/xml-soap" xmlns:impl="urn:fws"
+	xmlns:intf="urn:fws" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/"
+	xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:wsdlsoap="http://schemas.xmlsoap.org/wsdl/soap/"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<!--
+		Collage - The ultimate data integration framework. Copyright (C)
+		2004-2009 GroundWork Open Source Inc. info@groundworkopensource.com
+		This program is free software; you can redistribute it and/or modify
+		it under the terms of version 2 of the GNU General Public License as
+		published by the Free Software Foundation. This program is distributed
+		in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+		even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+		PARTICULAR PURPOSE. See the GNU General Public License for more
+		details. You should have received a copy of the GNU General Public
+		License along with this program; if not, write to the Free Software
+		Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+		USA
+	-->
+	<wsdl:import namespace="urn:fwsmodel"
+		xmlns:fwsmodel="http://model.ws.foundation.groundwork.org" location="../fwsmodel.wsdl" />
+	<wsdl:documentation>Web service that retrieves images (PNG) for a set of RRD files. Calling the web service with just the Host argument will return an array of graphs that represent all services for that host. By providing the Host name/Service description, only the specific graph will be returned. </wsdl:documentation>
+	<wsdl:message name="getGraphRequest">
+		<wsdl:documentation>RRD WS under request message.
+			getGraphRequest - Description for parts.
+		</wsdl:documentation>
+		<wsdl:part name="hostName" type="xsd:string" >
+			<wsdl:documentation>valid host name String.	</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="serviceName" type="xsd:string">
+			<wsdl:documentation>valid service name String.</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="startDate" type="xsd:long">
+			<wsdl:documentation>Start date is total number of seconds since epoch (time in seconds since 01-01-1970)</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="endDate" type="xsd:long">
+			<wsdl:documentation>optional. Total number of seconds since epoch (time in seconds since 01-01-1970)Default to current time.</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="applicationType" type="xsd:string">
+			<wsdl:documentation>A type of application that has been  configured to be monitored through the collage system. E.g NAGIOS</wsdl:documentation>
+		</wsdl:part>
+		<wsdl:part name="graphWidth" type="xsd:int">
+			<wsdl:documentation>Width of generated image. Default is 400px.</wsdl:documentation>
+		</wsdl:part>
+	</wsdl:message>
+    <wsdl:message name="WSFoundationException">
+        <wsdl:part name="fault" element="fwsmodel:WSFoundationException" />
+    </wsdl:message>
+	<wsdl:message name="getGraphResponse">
+		<wsdl:part name="getGraphReturn" type="fwsmodel:WSFoundationCollection" />
+		<wsdl:documentation>Returns WSFoundationCollection: collection of  RRDGraph as per the input parameters specified.</wsdl:documentation>
+	</wsdl:message>
+	<wsdl:portType name="WSRRD">
+		<wsdl:operation name="getGraph"
+			parameterOrder="hostName serviceName startDate endDate applicationType">
+			<wsdl:documentation>Get one or more graph objects for a given Host or Host/Service object. If the serviceName parameter is not set all graphs for a given host will be returned.</wsdl:documentation>
+			<wsdl:input message="impl:getGraphRequest" name="getGraphRequest" />
+			<wsdl:output message="impl:getGraphResponse" name="getGraphResponse" />
+			<wsdl:fault message="impl:WSFoundationException" name="WSFoundationException" />
+		</wsdl:operation>
+	</wsdl:portType>
+	<wsdl:binding name="rrdSoapBinding" type="impl:WSRRD">
+		<wsdlsoap:binding style="rpc"
+			transport="http://schemas.xmlsoap.org/soap/http" />
+		<wsdl:operation name="getGraph">
+			<wsdlsoap:operation soapAction="/foundation-webapp/services/wsrrd" />
+			<wsdl:input name="getGraphRequest">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:input>
+			<wsdl:output name="getGraphResponse">
+				<wsdlsoap:body encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					namespace="urn:fws" use="literal" />
+			</wsdl:output>
+			<wsdl:fault name="WSFoundationException">
+				<wsdlsoap:fault encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"
+					name="WSFoundationException" use="literal" />
+			</wsdl:fault>
+		</wsdl:operation>
+	</wsdl:binding>
+	<wsdl:service name="WSRRDService">
+		<wsdl:port binding="impl:rrdSoapBinding" name="wsrrd">
+			<wsdlsoap:address
+				location="http://localhost:8080/foundation-webapp/services/wsrrd" />
+		</wsdl:port>
+	</wsdl:service>
+</wsdl:definitions>

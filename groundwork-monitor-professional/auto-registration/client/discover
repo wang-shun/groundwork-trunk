@@ -1,0 +1,344 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+# This program runs commands that support GDMA Auto-Setup.
+#
+# Copyright (c) 2017-2018 GroundWork, Inc. (www.gwos.com).  All rights reserved.
+# Use of this software is subject to commercial license terms.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+####################################################################
+# Perl Setup
+####################################################################
+
+use strict;
+use warnings;
+
+# GDMA::AutoSetup and TypedConfig are really only used by subsidiary packages,
+# but we mention them here so we can access their respective $package::$VERSION
+# variables when we print the version of this script.
+#
+# For strange reasons having to do with the Windows Perl compilation environment,
+# it is necessary to reference TypedConfig here only after GDMA::Logging has been
+# referenced.  This probably has to do with the use of Cwd within GDMA::Logging
+# and some conflicting reference of Cwd within the File::Spec::Unix package that
+# is somehow referenced in a Windows build.  Regardless of the details, this
+# ordering is required to avoid some strange run-time warning messages at startup.
+
+use GDMA::LockFile;
+use GDMA::Logging;
+use GDMA::AutoSetup;
+use GDMA::Discovery;
+use GDMA::Utils;
+
+use TypedConfig;
+
+####################################################################
+# Program Variables
+####################################################################
+
+our $VERSION = '2.6.1';
+
+####################################################################
+# Configuration Variables
+####################################################################
+
+# In some future version, we might make this option available externally,
+# settable in the gdma_auto.conf file, and still defaulted to 0 if not set.
+my $Force_CRL_Check = 0;
+
+# See the comments for %standard_ssl_opts in GDMA::Utils for notes on these settings.
+my %application_ssl_opts = (
+    verify_hostname => 1,
+    SSL_ca_path     => GDMA::Utils::get_ca_path(),
+    SSL_version     => 'TLSv1_2',
+    SSL_check_crl   => 1,
+);
+
+use constant ERROR_STATUS => 0;
+use constant STOP_STATUS  => 1;
+
+####################################################################
+# Working Variables
+####################################################################
+
+my $trigger_path      = undef;
+my $instructions_path = undef;
+my $results_path      = undef;
+my $send_results      = undef;
+
+####################################################################
+# Program
+####################################################################
+
+# Here is the entire substance of this script, in a one-liner:
+exit( ( main() == ERROR_STATUS ) ? 1 : 0 );
+
+####################################################################
+# Supporting Subroutines
+####################################################################
+
+sub print_usage {
+    print <<'EOF'
+usage:  discover trigger_file instructions_file [results_file [send_flag]]
+        discover -h
+	discover -V
+where:  trigger_file       is the path to an auto-discovery trigger file
+        instructions_file  is the path to an auto-discovery instructions file
+        results_file       is an optional path to a file in which the
+                           auto-discovery file results will be locally stored
+        send_flag          is an optional boolean flag (typically set to 1
+                           if you're going to use it) that tells discover to
+                           send the auto-discovery results to the server
+
+In the present incarnation of this command, diagnostic information will
+always be written to the standard output streeam, to help with understanding
+the parsing and execution of the trigger and instructions files.
+
+If the results_file and send_flag arguments are omitted, the discovery results
+will also be printed to the standard output stream.  If the results_file is
+argument is provided, the diagnostic information will still be printed to the
+standard output stream, but the discovery results will instead be written to
+the stated file.
+
+If both the results_file and send_flag arguments are provided, the discovery
+results will be saved to the file and also sent to the server for processing
+there.  A much greater level of validation can be run on the server side,
+depending on the last_step value specified in the client-side trigger file.
+
+The -h and -V options print the help message and program version, respectively.
+EOF
+}
+
+sub get_version {
+    my $full    = shift;
+    my $version = $VERSION;
+    if ( $full && defined $PerlApp::VERSION ) {
+	my $compile_time = PerlApp::get_bound_file('compile_time');
+	$version .= " ($compile_time)" if $compile_time;
+    }
+    return $version;
+}
+
+sub print_version {
+    print "discover version " . get_version(1) . "\n";
+    print "using GDMA::AutoSetup version $GDMA::AutoSetup::VERSION\n";
+    print "using GDMA::Discovery version $GDMA::Discovery::VERSION\n";
+    print "using GDMA::LockFile  version $GDMA::LockFile::VERSION\n";
+    print "using GDMA::Logging   version $GDMA::Logging::VERSION\n";
+    print "using GDMA::Utils     version $GDMA::Utils::VERSION\n";
+    print "using TypedConfig     version $TypedConfig::VERSION\n";
+}
+
+sub main {
+    if (@ARGV) {
+	if ( $ARGV[0] eq '-h' || $ARGV[0] eq '--help') {
+	    print_usage();
+	    exit(0);
+	}
+	## We use -V for the version option in order to reserve -v for
+	## possible future use as a "verbose" option.
+	if ( $ARGV[0] eq '-V' || $ARGV[0] eq '--version') {
+	    print_version();
+	    exit(0);
+	}
+    }
+
+    # We must prohibit executing as root, so we don't create files that won't be
+    # modifiable later on when this script is run as an ordinary user.  We run this
+    # check after handling a few simple command-line arguments, so we can always
+    # at least run the -h (help) and -V (version) options to just spill out useful
+    # information that can't be damaging.  To make that possible, any earlier code
+    # is not allowed to do anything that touches any outside resources.
+    #
+    # We don't apply a similar test to Windows primarily because we don't yet know
+    # of a simple means to determine whether the current user has super-user privileges.
+    # (See the Win32 package and the Win32::IsAdminUser() routine, but pay attention
+    # to what domain it checks.)
+    #
+    # Running under Windows pretty much requires that the GDMA_BASE_DIR environment
+    # variable is set, but it might not be if you're not running as the same user as is
+    # used to run the GDMA system service.  So under Windows, the get_headpath() routine
+    # will verify that said environment variable exists, and die if not, warning that
+    # you're probably not running under the proper account.  At the moment, I don't know
+    # how to otherwise check that we are not running under an administrative account.
+    #
+    my $head_path  = GDMA::Utils::get_headpath();
+    if ( ( $^O eq 'linux' ) or ( $^O eq 'solaris' ) or ( $^O eq 'aix' ) or ( $^O eq 'hpux' ) ) {
+	if ( $> == 0 ) {
+	    ( my $program = $0 ) =~ s<.*/><>;
+	    die "ERROR:  You cannot run $program as root.\n";
+	}
+    }
+    elsif ( $^O eq 'MSWin32' ) {
+	## There is nothing to do here; get_headpath() has us covered as best we can be.
+    }
+    else {
+	die "ERROR:  $^O is not a supported operating system.\n";
+    }
+
+    if ( @ARGV < 2 || @ARGV > 4 ) {
+	print_usage();
+	exit(1);
+    }
+
+    $trigger_path      = $ARGV[0];
+    $instructions_path = $ARGV[1];
+    $results_path      = $ARGV[2];
+    $send_results      = $ARGV[3];
+
+    # In some future version, we might move this call later, after we have had a chance to
+    # initialize $Force_CRL_Check from some new optional directive in the gdma_auto.conf file.
+    GDMA::Utils::initialize_ssl_opts( \%application_ssl_opts, $Force_CRL_Check );
+
+    my $logging_logfile = undef;
+    my $logging = GDMA::Logging->new( { logfile => $logging_logfile, stdout => 1, grouping => 'individual' }, 'started', \*STDERR );
+    if ( not defined $logging ) {
+	print "FATAL:  Cannot create a GDMA::Logging object" . ( defined($logging_logfile) ? " for file \"$logging_logfile\"" : '' ) . ".\n";
+	return ERROR_STATUS;
+    }
+    my $logger            = $logging->logger();
+    my $outcome           = 1;
+    my $discovery_outcome = 0;
+    my $discovery_results;
+
+    my $is_unix    = ( $^O eq 'linux' || $^O eq 'solaris' || $^O eq 'aix' || $^O eq 'hpux' );
+    my $is_windows = ( $^O eq 'MSWin32' );
+    my $discovery_lockfile =
+	$is_unix    ? "$head_path/tmp/auto_discovery_lock"
+      : $is_windows ? "$head_path\\tmp\\auto_discovery_lock"
+      :               'unknown_filepath';
+    my $discovery_lock;
+
+    my %discovery_options = ( logger => $logger );
+
+    ## FIX MAJOR:  make this a command-line option
+    $discovery_options{show_resources} = 1;
+
+    my $discovery = GDMA::Discovery->new( \%discovery_options );
+    if ( not defined $discovery ) {
+	$logger->error("ERROR:  Cannot initialize the GDMA::Discovery package.");
+	return ERROR_STATUS;
+    }
+
+    my $errors = GDMA::LockFile::get_file_lock( \*discovery_lock, $discovery_lockfile, $GDMA::LockFile::EXCLUSIVE, $GDMA::LockFile::NON_BLOCKING );
+    if (@$errors) {
+	$logger->error("ERROR:  @$errors");
+	return ERROR_STATUS;
+    }
+
+    ## We must supply at least the following values from the local gdma_auto.conf file, as they are all
+    ## needed to either run parts of the discovery or send discovery results to the GroundWork server.
+    ## Note:  The gdma_auto.conf file on the server itself contains none of these values, which means we
+    ## cannot run "discover" on the GroundWork server and expect it to configure the server itself.
+    my %g_config = (
+	## Use_Long_Hostname      => undef,  # 'on', 'off', or undef (which invokes a fallback behavior)
+	## Use_Lowercase_Hostname => undef,  # 'on', 'off', or undef (defaulted 'off')
+	## Forced_Hostname        => undef,  # if defined, a fixed hostname which should override local calculations
+	## Auto_Register_User     => 'DUMMY',
+	## Auto_Register_Pass     => 'DUMMY',
+	## Max_Server_Redirects   => 5,
+	## Target_Server          => 'http://localhost',
+    );
+
+    ## Read the default parameters from the autoconfig and override files.
+    my ($AutoconfigfilePath, $AutoconfigOverridefilePath) = install_autoconfig_filepaths($head_path);
+    my $errstr;
+    if ( !GDMA::Utils::read_config( $AutoconfigfilePath, \%g_config, \$errstr, 0 ) ) {
+	## We can't log anything here -- we don't know the log file name yet.
+	## There is nothing to do.
+	$logger->fatal("FATAL:  Failed to read the main autoconfig file:  $errstr");
+	die "Failed to read the main autoconfig file:  $errstr\n";
+    }
+    ## FIX LATER:  We should read the override file as well, to possibly pick up a value for
+    ## Forced_Hostname that we can feed into the Discovery process.  To make that useful, this
+    ## reading of the config files would need to happen earlier, before we run the discovery.
+
+    ( $discovery_outcome, $discovery_results ) = $discovery->run_discovery( \%g_config, $trigger_path, $instructions_path );
+    if ( not $discovery_outcome ) {
+	$logger->error("ERROR:  Discovery failed.");
+	## This situation should not block us from releasing the lock, so we don't directly return from here.
+	## However, we do qualify all further work by checking the $discovery_outcome before taking more steps.
+    }
+    elsif ( %$discovery_results ) {
+	## FIX MAJOR:  if we're going to save the discovery results, consider that we should
+	## probably suppress all the printed output while the pass of discovery is running
+	if ($results_path) {
+	    $outcome = $discovery->save_discovery_results( $discovery_results, $results_path );
+	    if ($send_results) {
+		## FIX MAJOR:  We should disable this tool from sending in a do_configuration value for the
+		## last_step, except perhaps under control of some specific extra command-line option.  We
+		## do not in general want people making production-level changes to the Monarch database
+		## by casually running a discovery using instructions and trigger files stored earlier on
+		## the client.  If we do have such an option in hand, we will need to extend this tool to
+		## analyze the returned $message as is done elsewhere, to update the override file (see the
+		## $AutoconfigOverridefilePath value) if this was a successful full live-action discovery.
+
+		my $interactive = 1;
+		my $status;
+		my $message;
+		( $outcome, $status, $message ) = $discovery->send_discovery_results( \%g_config, $results_path, $interactive );
+		if ($outcome) {
+		    chomp $message;
+		    ## Sending to the server succeeded, but whether or not the server was okay
+		    ## with the results once it received them is a different question.  If it
+		    ## saw a client-side failure, that will be returned as a $status failure.
+		    if ($status eq 'success') {
+			$logger->notice("NOTICE:  Auto-Setup call succeeded, with these server-side messages:\n$message");
+		    }
+		    else {
+			$logger->notice("NOTICE:  Auto-Setup call failed, with these server-side messages:\n$message");
+		    }
+		}
+		else {
+		    if ($message) {
+			chomp $message;
+			$logger->notice("NOTICE:  Auto-Setup server-side messages were:\n$message");
+		    }
+		}
+	    }
+	}
+	else {
+	    $outcome = $discovery->print_discovery_results($discovery_results);
+	}
+    }
+    else {
+	$logger->notice("NOTICE:  Discovery succeeded but produced no results.");
+    }
+
+    $outcome = GDMA::LockFile::release_file_lock( \*discovery_lock, $discovery_lockfile );
+    if ( not $outcome ) {
+	$logger->error("ERROR:  Cannot release lock on $discovery_lockfile lockfile.");
+	return ERROR_STATUS;
+    }
+
+    return $discovery_outcome ? STOP_STATUS : ERROR_STATUS;
+}
+
+# Code stolen from the poller's install_autoconfig_filepaths() routine, with a slight modification.
+#
+# FIX MINOR:  That code ought to be moved to GDMA::Utils so we can just call
+# a commonly accessible routine, instead of duplicating that code here.
+#
+sub install_autoconfig_filepaths {
+    my $my_headpath            = shift;
+    my $autoconfigfile         = "NULL";
+    my $autoconfigoverridefile = "NULL";
+    my $my_osname              = $^O;
+
+    # Set the filenames based on the operating system.
+    if ( ( $my_osname eq 'solaris' ) or ( $my_osname eq 'linux' ) or ( $my_osname eq 'aix' ) or ( $my_osname eq 'hpux' ) ) {
+	$autoconfigfile         = "$my_headpath/config/gdma_auto.conf";
+	$autoconfigoverridefile = "$my_headpath/config/gdma_override.conf";
+    }
+    elsif ( $my_osname eq 'MSWin32' ) {
+	$autoconfigfile         = "$my_headpath\\config\\gdma_auto.conf";
+	$autoconfigoverridefile = "$my_headpath\\config\\gdma_override.conf";
+    }
+
+    return ( $autoconfigfile, $autoconfigoverridefile );
+}

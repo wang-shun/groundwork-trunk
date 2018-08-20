@@ -1,0 +1,61 @@
+# logrotate configuration for GroundWork Monitor files related to the
+# Ganglia Integration Module and Auto-Import
+
+# Check-Ganglia log
+#
+# The standard-output stream from the check_ganglia.pl daemon is captured by
+# a freedt (supervise) dumblog process invoked by the base GroundWork Monitor
+# product, and written to the log file listed here.  Sending that dumblog
+# process a HUP signal is sufficient to have it killed, and when it is
+# automatically restarted by its parent "supervise" process, the new copy
+# will open a new output file, once again capturing the standard-output stream
+# of our daemon, which remains running the entire time.
+#
+/usr/local/groundwork/core/services/check-ganglia/log/main/log
+{
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 20M
+    rotate 5
+    postrotate
+	service='check-ganglia/log'
+	# Signal the dumblog process so it closes and opens its log file.  The
+	# process we need to send a HUP signal to is the particular instance of
+	# dumblog which has a parent "supervise $service" process.  We find which
+	# is the proper "supervise" process by examining its command arguments.
+	ppids=`ps -o pid,args --no-headers -C supervise | fgrep $service | awk '{print $1}'`
+	if [ -n "$ppids" ]; then
+	    parent_pids=`echo $ppids | sed -e 's/ /,/g'`
+	    # This is a bit blind, killing all children of the appropriate "supervise" process rather than
+	    # selecting a "dumblog" process, but "ps" doesn't allow us to AND process-selection conditions
+	    # and we don't want to bother with a more-complex computation here.  Nonetheless, that supervise
+	    # process should only have the one child process running.
+	    pids=`ps -o pid --no-headers --ppid $parent_pids | awk '{print $1}'`
+	    if [ -n "$pids" ]; then
+		kill -HUP $pids || true
+	    fi
+	fi
+    endscript
+}
+
+# Auto-Import log
+#
+# /usr/local/groundwork/nagios/var/log/autoimport.log is the default value for
+# the logfile option configured in /usr/local/groundwork/config/autoimport.conf
+# to affect the /usr/local/groundwork/nagios/libexec/autoimport.pl script.  That
+# script can be run at the will of the administrator.  The script opens the file
+# in append mode on each run, and closes it at the end of that run.  Thus there
+# is no need to send the script a signal that the file has been rotated, as the
+# next run will simply open and use a new file with the original filename.
+#
+/usr/local/groundwork/nagios/var/log/autoimport.log
+{
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 20M
+    rotate 5
+}

@@ -1,0 +1,71 @@
+	<!--  Capture Metrics OFF, LOG, ALL (Default)-->
+	<foundation-profiler captureMetrics="LOG">
+	<!-- Database to store profiling information
+	The profiler DB Connection information is not needed since we are not capturing metrics	
+	<profilerDB driver="com.mysql.jdbc.Driver"
+				url="jdbc:mysql://localhost/GWProfilerDB" 
+				login="collage" 
+				password="gwrk"/>
+	-->
+	
+	<!-- Foundation Database to be profiled -->
+	<foundationDB driver="com.mysql.jdbc.Driver"
+				url="jdbc:mysql://localhost/GWCollageDB" 
+				login="root" 
+				password=""/>
+	
+	<!-- Common message socket to post feeder messages - We may want to move these settings
+	     to each individual message. -->	     
+	<messageSocket server="localhost" port="4913" />
+	
+	<!-- Workload Definitions -->
+	<!-- Note:  We are not capturing metrics for QA Acceptance any message batches that exceed threshold values
+	     will be output at the completion of the workloads -->
+	<!-- Note:  All durations are defined in seconds. -->
+	<workloads>
+		<!-- 5.0 QA Acceptance Workload -->
+		<workload name="QA Acceptance - 25 Host Status, 50 Service Status, 20 Event, 20 SNMP, 20 SysLog and 5 Host Create Each Batch" 
+			numBatches="10"
+			interval="20"
+			quantity="1" 
+			distribution="even"
+			enabled="true">
+			<messages>				
+				<message type="org.groundwork.foundation.profiling.messages.ToggleHostStatusMessage" 
+					name="25-host-status"
+					threshold="5"
+					numHosts="25"
+				 />		
+				<message type="org.groundwork.foundation.profiling.messages.ToggleServiceStatusMessage" 
+					name="50-service-status"
+					threshold="5"
+					numServices="50"
+				 />		
+				<message type="org.groundwork.foundation.profiling.messages.EventMessage" 
+					name="20-event"
+					threshold="5"
+					numDevices="20"
+					consolidation="true"
+				 />					
+				<message type="org.groundwork.foundation.profiling.messages.HostCreateMessage" 
+					name="5-host-create"
+					threshold="5"
+					numHosts="5"
+					version45="false"					
+				 />		
+				<message type="org.groundwork.foundation.profiling.messages.SNMPMessage" 
+					name="20-snmp"
+					threshold="5"
+					numDevices="20"
+					consolidation="true"
+				 />		
+				<message type="org.groundwork.foundation.profiling.messages.SysLogMessage" 
+					name="20-syslog"
+					threshold="5"
+					numDevices="20"
+					consolidation="true"
+				 />				  				 	
+			</messages>
+		</workload>		
+	</workloads>
+</foundation-profiler>

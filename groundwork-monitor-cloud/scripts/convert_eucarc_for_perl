@@ -1,0 +1,80 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+# Program to convert a eucarc script (part of the standard Eucalyptus
+# credentials), which is only suitable for use with bash, to an
+# equivalent config file which is suitable for use with perl.  The
+# primary difference is that we fix the location of the EUCA_KEY_DIR,
+# making the assumption that it will be the same directory as the
+# eucarc file is currently found in rather than dynamically setting
+# it at the time our config file is read.
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+use Cwd 'realpath';
+use File::Basename;
+
+if (scalar @ARGV != 1) {
+    print "usage:  convert_eucarc_for_perl {region}/eucarc > {region}/access.conf\n";
+    exit 1;
+}
+
+my $file_path = ($ARGV[0] =~ m{^/}) ? $ARGV[0] : "$ENV{PWD}/$ARGV[0]";
+my $file_dir = dirname realpath $file_path;
+
+# We make the assumption that the directory that the eucarc file lives in is
+# named after the region (generally a hostname) which represents that cloud.
+my $region = basename $file_dir;
+
+# FIX THIS:  what format do we want the data to appear in?
+# Here is the basic information we seek to make available:
+
+# setenv EUCA_KEY_DIR /home/gherteg/cloud/monitor-cloud/config
+# setenv S3_URL http://172.28.115.213:8773/services/Walrus
+# setenv EC2_URL http://172.28.115.213:8773/services/Eucalyptus
+# setenv EC2_PRIVATE_KEY ${EUCA_KEY_DIR}/euca2-admin-618532fa-pk.pem
+# setenv EC2_CERT ${EUCA_KEY_DIR}/euca2-admin-618532fa-cert.pem
+# setenv EC2_JVM_ARGS -Djavax.net.ssl.trustStore=${EUCA_KEY_DIR}/jssecacerts
+# setenv EUCALYPTUS_CERT ${EUCA_KEY_DIR}/cloud-cert.pem
+# setenv EC2_ACCESS_KEY 'WKy3rMzOWPouVOxK1p3Ar1C2uRBwa2FBXnCw'
+# setenv EC2_SECRET_KEY 'AM2fuuYM37O2p5OVHvSY1SKem8yjAailroCOQ'
+# # This is a bogus value; Eucalyptus does not need this but client tools do.
+# setenv EC2_USER_ID '000100729354'
+# alias ec2-bundle-image "ec2-bundle-image --cert ${EC2_CERT} --privatekey ${EC2_PRIVATE_KEY} --user 000100729354 --ec2cert ${EUCALYPTUS_CERT}"
+# alias ec2-upload-bundle "ec2-upload-bundle -a ${EC2_ACCESS_KEY} -s ${EC2_SECRET_KEY} --url ${S3_URL} --ec2cert ${EUCALYPTUS_CERT}"
+
+# though we can ignore the aliases.
+# Why not just create another TypedConfig file, with simple lines of this form?:
+# key = "value"
+    
+while (<>) {
+    if (/^\s*#/) {
+	print;
+    }
+    elsif (/^export ([^=]+)=(.+)/) {
+	my $key   = $1;
+	my $value = $2;
+	if ($value =~ /^'(.*)'$/) {
+	    print "$key = \"$1\"\n";
+	}
+	else {
+	    print "$key = \"$value\"\n";
+	}
+    }
+    elsif (/^alias /) {
+	# Ignore aliases, as we have no purpose for them within Perl.
+	next;
+    }
+    elsif (/^EUCA_KEY_DIR=/) {
+	# We set this so it can be referenced by other configuration
+	# lines while our output file is being read by TypedConfig.
+	# FIX THIS:  test to find out if we need to strip enclosing
+	# braces around such references; or perhaps we might just
+	# perform those substitutions here rather than at run time
+	print "EUCA_KEY_DIR = \"$file_dir\"\n";
+    }
+    else {
+	print "# Unknown input line:\n";
+	print "# $_";
+    }
+}

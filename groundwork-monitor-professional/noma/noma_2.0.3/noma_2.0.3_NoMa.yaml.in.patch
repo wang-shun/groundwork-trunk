@@ -1,0 +1,74 @@
+--- noma_2.0.3/etc/NoMa.yaml.in.orig	2011-11-21 03:25:24.000000000 -0800
++++ noma_2.0.3/etc/NoMa.yaml.in	2017-08-08 15:29:05.841808573 -0700
+@@ -17,15 +17,22 @@
+    password: noma
+    user: noma
+    persistent: 0
++  postgresql:
++   type: postgresql
++   database: noma
++   host: localhost
++   password: noma
++   user: noma
++   persistent: 0
+   sqlite3:
+    type: sqlite3
+    dbfile: @localstatedir@/NoMa.db
+ api:
+-  type: mysql
+-  database: nagios
+-  host: localhost
+-  password: nagios
+-  user: nagios
++  type: postgresql
++  database: gwcollagedb
++  host: POSTGRESQL_SERVER
++  password: gwrk
++  user: collage
+   persistent: 0
+   table_prefix: nagios_
+ frontend:
+@@ -86,7 +93,7 @@
+   watchdogEnabled: 1
+   watchdogMaxRSS: 524288
+   watchdogMaxRuntime: ~
+-  watchdogMaxVSS: 1048576
++  watchdogMaxVSS: 1500000
+ escalator: 
+   internalEscalation: 0
+   stopAfter: 5400
+@@ -118,12 +125,12 @@
+   sendemail: 
+     message: 
+       host: 
+-        ackmessage: "***** NoMa *****\n\nID: $incident_id\nNotification Type: $notification_type\nHost: $host\nAuthor: $authors\nComment: $comments\nState: $status\nLink: http://localhost/nagios/cgi-bin/extinfo.cgi?type=1&host=$host\nInfo: $output\n\nDate/Time: $datetime"
+-        message: "***** NoMa *****\n\nID: $incident_id\nNotification Type: $notification_type\nHost: $host\nHost Alias: $host_alias\nState: $status\nAddress: $host_address\nLink: http://localhost/nagios/cgi-bin/extinfo.cgi?type=1&host=$host\nInfo: $output\n\nDate/Time: $datetime"
++        ackmessage: "***** NoMa *****\n\nID: $incident_id\nNotification Type: $notification_type\nHost: $host\nAuthor: $authors\nComment: $comments\nState: $status\nLink: http://localhost/portal-statusviewer/urlmap?host=$host\nInfo: $output\n\nDate/Time: $datetime"
++        message: "***** NoMa *****\n\nID: $incident_id\nNotification Type: $notification_type\nHost: $host\nHost Alias: $host_alias\nState: $status\nAddress: $host_address\nLink: http://localhost/portal-statusviewer/urlmap?host=$host\nInfo: $output\n\nDate/Time: $datetime"
+         subject: "NoMa: Host $host is $status"
+       service: 
+-        ackmessage: "***** NoMa *****\n\nID: $incident_id\nNotification Type: $notification_type\nAuthor: $authors\nComment: $comments\nService: $service\nHost: $host\nState: $status\n\nLink: http://localhost/nagios/cgi-bin/extinfo.cgi?type=2&host=$host&service=$service\nInfo: $output\n\nDate/Time: $datetime"
+-        message: "***** NoMa *****\n\nID: $incident_id\nNotification Type: $notification_type\nService: $service\nHost: $host\nHost Alias: $host_alias\nState: $status\nAddress: $host_address\nLink: http://localhost/nagios/cgi-bin/extinfo.cgi?type=2&host=$host&service=$service\nInfo: $output\n\nDate/Time: $datetime"
++        ackmessage: "***** NoMa *****\n\nID: $incident_id\nNotification Type: $notification_type\nAuthor: $authors\nComment: $comments\nService: $service\nHost: $host\nState: $status\n\nLink: http://localhost/portal-statusviewer/urlmap?host=$host&service=$service\nInfo: $output\n\nDate/Time: $datetime"
++        message: "***** NoMa *****\n\nID: $incident_id\nNotification Type: $notification_type\nService: $service\nHost: $host\nHost Alias: $host_alias\nState: $status\nAddress: $host_address\nLink: http://localhost/portal-statusviewer/urlmap?host=$host&service=$service\nInfo: $output\n\nDate/Time: $datetime"
+         subject: "NoMa: Service $service on host $host is $status"
+     sendmail: @SENDMAIL@ -t
+   sendsms: 
+@@ -155,12 +162,14 @@
+   ackPipe: @NAGIOSPIPE@
+   bundle: 0
+   delay: 0
+-  locale: en_GB
++  locale: en_US
+   maxAttempts: 4
+   pattern: "%F %T"
+-  sleep_time: 1
++  nap_time: 0.01
++  sleep_time: 30
+   timeToWait: 60
+-  timezone: Europe/Berlin
++  timezone: America/Los_Angeles
++  generate_IDs: 0
+ path: 
+   cache: @localstatedir@/noma.cache
+   pidfile: @localstatedir@/noma.pid

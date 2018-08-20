@@ -1,0 +1,260 @@
+<!--
+Copyright 2007 GroundWork Open Source, Inc. ("GroundWork")  
+All rights reserved. This program is free software; you can redistribute it
+and/or modify it under the terms of the GNU General Public License version 2
+as published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU General Public License for 
+more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<!--
+	Top level build script for GroundWork OpenSource
+	
+	Make sure that the build/prepare.sh run before invoking this build script
+
+-->
+<project default="allBuild"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+
+	<goal name='build' 
+			description="Builds all components for Groundwork Monitor OpenSource">
+		
+<!--		<attainGoal name="guava.build" /> -->
+		<attainGoal name="monarch.build" />
+		<attainGoal name="reports.build" />
+<!--		<attainGoal name="sv.build" /> -->
+		<attainGoal name="monitor-os.build" />
+	</goal>
+	
+	<goal name='deploy' 
+				description="Moves all components packages for monitor-os into the deplyoment folders">
+				
+<!--		<attainGoal name="guava.deploy" /> -->
+		<attainGoal name="monarch.deploy" />
+		<attainGoal name="reports.deploy" />
+<!--		<attainGoal name="sv.deploy" /> -->
+		<attainGoal name="monitor-os.deploy" />
+		<attainGoal name="foundation" />
+	</goal>
+	
+	<goal name='allBuild' 
+		description="Moves all components packages for monitor-os into the deplyoment folders">
+		
+		<attainGoal name="build" />
+							
+	</goal>
+	
+	<goal name='allDeploy' 
+			description="Moves all components packages for monitor-os into the deplyoment folders">
+			
+			<attainGoal name="deploy" />
+								
+		</goal>
+	
+	<goal name="allClean"
+	        description="Clean the master project and all subprojects">
+	    <attainGoal name="subClean"/>
+	    <attainGoal name="clean"/>
+	  		   </goal>
+
+
+  <goal name="subClean"
+        description="Clean all subprojects"
+        >
+    <maven:reactor
+               basedir="${basedir}"
+               includes="monitor-os/*/project.xml,monarch/*/project.xml,reports/*/project.xml,PUC/*/project.xml,boolshelf/*/project.xml"
+               goals="allClean"
+               banner="Cleaning"
+               ignoreFailures="false"/>
+  </goal>
+
+	<!-- 
+			Build individual components of the GroundWork Monitor
+			
+			Add a goal for any new component
+	 -->
+	 
+
+	<goal name="monitor-os.build"
+	        description="Build Monitor OpenSource"
+	        >
+	    <maven:reactor
+	               basedir="${basedir}/monitor-os"
+	    	       includes="project.xml"
+	               goals="allBuild"
+	               banner="Building"
+	               ignoreFailures="false"/>
+	  </goal>
+	
+	<goal name="monitor-os.deploy"
+		        description="Build Monitor OpenSource"
+		        >
+		    <maven:reactor
+		               basedir="${basedir}/monitor-os"
+		    	       includes="project.xml"
+		               goals="deploy"
+		               banner="deploy"
+		               ignoreFailures="false"/>
+		  </goal>
+	
+	
+		<goal name="monitor-core"
+				description="Build GroundWork Core ">
+			<maven:reactor
+				basedir="${basedir}/../groundwork-monitor/monitor-core"
+				includes="project.xml"
+				goals="allBuild"
+				postProcessing="false"
+				ignoreFailures="false"/>
+		</goal>
+		
+<!--		<goal name="guava.build"
+				description="Build Guava ">
+			<maven:reactor
+				basedir="${basedir}/../groundwork-monitor/guava"
+				includes="project.xml"
+				goals="allBuild"
+				postProcessing="false"
+				ignoreFailures="false"/>
+		</goal>
+
+		<goal name="guava.deploy"
+				description="Build Guava ">
+			<maven:reactor
+				basedir="${basedir}/../groundwork-monitor/guava"
+				includes="project.xml"
+				goals="allDeploy"
+				postProcessing="false"
+				ignoreFailures="false"/>
+		</goal> -->
+
+		<goal name="monarch.build"
+				description="Build Monarch ">
+			<maven:reactor
+				basedir="${basedir}/../groundwork-monitor/monarch"
+				includes="project.xml"
+				goals="allBuild"
+				postProcessing="false"
+				ignoreFailures="false"/>
+		</goal>
+
+		<goal name="monarch.deploy"
+				description="Deploy Monarch ">
+			<maven:reactor
+				basedir="${basedir}/../groundwork-monitor/monarch"
+				includes="project.xml"
+				goals="allDeploy"
+				postProcessing="false"
+				ignoreFailures="false"/>
+		</goal>
+
+		<goal name="reports.build"
+				description="Build Reports ">
+			<maven:reactor
+				basedir="${basedir}/../groundwork-monitor/reports"
+				includes="project.xml"
+				goals="allBuild"
+				postProcessing="false"
+				ignoreFailures="false"/>
+		</goal>
+
+		<goal name="reports.deploy"
+				description="Deploy Reports ">
+			<maven:reactor
+				basedir="${basedir}/../groundwork-monitor/reports"
+				includes="project.xml"
+				goals="allDeploy"
+				postProcessing="false"
+				ignoreFailures="false"/>
+		</goal>
+
+<!--		<goal name="sv.build"
+				description="Build SV2 ">
+			<maven:reactor
+				basedir="${basedir}/../groundwork-monitor/sv2"
+				includes="project.xml"
+				goals="allBuild"
+				postProcessing="false"
+				ignoreFailures="false"/>
+		</goal>
+
+		<goal name="sv.deploy"
+				description="Deploy SV2 ">
+			<maven:reactor
+				basedir="${basedir}/../groundwork-monitor/sv2"
+				includes="project.xml"
+				goals="allDeploy"
+				postProcessing="false"
+				ignoreFailures="false"/>
+		</goal> -->
+	
+<!--	  <goal name="guava-packages.build"
+					description="Build guava-packages ">
+				<maven:reactor
+					basedir="${basedir}/guava-packages"
+					includes="project.xml"
+					goals="allBuild"
+					postProcessing="false"
+					ignoreFailures="false"/>
+			</goal>
+
+			<goal name="guava-packages.deploy"
+					description="Deploy guava-packages">
+				<maven:reactor
+					basedir="${basedir}/guava-packages"
+					includes="project.xml"
+					goals="allDeploy"
+					postProcessing="false"
+					ignoreFailures="false"/>
+			</goal> -->
+	
+	<!-- Build Foundation files -->
+	<goal name="foundation" 
+			description="Build Foundation Packages for Framework">
+		<attainGoal name="foundation.clean" />
+		<attainGoal name="foundation.deploy" />
+	</goal>
+	
+	<!-- Clean Foundation files -->
+		<goal name="foundation.clean" 
+				description="Clean Foundation for Monitor-PRO">
+<!--			<delete dir="${org.groundwork.deploy.prefix}/guava/packages/foundation" /> -->		
+		</goal>
+	
+	<!-- Deploy Foundation files -->
+	<goal name="foundation.deploy" 
+			description="Deploy Foundation  Packages for Framework">
+		
+		
+		<!-- Guava Application -->
+<!--		<mkdir dir="${org.groundwork.deploy.prefix}/guava/packages/foundation"/>
+		<copy todir="${org.groundwork.deploy.prefix}/guava/packages/foundation">
+		    <fileset dir="${basedir}/foundation/misc/guava/foundation">
+		      <include name="**/*"/>
+		      <exclude name="*/.svn" />
+		    </fileset>
+		</copy> -->
+		
+	<!-- PHP API -->
+<!--<mkdir dir="${org.groundwork.deploy.prefix}/${org.groundwork.php.share}"/>
+	<copy todir="${org.groundwork.deploy.prefix}/${org.groundwork.php.share}">
+		<fileset dir="${basedir}/foundation/collage/api/php/"  includes="adodb/**" excludes="**/.svn">
+	  	</fileset>
+	 </copy>
+		
+	<copy todir="${org.groundwork.deploy.prefix}/${org.groundwork.php.share}">
+		<fileset dir="${basedir}/foundation/collage/api/php/" includes="**/collageapi/*" excludes="**/CVS">
+	  	</fileset>
+	  </copy>
+-->
+	</goal>
+</project>

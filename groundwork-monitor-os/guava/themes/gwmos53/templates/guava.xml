@@ -1,0 +1,66 @@
+<html>
+	<head>
+	<title>Groundwork Monitor Community Edition</title>
+	
+	<link rel="stylesheet" tal:attributes="href self/getStylesheet" type="text/css" />
+	<style>
+		html, body{	
+			width: 100%;	/* make the body expand to fill the visible window */
+			height: 100%;
+			overflow: hidden;	/* erase window level scrollbars */
+			padding: 0 0 0 0;
+			margin: 0 0 0 0;
+		}
+   </style>  
+    
+  	<script type="text/javascript" src="javascript/overlib/overlib.js"> </script>
+  	<script src="javascript/dojo/dojo.js"> </script>
+	<script type="text/javascript" src="javascript/javascript.js"> </script>
+	<script type="text/javascript" src="javascript/datetimepicker.js"> </script>
+	
+	<script type="text/javascript">
+	//<![CDATA[
+	
+	dojo.hostenv.setModulePrefix("guava", "../");
+	dojo.require("guava.core.NodeManager");
+	
+	
+	pollSettings.enabled = 0;
+	pollSettings.timer = 5;
+	poll();
+	
+	// ]]>
+	</script>
+	
+	<script type="text/javascript">
+	// <![CDATA[
+		function viewReload(sidenav) {
+			location.reload();
+		}
+		dojo.require("dojo.widget.Dialog");
+	dojo.require("dojo.fx.html");
+		dojo.require("dojo.widget.LayoutContainer");
+		dojo.require("dojo.widget.ContentPane");
+		dojo.require("dojo.widget.SplitContainer");
+		dojo.require("dojo.widget.TabContainer");
+
+		dojo.require("dojo.widget.FisheyeList");
+		dojo.require("dojo.widget.AccordionContainer");
+		
+		
+		
+	// ]]>
+	</script>
+	
+	<script type="text/javascript" tal:condition="self/getDebug">
+	//<![CDATA[
+		debugSettings.enabled = 1;
+		showDebug();
+	// ]]>
+	</script>
+	</head>
+	
+	<body>
+		<div tal:replace="structure renderObject/toString">Contents Go Here</div>
+	</body>
+</html>

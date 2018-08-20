@@ -1,0 +1,1110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans-2.0.dtd">
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2014  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+-->
+<beans>
+
+    <!--
+        this returns a Properties object that contains general configuration variables for Foundation
+        which are best externalized in a foundation.properties file for ease of management
+    -->
+    <bean id="FoundationProperties" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+        <property name="locations">
+            <list>
+                <value>file:/usr/local/groundwork/config/foundation.properties</value>
+                <value>file:/usr/local/groundwork/config/adapter.properties</value>
+                <!-- <value>classpath:foundation.properties</value> -->
+            </list>
+        </property>
+    </bean>
+
+    <!-- Configurer that replaces ${...} placeholders with values from a properties file -->
+    <!-- (in this case, JDBC-related settings for the dataSource definition below) -->
+    <bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <list>
+                <value>file:/usr/local/groundwork/config/db.properties</value>
+                <!-- <value>classpath:db.properties</value> -->
+            </list>
+        </property>
+    </bean>
+
+    <!-- Local DataSource that works in any environment -->
+    <bean id="jdbcDataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+        <property name="driverClass"><value>${connection.driver_class}</value></property>
+        <property name="jdbcUrl"><value>jdbc:postgresql://localhost:5432/gwtest?prepareThreshold=1</value></property>
+        <property name="user"><value>${collage.username}</value></property>
+        <property name="password"><value>${collage.password}</value></property>
+        <property name="minPoolSize"><value>${collage.min.pool.size}</value></property>
+        <property name="maxPoolSize"><value>${collage.max.pool.size}</value></property>
+        <property name="maxIdleTime"><value>${collage.max.idle.time}</value></property>
+        <property name="acquireIncrement"><value>${collage.acquire.increment}</value></property>
+        <property name="idleConnectionTestPeriod"><value>${collage.idle.connection.test.period}</value></property>
+        <property name="maxStatements"><value>${collage.maxStatements}</value></property>
+        <property name="preferredTestQuery"><value>SELECT 1</value></property>
+        <property name="testConnectionOnCheckin"><value>false</value></property>
+
+    </bean>
+
+    <bean id="hibernateSessionFactory" class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
+        <property name="configLocation">
+            <value>classpath:hibernate.cfg.xml</value>
+        </property>
+        <property name="dataSource">
+            <ref bean="jdbcDataSource"/>
+        </property>
+    </bean>
+
+    <!--
+      - Defines a transaction manager for usage in business or data access objects.
+      - No special treatment by the context, just a bean instance available as reference
+      - for business objects that want to handle transactions, e.g. via TransactionTemplate.
+      -
+      - Needs a reference to the SessionFactory for which it will handle transactions.
+      - Can optionally take a reference to a DataSource that it should use to export the Hibernate
+      - transactions, to be able to share transactions with plain JDBC access code
+      - on the same database (using the same DataSource as the Hibernate SessionFactory).
+      -->
+    <bean id="hibernateTransactionManager" class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+        <property name="sessionFactory"><ref local="hibernateSessionFactory"/></property>
+        <property name="dataSource"><ref local="jdbcDataSource"/></property>
+        <property name="nestedTransactionAllowed"><value>true</value></property>
+    </bean>
+
+    <bean id="performanceMonitorInterceptor" class="org.springframework.aop.interceptor.PerformanceMonitorInterceptor"/>
+
+    <!-- Abstract parent bean definition minimizing child transaction attributes definitions.  All proxy classes inherit from this proxy. -->
+    <bean id="baseTransactionProxy" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean"
+          abstract="true">
+        <property name="transactionManager" ref="hibernateTransactionManager"/>
+        <property name="transactionAttributes">
+            <props>
+                <prop key="update*">PROPAGATION_REQUIRED</prop>
+                <prop key="save*">PROPAGATION_REQUIRED</prop>
+                <prop key="delete*">PROPAGATION_REQUIRED</prop>
+                <prop key="remove*">PROPAGATION_REQUIRED</prop>
+                <prop key="add*">PROPAGATION_REQUIRED</prop>
+                <prop key="create*">PROPAGATION_REQUIRED</prop>
+                <prop key="getOrCreate*">PROPAGATION_REQUIRED</prop>
+                <prop key="rename*">PROPAGATION_REQUIRED</prop>
+                 <prop key="clone*">PROPAGATION_REQUIRED</prop>
+                 <prop key="modify*">PROPAGATION_REQUIRED</prop>
+                 <prop key="merge*">PROPAGATION_REQUIRED</prop>
+                <prop key="*">PROPAGATION_SUPPORTS</prop>
+            </props>
+        </property>
+        <!-- Uncomment out for performance measurement output.  You can also add it to individual beans whose parent is
+             this transaction proxy.  For example, if you only want timings for the StatisticsService just add the preInterceptor
+             to the org.groundwork.foundation.bs.statistics.StatisticsService bean's configuration.
+
+             <property name="preInterceptors">
+               <list>
+                <ref bean="performanceMonitorInterceptor"/>
+               </list>
+             </property>
+         -->
+    </bean>
+
+    <!--
+      The following beans implement declarative transaction management via an AOP
+      interceptor (TransactionProxyFactoryBean)
+      This interceptor creates proxy classes that wrap the 'target' DAOs and
+      handle hibernate sessions and transactions,
+      thus freeing the DAO code from having to implement hibernate session
+      management and programmatic transaction declarations
+    -->
+    <bean id="foundationDAOTarget" class="org.groundwork.foundation.dao.FoundationDAOImpl" scope="prototype">
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="org.groundwork.foundation.dao.FoundationDAO" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="foundationDAOTarget"/>
+        </property>
+    </bean>
+
+    <!-- Foundation Business Services -->
+    <!-- Device Service Beans  -->
+    <bean id="deviceServiceTarget" class="org.groundwork.foundation.bs.device.DeviceServiceImpl" scope="singleton">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.monitorserver.MonitorServerService"/>
+        </constructor-arg>
+        <property name="cacheService">
+            <ref bean="org.groundwork.foundation.bs.cache.BusinessCacheService"/>
+        </property>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="org.groundwork.foundation.bs.device.DeviceService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="deviceServiceTarget"/>
+        </property>
+    </bean>
+
+    <!--
+         LogMessage Service Beans
+    -->
+    <bean id="logMessageServiceTarget" class="org.groundwork.foundation.bs.logmessage.LogMessageServiceImpl" scope="prototype" >
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.status.StatusService"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.metadata.MetadataService"/>
+        </constructor-arg>
+        <constructor-arg>
+            <null/>
+        </constructor-arg>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="org.groundwork.foundation.bs.logmessage.LogMessageService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="logMessageServiceTarget"/>
+        </property>
+    </bean>
+
+    <!--
+         ConsolidationService Beans
+    -->
+    <bean id="consolidationServiceTarget" class="org.groundwork.foundation.bs.logmessage.ConsolidationServiceImpl" scope="prototype">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="org.groundwork.foundation.bs.logmessage.ConsolidationService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="consolidationServiceTarget"/>
+        </property>
+    </bean>
+
+    <!-- Business Cache Beans -->
+    <bean id="org.groundwork.foundation.bs.cache.BusinessCacheService" class="org.groundwork.foundation.bs.cache.BusinessCacheServiceImpl" scope="singleton">
+        <!-- use setter injection because of dependency cycle -->
+        <property name="statusService">
+            <ref bean="org.groundwork.foundation.bs.status.StatusService"/>
+        </property>
+        <property name="hostIdentityService">
+            <ref bean="org.groundwork.foundation.bs.hostidentity.HostIdentityService"/>
+        </property>
+    </bean>
+
+    <!--
+         HostService Beans
+    -->
+    <bean id="hostServiceTarget" class="org.groundwork.foundation.bs.host.HostServiceImpl" scope="singleton">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.metadata.MetadataService"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.logmessage.LogMessageService"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.device.DeviceService"/>
+        </constructor-arg>
+        <property name="cacheService">
+            <ref bean="org.groundwork.foundation.bs.cache.BusinessCacheService"/>
+        </property>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="org.groundwork.foundation.bs.host.HostService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="hostServiceTarget"/>
+        </property>
+    </bean>
+
+    <bean id="hostAutocompleteService" class="com.groundwork.collage.util.Autocomplete" init-method="initialize" destroy-method="terminate">
+        <constructor-arg>
+            <ref bean="hostServiceTarget"/>
+        </constructor-arg>
+        <constructor-arg>
+            <value>HOST</value>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="hibernateSessionFactory"/>
+        </constructor-arg>
+        <constructor-arg>
+            <value>HostAutocompleteRefreshThread</value>
+        </constructor-arg>
+    </bean>
+
+    <bean id="hostAutocompleteServiceSetter" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+        <property name="targetObject" ref="hostServiceTarget"/>
+        <property name="targetMethod" value="setHostAutocompleteService"/>
+        <property name="arguments">
+            <list>
+                <ref bean="hostAutocompleteService"/>
+            </list>
+        </property>
+    </bean>
+   
+    <bean id="hostAutocompleteServiceSetter2" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+        <property name="targetObject" ref="deviceServiceTarget"/>
+        <property name="targetMethod" value="setHostAutocompleteService"/>
+        <property name="arguments">
+            <list>
+                <ref bean="hostAutocompleteService"/>
+            </list>
+        </property>
+    </bean>
+
+    <!--
+         StatusService Beans
+    -->
+    <bean id="statusServiceTarget" class="org.groundwork.foundation.bs.status.StatusServiceImpl" scope="singleton">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.metadata.MetadataService"/>
+        </constructor-arg>
+        <property name="cacheService">
+            <ref bean="org.groundwork.foundation.bs.cache.BusinessCacheService"/>
+        </property>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="org.groundwork.foundation.bs.status.StatusService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="statusServiceTarget"/>
+        </property>
+        <property name="transactionManager" ref="hibernateTransactionManager"/>
+        <property name="transactionAttributes">
+            <props>
+                <prop key="*">PROPAGATION_SUPPORTS</prop>
+            </props>
+        </property>
+
+    </bean>
+
+    <bean id="statusAutocompleteService" class="com.groundwork.collage.util.Autocomplete" init-method="initialize" destroy-method="terminate">
+        <constructor-arg>
+            <ref bean="statusServiceTarget"/>
+        </constructor-arg>
+        <constructor-arg>
+            <value>SERVICE_STATUS</value>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="hibernateSessionFactory"/>
+        </constructor-arg>
+        <constructor-arg>
+            <value>StatusServiceAutocompleteRefreshThread</value>
+        </constructor-arg>
+    </bean>
+
+    <bean id="statusAutocompleteServiceSetter" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+        <property name="targetObject" ref="statusServiceTarget"/>
+        <property name="targetMethod" value="setStatusAutocompleteService"/>
+        <property name="arguments">
+            <list>
+                <ref bean="statusAutocompleteService"/>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="statusAutocompleteServiceSetter2" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+        <property name="targetObject" ref="hostServiceTarget"/>
+        <property name="targetMethod" value="setStatusAutocompleteService"/>
+        <property name="arguments">
+            <list>
+                <ref bean="statusAutocompleteService"/>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="statusAutocompleteServiceSetter3" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+        <property name="targetObject" ref="deviceServiceTarget"/>
+        <property name="targetMethod" value="setStatusAutocompleteService"/>
+        <property name="arguments">
+            <list>
+                <ref bean="statusAutocompleteService"/>
+            </list>
+        </property>
+    </bean>
+
+    <!--
+         HostGroupService Beans
+    -->
+    <bean id="hostGroupServiceTarget" class="org.groundwork.foundation.bs.hostgroup.HostGroupServiceImpl" scope="singleton">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="org.groundwork.foundation.bs.hostgroup.HostGroupService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="hostGroupServiceTarget"/>
+        </property>
+    </bean>
+
+    <bean id="hostGroupAutocompleteService" class="com.groundwork.collage.util.Autocomplete" init-method="initialize" destroy-method="terminate">
+        <constructor-arg>
+            <ref bean="hostGroupServiceTarget"/>
+        </constructor-arg>
+        <constructor-arg>
+            <value>HOSTGROUP</value>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="hibernateSessionFactory"/>
+        </constructor-arg>
+        <constructor-arg>
+            <value>HostGroupAutocompleteRefreshThread</value>
+        </constructor-arg>
+    </bean>
+    
+    <bean id="hostGroupAutocompleteServiceSetter" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+        <property name="targetObject" ref="hostGroupServiceTarget"/>
+        <property name="targetMethod" value="setHostGroupAutocompleteService"/>
+        <property name="arguments">
+            <list>
+                <ref bean="hostGroupAutocompleteService"/>
+            </list>
+        </property>
+    </bean>
+   
+    <!--
+          CategoryService Beans
+     -->
+    <bean id="categoryServiceTarget" class="org.groundwork.foundation.bs.category.CategoryServiceImpl" scope="singleton">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.metadata.MetadataService"/>
+        </constructor-arg>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="org.groundwork.foundation.bs.category.CategoryService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="categoryServiceTarget"/>
+        </property>
+    </bean>
+
+    <bean id="customGroupAutocompleteService" class="com.groundwork.collage.util.Autocomplete" init-method="initialize" destroy-method="terminate">
+        <constructor-arg>
+            <ref bean="categoryServiceTarget"/>
+        </constructor-arg>
+        <constructor-arg>
+            <value>CUSTOM_GROUP</value>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="hibernateSessionFactory"/>
+        </constructor-arg>
+        <constructor-arg>
+            <value>CustomGroupAutocompleteRefreshThread</value>
+        </constructor-arg>
+    </bean>
+
+    <bean id="customGroupAutocompleteServiceSetter" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+        <property name="targetObject" ref="categoryServiceTarget"/>
+        <property name="targetMethod" value="setCustomGroupAutocompleteService"/>
+        <property name="arguments">
+            <list>
+                <ref bean="customGroupAutocompleteService"/>
+            </list>
+        </property>
+    </bean>
+   
+    <bean id="serviceGroupAutocompleteService" class="com.groundwork.collage.util.Autocomplete" init-method="initialize" destroy-method="terminate">
+        <constructor-arg>
+            <ref bean="categoryServiceTarget"/>
+        </constructor-arg>
+        <constructor-arg>
+            <value>SERVICE_GROUP</value>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="hibernateSessionFactory"/>
+        </constructor-arg>
+        <constructor-arg>
+            <value>ServiceGroupAutocompleteRefreshThread</value>
+        </constructor-arg>
+    </bean>
+
+    <bean id="serviceGroupAutocompleteServiceSetter" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+        <property name="targetObject" ref="categoryServiceTarget"/>
+        <property name="targetMethod" value="setServiceGroupAutocompleteService"/>
+        <property name="arguments">
+            <list>
+                <ref bean="serviceGroupAutocompleteService"/>
+            </list>
+        </property>
+    </bean>
+   
+    <!--
+         PluginService Beans
+    -->
+    <bean id="pluginServiceTarget" class="org.groundwork.foundation.bs.plugin.PluginServiceImpl" scope="prototype">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.metadata.MetadataService"/>
+        </constructor-arg>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="org.groundwork.foundation.bs.plugin.PluginService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="pluginServiceTarget"/>
+        </property>
+    </bean>
+
+    <!--
+         MetadataService Beans
+    -->
+    <bean id="metadataServiceTarget" class="org.groundwork.foundation.bs.metadata.MetadataServiceImpl" scope="prototype">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="org.groundwork.foundation.bs.metadata.MetadataService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="metadataServiceTarget"/>
+        </property>
+        <property name="transactionAttributes">
+            <props>
+                <prop key="save*">PROPAGATION_REQUIRED</prop>
+                <prop key="delete*">PROPAGATION_REQUIRED</prop>
+                <prop key="create*">PROPAGATION_REQUIRED</prop>
+
+                <!-- We need to do this because some model classes which extend PropertyExtensibleAbstract
+                     use MetadataService which will cause session to be flushed.  We need to look at this.PROPAGATION_NOT_SUPPORTED
+                     Changed it to SUPPORTS -->
+                <prop key="get*">PROPAGATION_SUPPORTS</prop>
+
+                <prop key="*">PROPAGATION_SUPPORTS</prop>
+            </props>
+        </property>
+    </bean>
+
+    <!-- Statistics Service Beans  -->
+    <bean id="statisticsServiceTarget" class="org.groundwork.foundation.bs.statistics.StatisticsServiceImpl" scope="singleton">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.metadata.MetadataService"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.hostgroup.HostGroupService"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.host.HostService"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.logmessage.LogMessageService"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.category.CategoryService"/>
+        </constructor-arg>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="org.groundwork.foundation.bs.statistics.StatisticsService" parent="baseTransactionProxy" scope="singleton">
+        <property name="target">
+            <ref bean="statisticsServiceTarget"/>
+        </property>
+    </bean>
+
+
+
+    <!-- Monitor Server Service Beans  -->
+    <bean id="monitorServerServiceTarget" class="org.groundwork.foundation.bs.monitorserver.MonitorServerServiceImpl" scope="prototype">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="org.groundwork.foundation.bs.monitorserver.MonitorServerService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="monitorServerServiceTarget"/>
+        </property>
+    </bean>
+
+    <!--
+    PerformanceData Service Beans
+    -->
+    <bean id="performanceDataServiceTarget" class="org.groundwork.foundation.bs.performancedata.PerformanceDataServiceImpl" scope="prototype" init-method="init">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+        <property name="FoundationProperties">
+            <ref bean="FoundationProperties"/>
+        </property>
+    </bean>
+
+    <bean id="org.groundwork.foundation.bs.performancedata.PerformanceDataService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="performanceDataServiceTarget"/>
+        </property>
+    </bean>
+
+    <!--
+    Event Service Beans - Note:  This service is responsible for publish events to a JMS topic.  It has no
+    hibernate (persistence) facilities therefore does not need a proxy
+    -->
+    <bean id="org.groundwork.foundation.bs.events.EventService" class="org.groundwork.foundation.bs.events.EventServiceImpl"
+           scope="singleton" init-method="initialize" destroy-method="uninitialize">
+         <constructor-arg>
+             <ref bean="FoundationProperties"/>
+         </constructor-arg>
+         <property name="sessionFactory">
+             <ref bean="hibernateSessionFactory"/>
+         </property>
+     </bean>
+
+    <!--
+     Event Service Beans - Note:  This service is responsible for publish events to a JMS topic.  It has no
+     hibernate (persistence) facilities therefore does not need a proxy
+     -->
+    <bean id="org.groundwork.foundation.bs.events.EntityPublisher" class="org.groundwork.foundation.bs.events.EntityPublisherImpl"
+          scope="singleton" init-method="initialize" destroy-method="uninitialize">
+        <constructor-arg>
+            <ref bean="FoundationProperties"/>
+        </constructor-arg>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <!--<bean id="org.groundwork.foundation.bs.events.PerformanceDataPublisher" class="org.groundwork.foundation.bs.events.PerformanceDataPublisherImpl"
+          scope="singleton" init-method="initialize" destroy-method="uninitialize">
+        <constructor-arg>
+            <ref bean="FoundationProperties"/>
+        </constructor-arg>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>-->
+
+    <!--
+    Action Service Beans
+    -->
+    <bean id="actionServiceTarget" class="org.groundwork.foundation.bs.actions.ActionServiceImpl"
+          scope="singleton" init-method="initialize" destroy-method="uninitialize">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="FoundationProperties"/>
+        </constructor-arg>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="org.groundwork.foundation.bs.actions.ActionService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="actionServiceTarget"/>
+        </property>
+    </bean>
+
+
+    <!--
+      RRDService Beans
+
+    <bean id="rrdServiceTarget" class="org.groundwork.foundation.bs.rrd.RRDServiceImpl" scope="singleton" init-method="initialize" destroy-method="uninitialize">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.hostidentity.HostIdentityService"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.status.StatusService"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="FoundationProperties"/>
+        </constructor-arg>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="org.groundwork.foundation.bs.rrd.RRDService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="rrdServiceTarget"/>
+        </property>
+    </bean>
+      -->
+    <!--
+        AuditLogService Beans 
+    -->
+    <bean id="auditLogServiceTarget" class="org.groundwork.foundation.bs.auditlog.AuditLogServiceImpl" scope="singleton" init-method="initialize" destroy-method="uninitialize">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>      
+    </bean>
+    
+    <bean id="org.groundwork.foundation.bs.auditlog.AuditLogService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="auditLogServiceTarget"/>
+        </property>
+    </bean>
+
+    <!--
+        HostIdentityService Beans 
+    -->
+    <bean id="hostIdentityServiceTarget" class="org.groundwork.foundation.bs.hostidentity.HostIdentityServiceImpl" scope="singleton" init-method="initialize" destroy-method="uninitialize">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.host.HostService"/>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.status.StatusService"/>
+        </constructor-arg>
+        <property name="cacheService">
+            <ref bean="org.groundwork.foundation.bs.cache.BusinessCacheService"/>
+        </property>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>      
+    </bean>
+    
+    <bean id="org.groundwork.foundation.bs.hostidentity.HostIdentityService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="hostIdentityServiceTarget"/>
+        </property>
+    </bean>
+    
+    <bean id="hostIdentityAutocompleteService" class="com.groundwork.collage.util.Autocomplete" init-method="initialize" destroy-method="terminate">
+        <constructor-arg>
+            <ref bean="hostIdentityServiceTarget"/>
+        </constructor-arg>
+        <constructor-arg>
+            <value>HOST</value>
+        </constructor-arg>
+        <constructor-arg>
+            <ref bean="hibernateSessionFactory"/>
+        </constructor-arg>
+        <constructor-arg>
+            <value>HostIdentityAutocompleteRefreshThread</value>
+        </constructor-arg>
+    </bean>
+
+    <bean id="hostIdentityAutocompleteServiceSetter" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+        <property name="targetObject" ref="hostIdentityServiceTarget"/>
+        <property name="targetMethod" value="setHostIdentityAutocompleteService"/>
+        <property name="arguments">
+            <list>
+                <ref bean="hostIdentityAutocompleteService"/>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="hostIdentityAutocompleteServiceSetter2" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+        <property name="targetObject" ref="hostServiceTarget"/>
+        <property name="targetMethod" value="setHostIdentityAutocompleteService"/>
+        <property name="arguments">
+            <list>
+                <ref bean="hostIdentityAutocompleteService"/>
+            </list>
+        </property>
+    </bean> 
+    
+    <bean id="hostIdentityAutocompleteServiceSetter3" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+        <property name="targetObject" ref="deviceServiceTarget"/>
+        <property name="targetMethod" value="setHostIdentityAutocompleteService"/>
+        <property name="arguments">
+            <list>
+                <ref bean="hostIdentityAutocompleteService"/>
+            </list>
+        </property>
+    </bean>
+   
+    <!--
+        HostBlacklistService Beans 
+    -->
+    <bean id="hostBlacklistServiceTarget" class="org.groundwork.foundation.bs.hostblacklist.HostBlacklistServiceImpl" scope="singleton" init-method="initialize" destroy-method="uninitialize">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>      
+    </bean>
+    
+    <bean id="org.groundwork.foundation.bs.hostblacklist.HostBlacklistService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="hostBlacklistServiceTarget"/>
+        </property>
+    </bean>
+   
+    <!--
+        DeviceTemplateProfileService Beans 
+    -->
+    <bean id="deviceTemplateProfileServiceTarget" class="org.groundwork.foundation.bs.devicetemplateprofile.DeviceTemplateProfileServiceImpl" scope="singleton" init-method="initialize" destroy-method="uninitialize">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.dao.FoundationDAO"/>
+        </constructor-arg>
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>      
+    </bean>
+    
+    <bean id="org.groundwork.foundation.bs.devicetemplateprofile.DeviceTemplateProfileService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="deviceTemplateProfileServiceTarget"/>
+        </property>
+    </bean>
+   
+    <!-- Collage Model beans -->
+    <bean id="com.groundwork.collage.model.CheckType" scope="prototype"
+          class="com.groundwork.collage.model.impl.CheckType" />
+
+    <bean id="com.groundwork.collage.model.HostGroup" scope="prototype"
+          class="com.groundwork.collage.model.impl.HostGroup" />
+
+    <bean id="com.groundwork.collage.model.MonitorStatus" scope="prototype"
+          class="com.groundwork.collage.model.impl.MonitorStatus" />
+
+    <bean id="com.groundwork.collage.model.StateType" scope="prototype"
+          class="com.groundwork.collage.model.impl.StateType" />
+
+    <bean id="com.groundwork.collage.model.Component"  scope="prototype"
+          class="com.groundwork.collage.model.impl.Component" />
+
+    <bean id="com.groundwork.collage.model.Device" scope="prototype"
+          class="com.groundwork.collage.model.impl.Device" />
+
+    <bean id="com.groundwork.collage.model.Host" scope="prototype"
+          class="com.groundwork.collage.model.impl.Host" />
+
+    <bean id="com.groundwork.collage.model.HostStatus" scope="prototype"
+          class="com.groundwork.collage.model.impl.HostStatus" />
+
+    <bean id="com.groundwork.collage.model.OperationStatus" scope="prototype"
+          class="com.groundwork.collage.model.impl.OperationStatus" />
+
+    <bean id="com.groundwork.collage.model.Priority" scope="prototype"
+          class="com.groundwork.collage.model.impl.Priority" />
+
+    <bean id="com.groundwork.collage.model.ServiceStatus" scope="prototype"
+          class="com.groundwork.collage.model.impl.ServiceStatus" />
+
+    <bean id="com.groundwork.collage.model.Severity" scope="prototype"
+          class="com.groundwork.collage.model.impl.Severity" />
+
+    <bean id="com.groundwork.collage.model.LogMessage" scope="prototype"
+          class="com.groundwork.collage.model.impl.LogMessage" />
+
+    <bean id="com.groundwork.collage.model.TypeRule" scope="prototype"
+          class="com.groundwork.collage.model.impl.TypeRule" />
+
+    <bean id="com.groundwork.collage.model.MonitorServer" scope="prototype"
+          class="com.groundwork.collage.model.impl.MonitorServer" />
+
+    <bean id="com.groundwork.collage.model.ApplicationType" scope="prototype"
+          class="com.groundwork.collage.model.impl.ApplicationType" />
+
+    <bean id="com.groundwork.collage.model.EntityType" scope="prototype"
+          class="com.groundwork.collage.model.impl.EntityType" />
+
+    <bean id="com.groundwork.collage.model.PropertyType" scope="prototype"
+          class="com.groundwork.collage.model.impl.PropertyType" />
+
+    <bean id="com.groundwork.collage.model.Category" scope="prototype"
+          class="com.groundwork.collage.model.impl.Category" />
+
+    <bean id="com.groundwork.collage.model.CategoryEntity" scope="prototype"
+          class="com.groundwork.collage.model.impl.CategoryEntity" />
+
+    <bean id="com.groundwork.collage.model.ConsolidationCriteria" scope="prototype"
+          class="com.groundwork.collage.model.impl.ConsolidationCriteria" />
+
+    <bean id="com.groundwork.collage.model.LogPerformanceData" scope="prototype"
+          class="com.groundwork.collage.model.impl.LogPerformanceData" />
+
+    <bean id="com.groundwork.collage.model.EntityPropertyValue" scope="prototype"
+          class="com.groundwork.collage.model.impl.EntityPropertyValue" />
+
+    <bean id="com.groundwork.collage.model.HostStatusPropertyValue" scope="prototype"
+          class="com.groundwork.collage.model.impl.HostStatusPropertyValue" />
+
+    <bean id="com.groundwork.collage.model.LogMessagePropertyValue" scope="prototype"
+          class="com.groundwork.collage.model.impl.LogMessagePropertyValue" />
+
+    <bean id="com.groundwork.collage.model.ServiceStatusPropertyValue" scope="prototype"
+          class="com.groundwork.collage.model.impl.ServiceStatusPropertyValue" />
+
+    <bean id="com.groundwork.collage.model.Action" scope="prototype"
+          class="com.groundwork.collage.model.impl.Action" />
+
+    <bean id="com.groundwork.collage.model.ActionType" scope="prototype"
+          class="com.groundwork.collage.model.impl.ActionType" />
+
+    <bean id="com.groundwork.collage.model.ActionProperty" scope="prototype"
+          class="com.groundwork.collage.model.impl.ActionProperty" />
+
+    <bean id="com.groundwork.collage.model.ActionParameter" scope="prototype"
+          class="com.groundwork.collage.model.impl.ActionParameter" />
+
+    <bean id="com.groundwork.collage.model.Plugin" scope="prototype"
+          class="com.groundwork.collage.model.impl.Plugin" />
+
+    <bean id="com.groundwork.collage.model.AuditLog" scope="prototype"
+          class="com.groundwork.collage.model.impl.AuditLog" />      
+
+    <bean id="com.groundwork.collage.model.HostIdentity" scope="prototype"
+          class="com.groundwork.collage.model.impl.HostIdentity" />      
+
+    <bean id="com.groundwork.collage.model.HostBlacklist" scope="prototype"
+          class="com.groundwork.collage.model.impl.HostBlacklist" />      
+
+    <bean id="com.groundwork.collage.model.DeviceTemplateProfile" scope="prototype"
+          class="com.groundwork.collage.model.impl.DeviceTemplateProfile" />      
+
+    <!-- Beans for the WebService API.
+            Any incoming WebService calls will be dispatched to the WSImplementation Beans
+    -->
+
+    <!-- 	WebService Interface: WSCommon
+            Note: Requires to run in a transaction for updating the Session information in the datastore
+     -->
+
+    <bean id="wsCommonTarget" class="org.groundwork.foundation.ws.impl.WSCommonImpl">
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="WSCommon" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="wsCommonTarget"/>
+        </property>
+        <property name="transactionAttributes">
+            <props>
+                <prop key="update*">PROPAGATION_REQUIRED</prop>
+                <prop key="save*">PROPAGATION_REQUIRED</prop>
+                <prop key="delete*">PROPAGATION_REQUIRED</prop>
+                <prop key="remove*">PROPAGATION_REQUIRED</prop>
+                <prop key="add*">PROPAGATION_REQUIRED</prop>
+                <prop key="create*">PROPAGATION_REQUIRED</prop>
+                <prop key="getOrCreate*">PROPAGATION_REQUIRED</prop>
+                <prop key="rename*">PROPAGATION_REQUIRED</prop>
+
+                <prop key="login">PROPAGATION_REQUIRED</prop>
+                <prop key="logout">PROPAGATION_REQUIRED</prop>
+
+                <prop key="*">PROPAGATION_SUPPORTS</prop>
+            </props>
+        </property>
+    </bean>
+
+    <!-- 	WebService Interface: WSEvent
+            Note: Supports transaction for lookup but doesn't require transaction
+     -->
+
+    <bean id="wsEventTarget" class="org.groundwork.foundation.ws.impl.WSEventImpl">
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="WSEvent" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="wsEventTarget"/>
+        </property>
+    </bean>
+
+    <!-- 	WebService Interface: WSCategory
+            Note: Supports transaction for lookup but doesn't require transaction
+     -->
+    <bean id="wsCategoryTarget" class="org.groundwork.foundation.ws.impl.WSCategoryImpl">
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="WSCategory" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="wsCategoryTarget"/>
+        </property>
+    </bean>
+
+    <!-- 	WebService Interface: WSDevice
+            Note: Supports transaction for lookup but doesn't require transaction
+     -->
+
+    <bean id="wsDeviceTarget" class="org.groundwork.foundation.ws.impl.WSDeviceImpl">
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="WSDevice" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="wsDeviceTarget"/>
+        </property>
+    </bean>
+
+    <!-- 	WebService Interface: WSHostGroup
+            Note: Supports transaction for lookup but doesn't require transaction
+     -->
+
+    <bean id="wsHostGroupTarget" class="org.groundwork.foundation.ws.impl.WSHostGroupImpl">
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="WSHostGroup" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="wsHostGroupTarget"/>
+        </property>
+    </bean>
+
+    <!-- 	WebService Interface: WSHost
+            Note: Supports transaction for lookup but doesn't require transaction
+     -->
+
+    <bean id="wsHostTarget" class="org.groundwork.foundation.ws.impl.WSHostImpl">
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="WSHost" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="wsHostTarget"/>
+        </property>
+    </bean>
+
+    <!-- 	WebService Interface: WSService
+            Note: Supports transaction for lookup but doesn't require transaction
+     -->
+
+    <bean id="wsServiceTarget" class="org.groundwork.foundation.ws.impl.WSServiceImpl">
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="WSService" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="wsServiceTarget"/>
+        </property>
+    </bean>
+
+    <!-- 	WebService Interface: WSStatistics
+            Note: Supports transaction for lookup but doesn't require transaction
+     -->
+
+    <bean id="wsStatisticsTarget" class="org.groundwork.foundation.ws.impl.WSStatisticsImpl">
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="WSStatistics" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="wsStatisticsTarget"/>
+        </property>
+    </bean>
+
+    <!-- 	WebService Interface: WSRRD
+            Note: Supports transaction for lookup but doesn't require transaction
+     -->
+
+    <bean id="wsRRDTarget" class="org.groundwork.foundation.ws.impl.WSRRDImpl">
+        <property name="sessionFactory">
+            <ref bean="hibernateSessionFactory"/>
+        </property>
+    </bean>
+
+    <bean id="WSRRD" parent="baseTransactionProxy">
+        <property name="target">
+            <ref bean="wsRRDTarget"/>
+        </property>
+    </bean>
+
+    <!-- Asynchronous WEB Service calls using prepare, execute, cancel for Sessions -->
+
+    <bean id="com.groundwork.collage.QueryObjectWrapper" scope="prototype"
+          class="com.groundwork.collage.impl.QueryObjectWrapperImpl" />
+
+    <bean id="com.groundwork.collage.query.QueryTranslator"
+          class="com.groundwork.collage.query.QueryTranslator">
+        <constructor-arg>
+            <ref bean="org.groundwork.foundation.bs.metadata.MetadataService"/>
+        </constructor-arg>
+    </bean>
+
+    <!--
+        CollectorConfigService Bean
+    -->
+    <bean id="org.groundwork.foundation.bs.collector.CollectorConfigService"
+          class="org.groundwork.foundation.bs.collector.CollectorConfigServiceImpl" scope="singleton"/>
+
+    <bean id="com.groundwork.collage.CollageMetrics"
+          class="com.groundwork.collage.metrics.CollageMetrics" scope="singleton">
+        <constructor-arg>
+            <ref bean="FoundationProperties"/>
+        </constructor-arg>
+    </bean>
+
+</beans>

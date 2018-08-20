@@ -1,0 +1,1701 @@
+This document describes how to run the GroundWork Monitor Disaster Recovery
+software after it has been configured and started.  It covers steps that
+should be taken during normal operation, as well as during either scheduled
+maintenance or true Disaster Recovery events.
+
+
+[FIX THIS:  THIS DOCUMENT IS STILL UNDER DEVELOPMENT.]
+
+
+====================================================================
+Introduction
+====================================================================
+
+The Disaster Recovery package serves two main purposes:
+
+(1) keeping one monitoring system responsible for generating notifications,
+    even in the face of a significant outage
+
+(2) keeping the secondary system reasonably and automatically up-to-date
+    with configuration changes on the primary system, so if it has to
+    assume principal monitoring duties, it can do so with a minimum of
+    human preparation
+
+These goals are implemented using a program called the Replication Engine.
+Throughout this document, we make reference to the Replication Engine as
+though it were a single entity, even though its implementation is as a
+symmetric pair of programs, one run on the Primary system and one run on
+the DR system.  We trust that the sense of this term, referring either to
+the pair or to just one member, will be clear from context.
+
+Note:  The tutorial text in this document is fairly long, as we need to
+explain the conditions that might arise and the appropriate responses to
+them.  Sprinkled throughout the narrative are examples of commands to run.
+To simplify the construction of standard procedures to follow when outages
+occur, Appendix C contains short lists of the recommended commands in each
+scenario.
+
+
+====================================================================
+How to run the Disaster Recovery software
+====================================================================
+
+The Replication Engine should be self-starting and self-sustaining once it is
+configured.  Should the Replication Engine die for some reason, a cron job will
+automatically restart it.  Should the Replication Engine be bounced while the
+client UI ("recover" program) is connected to it, the client will reconnect on
+a subsequent command if it is able to, without needing to itself be bounced.
+(This is good for interactive use, but it also means that a script fed to
+the "recover" program might skip commands it cannot execute immediately.)
+Should the heartbeat connection to the remote GroundWork Monitor system be
+lost, the Replication Engine will reconnect automatically once it is able to.
+
+Special note on setup:
+----------------------
+
+The replication.conf file is sensitive to leading tab characters; it can only
+handle leading spaces on each line.  This is automatically handled if you use
+emacs or vim to edit the file, as the file begins with editor-option lines
+that properly initialize those editors.  However, "vi" (as opposed to "vim")
+may not understand such editor-option lines.  So don't edit replication.conf
+using vi; use vim instead.
+
+
+====================================================================
+Key Concepts
+====================================================================
+
+The three most critical system-administration concepts are these:
+
+Notification Authority
+    This capability tells a GroundWork Monitor system that it is in charge of
+    sending out notifications when things go bad.  The system component that
+    implements Notification Authority is Nagios, but the Replication Engine
+    takes over the job of telling Nagios whether it has Notification Authority.
+    The "Enable notifications:" setting in the Monarch configuration is
+    effectively ignored, perhaps taking effect only briefly after a Commit
+    operation, until the next Replication Engine heartbeat analysis decides
+    how to set it and overrides the Monarch setting.  (Actually, typically
+    the Monarch setting won't take effect right after a Commit, given that the
+    value in the Nagios state retention file will generally be used instead.)
+
+Notification Authority Control
+    In normal operation, Notification Authority is not directly managed by the
+    system administrator.  Rather, the current status of the local and remote
+    systems is analyzed on every heartbeat between them, and Notification
+    Authority is arrogated or released on each heartbeat cycle based on that
+    analysis.  Part of the calculation involves an indirect control setting,
+    known as "Notification Authority Control".  Its three possible settings
+    are "grabbed", "dynamic", and "released".  The two extreme settings are
+    used when you need to lock down the setting of Notification Authority
+    in one polarity or the other.  The middle setting, "dynamic", is used
+    for ordinary operation on both sides.  It allows Notification Authority
+    to be assigned on each heartbeat cycle based on the local/remote state
+    analysis, so that failover and failback occurs as you would expect.
+
+Master Configuration Authority
+    This capability tells a GroundWork Monitor system that it is in charge of
+    making changes to the configuration.  This is currently only advisory,
+    as a means of recording which side the customer considers to be the
+    Master source of configuration changes.  Not having this authority does
+    not block anyone from making changes to the system, but it is strongly
+    advisable not to do so then, as such changes are likely to be lost.
+
+Notification Authority Control and Master Configuration Authority are set
+by the system administrator independently on each side of the DR setup.
+
+These three settings (Notification Authority, Notification Authority Control,
+and Master Configuration Authority) are managed by the Replication Engine,
+in conjunction with instructions received from the client "recover" program.
+Notification Authority is a computed value, derived from the current states
+of the local and remote systems as well as the configuration settings
+(Notification Authority Control and Master Configuration Authority) received
+from the client UI.  In contrast, Master Configuration Authority is always
+a fixed value set via the client UI; the Replication Engine does not alter
+this setting on its own.
+
+The Replication Engine configuration file (replication.conf) lists the two
+machines which are to be paired for DR purposes.  One is designated as primary,
+and the other as secondary.  These designations only serve to initialize
+which side has Master Configuration Authority upon first installation and
+which does not; afterward, this can be changed by the administrators and
+the systems are essentially equivalent.  Either side can direct the local
+Nagios to enable or disable notifications, and either side is capable of
+running in either Master or Slave mode with respect to replication actions.
+Data copying will only occur in one direction, as described below, but that
+will be switched when the DR system must assume full responsibility for
+being the source of configuration changes.
+
+Regular heartbeat probes back and forth between the Replication Engines on
+each side are used to tell whether the systems and the link between them
+are up, and to drive transitions into and out of failure mode.  Operation of
+the Replication Engine heartbeats is essentially symmetric on the two sides
+of the connection.  Each side requests state data from the remote system,
+and runs its own analysis of the local and remote states.  The results of
+the local analysis are used to enable or disable Notification Authority on
+that side at the end of every heartbeat analysis.
+
+Heartbeat analysis is independently calculated on each side, so the two
+Replication Engines may be in different normal-mode/failure-mode states,
+depending on their own history and the state retrieved from the other side.
+A differennce in the calculated states is particularly likely when one
+Replication Engine has been bounced while the other has remained alive the
+entire time.
+
+In normal operation, with Notification Authority Control set to "dynamic"
+on both sides, and only the Primary system assigned Master Configuration
+Authority, the Replication Engine tells the Primary system that it should
+have Notification Authority and the DR system that it should not.  When a
+Primary system or link failure occurs, the Replication Engine on the DR
+system automatically arrogates Notification Authority there, to guarantee
+that notifications can at least originate from somewhere.  This transition
+into failure mode ("failover") is not instantaneous; several heartbeats
+have to be missed for the Replication Engine to conclude that something is
+really amiss.  This allows for brief periods of bad heartbeats, as may well
+occur when Nagios is bounced during a Commit operation.  Consequently, it
+is possible that a few notifications early in a failure period may never be
+emitted from anywhere, while neither side is both up and set up to send them.
+This is not considered to be a serious issue, as escalations should be set
+up to account for this and repeat notifications long enough to get past such
+an early failure period.
+
+When the system is in failure mode, it wants to return Notification Authority
+to the Primary server if it can be confident that the Primary will remain up
+and operational.  When a sufficient number of consecutive good heartbeats are
+seen, it draws that conclusion and goes back into normal mode ("failback").
+The Primary system arrogates Notification Authority, the DR system relinquishes
+Notification Authority, and once again only the original system generates
+notifications.
+
+Configuration data resides in a variety of files and databases; these are
+scheduled for periodic replication.  Application files and database snapshots
+are copied from the system with Master Configuration Authority (the Master)
+to the system without it (the Slave).  A complex dance is followed to effect
+the transfers safely, in cooperation with the controlling applications.
+The full protocol is beyond the scope of this document.  The goals are
+to ensure that a complete and consistent copy of the data is copied and
+installed on each replication cycle.  Often, this means that applications
+and databases must be stopped before a data capture action on the Master
+and before a data deploy action on the Slave, and restarted afterward.
+
+Details of which files and which database tables are copied are specified in
+the replication.conf configuration file.  That file also governs the schedule
+on which each object's data is replicated.  Different objects may have
+their replication schedules specified almost independently, with different
+frequencies and phase offsets.  In this DR prototype, though, objects with
+shared resources (such as mutually depending on a single database) must not
+be scheduled at coincident or potentially overlapping times.
+
+The need to bounce applications and databases around many data capture
+and deploy actions has fairly obvious ramifications -- those components
+will be briefly out of service.  There may be visible side effects, such as
+causing logged-in users to be logged out and requiring them to log in again.
+A desire to avoid a constant annoyance like this may affect how frequently
+and at what times you schedule the replication of such objects.
+
+Replication operations can also be manually initiated.  This capability is
+generally reserved for unusual circumstances.
+
+
+====================================================================
+Probing and Controlling the Replication Engine
+====================================================================
+
+A Nagios plugin is available for checking the current status of replication:
+
+/usr/local/groundwork/nagios/libexec/check_replication
+    In its current incarnation, this plugin probes to see whether heartbeats
+    are alive between the two Replication Engines.  (This is an incomplete
+    picture of the replication health, as it does not also reflect whether
+    any replication actions have been skipped, are currently blocked, or
+    whether unblocked replication actions have not successfully completed.)
+
+This plugin is referenced by the "check_replication" command, which is
+referenced in turn by the "replication" service, which is included in the
+"disaster-recovery" service profile.  Part of the installation process is to
+place an instance of the "replication" service on each of your monitoring
+systems, so the basic status of the Replication Engine is continually
+monitored.  In addition, the Replication Engine will send messages to the
+GroundWork Monitor Event Console when it sees conditions that warrant your
+attention.
+
+The Replication Engine is controlled via two programs, which both live in
+the /usr/local/groundwork/replication/bin/ directory:
+
+control_replication_engine
+    This script can be used to start, stop, restart, or get the most basic
+    current status of the Replication Engine (whether it is running or not).
+    It is normally run as a regular and fairly frequent nagios-user cron job,
+    to check whether the Replication Engine is up and and start it if not.
+    Starting or restarting the Replication Engine can be done either as root
+    or as nagios; either way, it will run as the nagios user.
+
+recover
+    This script is used to connect to the Replication Engine, probe its status,
+    and send it commands to control its running setup or initiate specific
+    operations.  It will accept commands in several different contexts:  a
+    single command as the command-line arguments, or a series of commands on
+    its standard input stream, or a series of commands typed interactively.
+    An end-of-file on the input stream, or a "quit" or "exit" command,
+    will terminate the latter two modes of operation.
+
+    The "help" command lists all the available commands and options, as
+    shown in Appendix B.  A detailed description of an individual command
+    is presented if you use the command name as an argument to the "help"
+    command (e.g., "help notify").
+
+In the discussion that follows, we show individual "recover" commands
+executed directly from the command line.  However, interactive use is more
+convenient when you have a long series of commands to invoke (as when forcing
+synchronization, described later).  You can start interactive use by running
+"recover" with no command-line arguments.
+
+The most commonly used commands in the "recover" client UI are various forms
+of the "status" command.  In particular, "status all" lists all status data
+for both sides of the Primary/DR connection.  "status all local" restricts
+the view to the local system, whichever that is (Primary or DR).  For example:
+
+nagios@secondary % recover status all local
+   
+  Application Replication Status
+  =======================================================================================
+  Last Replication Time     Site    Application          Blocked?   Active?  Hostname
+  ---------------------------------------------------------------------------------------
+  Sun May 23 09:31:00 2010  Local   foundation          unblocked    active  secondary
+  Sun May 23 09:06:59 2010  Local   snmp-trap-handling  unblocked  inactive  secondary
+  Sun May 23 09:31:00 2010  Local   syslog-ng           unblocked    active  secondary
+  Sun May 23 09:30:00 2010  Local   monarch             unblocked  inactive  secondary
+  Sun May 23 09:31:00 2010  Local   nagios              unblocked    active  secondary
+  Sun May 23 09:23:00 2010  Local   cacti                 blocked   skipped  secondary
+  Sun May 23 09:31:00 2010  Local   nedi                unblocked    active  secondary
+  Sun May 23 09:31:00 2010  Local   weathermap          unblocked    active  secondary
+  Sun May 23 09:31:00 2010  Local   ntop                unblocked    active  secondary
+   
+  Database Replication Status
+  =======================================================================================
+  Last Replication Time     Site    Database      Blocked?   Active?  Hostname
+  ---------------------------------------------------------------------------------------
+  Sun May 23 09:26:00 2010  Local   GWCollageDB  unblocked  inactive  secondary
+  Sun May 23 09:28:00 2010  Local   jbossportal  unblocked   stalled  secondary
+  Sun May 23 09:25:00 2010  Local   monarch      unblocked  inactive  secondary
+  Sun May 23 09:28:00 2010  Local   cacti        unblocked  inactive  secondary
+  Sun May 23 09:28:00 2010  Local   nedi         unblocked  inactive  secondary
+   
+  Notification Status
+  ===========================================================================
+  Last Contact Time         Site    Authority  Control   Hostname
+  ---------------------------------------------------------------------------
+  Sun May 23 09:31:01 2010  Local   no         dynamic   secondary
+   
+  Master Configuration Status
+  ===========================================================================
+  Last Contact Time         Site    Authority  Hostname
+  ---------------------------------------------------------------------------
+  Sun May 23 09:31:01 2010  Local   no         secondary
+   
+  Heartbeat Status
+  ===========================================================================
+  Last Contact Time         Direction                               Status
+  ---------------------------------------------------------------------------
+  Sun May 23 09:30:56 2010  secondary (client) -> primary (server)  up    
+  Sun May 23 09:30:02 2010  primary (client) -> secondary (server)  up    
+
+Interpretation of the "Active?" column is described later in this document,
+under Normal-Mode Operation.
+
+"status notify" shows you the setup of Notification Authority Control, as
+well as which system currently has Notification Authority.  For example:
+
+nagios@primary % recover status notify
+   
+  Notification Status
+  ===========================================================================
+  Last Contact Time         Site    Authority  Control   Hostname
+  ---------------------------------------------------------------------------
+  Thu May 13 23:32:09 2010  Local   yes        dynamic   primary
+  Thu May 13 23:31:28 2010  Remote  no         dynamic   secondary
+
+"status config" shows you which side currently has Master Configuration
+Authority.  For example:
+
+nagios@primary % recover status config
+   
+  Master Configuration Status
+  ===========================================================================
+  Last Contact Time         Site    Authority  Hostname
+  ---------------------------------------------------------------------------
+  Thu May 13 23:34:52 2010  Local   yes        primary
+  Thu May 13 23:34:28 2010  Remote  no         secondary
+
+The "block" and "unblock" commands can be used to control replication at the
+level of an individual application (and its associated files) or database.
+Under ordinary operation you won't need to fiddle with these, but they come
+in handy as a means of forcing replication to be disabled while one side
+or the other is undergoing system maintenance.
+
+Heartbeats will continue even when replication of all the applications and
+databases is blocked.  As mentioned above, a state analysis at the end of
+every heartbeat controls Notification Authority until the next heartbeat.
+The "notify" command can be used to assert your will over Notification
+Authority Control, which is a major component of the state analysis.  Use of
+"notify" is sufficiently complicated that it is described in later sections
+of this document.
+
+The "config" command is used to assign Master Configuration Authority to one
+side or the other.  Like "notify", its practical usage is described below.
+
+Both "notify" and "config" settings affect the periodic calculation of which
+side should have Notification Authority.  While a fully detailed explanation
+of all cases is beyond the scope of this document, the essential cases will
+be covered when the standard uses for these commands are described.
+
+Replication operations are normally executed on schedules specified in the
+replication.conf configuration file.  On occasion, it may be necessary or
+desired to force replication to run immediately, outside of those schedules.
+The "sync" command is available for this.  Its detailed usage is described
+later, when we cover the conditions that might trigger such a need.
+
+Should you need to disable all or part of the Replication Engine for some
+period, there are multiple strategies you can follow, depending on your needs.
+
+(*) To just block replication actions, use "block all" or "config release" on
+    both sides.  Heartbeats and Notification Authority arrogation and release
+    will continue as usual, but no files or databases will be replicated.
+    "block all" does exactly what it says, directly.  "config release" on
+    both sides convinces the Replication Engine that neither side is the
+    Master (and thus neither can be the replication Slave).
+
+(*) To completely disable the Replication Engine, including heartbeats and
+    changes of Notification Authority, adjust the "enable-processing" value
+    in replication.conf, and stop the Replication Engine.  It will then exit
+    soon after each startup.  The cron job will still attempt to bring it
+    back up each time it runs, but the Replication Engine will refuse to do
+    any useful work.
+
+(*) You could also just comment out the cron job in the nagios crontab and
+    stop the running copy of the Replication Engine.  However, this would
+    not prevent it from running if someone started it manually.
+
+
+====================================================================
+Normal-Mode Operation
+====================================================================
+
+For purposes of the rest of the discussion, we will assume that you have two
+servers, named "primary" and "secondary", reflecting their respective purposes
+in the DR setup.
+
+In normal operation, "primary" will run with Master Configuration Authority,
+and it will have Notification Authority as well.  "secondary" will have
+neither.  The setup will look like this:
+
+nagios@primary % recover status config
+   
+  Master Configuration Status
+  ===========================================================================
+  Last Contact Time         Site    Authority  Hostname
+  ---------------------------------------------------------------------------
+  Sun May 16 13:54:31 2010  Local   yes        primary
+  Sun May 16 13:54:05 2010  Remote  no         secondary
+
+nagios@primary % recover status notify
+   
+  Notification Status
+  ===========================================================================
+  Last Contact Time         Site    Authority  Control   Hostname
+  ---------------------------------------------------------------------------
+  Sun May 16 13:54:26 2010  Local   yes        dynamic   primary
+  Sun May 16 13:54:05 2010  Remote  no         dynamic   secondary
+   
+Notice that both sides are set up with dynamic Notification Authority Control.
+This is the standard setup for normal-mode operation, allowing the Replication
+Engine to figure out which side should have Notification Authority.
+
+Replication for all applications and databases should be unblocked, so changes
+made on the Primary system will eventually be reflected on the DR system.
+The state of this setup can be observed using commands like "status all app"
+and "status all db":
+
+nagios@primary % recover status all app
+   
+  Application Replication Status
+  =======================================================================================
+  Last Replication Time     Site    Application          Blocked?   Active?  Hostname
+  ---------------------------------------------------------------------------------------
+  Sun May 23 09:10:59 2010  Local   foundation          unblocked   skipped  primary
+  Sun May 23 09:07:00 2010  Local   snmp-trap-handling  unblocked   skipped  primary
+  Sun May 23 09:11:00 2010  Local   syslog-ng           unblocked   skipped  primary
+  Sun May 23 09:09:59 2010  Local   monarch             unblocked   skipped  primary
+  Sun May 23 09:11:00 2010  Local   nagios              unblocked   skipped  primary
+  Sun May 23 09:03:00 2010  Local   cacti               unblocked   skipped  primary
+  Sun May 23 09:11:00 2010  Local   nedi                unblocked   skipped  primary
+  Sun May 23 09:11:00 2010  Local   weathermap          unblocked   skipped  primary
+  Sun May 23 09:11:00 2010  Local   ntop                unblocked   skipped  primary
+  Sun May 23 09:11:00 2010  Remote  foundation          unblocked    active  secondary
+  Sun May 23 09:06:59 2010  Remote  snmp-trap-handling  unblocked  inactive  secondary
+  Sun May 23 09:11:00 2010  Remote  syslog-ng           unblocked    active  secondary
+  Sun May 23 09:10:00 2010  Remote  monarch             unblocked  inactive  secondary
+  Sun May 23 09:11:00 2010  Remote  nagios              unblocked    active  secondary
+  Sun May 23 09:03:00 2010  Remote  cacti               unblocked  inactive  secondary
+  Sun May 23 09:11:00 2010  Remote  nedi                unblocked    active  secondary
+  Sun May 23 09:11:00 2010  Remote  weathermap          unblocked    active  secondary
+  Sun May 23 09:11:00 2010  Remote  ntop                unblocked    active  secondary
+   
+nagios@primary % recover status all db
+   
+  Database Replication Status
+  =======================================================================================
+  Last Replication Time     Site    Database      Blocked?   Active?  Hostname
+  ---------------------------------------------------------------------------------------
+  Sun May 23 09:06:00 2010  Local   GWCollageDB  unblocked   skipped  primary
+  Sun May 23 09:08:00 2010  Local   jbossportal  unblocked   skipped  primary
+  Sun May 23 09:15:00 2010  Local   monarch      unblocked   skipped  primary
+  Sun May 23 09:08:00 2010  Local   cacti        unblocked   skipped  primary
+  Sun May 23 09:08:00 2010  Local   nedi         unblocked   skipped  primary
+  Sun May 23 09:06:00 2010  Remote  GWCollageDB  unblocked  inactive  secondary
+  Sun May 23 09:08:00 2010  Remote  jbossportal  unblocked   stalled  secondary
+  Sun May 23 09:15:00 2010  Remote  monarch      unblocked    active  secondary
+  Sun May 23 09:08:00 2010  Remote  cacti        unblocked  inactive  secondary
+  Sun May 23 09:08:00 2010  Remote  nedi         unblocked  inactive  secondary
+
+The "replication" service on the monitoring server on each side of the
+connection should have an OK status in this mode.  This provides only
+very basic status of the Replication Engine, namely whether heartbeats are
+operating.  Evidence of higher-level Replication Engine failures will generally
+appear in the Event Console, with greater detail in the replication log file.
+
+Replication Actions
+-------------------
+
+Replication of configuration data happens in normal mode, regularly
+copying files and databases from the Primary (Master) to the DR (Slave)
+system.  Exactly which files and databases get copied, and their individual
+replication schedules, is set in the replication.conf configuration file.
+Most applications, which have a low rate of change in their configuration data,
+are typically only synchronized once or twice a day.  Resource consumption by
+the replication actions is quite low, so that is not the reason for infrequent
+syncs.  Rather, the issue is that replication of configuration data may
+involve pausing the activities of the related applications, often not just
+in the target end (so they pick up revised configurations) but also in the
+source end (so the collected data is known to be complete and consistent).
+This can be a fairly disruptive process, and if administrators are actively
+using the system, it can be rather annoying.  Therefore, sync operations
+are usually scheduled on a daily basis in the middle of the night, avoiding
+conflicts with most business operations.  This can result in a slightly
+out-of-date configuration on the DR system, but overall this setup is
+considered to be a reasonable compromise between convenience and accuracy.
+
+The "sync" command is provided to force immediate application or database
+replication operations outside of the normal schedule.  You might wish to
+invoke such a sync, for instance, if you have made massive changes to the
+configuration and want them to be propagated right away, in spite of the
+disruption that will occur as applications on the source end are bounced.
+A manual trigger can also be useful if you find that regularly scheduled
+replication operations have been skipped because of a temporary outage around
+those times, and you don't want to wait for almost a full day for the systems
+to be synchronized again, according to their usual replication schedules.
+Details of "sync" command usage are given below under "Extended Outage".
+
+Separate bodies of configuration data can have their replication scheduled
+nearly independently.  Some sets of configuration data have common dependencies
+(say, on a shared database), and in the present implementation the respective
+replication actions must not be scheduled at coincident or overlapping times.
+This explains some of the complexity of the staggered scheduled times set
+in the default configuration shipped with the software.
+
+One other scheduling constraint is the desire to avoid any confusion
+about what might happen on either end of Daylight Savings Time periods.
+For simplicity, we just avoid scheduling anything between 01:00 and 03:00
+(the times between which DST transitions occur in U.S. timezones).
+
+Details of the replication groups, scheduling parameters, action timeouts,
+and selection of replicated trees, files, and database tables are documented
+in the replication.conf file.
+
+A complex protocol is followed to stage, send, receive, back up, roll in,
+and clean up old copies of configuration data.  The idea is to ensure that
+only known-good datasets are put into production, and that data which is
+rolled out is saved for some period in case it needs to be brought back
+quickly in an emergency.
+
+Replication is always initiated and controlled from the target (Slave) end
+of the data transfers.  The source (Master) end responds to a request to
+supply current configuration data, but it is otherwise a passive player.
+Replication occurs in stages, notably the capture of data on the remote
+system (from the perspective of the target) and having it sent back to the
+local system, and the deployment of refreshed data from the remote system.
+Replication occurs in only a single direction -- from the Master system to
+the Slave system.  However, Mastership belongs to the system that has Master
+Configuration Authority, so this can change (strictly by administrator fiat)
+over the lifetime of the system.
+
+The values listed in the "Active?" column of status-command output are computed
+with respect to whether replication has been initiated from that side (Local or
+Remote, as listed).  Thus the two systems usually differ in their advertised
+notions of the replication state for a given object, as they make different
+calculations as to whether a replication cycle is to be initiated there.
+With the appropriate status commands, both notions of the state are visible,
+so you can see the full picture of what the Replication Engine believes.
+
+On the Master system, replication cycles are not initiated, so the usual
+replication status there is simply "skipped".  This is normal and expected.
+When the time for a scheduled replication cycle arrives, the system notices
+it is the Master, and does nothing for that object except schedule the next
+replication cycle (and record the "skipped" status).
+
+On the Slave system, most of the time, the replication status for a given
+object (application or database) is "inactive", and this can be viewed via the
+"recover" client (e.g., "recover status all local app" or "recover status all
+local db", when run on the Slave).  While a replication cycle is running for
+an object, its state will be marked as "active", and for the typically brief
+time the cycle is running, that will be visible in the status-command output.
+If the replication cycle runs to completion, the state goes back to "inactive".
+If a replication stage fails, the rest of the replication for that object
+in that cycle is abandoned; that might possibly result in an application not
+being brought back up.  In such a failure condition, the object's replication
+state is marked as "stalled"; this records the failure but will not prevent
+the next replication cycle from starting for that object.  If the state remains
+"active" past the configured timeouts that would ordinarily kill the object's
+replication scripts, that is an indication of a bug and should be reported
+to GroundWork Support.  It will prevent any following replication cycles
+for that object from starting until this state is cleared.  (That is most
+easily done by just stopping the Replication Engine.  Upon startup, usually
+triggered by the cron job that tries to keep the Replication Engine running,
+it will clear any active states.)
+
+To summarize the values that can appear in the "Active?" column of status
+listings for application and database replication:
+
+unknown
+    The local side has not yet received a heartbeat response from the remote
+    side, so the replication status there is not available.
+
+inactive
+    Replication for this object is quiescent.  Either no replication for the
+    object has been attempted since startup, or the last replication cycle
+    completed successfully.
+
+skipped
+    The last scheduled replication cycle for this object was never started
+    from this side, because conditions were not appropriate at that time.
+    The reason for such a lapse will be one of:
+
+    -- the local and remote Replication Engines were not in communication
+    -- the system was operating in failure mode
+    -- the side recording this state was not in Slave mode at that time
+    -- replication for this object was blocked
+
+active
+    Replication is currently running for this object.  Persistence of this
+    state well past the point when the configured timeout should have killed
+    a prolonged replication action should be considered evidence of a bug.
+
+stalled
+    The last replication cycle for this object did not run to completion.
+    Either some stage of its actions failed (due to either intrinsic problems
+    or its timeout having been reached), or the next stage could not be run
+    because of one of the reasons mentioned under "skipped".
+
+The "active" state will prevent subsequent replication cycles for this object
+from running.  None of the other states has this effect.
+
+With these definitions, "skipped" will be the usual state on the Master system,
+and "inactive" will be the usual state on the Slave system.  The states on
+both sides must be examined to get a complete picture, as persistent-active
+or stalled states may show up only on the Slave side.  Omitting the possible
+"local" or "remote" constraint on the various forms of a "recover status"
+command will show the status on both sides as of the last heartbeat between
+the two systems, so all the data can be seen by probing from just one side.
+(The last-contact timestamps displayed in "recover status heartbeat" output
+can be used to tell if the remote state is stale and therefore unreliable.)
+
+Under ordinary operation, there should be no need to block the replication
+of individual objects.  However, you may need to do so during scheduled
+maintenance periods (as well as during unplanned outages).  Hence use of the
+"block" and "unblock" commands, which are used to control such blockage,
+is covered in the next section.
+
+
+====================================================================
+Scheduled Maintenance (Planned Short-Term Outage)
+====================================================================
+
+During a maintenance period, the Primary system may be out of operation for
+some time.  As with any such outage, this potentially affects three aspects
+of the DR software:  Notification Authority, Master Configuration Authority,
+and configuration data replication.
+
+During scheduled maintenance of the Primary system, the DR system will
+automatically pick up Notification Authority when heartbeats between the
+systems fail for a few minutes.  If you wish to have absolutely continuous
+notification coverage at the start of the outage period, that can be arranged
+by forcibly grabbing Notification Authority Control on the DR system before
+the Primary system is brought down:
+
+    nagios@secondary % recover notify grab
+
+To avoid duplicate notifications from the Primary and DR systems, you may
+also wish to inhibit them on the Primary system at this time:
+
+    nagios@primary % recover notify release
+
+If you leave the Primary system alone and do not use "notify release" there,
+the Primary system will resume Notification Authority automatically when
+it comes back up.  In this situation, if you grabbed Notification Authority
+Control on the DR system during the maintenance period with the first command
+shown above, then until you instruct the DR system to adopt its usual posture
+with dynamic Notification Authority Control:
+
+    nagios@secondary % recover notify dynamic
+
+you will have duplicate notifications produced from the Primary and DR servers.
+Some duplicate notifications may be produced anyway in the period immediately
+after the Primary is back up, even with dynamic Notification Authority Control
+on the DR system, because the DR system won't believe the Primary system is
+fully able to handle the notification duty until some number of consecutive
+good heartbeats have been seen.  And so it will keep Notification Authority
+enabled on the DR system until then.
+
+In the situation where you have allowed Notification Authority to fail over
+naturally, without explicitly grabbing it on the DR system or releasing it
+on the Primary system, no action is needed to restore it at the end of the
+scheduled maintenance period.  When the Primary system comes back up and
+starts exchanging replication heartbeats with the DR system, Notification
+Authority will gracefully fail back once the heartbeats are seen to be
+consistent and reliable for a short while (typically 10 minutes, set via
+the replication.conf configuration file).
+
+Sometimes the maintenance on the Primary system can be so extensive that
+you don't want the Replication Engine on the Primary to allow Notification
+Authority at all for some period.  It can be forcibly disabled with:
+
+    nagios@primary % recover notify release
+
+executed on the Primary.  Provided that the DR system has either grabbed or
+dynamic Notification Authority Control, this is a safe mode of operation,
+wherein the DR system will assume all notification duties until the Primary
+is once again allowed to resume its ordinary role:
+
+    nagios@primary % recover notify dynamic
+
+This same "notify dynamic" command would be used on the Primary if you
+had earlier released Notification Authority Control there simply to avoid
+possible duplicate notifications, as discussed earlier.
+
+During regularly scheduled maintenance of the Primary server, Master
+Configuration Authority is typically left on the Primary system.  There is no
+loss of functionality in doing so; it merely establishes the site's convention
+that no configuration changes will be made on the DR system while the Primary
+is in its scheduled maintenance period.  Should the Primary be discovered
+to have significant problems that necessitate leaving it out of service for
+an extended period, the DR system can acquire Master Configuration Authority
+on its own without requiring permission from an unavailable Primary server.
+See the "Extended Outage" section below.
+
+Configuration data replication stops in its tracks as soon as failure mode
+is recognized.  Any ongoing replication action stages (capture or deploy) run
+to completion if possible, but no new stages are allowed to begin while the
+system remains in failure mode.  A replication cycle which is interrupted in
+the middle for a reason like this will be marked as "stalled"; a replication
+cycle which cannot begin for a reason like this will be marked as "skipped".
+(These status values will be visible in the "Active?" column of certain
+"recover status" commands.)  Replication is still rescheduled for its usual
+future times for the various applications and databases, and if the system is
+found then to be back in normal mode, replication will go forward as expected.
+
+However, in an intentional outage, it is safest to prevent replication actions
+via more direct control.  That's because you want to ensure no replication
+takes place during those times in the scheduled maintenance period when the
+Primary system is up but not necessarily in shape to serve as a replication
+source.  So rather than relying on the automatic detection of failure mode,
+you can forestall replication manually with a simple command:
+
+    nagios@secondary % recover block all
+
+Then later, when the Primary system is once again ready to resume its usual
+duties, you can easily reverse that setting with a similar command:
+
+    nagios@secondary % recover unblock all
+
+
+====================================================================
+Disaster Recovery Event (Unplanned Outage; Failure-Mode Operation)
+====================================================================
+
+A Disaster Recovery event is effectively declared when either the Primary
+system goes down, or the link between the systems is broken for a sufficiently
+long time (several heartbeats, configurable).  A transition into failure
+mode will be announced in the Event Console on the DR system with these
+two messages:
+
+    "primary" is inaccessible or down; replication on "secondary" is
+    transitioning into failure mode.
+
+    Replication on "secondary" is arrogating Notification Authority for
+    this system.
+
+And this message will continue to be posted to the DR system's Event Console
+on each heartbeat analysis thereafter, while this state persists:
+
+    Replication continues to operate in failure mode on "secondary".
+
+When the DR event is recognized, several things happen automatically:
+
+(*) The system transitions from normal mode to failure mode.  This affects
+    its processing of subsequent heartbeats.
+
+(*) The DR system arrogates Notification Authority, so it will begin sending
+    out any notifications generated by its own monitoring.
+
+(*) If the Primary system is in fact still up (only the link is down),
+    it retains Notification Authority.  This means that both sides will
+    be generating notifications until and unless the administrators change
+    the setup.
+
+(*) Replication stops.  With no Master available to replicate from, there
+    is no point in attempting replication actions.  Such actions are still
+    rescheduled as usual for possible later execution, and will pick up
+    again once the system transitions back into normal mode.
+
+(*) Master Configuration Authority remains with the Primary system.  It is
+    up to the system administrators to decide whether and when to transfer
+    this authority to the DR system, and to make sure that all the people
+    who may make configuration changes are timely informed of the decision.
+
+If the Primary system and the link are expected to return soon to full
+operation, the only manual step that might be advisable would be to use
+"notify release" on the Primary system, to allow only the DR system to generate
+notifications for the time being.  Also, for an expected short outage, the
+administrators should leave Master Configuration Authority on the Primary
+system and not attempt to make configuration changes on the DR system.
+
+
+====================================================================
+Extended Outage
+====================================================================
+
+In an extended outage of the Primary system (not just a downed link between
+the Primary and DR systems), the Primary may be out of service for longer than
+the site can go without changing the monitoring configuration for one reason
+or another.  In this case, the customer will need to make configuration
+changes on the DR system instead.  To do so safely, the DR system must
+have Master Configuration Authority.  That will prevent replication from
+overwriting such changes (once the Primary system is operative again),
+and prepare the way for eventually replicating the changes back onto the
+Primary system when it can once again assume its normal duties.
+
+Master Configuration Authority, like Notification Authority Control, is
+managed through the "recover" client CLI on each system.  Specifically,
+releasing Master Configuration Authority can be done with:
+
+    % recover config release
+
+and grabbing it can be done with:
+
+    % recover config grab
+
+In normal operation, exactly one of the Primary and DR systems will be
+assigned Master Configuration Authority.  It defaults to the "primary" server
+(as specified in replication.conf) immediately after initial installation,
+configuration, and startup.  Thereafter, it can be transferred manually.
+The usual procedure is to first release it on the system that has it, and
+only then grab it on the system that does not.
+
+The Replication Engine recognizes the potential danger of both systems having
+Master Configuration Authority, and tries to prevent a grab if it believes
+the opposing side still has it.  For that reason, you may need to use
+
+    % recover config forced grab
+
+if the Replication Engine refuses an initial unforced grab because it has
+not yet received a remote-system heartbeat that says the remote system has
+already released it.  The typical circumstance in which you would need this
+is if the Primary system or the link is already down, so the DR system cannot
+get the all-clear signal it is looking for.  But it can also be necessary
+if you try to grab within a minute of releasing on the other side, before
+there has been time for a heartbeat to transport the updated remote state
+back to the system on which you're trying the grab.
+
+If both systems have Master Configuration Authority, there is danger of
+making changes on both sides and getting confused about what should be
+replicated in which direction.  If one system has Master Configuration
+Authority and the other does not, the system with it is treated as the Master
+(source) for replication purposes, and the system without it is treated as
+the Slave (target).  If both or neither system has Master Configuration
+Authority assigned, these roles cannot be unambiguously established, and
+no replication will occur.  Thus one way to stop active replication is to
+release Master Configuration Authority on the system that normally carries
+it, and not to grab it on the other system.  (Unlike Notification Authority,
+Master Configuration Authority is never spontaneously arrogated by either
+system; it can only be manually assigned.  That's because its assignment
+to a system must be coordinated with the actions of the people who maintain
+the configurations, so they need to be directly involved in the process.)
+
+In the current DR prototype, assignment of Master Configuration Authority is
+not made visibly apparent in an obvious way anywhere in the configuration UI.
+Furthermore, there are no interlocks that prevent a system without Master
+Configuration Authority from having its configuration changed via local action
+by the administrators.  If a system is operating in Slave mode, changes made
+there will be overwritten by configuration data from the Master in the next
+replication cycle for the affected application or database.  For all these
+reasons, it is vital that the system administrators establish and follow a
+protocol for passing the baton (that is, for transferring Master Configuration
+Authority), for knowing which side (if either) holds it at any given time,
+and for telling all the people who need to know.
+
+The state of Master Configuration Authority in the two systems can be observed
+via the "recover status config" command.  For example:
+
+nagios@secondary % recover status config
+   
+  Master Configuration Status
+  ===========================================================================
+  Last Contact Time         Site    Authority  Hostname
+  ---------------------------------------------------------------------------
+  Thu May 20 10:36:12 2010  Local   no         secondary
+  Thu May 20 10:35:49 2010  Remote  yes        primary
+
+An energetic administrator might wish to wrap this in a script, have that
+script called periodically, and get its output posted in a highly visible place
+that everyone will pay attention to.  Bear in mind that, due to the possibility
+that the opposing side might be inaccessible (as noted by an old Last Contact
+Time timestamp), the remote state displayed by this command might be stale.
+Also note that there may be a need to grab Master Configuration Authority on
+one side before it can be released on the other side, so the output might
+show it being held by both sides.  These situations must be understood to
+interpret the command output properly.
+
+Clearly, when the DR system takes on responsibility for configuration changes,
+it will start with its present data.  That means that recent changes on the
+Primary system that were not yet replicated to the DR system will be lost.
+In this situation, the administrators must do their best to recall whatever
+changes they believe are important enough to make on the DR side at this time,
+and carry out those changes manually.  The potential for some data loss in
+this manner is one reason the "sync" command is available, as described below.
+It can be used to force replication as long as the site is willing to pay
+the consequences of bounced applications.
+
+To prevent data loss in the reverse direction, the administrators must ensure
+that changes on the DR system don't get overwritten by replication from the
+Primary once it returns to service.  For that, the Master/Slave relationship
+of the Primary/DR systems must be broken.  This is done by assigning Master
+Configuration Authority to the DR system:
+
+    nagios@secondary % recover config forced grab
+
+This can be done even if the Primary is down and cannot first be told to
+release Master Configuration Authority.
+
+Once the DR system is in charge of configuration changes, all modifications
+must be made on the DR system, not on the Primary.  Effectively, the two
+systems will have switched roles.  The Replication Engine itself won't
+prevent changes on the Primary; it is up to the administrators to know the
+situation and follow the rules under these circumstances.  The customer
+should develop corresponding policies and procedures well ahead of time,
+so everyone knows the drill when DR events and extended outages occur.
+
+For the duration of the outage, with the DR system having Master Configuration
+Authority, replication will be automatically blocked (as long as the Primary
+system is either down or inaccessible, or also still has Master Configuration
+Authority).  When the Primary is ready to return to service, it must be
+placed into a Slave role long enough for replication to copy changes on the
+DR system over to the Primary system.  With the DR system having Master
+Configuration Authority, the Primary system can be put into a Slave role
+by losing its own Master Configuration Authority:
+
+    nagios@primary % recover config release
+
+With the Primary system primed to receive updates by being in a Slave role,
+there are two ways to get the Primary system synchronized with the DR system.
+The simple way is to wait for a full rotation of replication cycles (typically
+a full day) for the usual scheduled replication operations for all applications
+and databases to run their course.  However, you might not want to wait that
+long, so an alternative is provided.  The "sync" command in the "recover"
+CLI can be used to force immediate execution of replication operations.
+
+Running sync operations manually is subject to the same constraints as
+when they are run automatically.  That is, the current DR prototype is
+not equipped to notice collisions in manipulating shared resources, so
+you must be careful not to run concurrent replications for potentially
+conflicting objects.  In the current standard setup, there is no conflict
+between any of the applications, but there is some between databases, and
+also some between databases and applications.  Given these dependencies,
+the following commands are recommended if you wish to synchronize everything
+cleanly, with the fewest commands:
+
+    % recover sync all app
+    % recover sync db GWCollageDB
+    % recover sync db jbossportal
+    % recover sync db monarch cacti nedi
+
+sync commands must be run on the Slave system, since that is where replication
+cycles are controlled from.
+
+Whichever mechanism you use to run the replication cycles, you should verify
+that all replication from the DR to the Primary was successful before returning
+the systems to their usual Master Configuration Authority roles, lest the DR
+system changes be lost by overwriting during subsequent replication from the
+Primary system.  The same is true in between the sync commands given above;
+before you step to the next command, you must know that the last round of
+replication is completely done.
+
+You will know the replication has been successful if, after the replication
+cycles have been run, the "status all local" command on the Slave system shows
+all objects to have an "Active?" status of "inactive", with complete Last
+Replication Time timestamps (including a valid year) displayed.  Any other
+state either means that replication is still ongoing, or should be taken as
+an indication of a problem that must be carefully resolved before proceeding
+to the next sync step or returning the system to its usual normal-mode
+Primary/DR setup.
+
+With respect to where to run the sync and status commands just mentioned,
+in the case of the end of an extended outage, the Slave would be the Primary
+system.  It would be the target of replicated data from the DR system, as
+any configuration changes made there during the outage are brought back.
+So the complete sequence of commands to effect full replication would be:
+
+    nagios@primary % recover sync all app
+    nagios@primary % recover status all local            # repeat as needed
+    nagios@primary % recover sync db GWCollageDB
+    nagios@primary % recover status all local            # repeat as needed
+    nagios@primary % recover sync db jbossportal
+    nagios@primary % recover status all local            # repeat as needed
+    nagios@primary % recover sync db monarch cacti nedi
+    nagios@primary % recover status all local            # repeat as needed
+
+In the case when you are in normal mode and are simply trying to push out
+changes made on the Primary system before the normal scheduled replication
+would get around to it, the Slave would be the DR system.  So you would run
+the commands just described on that side (to pull to the DR system, since
+all replication is driven from the target side), and the complete sequence
+of commands to effect full replication would be:
+
+    nagios@secondary % recover sync all app
+    nagios@secondary % recover status all local            # repeat as needed
+    nagios@secondary % recover sync db GWCollageDB
+    nagios@secondary % recover status all local            # repeat as needed
+    nagios@secondary % recover sync db jbossportal
+    nagios@secondary % recover status all local            # repeat as needed
+    nagios@secondary % recover sync db monarch cacti nedi
+    nagios@secondary % recover status all local            # repeat as needed
+
+In either situation, you may, of course, choose to synchronize only particular
+applications and/or databases, if you know that configuration changes have
+been restricted to them.  The commands just given are the worst-case scenario,
+covering all bases.  See "help sync" for the complete syntax of the "sync"
+command, and "alias all" to list the application and database names you may
+be concerned with.
+
+In the worst case after an extended outage, if some configuration changes
+on the DR system are mistakenly not replicated to the Primary system before
+the Master Configuration Authority role reversal back to normal mode, those
+changes may be lost.  You may be saved by the fact that on every replication
+cycle, the Replication Engine makes a backup of the data it is rolling out
+of production, so the changes may still be available there (having been
+backed up on the first replication from the Primary).  Still, everyone will
+be happier if we don't have to delve into that level of emergency support,
+so you're better off being careful up front.
+
+Back to the end-of-extended-outage scenario, once the full back-replication
+of all application files and databases has occurred and been verified, the
+Master Configuration Authority roles should finally be reversed back to their
+original state:
+
+    nagios@secondary % recover config release
+
+    nagios@primary % recover config forced grab
+
+If for some reason you do not wish to assign Master Configuration Authority
+to the DR system during an extended outage, you should at least suppress
+replication on the Slave for the time being via a different mechanism,
+as you would during scheduled maintenance:
+
+    nagios@secondary % recover block all
+
+You want this so replication doesn't happen from the Primary to the DR
+system while you are perhaps trying to rebuild the Primary system, and
+its configuration may be incomplete, corrupted, or in the middle of being
+restored from some backup.  When the Primary is fully up and running again,
+you must manually re-enable replication, as this will not happen automatically:
+
+    nagios@secondary % recover unblock all
+
+If you wish, you can also block replication from the Master side.  This doesn't
+keep replication cycles from starting on the Slave, but the first action
+in a replication cycle is for the Slave to capture data from the Master,
+and that will be thwarted on the Master side if you block replication there.
+Again, you would need to undo that manually when the time is right.
+
+One way or another, you want to make sure that no replication occurs while
+you are trying to rebuild the Primary system.  Replication from the DR system
+to the Primary system might overwrite data you are trying to set up there,
+and replication in either direction will bounce applications at probably
+inopportune times with respect to your trying to get the system up and running.
+
+Finally, we must discuss how notifications are handled during an extended
+outage.  Again assuming the failure is due to a downed Primary, you will want
+to ensure that notifications will be sent from the DR system for the duration
+of the outage.  If the DR system has dynamic Notification Authority Control,
+this will in fact be automatic.  When the Primary system cannot be contacted,
+the DR system will presume that it must be in charge of notifications.
+And should the Primary system sometimes be visible during this period, the
+fact that the DR system has been assigned Master Configuration Authority
+will cause it to retain Notification Authority.
+
+You can, though, lock down Notification Authority on the DR system, by
+grabbing Notification Authority Control there.  That would be especially
+useful if you chose not to assign Master Configuration Authority to the DR
+system, so the DR system does not lose Notification Authority if the Primary
+is visible while it is being rebuilt:
+
+    nagios@secondary % recover notify grab
+
+While the Primary is still under construction, notifications should be
+disabled there:
+
+    nagios@primary % recover notify release
+
+Once the Primary is ready for normal operation again, this setting must
+be reversed:
+
+    nagios@primary % recover notify dynamic
+
+And at that point, the DR system can be told to relax:
+
+    nagios@secondary % recover notify dynamic
+
+
+====================================================================
+Appendix A:  Customer Responsibilities
+====================================================================
+
+Installation
+------------
+
+Even if GroundWork performs most of the installation of the Disaster Recovery
+software, certain duties still fall to the customer, given that these are
+typically adjustments to other equipment in the infrastructure to which
+GroundWork will have no administrative access.
+
+(*) Make sure the port numbers selected in the replication.conf config file:
+
+        primary-command-port
+        secondary-command-port
+        primary-heartbeat-port
+        secondary-heartbeat-port
+
+    are correctly configured in your firewalls.  The command ports should be
+    open only to incoming connections from the same machine (i.e., localhost),
+    not from an outside machine.  The heartbeat ports should be open only to
+    incoming connections from the opposing Primary or DR server.
+
+    Also in your firewall setup, open the standard ssh port between the
+    Primary and DR servers.
+
+(*) SNMP trap processing will occur independently on the Primary and DR
+    servers.  So insofar as possible, your SNMP devices which create such
+    traps should be configured to forward them to both servers.  If that 
+    is not possible (i.e., a device only supports one target address), a
+    virtual IP address should be used, pointing to some kind of load 
+    balancer that can forward copies of the SNMP traps to both servers.
+
+(*) The customer must consult on the replication scheduling, so they are
+    aware of when the various operations will occur and can plan around them.
+
+Operation
+---------
+
+As noted earlier in this document, the customer must develop policies and
+procedures around the handling of scheduled maintenance, short-term DR events,
+and extended outages.  These must involve:
+
+(*) Establishing clear lines of human authority for managing the replication
+    system throughout upset situations.
+
+(*) Notifying all the appropriate people in a timely fashion when replication
+    state transitions occur.
+
+(*) Making it well-known which system has Master Configuration Authority,
+    and only making configuration changes on that system.
+
+(*) Controlling the Replication Engine at key points.
+
+(*) Managing the configuration data so it is reflected to the opposing system
+    when the customer needs it to be.
+
+(*) Letting everyone know where the procedures are kept, so they are available
+    when needed.
+
+At the risk of stating the obvious, storing the procedures only on the
+systems which might fail may not be the best policy.
+
+
+====================================================================
+Appendix B:  Summary of "recover" command syntax
+====================================================================
+
+# recover help
+  
+  Command syntax:
+  
+       #  starts an explanatory comment here; don't type any of it
+      <>  encloses the type of parameter you will enter; don't type the <>'s
+      []  encloses an optional parameter; don't type the []'s
+       |  separates alternative choices; choose one, and don't type the |
+     ...  means the previous element can be repeated as often as needed
+    word  anything else is to be typed literally as shown
+  
+    <application-name> and <database-name>
+          You may use predefined aliases for application names and database
+          names instead of their full formal names.  This can shorten the
+          amount of required typing.  See the replication.conf configuration
+          file for the available names and aliases, or use the "alias" command
+          (see below) to list them.
+  
+  Available commands:
+  
+    help            # show what you're reading now
+    help <command>  # show a detailed explanation of the specified command
+    about           # show version and related info
+    alias all [app|db]            # show aliases for all app's, db's, or both
+    alias app <application-name>  # show aliases for this application
+    alias db <database-name>      # show aliases for this database
+    status all [local|remote] [app|db]  # show specified set of status info
+    status [local|remote] app <application-name> ...  # same, for applications
+    status [local|remote] db <database-name> ...      # same, for databases
+    status [local|remote] notify  # show Notification Authority status
+    status [local|remote] config  # show Master Configuration Authority status
+    status heartbeat      # show status of inter-machine replication heartbeats
+    notify grab           # acquire and lock local Notification Authority
+    notify dynamic        # have heartbeats control local Notification Authority
+    notify release        # revoke and disallow local Notification Authority
+    config [forced] grab  # acquire local Master Configuration Authority
+    config release        # revoke local Master Configuration Authority
+    block all [app|db]                  # block replication actions
+    block app <application-name> ...    # same, for these applications
+    block db <database-name> ...        # same, for these databases
+    unblock all [app|db]                # unblock replication actions
+    unblock app <application-name> ...  # same, for these applications
+    unblock db <database-name> ...      # same, for these databases
+    sync all [app|db]                # initiate local (slave) synchronization
+    sync app <application-name> ...  # same, for these applications
+    sync db <database-name> ...      # same, for these databases
+    list app <application-name>    # list backups at hand for this application
+    list db <database-name>        # list backups at hand for this database
+    quit  # stop the "recover" client (the Replication Engine stays running)
+    exit  # same thing
+
+
+====================================================================
+Appendix C:  Summary of Recommended Administrator Actions
+====================================================================
+
+This Appendix lists common scenarios and the most relevant commands in each
+case, to aid the customer in constructing their local policies and procedures
+for handling outages.
+
+[FIX THIS:  review and verify the commands in all of these scenarios, and
+describe any other common situations]
+
+----------------------------------------------------------------------------
+To establish normal-mode setup starting from unknown conditions (presuming
+that you believe the Primary system's configuration data is up-to-date):
+----------------------------------------------------------------------------
+
+To allow automatic Notification Authority failover and failback to occur
+during DR events:
+
+    nagios@primary % recover notify dynamic
+
+    nagios@secondary % recover notify dynamic
+
+To make the Primary system be in charge of configuration changes:
+
+    nagios@secondary % recover config release
+
+    nagios@primary % recover config forced grab
+
+To allow replication to proceed:
+
+    nagios@primary % recover unblock all
+
+    nagios@secondary % recover unblock all
+
+----------------------------------------------------------------------------
+To manually pull changes from the Primary to the DR system, rather than
+waiting for regularly scheduled replication:
+----------------------------------------------------------------------------
+
+These commands are run from the DR system, since it is the target side that
+initiates and controls all replication operations:
+
+    nagios@secondary % recover sync all app
+    Command: sync all app
+    Command: status all local  # repeat until syncs are done
+    Command: sync db GWCollageDB
+    Command: status all local  # repeat until syncs are done
+    Command: sync db jbossportal
+    Command: status all local  # repeat until syncs are done
+    Command: sync db monarch cacti nedi
+    Command: status all local  # repeat until syncs are done
+    Command: quit
+
+----------------------------------------------------------------------------
+At the start of a scheduled maintenance period on the Primary system:
+----------------------------------------------------------------------------
+
+To manually transfer Notification Authority to the DR system, and to block
+any possibility of replication during this period:
+
+    nagios@secondary % recover block all
+    nagios@secondary % recover notify grab
+
+    nagios@primary % recover notify release
+
+----------------------------------------------------------------------------
+At the end of a scheduled maintenance period on the Primary system:
+----------------------------------------------------------------------------
+
+To resume normal operation, allowing automatic Notification Authority
+failover and failback to occur, and to allow replication to run again:
+
+    nagios@primary % recover notify dynamic
+
+    nagios@secondary % recover notify dynamic
+    nagios@secondary % recover unblock all
+
+----------------------------------------------------------------------------
+At the start of a short-term DR event where the Primary system is out
+of service:
+----------------------------------------------------------------------------
+
+To prevent duplicate notifications from the Primary and DR systems,
+should they both be running at some point during the DR event, if the
+Primary system is sufficiently alive for this command to be executed:
+
+    nagios@primary % recover notify release
+
+----------------------------------------------------------------------------
+At the end of a short-term DR event where the Primary system is out
+of service:
+----------------------------------------------------------------------------
+
+To have the Primary system once again take responsibility for generating
+notifications:
+
+    nagios@primary % recover notify dynamic
+
+----------------------------------------------------------------------------
+At the start of a short-term DR event where the Primary system is still up
+but the Primary <-> DR link has failed:
+----------------------------------------------------------------------------
+
+To prevent duplicate notifications from the Primary and DR systems,
+allowing only the Primary system to generate notifications:
+
+    nagios@secondary % recover notify release
+
+----------------------------------------------------------------------------
+At the end of a short-term DR event where the Primary system is still up
+but the Primary <-> DR link has failed:
+----------------------------------------------------------------------------
+
+To resume normal operation, allowing automatic Notification Authority
+failover and failback to occur:
+
+    nagios@secondary % recover notify dynamic
+
+----------------------------------------------------------------------------
+At the start of an extended outage due to Primary system failure:
+----------------------------------------------------------------------------
+
+To ensure that notifications will be sent from the DR system even if the
+Primary system recovers for short periods before it is ready to resume
+full operation:
+
+    nagios@secondary % recover notify grab
+
+To block replication and to allow configuration changes on the DR system:
+
+    nagios@secondary % recover config forced grab
+
+Alternatively, to just block replication so the Primary can be safely rebuilt:
+
+    nagios@secondary % recover block all
+
+----------------------------------------------------------------------------
+At the end of an extended outage due to Primary system failure:
+----------------------------------------------------------------------------
+
+Once the Primary system is running again, but not yet synchronized with
+configuration changes made on the DR system, and thus not ready to resume
+sending out notifications:
+
+    nagios@primary % recover notify release
+
+To put the Primary system into Slave mode so it can receive replicated
+configuration data from the DR system:
+
+    nagios@primary % recover config release
+
+To allow replication to occur again, if you explicitly blocked it at the
+start of the outage:
+
+    nagios@secondary % recover unblock all
+
+To manually pull changes from the DR to the Primary system, rather than
+waiting for regularly scheduled replication:
+
+    nagios@primary % # These commands are run from the Primary system,
+    nagios@primary % # since it is the target side that initiates and
+    nagios@primary % # controls all replication operations.
+    nagios@primary % recover
+    Command: sync all app
+    Command: status all local  # repeat until syncs are done
+    Command: sync db GWCollageDB
+    Command: status all local  # repeat until syncs are done
+    Command: sync db jbossportal
+    Command: status all local  # repeat until syncs are done
+    Command: sync db monarch cacti nedi
+    Command: status all local  # repeat until syncs are done
+    Command: quit
+
+Once the Primary system is synchronized with all configuration changes
+made on the DR system during the outage:
+
+    nagios@secondary % recover config release
+
+    nagios@primary % recover config forced grab
+
+To resume normal operation, allowing automatic Notification Authority
+failover and failback to occur:
+
+    nagios@primary % recover notify dynamic
+
+    nagios@secondary % recover notify dynamic
+
+
+====================================================================
+Appendix D:  Security
+====================================================================
+
+(*) The Replication Engine can be started by either the root or nagios user.
+    If started as root, it will switch to running as nagios.  This prevents
+    it from possibly reading or overwriting sensitive system files, through
+    either misconfiguration or malice.
+
+(*) The control_replication_engine and recover scripts are intentionally
+    not executable by anyone outside of the nagios group.  This provides a
+    first level of protection against mistakes or malfeasance, though with
+    concerted effort this protection could be circumvented.
+
+(*) During replication, all setuid and setgid files will be silently ignored,
+    even if they are not listed in exclude-trees or exclude-files directives.
+    We will not even attempt to copy them anywhere locally on the source
+    system, let alone install them on the opposing system.  They are an
+    obvious security risk, having all the potential of a Trojan horse.
+    If the customer needs to have such binaries installed, they will need
+    to do so separately on the Primary and DR systems, as is done during
+    the initial install of GroundWork Monitor.
+
+(*) During replication, all read-only files will be silently ignored, even if
+    they are not listed in exclude-trees or exclude-files directives.  We will
+    not even attempt to copy them anywhere locally on the source system,
+    let alone install them on the opposing system.  Read-only permissions
+    indicate that these files are to be preserved as-is and are not candidates
+    for overwriting from the opposing system.  The standard Monarch profile
+    files distributed with GroundWork Monitor fall into this category.
+    If the customer needs to have such files installed, they will need to
+    do so separately on the Primary and DR systems, as is done during the
+    initial install of GroundWork Monitor.
+
+(*) In this DR prototype, the socket connections for heartbeats, for remote
+    data capture requests, and for "recover" commands are neither authenticated
+    nor encrypted.  Per the INSTALLATION instructions, it is assumed that you
+    will set up firewall rules to restrict access to the respective ports,
+    though that is not a complete security solution.  It should, though,
+    block casual garbage injection attacks from elsewhere on the network.
+    Other measures may be appropriate, such as only allowing inter-system
+    access through a well-controlled VPN.
+
+(*) Stopping and starting certain GroundWork Monitor applications requires
+    root permission, while the Replication Engine itself runs as nagios.
+    To bridge this gap, a small amount of "sudo" setup is needed on each side.
+    The INSTALLATION instructions describe this in detail.  The additions
+    to /etc/sudoers are designed to restrict the added capabilities to
+    just exactly those that are needed, and nothing beyond that.  To avoid
+    simple Trojan horses, the scripts that are run this way should have
+    their ownership changed so they are only writable by the root user,
+    per the INSTALLATION instructions.
+
+(*) ssh and scp are used as the transport for all data replication operations.
+    Because replication is automated and frequent, passwordless ssh logins
+    for the nagios user must be set up.  Hence firewall rules should be used
+    to constrain the use of the ssh port, and the public/private ssh keys
+    should be properly protected.
+
+
+====================================================================
+Appendix E:  Limitations
+====================================================================
+
+(*) In this DR prototype, some constraints apply to the scheduling of
+    replication for application and database objects.  In some cases,
+    you have objects which are completely independent of each other,
+    having no dependencies on any shared resources such as a database
+    whose controlling applications must be suspended for the duration of
+    the object's replication actions.  Such independent objects can have
+    their replication schedules set arbitrarily with respect to each other;
+    they will not mutually interfere.  But in other cases you do have such
+    a shared dependency.  The DR prototype is not equipped to sense when
+    conflicts might arise and either delay certain replication actions,
+    thereby serializing them, or merge similar actions so their common
+    parts can be run just once and their different parts run in parallel.
+    Without such a sophisticated automatic rescheduling algorithhm, it is up
+    to the administrator to define the object replication schedules to avoid
+    collisions.  Both the start times and the expected durations of replication
+    operations must be taken into account when deciding on the schedules.
+    The action durations can be estimated from the associated timeout periods,
+    which must of course be set to allow the actions enough time to complete.
+    Note that the kill timeout may not be a hard wall, since some replication
+    actions may (appropriately) have subsidiary processes that change their
+    process group and thus will not receive the kill signal.  So additional
+    buffer time should be allowed between conflicting object replications.
+
+    A full replication operation for a given object consists of these
+    action stages, executed from the Slave:
+
+    (+) obtain (run on the local [Slave] system, to manage the remote capture)
+
+    (+) capture (run on the remote [Master] system, within the obtain action
+	period on the Slave)
+
+    (+) stop (run on the Slave system; usually effectively a no-op, given
+	that stop and start actions are in practice now embedded inside the
+	capture and deploy actions)
+
+    (+) deploy (run on the Slave system)
+
+    (+) start (run on the Slave system; usually a no-op, as for the stop
+	action)
+
+    Thus when estimating the full interval which must be avoided for
+    replication of competing objects, add the obtain abandon timeout and the
+    display kill timeout, and use that as the minimum spacing until the next
+    related object's replication can be scheduled.  In practice, a little
+    extra buffer time as well wouldn't hurt.
+
+(*) If you don't replicate the nagios application and the GWCollageDB database
+    on similar schedules, their contents may get out of sync with respect
+    to each other on the DR system, and you may see messages like this in
+    the Event Console there:
+
+	Foundation and Nagios are out of sync. You may need to
+	commit your Nagios configuration again. Check the log at
+	/usr/local/groundwork/foundation/container/logs/nagios2collage_socket.log
+	for details. Nagios hosts: 7, Foundation hosts: 7, Nagios services:
+	63, Foundation services: 63.
+
+    [FIX THIS:  That advice may be out of date.  Now we run a Commit operation
+    as part of a monarch database deploy action, so that should keep Nagios and
+    GWCollageDB properly synchronized.]
+
+(*) Don't run any Monarch operations (configuration changes, auto-discovery
+    operations, commit operations, etc.) at the times you have scheduled to
+    replicate the monarch application or database.  Typically this will be
+    twice per day, before and after the normal workday, so this restriction is
+    not considered onerous.  If you get this wrong, you are likely to see an
+    "Internal Server Error" in your browser, because the replication actions
+    will disable certain Monarch scripts while they move the data around.
+
+(*) The current version of the check_replication plugin does not probe deeper
+    than just checking heartbeats, to verify (for instance) that replication
+    actions were not skipped, and are not blocked, timing out, or stalling
+    due to some other kind of failure.  For the latter two kinds of upset,
+    see messages sent to the Foundation Event Console.  A timeout should
+    result in the following type of message seen there:
+
+	Disaster Recovery replication received mismatched "obtain" ticket
+	for application "foundation".
+
+    If replication otherwise stalls for some application or database,
+    a message similar to the following should show up there:
+
+	Replication: found bad deploy status 256 for application "monarch";
+	abandoning this sync cycle
+
+
+====================================================================
+Appendix F:  Troubleshooting
+====================================================================
+
+(*) There are several places you can look for information to debug operational
+    problems.
+
+    (+) Messages generated during the early startup phase, before the log file
+	name is known, are sent to syslog under the "Replication" identifier.
+	You can search for such messages by simply grepping /var/log/messages
+	for this string.
+
+    (+) The Replication Engine log file lives here:
+
+	    /usr/local/groundwork/replication/logs/replication_state_engine.log
+
+	It will automatically be rotated by the Replication Engine itself
+	when the file reaches a configured maximum size.
+
+	The amount of detail recorded in the log file is controlled via the
+	"debug-level" setting in the replication.conf configuration file.
+
+    (+) Certain startup problems may be difficult to diagnose from what
+	ends up being logged.  Sometimes more detail is available if you run
+	the Replication Engine interactively and allow it to print messages
+	in your terminal window.  This is done with the "-i -o" options:
+
+	    -i:  run interactively, not as a persistent daemon
+	    -o:  write log messages also to standard output
+
+	given on the command to run the Replication Engine:
+
+	    /usr/local/groundwork/replication/bin/replication_state_engine -i -o
+
+(*) If you adjust the replication schedules or other aspects of the config
+    file and somehow mess up the file so it cannot be parsed, replication
+    will not start up, and there will be no notice of this in its log file.
+    However, the system /var/log/messages file may contain some failsafe
+    error messages that indicate the problem.  For instance, you might see
+    a message that contains text similar to this:
+
+	Replication[2720]: ERROR:  YAML::XS::Load Error
+
+    indicating a parsing error.
+
+    You can start the Replication Engine in an interactive mode to get such
+    messages spilled out in detail on your terminal:
+
+	/usr/local/groundwork/replication/bin/replication_state_engine -i -o
+
+    Typically, the error message will suggest the line and column where the
+    error was found.
+
+(*) With regard to problems parsing the configuration file, following a
+    consistent indentation pattern is critical for the file to be correctly
+    interpreted.  The format of the file is described by the YAML standard
+    (http://www.yaml.org/spec/1.2/spec.html), which is a superset of JSON.
+
+(*) If you see the following message in the replication log file:
+
+	sudo: sorry, you must have a tty to run sudo
+
+    you don't have /etc/sudoers set up properly.  See the INSTALLATION file
+    for details on how to do this.
+
+(*) If you see the following message in the replication log file:
+
+	Host key verification failed.
+
+    you don't have ssh credentials for nagios set up properly to allow
+    passwordless ssh logins between the two machines.  In particular, check
+    that you have the opposing hostnames listed in ~nagios/.ssh/known_hosts
+    as the same unqualified or fully-qualified forms as you have
+    specified as the primary-server and secondary-server settings in the
+    /usr/local/groundwork/replication/config/replication.conf file.  To get
+    them there, log in as nagios and ssh to the opposing machine using that
+    same form of the opposing hostname.  Do this on both sides.
+
+(*) If you see messages like this in the replication log file:
+
+	[Wed May 26 00:45:00 2010] INFO:  script to obtain database
+	"jbossportal" returned wait status 15 [exit status 0 (signal TERM)]
+	and 1 message (#):
+
+	# Password: 
+
+    then passwordless ssh between the two systems for the nagios user may not
+    be set up.  Alternatively, the sudo setup may not be correct on both sides.
+    In either case, see the INSTALLATION instructions and follow them exactly.
+
+(*) If you see messages similar to the following in the Event Console or in
+    the replication log file:
+
+	WARNING:  Disaster Recovery replication received mismatched "obtain"
+	ticket for application "foundation".
+
+	NOTICE:  application "foundation" returned "obtain" ticket "request
+	64 from secondary to primary" does not match last local ticket ""
+
+    then most likely your obtain-timeouts for the affected application
+    or database are too small.  This will cause replication of the object
+    to fail.  If the logging debug-level is set to print DEBUG messages,
+    you should see a preceding message similar to this:
+
+	DEBUG:	object_obtain_timeout() is deleting ticket "request 64 from
+	secondary to primary" for app foundation obtain
+
+    which confirms that the abandon timeout kicked in and purposely deleted the
+    ticket to mark the request as being timed out.  If the problem persists,
+    take a look at the timestamps of the log messages, including this one:
+
+	DEBUG:	obtain_object() is assigning ticket "request 86 from secondary
+	to primary" for app foundation obtain
+
+    to see how long the operation is actually taking.  First try to figure
+    out why the obtain (remote capture) operation is taking so long; it might
+    simply be an issue with the remote system.  Then if the problem is truly
+    just a misconfiguration, bump up the obtain-timeouts for this application
+    or database in the replication.conf file.  The obtain-timeouts abandon
+    timeout should be slightly longer than the capture-timeouts execution
+    timeout for this object on the remote server.
+
+(*) If you see "stalled" replication status not otherwise explained by the
+    possibilities above, check your replication schedules to ensure you
+    don't have coincident or overlapping cycles scheduled for different
+    but related objects.  For instance, if replication for the foundation
+    application and the GWCollageDB database collides, one of them may
+    be trying to start gwservices while the other is trying to stop it.
+    This is likely to result in a long-running cycle for one or the other
+    of these objects, and then a timeout will be invoked.  This will cause
+    the timed-out cycle's status to be recorded as "stalled".
+
+    Remember that timeouts can occur on the remote (capture) side of
+    a replication cycle, not just on the local side (e.g., during a
+    deploy action).  A capture timeout on the remote side is likely to be
+    accompanied by an obtain timeout on the local side.  So clues may be
+    present in log files on both sides.
+
+(*) If you see messages similar to the following in the Event Console or in
+    the replication log file:
+
+	Replication: found bad deploy status 256 for application "monarch";
+	abandoning this sync cycle
+
+    then some stage of a replication action has failed, and replication
+    for the affected object has stalled.  Look in the places noted above
+    for details.  In particular, the replication log file should contain
+    any messages emitted from the failed replication action's scripting.
+
+(*) The recover program has a "list" command which can be used to display
+    the timestamped backups available for each application or database.
+    These are sets of files and database dumps that were previously rolled
+    out of production.  Such data is kept for a configurable period and
+    then automatically purged.  In the event of an unusual failure, these
+    backups might potentially come in handy for restoring the system to some
+    previous state.  Currently, while the backup snapshots are captured and
+    eventually purged automatically, rolling one of them back into production
+    use would be a manual process.  If you should find yourself in such a
+    situation, find appropriate backups using the "list" command and contact
+    GroundWork Support for assistance.
+
+
+====================================================================
+Appendix G:  Feedback
+====================================================================
+
+The current release of the Disaster Recovery software is considered a
+prototype -- fully functional in what it does, but lacking some of the fit,
+finish, and features of a full-fledged formal product.  GroundWork welcomes
+feedback on the design and practical use of the software, to assist us in
+planning for any possible future evolution of the Disaster Recovery capability.
+For best effectiveness, channel your comments through the GroundWork Support
+organization.
+

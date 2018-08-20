@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+   Copyright (C) 2010 GroundWork Open Source, Inc. (GroundWork)
+   All rights reserved. This program is free software; you can redistribute
+   it and/or modify it under the terms of the GNU General Public License
+   version 2 as published by the Free Software Foundation.
+ 
+   This program is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
+ 
+   You should have received a copy of the GNU General Public License along
+   with this program; if not, write to the Free Software Foundation, Inc.,
+   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+
+<project xmlns:ant="jelly:ant"
+         xmlns:j="jelly:core">
+    <goal name="undeploy">
+        <!-- remove deployed war file and configuration -->
+        <delete
+             file="${portal.apps.deploy.root}/${pom.artifactId}.war"/>
+    </goal>
+    
+    <goal name="war">
+        <!--  HACK: the WAR plugin in Maven 1.0.2 does not support resources 
+	      declared outside of the webapp directory, so we have to copy them
+	      in manually -->
+        <ant:copy
+             todir="${maven.war.webapp.dir}"
+             verbose="true">
+            <fileset dir="src/main/resources" excludes="config/**"/>
+	    <fileset dir="src/main/webapp" excludes="config/**"/>
+        </ant:copy>
+        <attainGoal name="war:war"/>
+    </goal>
+    
+    <goal name="deploy" prereqs="war">
+        <mkdir dir="${portal.apps.deploy.root}"/>
+        <ant:copy 
+             file="${maven.build.dir}/${pom.artifactId}.war"
+             todir="${portal.apps.deploy.root}"
+             verbose="true"/>
+    </goal>
+</project>
+

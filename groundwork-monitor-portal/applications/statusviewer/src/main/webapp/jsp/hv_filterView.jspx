@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+<ice:inputHidden id="hiddenHostListField"
+					value="#{filterBean.hiddenField}"> </ice:inputHidden>
+		<ice:panelGroup>
+			<!-- ERROR PANEL -->
+			<ice:panelGroup id="panelgridERROR"
+				rendered="#{filterBean.error}">
+				<ui:include src="/jsp/error.jspx">
+					<ui:param name="errorMessage" value="#{filterBean.errorMessage}" />
+				</ui:include>
+			</ice:panelGroup>
+
+			<!-- PORTLET PANEL -->
+			<ice:panelGroup id="panelgridMAIN"
+				rendered="#{!filterBean.error}">
+				<ice:panelGrid columns="3" id="panelgridFilterMain"
+					rowClasses="iceDatTblRow1_typA" columnClasses="iceDatTblCol1_typA">
+
+					<!-- PANEL GRID FOR HOST FILTERS -->
+					<ice:panelGrid columns="1" columnClasses="cust_popup_header"
+						id="panelgridHostFilters"
+						rendered="#{filterBean.hostFilterVisible}">
+						<!-- Label associated with Host Filters drop down list -->
+						<ice:outputLabel for="menuHostFilter"
+							id="lblHostStates"
+							value="#{message['com_groundwork_portal_statusviewer_selectmenu_hostfilter']}">
+						</ice:outputLabel>
+
+						<!-- Host Filters drop down list as selectOneMenu component -->
+						<ice:selectOneMenu id="menuHostFilter"
+							value="#{filterBean.selectedHostFilter}">
+
+							<f:selectItem id="menuItemHostAllFilters"
+								itemValue=""
+								itemLabel="#{message['com_groundwork_portal_statusviewer_selectmenu_allfiltersmessage']}" />
+							<f:selectItems id="menuItemsHostFiltersList"
+								value="#{filterBean.hostFilterList}" />
+						</ice:selectOneMenu>
+					</ice:panelGrid>
+
+					<!-- PANEL GRID FOR SERVICE FILTERS -->
+					<ice:panelGrid columns="1" columnClasses="cust_popup_header"
+						id="panelgridServiceFilters"
+						rendered="#{filterBean.serviceFilterVisible}">
+
+						<!-- Label associated with Service Filters drop down list -->
+						<ice:outputLabel styleClass="cust_popup_header"
+							for="menuServiceFilter"
+							id="lblServiceStates"
+							value="#{message['com_groundwork_portal_statusviewer_selectmenu_servicefilter']}">
+						</ice:outputLabel>
+
+
+						<!-- Service Filters drop down list as selectOneMenu component -->
+						<ice:selectOneMenu id="menuServiceFilter"
+							value="#{filterBean.selectedServiceFilter}"
+							styleClass="cust_portlet_reset_filter_button">
+							<f:selectItem id="menuItemServiceAllFilters"
+								itemValue=""
+								itemLabel="#{message['com_groundwork_portal_statusviewer_selectmenu_allfiltersmessage']}" />
+							<f:selectItems id="menuItemsServiceFiltersList"
+								value="#{filterBean.serviceFilterList}" />
+						</ice:selectOneMenu>
+					</ice:panelGrid>
+					<ice:panelGrid columns="2" columnClasses="cust_button_location"
+						id="panelgridSetFilters"
+						rendered="#{!filterBean.hostGroupNodeType}">
+
+						<!-- Apply Filters command button -->
+						<ice:commandButton
+							value="#{message['com_groundwork_portal_statusviewer_commandbutton_applyfilter']}"
+							id="submitApplyFilter"
+							actionListener="#{filterHandler.applyFilters}" type="submit"
+							styleClass="cust_portlet_filter_button">
+						</ice:commandButton>
+
+						<!-- Reset Filters command button -->
+						<ice:commandButton
+							value="#{message['com_groundwork_portal_statusviewer_commandbutton_resetfilter']}"
+							id="submitResetFilter"
+							actionListener="#{filterHandler.resetFilters}" type="submit"
+							styleClass="cust_portlet_filter_button">
+						</ice:commandButton>
+					</ice:panelGrid>
+				</ice:panelGrid>
+				<ice:panelGroup style="padding-right:25px;padding-top:2px"
+					rendered="#{filterBean.hostGroupNodeType}">
+					<ice:panelGrid columns="2" styleClass="gen_div_right"
+						id="panelgridSetFilters">
+
+						<!-- Apply Filters command button -->
+						<ice:commandButton
+							value="#{message['com_groundwork_portal_statusviewer_commandbutton_applyfilter']}"
+							id="submitApplyFilter"
+							actionListener="#{filterHandler.applyFilters}" type="submit"
+							styleClass="cust_portlet_filter_button">
+						</ice:commandButton>
+
+						<!-- Reset Filters command button -->
+						<ice:commandButton
+							value="#{message['com_groundwork_portal_statusviewer_commandbutton_resetfilter']}"
+							id="submitResetFilter"
+							actionListener="#{filterHandler.resetFilters}" type="submit">
+						</ice:commandButton>
+					</ice:panelGrid>
+				</ice:panelGroup>
+				<ice:panelGroup style="height: 25px;"
+					rendered="#{filterBean.pnlGroupBlankRender}"></ice:panelGroup>
+			</ice:panelGroup>
+
+		</ice:panelGroup>
+	</ui:define>
+</ui:composition>

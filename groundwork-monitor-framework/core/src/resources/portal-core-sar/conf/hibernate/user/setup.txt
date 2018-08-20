@@ -1,0 +1,117 @@
+// This bsh script setup the default content of the portal.
+// It is called when the SessionFactoryBinder service has created a schema and needs to populate it
+import org.jboss.portal.common.io.IOTools;
+import org.jboss.portal.common.util.Tools;
+import org.jboss.portal.identity.db.HibernateUserImpl;
+import org.jboss.portal.identity.db.HibernateRoleImpl;
+import com.groundworkopensource.portal.identity.extendedui.HibernateEntityType;
+
+try
+{
+   session = SessionFactory.openSession();
+   tx = session.beginTransaction();
+
+   //
+   HibernateRoleImpl adminRole = new HibernateRoleImpl("GWAdmin", "Administrators");
+   HibernateRoleImpl userRole = new HibernateRoleImpl("GWUser", "Users");
+   HibernateRoleImpl operatorRole = new HibernateRoleImpl("GWOperator", "Operators");   
+   HibernateRoleImpl rodashboardRole = new HibernateRoleImpl("ro-dashboard", "Read only Dashboard");
+   HibernateRoleImpl mspsampleRole = new HibernateRoleImpl("msp-sample", "MSP role");
+   HibernateRoleImpl wsuserRole = new HibernateRoleImpl("wsuser", "Webservice User role");
+   HibernateRoleImpl gdmaRole = new HibernateRoleImpl("gdma", "GDMA User role");
+
+   //
+   HibernateUserImpl admin = new HibernateUserImpl("admin");
+   admin.setPassword(Tools.md5AsHexString("admin"));
+   admin.setRealEmail("admin@gwos.com");
+   admin.setViewRealEmail(true);
+   admin.setEnabled(true);
+
+   //
+   admin.getRoles().add(adminRole);
+   adminRole.getUsers().add(admin);
+
+   //
+   HibernateUserImpl user = new HibernateUserImpl("user");
+   user.setPassword(Tools.md5AsHexString("user"));
+   user.setRealEmail("user@gwos.com");
+   user.setViewRealEmail(true);
+   user.setEnabled(true);
+
+   //
+   user.getRoles().add(userRole);
+   userRole.getUsers().add(user);
+   
+   //
+   HibernateUserImpl operator = new HibernateUserImpl("operator");
+   operator.setPassword(Tools.md5AsHexString("operator"));
+   operator.setRealEmail("operator@gwos.com");
+   operator.setViewRealEmail(true);
+   operator.setEnabled(true);
+
+   //
+   operator.getRoles().add(operatorRole);
+   operatorRole.getUsers().add(operator);   
+   
+    //
+   HibernateUserImpl wsuser = new HibernateUserImpl("wsuser");
+   wsuser.setGivenName("System Account");
+   wsuser.setFamilyName("DO NOT disable/delete this user! If you change the password, don't forget to update the /usr/local/groundwork/config/ws_client.properties file!");
+   wsuser.setPassword(Tools.md5AsHexString("wsuser"));
+   wsuser.setRealEmail("wsuser@gwos.com");
+   wsuser.setViewRealEmail(true);
+   wsuser.setEnabled(true);
+   
+   //
+   wsuser.getRoles().add(wsuserRole);
+   wsuserRole.getUsers().add(wsuser);   
+   
+   
+    //
+   HibernateUserImpl gdmauser = new HibernateUserImpl("gdma");
+   gdmauser.setGivenName("System Account");
+   gdmauser.setFamilyName("DO NOT disable/delete this user! If you change the password, don't forget to update GDMA clients!");
+   gdmauser.setPassword(Tools.md5AsHexString("gdma"));
+   gdmauser.setRealEmail("gdma@gwos.com");
+   gdmauser.setViewRealEmail(true);
+   gdmauser.setEnabled(true);
+
+   //
+   gdmauser.getRoles().add(gdmaRole);
+   gdmaRole.getUsers().add(gdmauser);   
+   
+   
+    HibernateEntityType hostgroup_entityType = new HibernateEntityType();
+	hostgroup_entityType.setEntityTypeId(new Integer(1).byteValue());
+	hostgroup_entityType.setEntityType("HostGroup");
+	
+	HibernateEntityType servicegroup_entityType = new HibernateEntityType();
+	servicegroup_entityType.setEntityTypeId(new Integer(2).byteValue());
+	servicegroup_entityType.setEntityType("ServiceGroup");
+	
+	HibernateEntityType customgroup_entityType = new HibernateEntityType();
+	customgroup_entityType.setEntityTypeId(new Integer(3).byteValue());
+	customgroup_entityType.setEntityType("CustomGroup");
+
+   //
+   session.save(adminRole);
+   session.save(userRole);
+   session.save(operatorRole);
+   session.save(wsuserRole);
+   session.save(gdmaRole);
+   session.save(admin);
+   session.save(user);
+   session.save(operator);
+   session.save(wsuser);
+   session.save(gdmauser);
+   session.save(rodashboardRole);
+   session.save(mspsampleRole);
+   session.save(hostgroup_entityType);
+   session.save(servicegroup_entityType);
+   session.save(customgroup_entityType);
+   tx.commit();
+}
+finally
+{
+   IOTools.safeClose(session);
+}

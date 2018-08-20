@@ -1,0 +1,844 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+#
+# check_help_urls
+#
+# Copyright 2017-2018 GroundWork, Inc. ("GroundWork")
+# All rights reserved.
+#
+
+# This script scans all relevant Perl code, looking for calls to
+# StorProc->doc_section_url() and extracting their arguments to form
+# complete URLs to test against the current content of the Bookshelf.
+# We don't really need to track where every call comes from, since if
+# a failure is found, we can readily scan the code to find all copies
+# of the bad references.
+#
+# The calls have (page, anchor) arguments like these, with the second
+# argument being optional:
+#
+# ('The+Automation+Subsystem', 'TheAutomationSubsystem-RunningAutomationProcesses')
+
+# ================================================================
+# SUMMARY OF VERSION CHANGES
+# ================================================================
+
+my $VERSION = '1.1.0';
+
+# 0.0.5 2017-10-28	Initial copy, still under development.
+# 1.0.0 2018-06-15	Extend to handle 3-digit (DOC###) Bookshelf spaces, to
+#			support GWMEE 7.2.1 which uses DOC721.  This adjustment
+#			must be revisited for future GWMEE releases.
+# 1.1.0 2018-06-16	Support spilling out the path to each file containing a
+#			bad Bookshelf URL reference.
+
+# ================================================================
+# STILL TO DO
+# ================================================================
+
+# We've never gotten the login stuff to work yet.  When we encounter a situation where this tool
+# needs access to some Bookshelf space that is not yet publicly available, our workaround for now is
+# to temporarily open up read-only access to the world, and then close that down once our testing
+# with this tool is complete.  That is perhaps not ideal, but we haven't had time to devote to
+# in-depth investigation and getting the login to work when provided with a username and password
+# that does have access to a non-public Bookshelf space.
+
+# ================================================================
+# Perl code
+# ================================================================
+
+use strict;
+use warnings;
+
+use Text::Balanced (qw(extract_bracketed extract_quotelike));
+use XML::LibXML;
+use Time::HiRes;
+use POSIX qw(ceil strftime);
+
+# Print some user-friendly messages instead of the default messages, for conditions
+# that we can reasonably expect to encounter in some releases of GroundWork Monitor.
+BEGIN {
+    eval {
+	require WWW::Curl::Easy; import WWW::Curl::Easy;
+	require WWW::Curl::Form;
+	XML::LibXML->VERSION('1.70');
+    };
+    if ($@) {
+	chomp $@;
+	if ( $@ =~ /^Can't locate (\S+) / ) {
+	    ( my $package = $1 ) =~ s/.pm$//;
+	    $package =~ s{/}{::}g;
+	    print "ERROR:  Package $package is not installed in this copy of GroundWork Perl.\n";
+	    print "        You will need to install it before you can run this tool:\n";
+	    print "        echo yes | su nagios -c '/usr/local/groundwork/perl/bin/cpan WWW::Curl::Easy'\n";
+	}
+	elsif ( $@ =~ /XML::LibXML version 1.70 required/ ) {
+	    print "ERROR:  Package XML::LibXML is out of date in this copy of GroundWork Perl.\n";
+	    print "        You will need to update it before you can run this tool:\n";
+	    print "        echo yes | su nagios -c '/usr/local/groundwork/perl/bin/cpan -f XML::LibXML'\n";
+	}
+	else {
+	    print "ERROR:  $@\n";
+	}
+	exit 1;
+    }
+}
+
+# ================================================================
+# Global variables.
+# ================================================================
+
+my $last_problem_was_error   = 0;
+my $last_problem_was_warning = 0;
+
+my $start_time = undef;
+my $end_time   = undef;
+
+my $found_pages       = 0;
+my $found_anchors     = 0;
+my $missing_pages     = 0;
+my $missing_anchors   = 0;
+my $duplicate_anchors = 0;
+my $invalid_page_html = 0;
+
+# ================================================================
+# Supporting subroutines.
+# ================================================================
+
+sub print_usage {
+    print "usage:  check_help_urls [-l|-r [-f]] [-p]\n";
+    print "        check_help_urls [-l|-r [-f]] [-p] {monarch-version}\n";
+    print "        check_help_urls [-l|-r [-f]] [-p] DEV\n";
+    print "        check_help_urls -h\n";
+    print "        check_help_urls -V\n";
+    print "where:  -l means just list the URLs that would be checked.\n";
+    print "        -r means report but do not follow redirects.\n";
+    print "        -f means follow redirects anyway, after reporting them.\n";
+    print "        -p means print the paths to files containing bad references.\n";
+    print "        -h means print this help message.\n";
+    print "        -V means print the check_help_urls version.\n";
+    print "        monarch-version is like 7.1.1 or 7.2.0\n";
+    print "        Not specifying a monarch-version argument uses the current Monarch\n";
+    print "        version as found in the MonarchStorProc.pm file for constructing\n";
+    print "        the Bookshelf DOC-space component of the URLs.\n";
+}
+
+# ================================================================
+# Extract from Monarch the operative Bookshelf space to check.
+# ================================================================
+
+my $list_all_urls    = 0;
+my $report_redirects = 0;
+my $follow_redirects = 1;
+my $print_file_paths = 0;
+my $forced_version;
+my $matched_version;
+my $docspace_version;
+
+$start_time = Time::HiRes::time();
+
+if ( @ARGV && $ARGV[0] eq '-V' ) {
+    print "check_help_urls version $VERSION\n";
+    exit(0);
+}
+
+for (@ARGV) {
+    if ( $_ eq '-h' ) {
+	print_usage();
+	exit(0);
+    }
+}
+
+if ( @ARGV && $ARGV[0] eq '-l' ) {
+    shift;
+    $list_all_urls = 1;
+}
+
+if ( @ARGV && $ARGV[0] eq '-r' ) {
+    if ($list_all_urls) {
+	print "ERROR:  The -l and -r options are mutually exclusive.\n";
+	print "\n";
+	print_usage();
+	exit(1);
+    }
+    shift;
+    $report_redirects = 1;
+    $follow_redirects = 0;
+}
+
+if ( @ARGV && $ARGV[0] eq '-f' ) {
+    if ( not $report_redirects ) {
+	print "ERROR:  The -f option is only valid if -r is used.\n";
+	print "\n";
+	print_usage();
+	exit(1);
+    }
+    shift;
+    $follow_redirects = 1;
+}
+
+if ( @ARGV && $ARGV[0] eq '-p' ) {
+    shift;
+    $print_file_paths = 1;
+}
+
+if (@ARGV) {
+    if ( $ARGV[0] =~ /^(DEV|\d\.\d\.\d)$/ ) {
+	$forced_version = $ARGV[0];
+    }
+    else {
+	print "ERROR:  Invalid Monarch version number '$ARGV[0]'.\n";
+	print "\n";
+	print_usage();
+	exit(1);
+    }
+}
+
+## We need to escape the dollar sign at both the Perl level and the shell level.
+my @matched_lines =
+  qx(egrep '^[[:space:]]*my[[:space:]]+\\\$current_gwmon_version[[:space:]]*=' /usr/local/groundwork/core/monarch/lib/MonarchStorProc.pm);
+
+if ( @matched_lines != 1 ) {
+    print "Matched " . ( scalar @matched_lines ) . " lines while looking for the Monarch GWMEE version.\n";
+    print "FATAL:  Cannot find the Monarch GWMEE version; aborting!\n";
+    exit(1);
+}
+
+($matched_version) = ( extract_quotelike( $matched_lines[0], '.+=\s*' ) )[5];    # ) to balance parens
+$docspace_version = defined($forced_version) ? $forced_version : $matched_version;
+
+# In GWMEE 7.1.0, we declared the release in MonarchStorProc.pm as "DEV" instead of "7.1.0",
+# due to not following our own release procedures.  We have to accommodate that here.
+#
+my $gw_vstring = ( $matched_version =~ /^\d+\.\d+\.\d+$/ ) ? pack( 'U*', split( /\./, $matched_version ) ) : v0.0.0;
+my $have_old_perl = $gw_vstring le v7.1.0;
+
+# For GWMEE 7.2.0 and before, we use DOC72 and similar two-digit values.
+# For GWMEE 7.2.1, we use DOC721.  This logic must be revised as needed for future releases.
+#
+my $current_gwmon_version = $docspace_version;
+my @gwmon_version         = split( /\./, $current_gwmon_version );
+my $doc_version           = join( '', 'DOC', @gwmon_version[ 0 .. ( $#gwmon_version ? ( $current_gwmon_version eq '7.2.1' ? 2 : 1 ) : 0 ) ] );
+
+my $now = localtime();
+print "check_help_urls version $VERSION\n";
+print "Checking Perl-code references to the Bookshelf at $now.\n";
+print "Not following redirects.\n" if not $follow_redirects;
+print "Monarch GWMEE version being used to itemize pages and anchors is '$matched_version'.\n";
+print "Monarch GWMEE version being used to create the Bookshelf URLs is '$docspace_version'.\n";
+print "Bookshelf space to be accessed will be '$doc_version'.\n";
+print "\n";
+
+# ================================================================
+# Find all the Bookshelf references in the code, and transform
+# them into explicit URLs that we can check.
+# ================================================================
+
+# We chdir to the base of the distribution instead of just finding from
+# that directory, to avoid any issues if /usr/local/groundwork is somehow
+# a symlink to the location elsewhere of the GWMEE distribution.  Not that
+# we support such a setup; this is just precautionary.
+#
+# Sometimes te initial find will discover a file that disappears before the fgrep
+# command can read it.  We could use the "fgrep -s" option to suppress error
+# messages about nonexistent and unreadable files, but for the moment we choose
+# not to, to ensure that we do get notice of all kinds of problems and don't
+# get misled by such suppression.
+#
+# The intermediate invocation of the bash shell instead of direct invocation of
+# fgrep, and the special handling of the exit code, is all so we can reliably
+# detect if there are actual errors encountered.  Without that extra work,
+# simply having some individual invocation of fgrep by xargs not produce any
+# matches would make the entire command appear to be in error.  (The final exit
+# status of this command is that of the xargs program, which derives is own
+# exit code partly from those of all the invocations of the program it runs.)
+#
+my @doc_section_url_lines = qx(cd /usr/local/groundwork; find . -type f -print0 | xargs -0 bash -c 'fgrep doc_section_url "\$0" "\$@" || [ \$? -le 1 ]');
+$last_problem_was_warning = 1 if $?;
+
+# Basic error checking, just in case ...
+if ( not @doc_section_url_lines ) {
+    print_error_spacing();
+    print "FATAL:  Cannot find any calls to doc_section_url(); aborting!\n";
+    exit(1);
+}
+
+my %arguments = ();
+my $extracted;
+my $remainder;
+my %skipped_files = ();
+
+foreach my $line (@doc_section_url_lines) {
+    chomp $line;
+    ## We skip *.orig files because it is my habit to make a copy of a file with a .orig
+    ## extension before I start to edit it.  That is partly a safety mechanism that allows
+    ## me to easily recover if I mess up the editing.  It also provides a mean to run a
+    ## quick diff between the two files to pinpoint exactly what edits have been made.
+    ## But if we're editing a file to update the Bookshelf page references, we don't want
+    ## the old, unmodified references from the .orig file to pollute the results here.
+    ## We do flag the skipped files as a reminder that this convention is in place.
+    ( my $file = $line ) =~ s/:.*//;
+    if ( $file =~ /\.orig$/ ) {
+	if ( not exists $skipped_files{$file} ) {
+	    print_error_spacing();
+	    print "NOTICE:  Skipping data in file:  $file\n";
+	    $skipped_files{$file} = undef;
+	}
+    }
+    else {
+	$line =~ s/.*doc_section_url//;
+	( $extracted, $remainder ) = extract_bracketed( $line, '()' );
+	if ($extracted) {
+	    push @{ $arguments{$extracted} }, $file;
+	    ## print "$extracted\n";
+	}
+    }
+}
+$last_problem_was_warning = 1 if %skipped_files;
+
+my %path_anchor = ();
+my %path_source = ();
+my $page;
+my $anchor;
+my @GW711_discovery_methods = (
+    qw(
+      TheDiscoverySubsystem-NmapDiscoveryMethod
+      TheDiscoverySubsystem-SNMPDiscoveryMethod
+      TheDiscoverySubsystem-WMIDiscoveryMethod
+      TheDiscoverySubsystem-ScriptDiscoveryMethod
+      )
+);
+my @GW720_discovery_methods = (
+    qw(
+      AutoDiscovery-NmapDiscoveryMethod
+      AutoDiscovery-SNMPDiscoveryMethod
+      AutoDiscovery-WMIDiscoveryMethod
+      AutoDiscovery-ScriptDiscoveryMethod
+      )
+);
+my @discovery_methods = $gw_vstring le v7.1.1 ? @GW711_discovery_methods : @GW720_discovery_methods;
+
+# Sorting serves no function here except to simplify any debug output for humans.
+foreach my $args ( sort keys %arguments ) {
+    ## print "$args\n";
+    ( $page, $remainder ) = ( extract_quotelike( $args, '[(\s]*' ) )[ 5, 1 ];    # ) to balance parens
+    if ( defined $page ) {
+	if ( $remainder ne '' ) {
+	    if ( $remainder =~ /\$bookmark/ ) {
+		## Special handling for one particular block of code in MonarchAutoConfig.pm
+		## where the anchor is dynamically set.  If any of these anchors are ever not
+		## found in testing, both the Monarch code and this script will need to ba
+		## adjusted to point to the new locations.
+		$path_anchor{"$page#$_"} = $_ for @discovery_methods;
+		next;
+	    }
+	    else {
+		($anchor) = ( extract_quotelike( $remainder, '[,\s]*' ) )[5];
+	    }
+	}
+	else {
+	    $anchor = undef;
+	}
+	$path_anchor{ ( defined $anchor ) ? "$page#$anchor" : $page } = $anchor;
+	$path_source{ ( defined $anchor ) ? "$page#$anchor" : $page } = $arguments{$args};
+    }
+    else {
+	print_error_spacing();
+	print "FATAL:  Cannot find first string ($@).\n";
+	exit(1);
+    }
+}
+
+# Transform the data collected to the full URLs to test, of the form:
+# "https://kb.gwos.com/display/$doc_version/$doc_article" . (defined($doc_section) ? '#'.$doc_section : '');
+
+my %url_anchor = ();
+my %url_source = ();
+
+## FIX LATER:  kb.gwos.com references (that we use directly in Monarch) produce a 301 redirect
+## to kb.groundworkopensource.com so this change should probably be reflected in Monarch
+## my $kb_site = 'kb.groundworkopensource.com';
+my $kb_site = 'kb.gwos.com';
+
+foreach my $path ( keys %path_anchor ) {
+    $url_anchor{"https://$kb_site/display/$doc_version/$path"} = $path_anchor{$path};
+    $url_source{"https://$kb_site/display/$doc_version/$path"} = $path_source{$path};
+}
+
+# Sorting serves no function here except to simplify any debug output for humans.
+if ($list_all_urls) {
+    print "URLs to check:\n";
+    print "$_\n" for sort keys %url_anchor;
+    print "End of URLs.\n";
+    exit(0);
+}
+
+# ================================================================
+# Test each URL individually.
+# ================================================================
+
+sub print_source_paths {
+    my $source_paths_ref = shift;
+    foreach my $source_path (@$source_paths_ref) {
+	## The $source_path will be relative to the current directory that was in play when the
+	## "find" commaand ran.  When we print it here, that path likely won't be relative to the
+	## current working directory from which this script was run.  We don't want to prepend the
+	## "find" command working directory to resolve this difference, as that would make the
+	## pathname just gratuitously longer in the output.  But we can at least make it look less
+	## like it is relative to the current working directory for this script, by suppressing a
+	## leading "./" from the pathname.
+	( my $file_path = $source_path ) =~ s{^\./}{};
+	print "        That reference is found in:  $file_path\n";
+    }
+    ## Ensure that a blank line gets printed before following output.
+    $last_problem_was_warning = 1;
+}
+
+# We might have used some LWP package instead of Curl, but this seems to work well.
+sub fetch_url {
+    my $curl = shift;
+    my $url  = shift;
+
+    # I have no idea why, but the Perl packages in GWMEE 6.7.0 have difficulty in fetching a URL
+    # with an anchor attached.  The result is a "400 Bad Request" response from the KB server.
+    # Dropping the anchor in the request allows the request to proceed without incident, and we
+    # get the desired page.  That's not necessarily a bad thing; the anchor itself is not really
+    # used to qualify the page fetch, it's only used in some fashion by the browser to reposition
+    # its view of the page once the page is returned.  My best guess right now is that later
+    # versions of some Perl package are perhaps stripping off the anchor when making the request,
+    # while the older version is passing the entire URL over to the server.  This doesn't actually
+    # make complete sense, since anchors are supposed to be valid parts of URLs, but it's the best
+    # guess I have at the moment.
+    #
+    $url =~ s/#.*// if $gw_vstring eq v6.7.0;
+
+    $curl->setopt( CURLOPT_FOLLOWLOCATION, !$report_redirects );
+    $curl->setopt( CURLOPT_HEADER,         1 );
+    $curl->setopt( CURLOPT_URL,            $url );
+
+    # A filehandle, reference to a scalar or reference to a typeglob can be used here.
+    my $response_body;
+    $curl->setopt( CURLOPT_WRITEDATA, \$response_body );
+
+    # Starts the actual request
+    my $retcode = $curl->perform;
+
+    # Looking at the results ...
+    if ( $retcode == 0 ) {
+	## my $response_code = $curl->getinfo(CURLINFO_HTTP_CODE);
+	my $response_code = $curl->getinfo(CURLINFO_RESPONSE_CODE);
+
+	# Judge the result and next action based on $response_code.
+	if ( $response_code == 400 ) {
+	    print_soft_error_spacing();
+	    print "ERROR:  Server said Bad Request when fetching the following URL.\n";
+	    return undef;
+	}
+	elsif ( $response_code == 301 ) {
+	    my $redirect_url = $curl->getinfo(CURLINFO_REDIRECT_URL);
+	    my $severity = $follow_redirects ? 'NOTICE' : 'ERROR';
+	    print "$severity:  Redirect to here:  $redirect_url\n";
+	    print "        from initial URL:  $url\n" if not $follow_redirects;
+	    return $follow_redirects ? fetch_url( $curl, $redirect_url ) : undef;
+	}
+
+	# print("Received response: $response_body\n");
+	return $response_body;
+    }
+    else {
+	## Error code, type of error, error message
+	print_error_spacing();
+	print "ERROR:  Got an error while fetching:  $url\n";
+	print "        Return code $retcode (" . $curl->strerror($retcode) . "), " . $curl->errbuf . "\n";
+	if ( $retcode == 77 && $curl->errbuf =~ m{CAfile: /usr/share/ssl/certs/ca-bundle.crt} ) {
+	    print "FATAL:  The error above must be fixed before this tool can be run:\n";
+	    print "        mkdir -p /usr/share/ssl/certs && ln -s /etc/pki/tls/certs/ca-bundle.crt /usr/share/ssl/certs\n";
+	    exit 1;
+	}
+	return undef;
+    }
+}
+
+sub print_soft_error_spacing {
+    print "\n" if $last_problem_was_error || $last_problem_was_warning;
+    $last_problem_was_error   = 1;
+    $last_problem_was_warning = 0;
+}
+
+sub print_error_spacing {
+    print "\n" if $last_problem_was_warning;
+    $last_problem_was_error   = 1;
+    $last_problem_was_warning = 0;
+}
+
+sub print_warning_spacing {
+    print "\n" if $last_problem_was_error || $last_problem_was_warning;
+    $last_problem_was_error   = 0;
+    $last_problem_was_warning = 1;
+}
+
+# Here we fetch each URL in question, and verify that both the page ($url)
+# and the anchor ($url_anchor{$url}, if defined) get found.
+# If not, report the failure and accumulate statistics.
+#
+# If we needed to revise this tool we might look at the following tools
+# to see if they might be of any help.
+#
+# WWW::Curl     (currently included in our GWMEE builds)
+# HTML::Parser  (currently included in our GWMEE builds)
+# Test::XPath
+# XML::LibXML::XPathContext
+# Test::HTML::Content
+# WWW::Mechanize
+# WWW::Selenium
+
+my $curl     = WWW::Curl::Easy->new;
+my $username = undef;
+my $password = undef;
+if ( defined($username) and defined($password) ) {
+
+    ## Here are the fields that need to be filled in:
+
+    # Username
+    # <input type="text" name="os_username" id="os_username" tabindex="1" class="text " />
+
+    # Password
+    # <input type="password" name="os_password" id="os_password" tabindex="2" class="password " />
+
+    # "Remember me"
+    # <input type="checkbox" class="checkbox" value="true" name="os_cookie" tabindex="3" id="os_cookie">
+
+    # Login button
+    # <input id="loginButton" name="login" type="submit" value="Log In" tabindex="4"/>
+
+    # where you were trying to get
+    # <input type="hidden" name="os_destination" value="/display/DOCDEV/About+Auto+Discovery"/>
+
+    # Login submission URL
+    # On:  https://kb.groundworkopensource.com/login.action
+    # <form name="loginform" method="POST" action="/dologin.action" class="aui login-form-container">
+    # So:  POST to https://kb.groundworkopensource.com/dologin.action
+    # and hopefully get back cookies to store and use for future calls.
+    # my @kb_cookies = $curl->getinfo(CURLINFO_COOKIELIST);
+    $curl->setopt( CURLOPT_COOKIEFILE, '' );    # enable cookie session
+						# $curl->setopt( CURLOPT_COOKIEJAR, 'filename' );
+						# $curl->setopt( CURLOPT_COOKIE, join(';', @kb_cookies) );
+
+    ## FIX MINOR:  We've never really gotten the whole login thing to work properly.
+    $curl->setopt( CURLOPT_URL, 'https://kb.groundworkopensource.com/login.action' );
+    my $response_body;
+    $curl->setopt( CURLOPT_WRITEDATA, \$response_body );    # Suppress printing the retrieved page.
+    print "about to fetch login page\n";
+    my $retcode = $curl->perform;
+    if ( $retcode == 0 ) {
+	print "fetched login page\n";
+	my @kb_cookies = $curl->getinfo(CURLINFO_COOKIELIST);
+	foreach my $cookie (@kb_cookies) {
+	    print "cookie: $_\n" for @$cookie;
+	    $curl->setopt( CURLOPT_COOKIE, $cookie );
+	}
+    }
+    else {
+	print "could not fetch login page\n";
+	exit(1);
+    }
+
+    $curl->setopt( CURLOPT_URL,  'https://kb.groundworkopensource.com/dologin.action' );
+    $curl->setopt( CURLOPT_POST, 1 );
+    my $curlf = WWW::Curl::Form->new;
+
+    # <input type="hidden" id="statusDialogHeading" value="What are you working on?">
+    # <input type="hidden" id="statusDialogLatestLabel" value="Last update:">
+    # <input type="hidden" id="statusDialogUpdateButtonLabel" value="Update">
+    # <input type="hidden" id="statusDialogCancelButtonLabel" value="Cancel">
+    # <input type="hidden" id="globalSettingsAttachmentMaxSize" value="2000000000">
+    # <input type="hidden" id="userLocale" value="en_GB">
+    # <input type="hidden" id="staticResourceUrlPrefix" value="/s/1810/27/_">
+    # <input type="hidden" id="contextPath" value="">
+
+    # <input type="text" name="os_username" id="os_username"   value="gherteg"   tabindex="1" class="text "  />
+    # <input type="password" name="os_password" id="os_password"                              tabindex="2"     class="password "              />
+    # <input type="checkbox" class="checkbox" value="true" name="os_cookie" tabindex="3"        id="os_cookie">
+    # <input id="loginButton" name="login" type="submit" value="Log In" tabindex="4"/>
+    # <input type="hidden" name="os_destination" value=""/>
+
+    $curlf->formadd( "statusDialogHeading",             'What are you working on?' );
+    $curlf->formadd( "statusDialogLatestLabel",         'Last update:' );
+    $curlf->formadd( "statusDialogUpdateButtonLabel",   'Update' );
+    $curlf->formadd( "statusDialogCancelButtonLabel",   'Cancel' );
+    $curlf->formadd( "globalSettingsAttachmentMaxSize", '2000000000' );
+    $curlf->formadd( "userLocale",                      'en_US' );
+    $curlf->formadd( "staticResourceUrlPrefix",         '/s/1810/27/_' );
+
+    $curlf->formadd( "os_username",    $username );
+    $curlf->formadd( "os_password",    $password );
+    $curlf->formadd( "os_destination", '' );
+    $curlf->formadd( "os_cookie",      "true" );
+    $curlf->formadd( "login",          "Log In" );
+
+    $curl->setopt( CURLOPT_HTTPPOST, $curlf );
+    ## $curl->setopt( CURLOPT_WRITEDATA, \$response_body );  # Suppress printing the retrieved page.
+    print "about to try logging in\n";
+    $retcode = $curl->perform;
+    if ( $retcode == 0 ) {
+	print "login worked\n";
+	my $response_code = $curl->getinfo(CURLINFO_RESPONSE_CODE);
+	print "login response code = $response_code\n";
+	my @kb_cookies = $curl->getinfo(CURLINFO_COOKIELIST);
+	foreach my $cookie (@kb_cookies) {
+	    print "cookie: $_\n" for @$cookie;
+	    $curl->setopt( CURLOPT_COOKIE, $cookie );
+	}
+
+	## FIX MINOR:  This is just for development work, to see what comes back when
+	## we can retrieve a page, to distinguish whether or not the login succeeded.
+	print "$response_body\n";
+	exit(1);
+
+	## FIX MINOR:  unset $curl options that were used just for the login
+	$curl->setopt( CURLOPT_HTTPGET, 1 );
+	## FIX MINOR:  remember to log out at the end, and if interrupted
+    }
+    else {
+	print "login failed\n";
+	my $response_code = $curl->getinfo(CURLINFO_RESPONSE_CODE);
+	print "response_code = $response_code\n";
+	print_error_spacing();
+	print "ERROR:  Got an error while logging in.\n";
+	print "        Return code $retcode (" . $curl->strerror($retcode) . "), " . $curl->errbuf . "\n";
+    }
+    ## exit(1);
+}
+
+# Sorting serves no function here except to simplify any debug output for humans.
+foreach my $url ( sort keys %url_anchor ) {
+    ## print "$url\n";
+    ## print $url . ( defined( $url_anchor{$url} ) ? " $url_anchor{$url}" : '' ) . "\n";
+
+    my $url_body = fetch_url( $curl, $url );
+
+    if ( not defined $url_body ) {
+	++$missing_pages;
+	print_error_spacing();
+	print "ERROR:  Cannot fetch URL:  $url\n";
+	next;
+    }
+
+    # For development only.
+    # print $url_body;
+
+    my $dom;
+
+    # FIX MINOR (is this done now?):  Some URLs like the following:
+    # https://kb.gwos.com/display/DOCDEV/Configuring+Externals
+    # may describe a moved (renamed or removed) page and not the original page.
+    # We need to analyze the $url_body to see if that is the case, as otherwise
+    # there may be no failed anchor search on the page to notify us that we did
+    # not in fact get back the page we were looking for.
+    #
+    eval {
+	## Older GWMEE releases (at least through GWMEE 7.1.0) generated a huge number of HTML parsing
+	## errors.  I would rather not suppress all notice of such problems, but that is not the domain
+	## of this link-test tool.  All we really care about is whether the pages and anchors we desire
+	## to see are really available.  So for now, we turn on the suppress_warnings and suppress_errors
+	## options during this parsing, for old GWMEE releases where parsing is a problem.  GWMEE 7.1.1
+	## and later do not exhibit parsing problems without these bad-condition suppression options.
+	my %load_html_options = (
+	    string          => $url_body,
+	    recover         => 2,
+	    expand_entities => 0,
+	    ext_ent_handler => sub { },
+	    no_network      => 1
+	);
+	if ($have_old_perl) {
+	    $load_html_options{suppress_warnings} = 1;
+	    $load_html_options{suppress_errors}   = 1;
+	}
+	$dom = XML::LibXML->load_html(%load_html_options);
+
+	## /html/head/title[1]
+	## This extracts just the title data, without the enclosing <title>...</title> markup included.
+	my @title_nodes = $dom->findnodes("//title/text()");
+
+	## For development only.
+	# print "title node:  $_\n" for @title_nodes;
+
+	my @got_login_page = grep /Log In - GWConnect/, @title_nodes;
+	my @page_not_found = grep /^Page Not Found/,    @title_nodes;
+	my @page_not_there = grep /\(Page Not Found\)/, @title_nodes;
+	my @page_deleted   = grep /\(Page Deleted\)/,   @title_nodes;
+
+	## FIX MINOR:  Figure out some way to log in to GWConnect using a persistent connection
+	## or equivalent (e.g., log in the first time we see it is needed, and grab whatever
+	## cookies are returned, to be used for another try on the same URL and on later retrievals
+	## from the same {protocol}/{hostname}/display/{doc-space}/).  This will probably require
+	## use of a username and password, provided either on the command line or via timed-out
+	## prompting on the terminal.
+
+	if (@got_login_page) {
+	    ## FIX MINOR:  extend this to actually log in, and then retry the URL instead of
+	    ## concluding that we cannot get to it; but make sure we don't get on a recursive
+	    ## rampage of logging in
+	    ++$missing_pages;
+	    print_error_spacing();
+	    print "ERROR:  You must log in before accessing this page:  $url\n";
+	    $dom = undef;
+	}
+	elsif (@page_not_found) {
+	    ++$missing_pages;
+	    print_error_spacing();
+	    print "ERROR:  Page does not exist or you have no permission:  $url\n";
+	    print_source_paths( $url_source{$url} ) if $print_file_paths;
+	    $dom = undef;
+	}
+	elsif (@page_not_there) {
+	    ++$missing_pages;
+	    print_error_spacing();
+	    print "ERROR:  Page has been renamed or moved to another space:  $url\n";
+	    print_source_paths( $url_source{$url} ) if $print_file_paths;
+	    $dom = undef;
+	}
+	elsif (@page_deleted) {
+	    ++$missing_pages;
+	    print_error_spacing();
+	    print "ERROR:  Page has been removed:  $url\n";
+	    print_source_paths( $url_source{$url} ) if $print_file_paths;
+	    $dom = undef;
+	}
+	else {
+	    ## FIX MINOR:  This is just for development testing of the conditions above.
+	    ## print "INFO:  Found page:  $url\n";
+	}
+    };
+    if ($@) {
+	chomp $@;
+	++$invalid_page_html;
+	print_error_spacing();
+	print "ERROR:  Got invalid HTML for:  $url\n";
+	print_source_paths( $url_source{$url} ) if $print_file_paths;
+	print "        $@\n";
+	## Most likely, something very unexpected is going on, not a problem with
+	## the particular page under consideration.  For the moment, this is such
+	## a surprise that we abort immediately.  If we ever see this in practice
+	## and understand when it might happen, we'll comment out this exit().
+	exit(1);
+    }
+
+    if ($dom) {
+	if ( defined $url_anchor{$url} ) {
+	    my $anchor = $url_anchor{$url};
+
+	    ## For development debugging only.
+	    if (0) {
+		print "While fetching URL:  $url\n";
+		print "Writing to ,html_file in search of anchor:  $anchor\n";
+		open FILE, '>', ',html_file';
+		print FILE $url_body;
+		close FILE;
+		exit (1);
+	    }
+
+	    # We have anchors like this in the Bookshelf:
+	    #
+	    # <h5><a name="CreatingProfiles-HostProfileDefinition"></a>Host Profile Definition</h5>
+	    #
+	    # Colon characters may be present in the anchors specified within our Perl code,
+	    # because that's how they may appear in the location bar in a browser and thus
+	    # that's how we originally captured them.  But in fact, such characters are
+	    # encoded as %3A strings in the actual anchors in the Bookshelf.  So we recode
+	    # here to match what we expect to find in the page we just retrieved.
+	    #
+	    $anchor =~ s/:/%3A/g;
+
+	    eval {
+		## See:  https://www.w3.org/TR/xpath/
+		## See:  https://www.w3.org/TR/html4/struct/links.html
+		## We fetch the parent node, not the anchor node, because the extra context
+		## makes for more interesting reading if we print out all the anchors found.
+		## Here we are assuming that all anchors will have a parent node, but that
+		## seems like a safe assumption given that we are analyzing an HTML document
+		## where all content should be encapsulated inside a <body> node or an <html>
+		## node at the outermost level.  In terms of misrepreenting what the target
+		## documentation looks like, at worst, we would miss the situation where we
+		## had a duplicate anchor, one of which did and one of which did not have a
+		## parent node.  Given the strong unlikelihood of a top-level anchor node,
+		## that's just not worth worrying about.
+		my @nodes = $dom->findnodes("//a[\@name='$anchor']/parent::node()");
+		if ( @nodes == 0 ) {
+		    ++$missing_anchors;
+		    print_error_spacing();
+		    print "ERROR:  Cannot find anchor:  $url\n";
+		    print_source_paths( $url_source{$url} ) if $print_file_paths;
+		    ## print "$url\n";
+		}
+		elsif ( @nodes > 1 ) {
+		    ++$duplicate_anchors;
+		    print_warning_spacing();
+		    print "WARNING:  In the page for this reference:\n";
+		    print "              $url\n";
+		    print "          found more than one anchor named '$anchor'; contexts are:\n";
+		    print "              $_\n" for @nodes;
+		}
+		else {
+		    if (0) {
+			## For development debugging only.
+			print "DEBUG:  For URL:  $url\n";
+			print "DEBUG:  Found anchor in this context:  $_\n" for @nodes;
+		    }
+		    ++$found_anchors;
+		}
+	    };
+	    if ($@) {
+		chomp $@;
+		++$invalid_page_html;
+		print_error_spacing();
+		print "ERROR:  Got invalid HTML for:  $url\n";
+		print_source_paths( $url_source{$url} ) if $print_file_paths;
+		print "        $@\n";
+		## Most likely, something very unexpected is going on, not a problem with
+		## the particular page under consideration.  For the moment, this is such
+		## a surprise that we abort immediately.  If we ever see this in practice
+		## and understand when it might happen, we'll comment out this exit().
+		exit(1);
+	    }
+	    ## For development purposes only.
+	    ## exit(1);
+	}
+	else {
+	    ++$found_pages;
+	}
+    }
+}
+
+# It's important to summarize the results of checking links, both so we can tell
+# at a glance whether we're making progress as doc and code are modified, and to
+# give QA automation a good handle on whether the checking was totally successful.
+# That said, we go to some lengths to make the statistical info human-readable.
+
+my $found_pages_noun       = $found_pages == 1       ? 'link'   : 'links';
+my $found_pages_verb       = $found_pages == 1       ? 'was'    : 'were';
+my $found_anchors_noun     = $found_anchors == 1     ? 'link'   : 'links';
+my $found_anchors_verb     = $found_anchors == 1     ? 'was'    : 'were';
+my $missing_pages_noun     = $missing_pages == 1     ? 'page'   : 'pages';
+my $missing_pages_verb     = $missing_pages == 1     ? 'is'     : 'are';
+my $missing_anchors_noun   = $missing_anchors == 1   ? 'anchor' : 'anchors';
+my $missing_anchors_verb   = $missing_anchors == 1   ? 'is'     : 'are';
+my $duplicate_anchors_noun = $duplicate_anchors == 1 ? 'page'   : 'pages';
+my $duplicate_anchors_verb = $duplicate_anchors == 1 ? 'has'    : 'have';
+my $invalid_html_noun      = $invalid_page_html == 1 ? 'page'   : 'pages';
+my $invalid_html_verb      = $invalid_page_html == 1 ? 'has'    : 'have';
+
+$end_time = Time::HiRes::time();
+my $duration = ceil( $end_time - $start_time );
+my $duration_time = strftime( "%T", gmtime($duration) );
+
+print "\n" if $last_problem_was_error || $last_problem_was_warning;
+print "STATS:  $found_pages $found_pages_noun without anchor references $found_pages_verb found.\n";
+print "STATS:  $found_anchors $found_anchors_noun with anchor references $found_anchors_verb found.\n";
+print "STATS:  $missing_pages $missing_pages_noun $missing_pages_verb missing.\n";
+print "STATS:  $missing_anchors $missing_anchors_noun $missing_anchors_verb missing.\n";
+print "STATS:  $duplicate_anchors $duplicate_anchors_noun $duplicate_anchors_verb duplicate anchors.\n";
+print "STATS:  $invalid_page_html $invalid_html_noun $invalid_html_verb invalid HTML.\n";
+print "STATS:  $duration_time was taken for this scan.\n";
+
+# Make it easy for enclosing automation to figure out if there was a problem.
+exit( ( $missing_pages || $missing_anchors || $duplicate_anchors || $invalid_page_html ) ? 1 : 0 );

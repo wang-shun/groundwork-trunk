@@ -1,0 +1,28 @@
+--- nedi/inc/libdb.pm.orig	2018-06-18 16:58:43.882288249 -0700
++++ nedi/inc/libdb.pm	2018-06-18 17:02:18.915463139 -0700
+@@ -164,6 +164,7 @@
+ 				$dbh->do("ALTER TABLE devices  ALTER memalert  SET DEFAULT 0;");
+ 				$dbh->do("ALTER TABLE devices  ALTER tempalert SET DEFAULT 0;");
+ 				$dbh->do("ALTER TABLE devices  ALTER arppoison SET DEFAULT $misc::arppoison;");
++				$dbh->do("ALTER TABLE users    ALTER theme     SET DEFAULT 'groundwork';");
+ 				$dbh->do("ALTER TABLE devices  ALTER vendor    SET DATA TYPE $vchar(32);");
+ 				$dbh->do("ALTER TABLE policies ALTER type      SET DATA TYPE $vchar(128);");
+ 				$dbh->do("ALTER TABLE vlans    ALTER vlanname  SET DATA TYPE $vchar(64);");
+@@ -705,7 +706,7 @@
+ 		lastlogin $intun DEFAULT 0,
+ 		comment $vchar(255) DEFAULT '',
+ 		language $vchar(16) NOT NULL DEFAULT 'english',
+-		theme $vchar(16) NOT NULL DEFAULT 'default',
++		theme $vchar(16) NOT NULL DEFAULT 'groundwork',
+ 		volume $tinun NOT NULL DEFAULT '60',
+ 		columns $tinun NOT NULL DEFAULT '6',
+ 		msglimit $tinun NOT NULL DEFAULT '5',
+@@ -714,7 +715,7 @@
+ 		viewdev $vchar(255) DEFAULT ''
+ 		$index)" );
+ 	$sth = $dbh->prepare("INSERT INTO users (usrname,password,groups,time,comment,volume,columns,msglimit,miscopts) VALUES ( ?,?,?,?,?,?,?,?,? )");
+-	$sth->execute ( 'admin','3cac26b5bd6addd1ba4f9c96a58ff8c2c2c8ac15018f61240f150a4a968b8562','255',$main::now,'default admin','75','8','10','35' );
++	$sth->execute ( 'admin','3cac26b5bd6addd1ba4f9c96a58ff8c2c2c8ac15018f61240f150a4a968b8562','255',$main::now,'default admin','75','7','10','35' );
+ 
+ 	print "system\n";
+ 	$index = ($misc::backend eq 'Pg')?'':', PRIMARY KEY(name)';

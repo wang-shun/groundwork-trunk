@@ -1,0 +1,171 @@
+# ----------------------------------------------------------------------
+# performance_configuration = {name}
+#  service_profile   = {name}
+#   graph            = {name}|{host}|{service}|{type}|{enable}|{label}
+#    rrdname         = {text}               # full string
+#    rrdcreatestring = {text}               # full command
+#    rrdupdatestring = {text}               # full command
+#    graphcgi        = {text}
+#    ...               {text}
+#    graphcgi        = {text}               # each line concats to prior
+#    parseregx       = {first}|{regx}       # first is 1|0
+#    perfidstring    = {text}               # usually empty
+# ----------------------------------------------------------------------
+performance_configuration = gdma_21_linux
+ service_profile   = disk
+  graph            = graph|*|regx="1"|nagios|1|Disk Utilization
+   rrdname         = /usr/local/groundwork/rrd/RHOST$_$SERVICE$.rrd
+   rrdcreatestring = $RRDTOOL$ create $RRDNAME$ --step 300 --start n-1yr $LISTSTART$DS:$LABEL#$:GAUGE:1800:U:U DS:$LABEL#$_wn:GAUGE:1800:U:U DS:$LABEL#$_cr:GAUGE:1800:U:U DS:$LABEL#$_mx:GAUGE:1800:U:U $LISTEND$ RRA:AVERAGE:0.5:1:8640 RRA:AVERAGE:0.5:12:9480
+   rrdupdatestring = $RRDTOOL$ update $RRDNAME$ $LASTCHECK$:$VALUE1$:$WARN1$:$CRIT1$:$MAX1$ 2>&1
+   graphcgi        = 'rrdtool graph -
+   graphcgi        = DEF:a="rrd_source":ds_source_0:AVERAGE
+   graphcgi        = DEF:w="rrd_source":ds_source_1:AVERAGE
+   graphcgi        = DEF:c="rrd_source":ds_source_2:AVERAGE
+   graphcgi        = DEF:m="rrd_source":ds_source_3:AVERAGE
+   graphcgi        = CDEF:cdefa=a,m,/,100,*
+   graphcgi        = CDEF:cdefb=a,0.99,*
+   graphcgi        = CDEF:cdefw=w
+   graphcgi        = CDEF:cdefc=c
+   graphcgi        = CDEF:cdefm=m
+   graphcgi        = AREA:a#C35617:"Space Used\: "
+   graphcgi        = LINE:cdefa#FFCC00:
+   graphcgi        = GPRINT:a:LAST:"%.2lf MB\l"
+   graphcgi        = LINE2:cdefw#FFFF00:"Warning Threshold\:"
+   graphcgi        = GPRINT:cdefw:AVERAGE:"%.2lf"
+   graphcgi        = LINE2:cdefc#FF0033:"Critical Threshold\:"
+   graphcgi        = GPRINT:cdefc:AVERAGE:"%.2lf\l"
+   graphcgi        = GPRINT:cdefa:AVERAGE:"Percentage Space Used"=%.2lf
+   graphcgi        = GPRINT:cdefm:AVERAGE:"Maximum Capacity"=%.2lf
+   graphcgi        = CDEF:cdefws=a,cdefw,GT,a,0,IF
+   graphcgi        = AREA:cdefws#FFFF00
+   graphcgi        = CDEF:cdefcs=a,cdefc,GT,a,0,IF
+   graphcgi        = AREA:cdefcs#FF0033
+   graphcgi        = -c BACK#FFFFFF -c CANVAS#FFFFFF -c GRID#C0C0C0 -c MGRID#404040 -c ARROW#FFFFFF -Y  -l 0'
+   parseregx       = 0|
+   perfidstring    = 
+ service_profile   = load
+  graph            = graph|*|regx="0"|nagios|1|Load Averages
+   rrdname         = /usr/local/groundwork/rrd/$HOST$_$SERVICE$.rrd
+   rrdcreatestring = $RRDTOOL$ create $RRDNAME$ --step 300 --start n-1yr $LISTSTART$ DS:$LABEL#$:GAUGE:1800:U:U DS:$LABEL#$_wn:GAUGE:1800:U:U DS:$LABEL#$_cr:GAUGE:1800:U:U $LISTEND$  RRA:AVERAGE:0.5:1:8640 RRA:AVERAGE:0.5:12:9480
+   rrdupdatestring = $RRDTOOL$ update $RRDNAME$ $LASTCHECK$:$VALUE1$:$WARN1$:$CRIT1$:$VALUE2$:$WARN2$:$CRIT2$:$VALUE3$:$WARN3$:$CRIT3$ 2>&1
+   graphcgi        = 'rrdtool graph - --imgformat=PNG --slope-mode
+   graphcgi        = DEF:a=rrd_source:ds_source_0:AVERAGE
+   graphcgi        = DEF:aw="rrd_source":ds_source_1:AVERAGE
+   graphcgi        = DEF:ac="rrd_source":ds_source_2:AVERAGE
+   graphcgi        = DEF:b=rrd_source:ds_source_3:AVERAGE
+   graphcgi        = DEF:bw="rrd_source":ds_source_4:AVERAGE
+   graphcgi        = DEF:bc="rrd_source":ds_source_5:AVERAGE
+   graphcgi        = DEF:c=rrd_source:ds_source_6:AVERAGE
+   graphcgi        = DEF:cw="rrd_source":ds_source_7:AVERAGE
+   graphcgi        = DEF:cc="rrd_source":ds_source_8:AVERAGE
+   graphcgi        = CDEF:cdefa=a
+   graphcgi        = CDEF:cdefb=b
+   graphcgi        = CDEF:cdefc=c
+   graphcgi        = AREA:cdefa#FF6600:"One Minute Load Average" GPRINT:cdefa:MIN:min=%.2lf  GPRINT:cdefa:AVERAGE:avg=%.2lf
+   graphcgi        = GPRINT:cdefa:MAX:"max=%.2lf\l"
+   graphcgi        = LINE:aw#FFCC33:"1 min avg Warning Threshold"
+   graphcgi        = GPRINT:aw:LAST:"%.1lf"
+   graphcgi        = LINE:ac#FF0000:"1 min avg Critical Threshold"
+   graphcgi        = GPRINT:ac:LAST:"%.1lf\l"
+   graphcgi        = LINE2:cdefb#3300FF:"Five Minute Load Average"
+   graphcgi        = GPRINT:cdefb:MIN:min=%.2lf
+   graphcgi        = GPRINT:cdefb:AVERAGE:avg=%.2lf
+   graphcgi        = GPRINT:cdefb:MAX:"max=%.2lf\l"
+   graphcgi        = LINE:bw#6666CC:"5 min avg Warning Threshold"
+   graphcgi        = GPRINT:bw:LAST:"%.1lf"
+   graphcgi        = LINE:bc#CC0000:"5 min avg Critical Threshold"
+   graphcgi        = GPRINT:bc:LAST:"%.1lf\l"
+   graphcgi        = LINE3:cdefc#999999:"Fifteen Minute Load Average"
+   graphcgi        = GPRINT:cdefc:MIN:min=%.2lf
+   graphcgi        = GPRINT:cdefc:AVERAGE:avg=%.2lf
+   graphcgi        = GPRINT:cdefc:MAX:"max=%.2lf\l"
+   graphcgi        = LINE:cw#CCCC99:"15 min avg Warning Threshold"
+   graphcgi        = GPRINT:cw:LAST:"%.1lf"
+   graphcgi        = LINE:cc#990000:"15 min avg Critical Threshold"
+   graphcgi        = GPRINT:cc:LAST:"%.1lf\l"
+   graphcgi        = -c BACK#FFFFFF -c CANVAS#FFFFFF -c GRID#C0C0C0 -c MGRID#404040 -c ARROW#FFFFFF-Y --height 120'
+   parseregx       = 0|
+   perfidstring    = 
+ service_profile   = mem
+  graph            = graph|*|regx="1"|nagios|1|Memory Utilization
+   rrdname         = /usr/local/groundwork/rrd/$HOST$_$SERVICE$.rrd
+   rrdcreatestring = $RRDTOOL$ create $RRDNAME$ --step 300 --start n-1yr $LISTSTART$ DS:$LABEL#$:GAUGE:1800:U:U DS:$LABEL#$_wn:GAUGE:1800:U:U DS:$LABEL#$_cr:GAUGE:1800:U:U $LISTEND$ RRA:AVERAGE:0.5:1:8640 RRA:AVERAGE:0.5:12:9480
+   rrdupdatestring = $RRDTOOL$ update $RRDNAME$ $LASTCHECK$:$VALUE1$:$WARN1$:$CRIT1$ 2>&1
+   graphcgi        = 'rrdtool graph -
+   graphcgi        = DEF:a="rrd_source":ds_source_0:AVERAGE
+   graphcgi        = DEF:w="rrd_source":ds_source_1:AVERAGE
+   graphcgi        = DEF:c="rrd_source":ds_source_2:AVERAGE
+   graphcgi        = CDEF:cdefa=a
+   graphcgi        = CDEF:cdefb=a,0.99,*
+   graphcgi        = CDEF:cdefw=w
+   graphcgi        = CDEF:cdefc=c
+   graphcgi        = CDEF:cdefm=c,1.05,*
+   graphcgi        = AREA:a#33FFFF
+   graphcgi        = AREA:cdefb#3399FF:"Memory Free\:"
+   graphcgi        = GPRINT:a:LAST:"%.2lf Percent"
+   graphcgi        = GPRINT:cdefa:MIN:min=%.2lf
+   graphcgi        = GPRINT:cdefa:AVERAGE:avg=%.2lf
+   graphcgi        = GPRINT:cdefa:MAX:max="%.2lf\l"
+   graphcgi        = LINE2:cdefw#FFFF00:"Warning Threshold\:"
+   graphcgi        = GPRINT:cdefw:LAST:"%.2lf"
+   graphcgi        = LINE2:cdefc#FF0033:"Critical Threshold\:"
+   graphcgi        = GPRINT:cdefc:LAST:"%.2lf\l"
+   graphcgi        = COMMENT:"Service\: SERVICE"
+   graphcgi        = CDEF:cdefws=a,cdefw,LT,a,0,IF AREA:cdefws#FFFF00 CDEF:cdefcs=a,cdefc,LT,a,0,IF AREA:cdefcs#FF0033
+   graphcgi        = CDEF:cdefwt=a,cdefw,GT,cdefw,0,IF LINE:cdefwt#000000 CDEF:cdefct=a,cdefc,GT,cdefc,0,IF LINE:cdefct#000000
+   graphcgi        = -c BACK#FFFFFF -c CANVAS#FFFFFF -c GRID#C0C0C0 -c MGRID#404040 -c ARROW#FFFFFF -Y -u 100 -l 0 --rigid'
+   parseregx       = 0|([\d\.]+)%
+   perfidstring    = 
+ service_profile   = process
+  graph            = graph|*|regx="1"|nagios|1|Process Count
+   rrdname         = /usr/local/groundwork/rrd/$HOST$_$SERVICE$.rrd
+   rrdcreatestring = $RRDTOOL$ create $RRDNAME$ --step 300 --start n-1yr DS:number:GAUGE:1800:U:U RRA:AVERAGE:0.5:1:8640 RRA:AVERAGE:0.5:12:9480
+   rrdupdatestring = $RRDTOOL$ update $RRDNAME$ $LASTCHECK$:$VALUE1$ 2>&1
+   graphcgi        = 'rrdtool graph - DEF:a="rrd_source":ds_source_0:AVERAGE CDEF:cdefa=a AREA:cdefa#0000FF:"Number of Processes" GPRINT:cdefa:MIN:min=%.2lf GPRINT:cdefa:AVERAGE:avg=%.2lf GPRINT:cdefa:MAX:max=%.2lf  -c BACK#FFFFFF -c CANVAS#FFFFFF -c GRID#C0C0C0 -c MGRID#404040 -c ARROW#FFFFFF -Y --height 120 -l 0'
+   parseregx       = 1|(\d+) process
+ service_profile   = swap
+  graph            = graph|*|regx="0"|nagios|1|Swap Utilization
+   rrdname         = /usr/local/groundwork/rrd/$HOST$_$SERVICE$.rrd
+   rrdcreatestring = $RRDTOOL$ create $RRDNAME$ --step 300 --start n-1yr $LISTSTART$DS:$LABEL#$:GAUGE:1800:U:U DS:$LABEL#$_wn:GAUGE:1800:U:U DS:$LABEL#$_cr:GAUGE:1800:U:U DS:$LABEL#$_mx:GAUGE:1800:U:U $LISTEND$ RRA:AVERAGE:0.5:1:8640 RRA:AVERAGE:0.5:12:9480
+   rrdupdatestring = $RRDTOOL$ update $RRDNAME$ $LASTCHECK$:$VALUE1$:$WARN1$:$CRIT1$:$MAX1$ 2>&1
+   graphcgi        = 'rrdtool graph -
+   graphcgi        = DEF:a="rrd_source":ds_source_0:AVERAGE
+   graphcgi        = DEF:w="rrd_source":ds_source_1:AVERAGE
+   graphcgi        = DEF:c="rrd_source":ds_source_2:AVERAGE
+   graphcgi        = DEF:m="rrd_source":ds_source_3:AVERAGE
+   graphcgi        = CDEF:cdefa=a,m,/,100,*
+   graphcgi        = CDEF:cdefw=w
+   graphcgi        = CDEF:cdefc=c
+   graphcgi        = CDEF:cdefm=m
+   graphcgi        = AREA:a#9900FF:"Swap Free\: "
+   graphcgi        = LINE2:a#6600FF:
+   graphcgi        = GPRINT:a:LAST:"%.2lf MB\l"
+   graphcgi        = CDEF:cdefws=a,cdefw,LT,a,0,IF
+   graphcgi        = AREA:cdefws#FFFF00
+   graphcgi        = CDEF:cdefcs=a,cdefc,LT,a,0,IF
+   graphcgi        = AREA:cdefcs#FF0033
+   graphcgi        = LINE2:cdefw#FFFF00:"Warning Threshold\:"
+   graphcgi        = GPRINT:cdefw:AVERAGE:"%.2lf"
+   graphcgi        = LINE2:cdefc#FF0033:"Critical Threshold\:"
+   graphcgi        = GPRINT:cdefc:AVERAGE:"%.2lf\l"
+   graphcgi        = GPRINT:cdefa:AVERAGE:"Percentage Swap Free"=%.2lf
+   graphcgi        = GPRINT:cdefm:AVERAGE:"Total Swap Space=%.2lf"
+   graphcgi        = -c BACK#FFFFFF -c CANVAS#FFFFFF -c GRID#C0C0C0 -c MGRID#404040 -c ARROW#FFFFFF -Y -l 0'
+   parseregx       = 0|
+   perfidstring    = 
+ service_profile   = poller
+  graph            = graph|*|regx="0"|nagios|1|GDMA Poller Performance
+   rrdname         = /usr/local/groundwork/rrd/$HOST$_$SERVICE$.rrd
+   rrdcreatestring = $RRDTOOL$ create $RRDNAME$ --step 300 --start n-1yr $LISTSTART$ DS:$LABEL#$:GAUGE:1800:U:U  $LISTEND$  RRA:AVERAGE:0.5:1:8640 RRA:AVERAGE:0.5:12:9480
+   rrdupdatestring = $RRDTOOL$ update $RRDNAME$ $LASTCHECK$:$VALUE1$:$VALUE2$:$VALUE3$:$VALUE4$ 2>&1
+   graphcgi        = 'rrdtool graph -
+   graphcgi        = DEF:a="rrd_source":NumChecks:AVERAGE CDEF:cdefa=a LINE2:a#FF0033:NumChecks DEF:b="rrd_source":TimeSecs:AVERAGE CDEF:cdefb=b LINE2:b#33CC00:TimeSecs DEF:c="rrd_source":PctTime:AVERAGE CDEF:cdefc=c LINE2:c#3366FF:PctTime
+   graphcgi        = -c BACK#FFFFFF
+   graphcgi        = -c CANVAS#FFFFFF
+   graphcgi        = -c GRID#C0C0C0
+   graphcgi        = -c MGRID#404040
+   graphcgi        = -c ARROW#FFFFFF
+   graphcgi        = -Y
+   graphcgi        = --height 120'
+   parseregx       = 0|
+   perfidstring    = 

@@ -1,0 +1,42 @@
+--- cacti/htdocs/lib/utility.php	2013-10-25 00:30:17.000000000 -0700
++++ cacti/htdocs-security/lib/utility.php	2013-10-30 11:43:42.608137774 -0700
+@@ -46,6 +46,7 @@
+ 
+ function update_poller_cache($local_data_id, $truncate_performed = false) {
+ 	global $config;
++	global $cnn_id;
+ 
+ 	include_once($config["library_path"] . "/data_query.php");
+ 	include_once($config["library_path"] . "/api_poller.php");
+@@ -75,7 +76,7 @@
+ 		$field = data_query_field_list($data_input["data_template_data_id"]);
+ 
+ 		if (strlen($field["output_type"])) {
+-			$output_type_sql = "and snmp_query_graph_rrd.snmp_query_graph_id=" . $field["output_type"];
++			$output_type_sql = "and snmp_query_graph_rrd.snmp_query_graph_id=" . $cnn_id->qstr($field["output_type"]);
+ 		}else{
+ 			$output_type_sql = "";
+ 		}
+@@ -198,6 +199,7 @@
+ }
+ 
+ function push_out_host($host_id, $local_data_id = 0, $data_template_id = 0) {
++	global $cnn_id;
+ 	global $database_type;
+ 
+ 	/* ok here's the deal: first we need to find every data source that uses this host.
+@@ -256,12 +258,12 @@
+ 		foreach ($template_fields{$data_source["local_data_template_data_id"]} as $template_field) {
+ 			if ((eregi('^' . VALID_HOST_FIELDS . '$', $template_field["type_code"])) && ($template_field["value"] == "") && ($template_field["t_value"] == "")) {
+ 				if ($database_type === "mysql") {
+-					db_execute("replace into data_input_data (data_input_field_id,data_template_data_id,value) values (" . $template_field["id"] . "," . $data_source["id"] . ",'" . $host{$template_field["type_code"]} . "')");
++					db_execute("replace into data_input_data (data_input_field_id,data_template_data_id,value) values (" . $template_field["id"] . "," . $data_source["id"] . "," . $cnn_id->qstr($host{$template_field["type_code"]}) . ")");
+ 				} else {
+ 					if (db_execute("start transaction isolation level serializable") &&
+ 					    db_execute("delete from data_input_data where data_input_field_id = " . $template_field["id"]
+ 						. " and data_template_data_id = " . $data_source["id"]) &&
+-					    db_execute("insert into data_input_data (data_input_field_id,data_template_data_id,value) values (" . $template_field["id"] . "," . $data_source["id"] . ",'" . $host{$template_field["type_code"]} . "')") ) {
++					    db_execute("insert into data_input_data (data_input_field_id,data_template_data_id,value) values (" . $template_field["id"] . "," . $data_source["id"] . "," . $cnn_id->qstr($host{$template_field["type_code"]}) . ")") ) {
+ 					    db_execute("commit");
+ 					} else {
+ 					    db_execute("rollback");

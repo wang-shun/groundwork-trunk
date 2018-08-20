@@ -1,0 +1,101 @@
+#!/bin/bash -e
+
+# Script to add a custom DeactivationTime property to Foundation.
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+# TO DO:
+# (*) Fix this to not bounce gwservices if it is already down when the script starts.
+
+credentials=`sed -e 's/#.*//' -e 's/^ *//' -e 's/ *$//' /usr/local/groundwork/config/db.properties | fgrep collage.`
+
+for key_value in $credentials
+do
+    # collage.field=value
+    key=${key_value%%=*}
+    value=${key_value#*=}
+    case $key in 
+	(collage.database) database=$value;;
+	(collage.dbhost)   hostname=$value;;
+	(collage.username) username=$value;;
+	(collage.password) password=$value;;
+    esac
+done
+
+# This selection ought to be configured in the db.properties file, but
+# until it is, we need to compute this ourselves.  The mysql client
+# program is configured to do this for us in its my.cnf file, but we
+# cannot use that because we need to use the --defaults-extra-file
+# argument, which is not supported by the Bitrock "mysql" wrapper.
+if [ "$hostname" = 'localhost' ]; then
+    port_or_sock="--socket=/usr/local/groundwork/mysql/tmp/mysql.sock"
+else
+    port_or_sock="--port=3306"
+fi
+
+# FIX LATER:  there are improved ways to name a temporary file
+# that provide even better security
+my_local_cnf="/usr/local/groundwork/tmp/my_local.cnf.$$"
+trap "/bin/rm -f $my_local_cnf;" EXIT
+touch $my_local_cnf
+chmod 600 $my_local_cnf
+cat > $my_local_cnf << eof
+[mysql]
+user=$username
+password=$password
+eof
+
+service groundwork stop gwservices
+
+/usr/local/groundwork/mysql/bin/mysql.bin --defaults-extra-file=$my_local_cnf -h $hostname $port_or_sock -s $database <<'EOF'
+select count(*) from Host;
+
+delimiter $$
+
+DROP PROCEDURE IF EXISTS `GWCollageDB`.`add_DeactivationTime`$$
+CREATE PROCEDURE `GWCollageDB`.`add_DeactivationTime` ()
+
+BEGIN
+    DECLARE AlreadyExists INTEGER;
+
+    # Begin Transaction
+    START TRANSACTION;
+
+    select count(*) into AlreadyExists from PropertyType where Name='DeactivationTime';
+    IF AlreadyExists = 0 THEN
+        INSERT INTO PropertyType(Name, Description, isDate)
+        VALUES ("DeactivationTime", "The time when the host was deactivated", 1);
+    END IF;
+
+    select count(*) into AlreadyExists from ApplicationEntityProperty
+        where ApplicationTypeID=(SELECT ApplicationTypeID FROM ApplicationType WHERE Name='NAGIOS')
+        and EntityTypeID=(SELECT EntityTypeID FROM EntityType WHERE Name='HOST_STATUS')
+        and PropertyTypeID=(SELECT PropertyTypeID FROM PropertyType WHERE Name = 'DeactivationTime');
+    IF AlreadyExists = 0 THEN
+        INSERT INTO ApplicationEntityProperty(ApplicationTypeID, EntityTypeID, PropertyTypeID, SortOrder)
+        VALUES (
+            (SELECT ApplicationTypeID FROM ApplicationType WHERE Name='NAGIOS'),
+            (SELECT EntityTypeID FROM EntityType WHERE Name='HOST_STATUS'),
+            (SELECT PropertyTypeID FROM PropertyType WHERE Name = 'DeactivationTime'),
+            71
+        );
+    END IF;
+
+    # Commit All Changes
+    COMMIT;
+END$$
+
+delimiter ;
+
+# Execute Migration Stored Procedure
+call add_DeactivationTime();
+
+# Remove Stored Procedure
+DROP PROCEDURE IF EXISTS `GWCollageDB`.`add_DeactivationTime`;
+
+select count(*) from Host;
+quit
+EOF
+
+service groundwork start gwservices

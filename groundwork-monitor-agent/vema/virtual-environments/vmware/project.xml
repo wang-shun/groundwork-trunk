@@ -1,0 +1,211 @@
+<?xml version = "1.0" encoding = "UTF-8"?>
+<!-- Copyright (C) 2009 GroundWork Open Source, Inc. (GroundWork) All rights 
+	reserved. This program is free software; you can redistribute it and/or modify 
+	it under the terms of the GNU General Public License version 2 as published 
+	by the Free Software Foundation. This program is distributed in the hope 
+	that it will be useful, but WITHOUT ANY WARRANTY; without even the implied 
+	warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 
+	GNU General Public License for more details. You should have received a copy 
+	of the GNU General Public License along with this program; if not, write 
+	to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, 
+	MA 02110-1301, USA. -->
+<project xmlns="http://maven.apache.org/POM/3.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/3.0.0 http://maven.apache.org/maven-v3_0_0.xsd">
+
+	<!-- the version of maven's project object model -->
+	<pomVersion>3</pomVersion>
+
+	<extend>../../project.xml</extend>
+
+	<!-- a unique name for this project -->
+	<artifactId>${vema.vmware.agent}</artifactId>
+	<currentVersion>${vema.vmware.version}</currentVersion>
+
+	<!-- a short but descriptive name for the project -->
+	<name>Monitoring Agent for VMWare</name>
+	<!-- The version of the project under development, e.g. 1.1, 1.2, 2.0-SNAPSHOT -->
+
+	<!-- build information for the project -->
+	<build>
+		<sourceDirectory>src</sourceDirectory>
+		<resources>
+			<resource>
+				<directory>resources</directory>
+				<excludes>
+					<exclude>gw-vmware.properties</exclude>
+				</excludes>
+			</resource>
+		</resources>
+	</build>
+
+	<!-- External dependencies -->
+	<dependencies>
+		<dependency>
+			<groupId>${com.vmware.group.id}</groupId>
+			<artifactId>${com.vmware.vim25.id}</artifactId>
+			<version>${com.vmware.vim25.version}</version>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+		</dependency>
+		<dependency>
+			<artifactId>${vema.common.library}</artifactId>
+			<groupId>${vema.common.groupid}</groupId>
+			<version>${vema.common.version}</version>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+		</dependency>
+		<dependency>
+			<groupId>${servlet.api.groupid}</groupId>
+			<artifactId>${servlet.api.name}</artifactId>
+			<version>${servlet.api.version}</version>
+			<properties>
+				<war.bundle>false</war.bundle>
+			</properties>
+		</dependency>
+		<dependency>
+			<id>${org.itgroundwork.log4j.id}</id>
+			<version>${org.itgroundwork.log4j.version}</version>
+			<properties>
+				<war.bundle>false</war.bundle>
+			</properties>
+		</dependency>
+
+		<dependency>
+			<groupId>${org.itgroundwork.groupid}
+			</groupId>
+			<artifactId>collage-api</artifactId>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+			<version>${org.itgroundwork.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>axis</artifactId>
+			<groupId>${axis.groupid}</groupId>
+			<version>${axis.version}</version>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+		</dependency>
+
+
+		<dependency>
+			<artifactId>jaxrpc</artifactId>
+			<groupId>${portal.groupid}</groupId>
+			<jar>jaxrpc.jar</jar>
+			<properties>
+				<war.bundle>true</war.bundle>				
+			</properties>
+		</dependency>
+
+		<dependency>
+			<groupId>commons-logging</groupId>
+			<artifactId>commons-logging</artifactId>
+			<version>1.1</version>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+		</dependency>
+		<dependency>
+			<groupId>commons-discovery</groupId>
+			<artifactId>commons-discovery</artifactId>
+			<version>0.2</version>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+		</dependency>
+
+		<dependency>
+			<groupId>wsdl4j</groupId>
+			<artifactId>wsdl4j</artifactId>
+			<version>${wsdl4j.version}</version>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+		</dependency>
+		<dependency>
+			<groupId>com.groundworkopensource.portal</groupId>
+			<artifactId>gwos-rest-api</artifactId>
+			<version>${org.itgroundwork.version}</version>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+		</dependency>
+		<dependency>
+			<groupId>com.wutka</groupId>
+			<artifactId>jox</artifactId>
+			<version>1.16</version>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+		</dependency>
+		<dependency>
+			<groupId>com.wutka</groupId>
+			<artifactId>dtdparser</artifactId>
+			<version>1.21</version>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+		</dependency>
+		<dependency>
+			<artifactId>commons-lang</artifactId>
+			<groupId>commons-lang</groupId>
+			<version>${commons.lang.version}</version>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+		</dependency>
+		<dependency>
+			<groupId>jakarta-taglibs</groupId>
+			<artifactId>jstl</artifactId>
+			<version>1.1</version>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+		</dependency>
+		<dependency>
+			<groupId>jakarta-taglibs</groupId>
+			<artifactId>jakarta-taglibs-standard</artifactId>
+			<version>1.1.2</version>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+		</dependency>
+		<dependency>
+			<id>json-lib</id>
+			<groupId>${portal.groupid}</groupId>
+			<jar>json-lib-2.4-jdk15.jar</jar>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+		</dependency>
+		
+		<dependency>
+			<id>ezmorph</id>
+			<groupId>${portal.groupid}</groupId>
+			<jar>ezmorph-1.0.6.jar</jar>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+		</dependency>
+		<dependency>
+			<artifactId>commons-beanutils</artifactId>
+			<groupId>commons-beanutils</groupId>
+			<version>${commons.beanutils.version}</version>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+		</dependency>
+		<dependency>
+			<artifactId>commons-collections</artifactId>
+			<groupId>commons-collections</groupId>
+			<version>${commons.collections.version}</version>
+			<properties>
+				<war.bundle>true</war.bundle>
+			</properties>
+		</dependency>
+	</dependencies>
+</project>

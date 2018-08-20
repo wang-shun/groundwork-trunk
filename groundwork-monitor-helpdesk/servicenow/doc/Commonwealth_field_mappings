@@ -1,0 +1,298 @@
+====================================================================
+Development Notes for the ServiceNow Integration for Commonwealth:
+Details of GroundWork-to-ServiceNow data mappings
+January 2015
+====================================================================
+
+This file contains a list of the GroundWork-to-ServiceNow field-content
+mappings agreed upon between GroundWork and Commonwealth Financial Network.
+For comparison, see the list of ServiceNow Incident fields that could
+potentially be populated, in the WSDL for a ServiceNow Incident (e.g., as
+saved at one point in time in the sibling Commonwealth_Incident_WSDL file).
+The <xsd:element name="insert"> section of the WSDL file shows the full list
+of such keys.
+
+Note that multiple GroundWork events can be selected when creating a single
+ServiceNow incident.  When this happens, we look up the associated data for
+all of those events.  If the data for a given incident field is consistent
+across all the selected events, we use that value.  But if the data for a
+given incident field is not consistent across all the selected events, we
+need to somehow figure out what value to use.  Typically, we simply substitute
+"Unknown Xxxxx" in this case, since we have no real reason to favor the data
+from one event in the set over the data from any other event.
+
+Note:  the <xsd:element name="insert"> section of the ServiceNow Incident WSDL
+marks the following fields as 'minOccurs="1"', thereby seemingly making them
+required instead of optional.  Indeed, these fields are *'d in the ServiceNow
+UI display of the complete set of fields for an Incident.  However, in spite
+of this apparent insistence both in the WSDL model and on-screen, submitting
+an incident which lacks some of these fields does not cause incident creation
+to fail.  Maybe it should; that's up to ServiceNow, and we should probably
+ask them about it.  We plan to not populate some of these fields ('category',
+'subcategory', and 'u_service'), and we don't want to run into trouble.
+
+    <xsd:element maxOccurs="1" minOccurs="1" name="assignment_group" type="xsd:string"/>
+    <xsd:element maxOccurs="1" minOccurs="1" name="category" type="xsd:string"/>
+    <xsd:element maxOccurs="1" minOccurs="1" name="short_description" type="xsd:string"/>
+    <xsd:element maxOccurs="1" minOccurs="1" name="subcategory" type="xsd:string"/>
+    <xsd:element maxOccurs="1" minOccurs="1" name="u_service" type="xsd:string"/>
+
+Note that when you go to resolve an incident, ServiceNow checks to see whether
+these fields have values defined.  And it pops up a dialog box that says:
+
+    The following mandatory fields are not filled in:
+    Close notes, Category, Close code, Service, Subcategory.
+
+So these fields will be demanded by the time the incident is resolved, if they
+are not previously populated.  For that reason, we might wish to revisit how
+we treat those fields when new incidents are created.  If nothing else, we
+might apply defaults such as these to the three fields in that set that we are
+currently not populating but could potentially do so at incident-creation time:
+
+    Category:     Monitoring
+    Subcategory:  GWMonitor
+    Service:      Problem
+
+The "Close code" and "Close notes" only make sense to be filled in later on,
+manually, when the incident is resolved.  In fact, those fields are not even
+made available in the ServiceNow UI until you click a button to resolve the
+incident.  Only then do those fields show up to be set with the final code
+selection and notes.
+
+================================================================
+
+Herewith follow the fields we have discussed with Commonwealth for a
+GroundWork-created ServiceNow Incident.  These are listed in the order in
+which they appear in the ServiceNow web UI.
+
+Number:  the ServiceNow incident 'number' field.
+    The Incident Number (actually a string, like "INC0180519") is generated
+    by ServiceNow as a result of Incident creation.
+
+Caller:  the ServiceNow incident 'caller_id' field.
+    GroundWork would ordinarily pass in the operator name used to log in
+    to the GroundWork system, as the caller_id field value.  That does
+    work, but it normally requires corresponding setup of usernames on the
+    ServiceNow side.  The ServiceNow side can perhaps be set up to ignore
+    that input and instead just set the Caller field to be a fixed value
+    which depends on the ServiceNowSOAPUser value that we use to contact the
+    ServiceNow system.  However, if we happen to use a GroundWork username
+    that matches some other username in ServiceNow, it's possible that this
+    override on the ServiceNow side might not be activated.
+
+    If that behavior is not desired, a NewIncidentCaller option in the
+    servicenow_module.conf config file on the GroundWork side can be used
+    to define a single fixed string, such as "GroundWork", that will be
+    used as the caller_id field no matter what GroundWork user creates a
+    new ServiceNow incident.
+
+Company:  the ServiceNow incident 'company' field.
+    This will be the fixed string "Commonwealth Financial Network", as
+    established in the servicenow_module.conf config file for this integration.
+
+Location:  the ServiceNow incident 'location' field.
+    Commonwealth wants this to reflect the location of the GroundWork child
+    server which is monitoring the host on which the incident event(s)
+    occurred, per our standard calculation for this field.  This is handled
+    via finding the child-server names associated with the selected events,
+    and combining them to find out if we need to substitute some "Unknown
+    Location" string if more than one child server is represented by the
+    events in the incident.  If there is only one child-server name (the name
+    of a Monarch Group), we look up the mapping from Monarch Group name to
+    the corresponding Location in the monarch_group_to_location_mapping.conf
+    config file.  A default value defined in the same config file will be
+    used if none of the selected events are associated with a child server.
+
+    We are currently sending over such a value, but the "Location" field in
+    the ServiceNow UI is blank.  It seems that while this doesn't affect
+    our ability to create a ServiceNow incident, the 'location' value we
+    send is not displayed unless the value is one of a set of previously
+    established strings on the ServiceNow side.
+
+Configuration Item:  the ServiceNow incident 'cmdb_ci' field.
+    By agreement with Commonwealth, we're supposed to populate this field
+    with a "Host:Service" value, where the Host is the server name on which
+    the event occurred, and the Service is the GroundWork service name, if
+    any, related to the event.  If we have multiple conflicting host names
+    for the selected events, the string "Unknown Host" will be used for
+    that portion of this field.  If there is no associated Service for the
+    selected events, or we have multiple conflicting service names, we will
+    drop both the Service component and the colon separator from this string.
+
+    We are currently sending over such a value, but the "Configuration item"
+    field in the ServiceNow UI is blank.  It seems that while this doesn't
+    affect our ability to create a ServiceNow incident, the 'cmdb_ci' value
+    we send is not displayed unless the value is one of a set of previously
+    established strings on the ServiceNow side.
+
+Category:       the ServiceNow incident 'category' field.
+Subcategory:    the ServiceNow incident 'subcategory' field.
+Category Item:  the ServiceNow incident '???' field.
+Service:        the ServiceNow incident 'u_service' field.
+SubService:     the ServiceNow incident 'u_subservice' field.
+    By agreement with Commonwealth, these fields will be skipped when creating
+    a new incident.
+
+    Currently under that condition, the ServiceNow side is populating the
+    Category as "-- None --".
+
+    Currently under that condition, the ServiceNow side is populating the
+    Subcategory as "-- None --".
+
+    Currently under that condition, the ServiceNow side is populating the
+    Category Item as "-- None --".  But in any case, though such a field
+    does appear in the ServiceNow UI screen, I don't see any incident-key
+    value in the WSDL model that would correspond to a "Category Item".
+
+    Currently under that condition, the ServiceNow side is populating the
+    Service as "-- None --".
+
+    Currently under that condition, the ServiceNow side is populating the
+    Subservice as "-- None --".
+
+Impact:  the ServiceNow incident 'impact' field.
+    The possible values for this field are small integers in the range of 1..3.
+    These values are interpreted on the ServiceNow side as 1 => 'High', 2 =>
+    'Medium', 3 => 'Low'.
+
+    By agreement with Commonwealth, this field will be skipped when creating
+    a new incident.  Under that condition, the ServiceNow side is populating
+    the Impact as "3 - Low".
+
+Urgency:  the ServiceNow incident 'urgency' field.
+    The possible values for this field are small integers in the range of 1..3.
+    These values are interpreted on the ServiceNow side as 1 => 'High', 2 =>
+    'Medium', 3 => 'Low'.
+
+    By agreement with Commonwealth, this field should be set to 1 for
+    a CRITICAL event, to 2 for a WARNING event, and to 3 otherwise.
+    In actuality, the set of possible MonitorStatus values on the GroundWork
+    side is much more extensive than that, so we have provided a simple
+    <monitorstatus_urgency> mapping table in the servicenow_module.conf config
+    file to establish the desired urgency for each possible MonitorStatus
+    value.  When calculating the urgency for a set of multiple GroundWork
+    events, we will take the worst-case condition as representative of
+    the whole.
+
+Priority:  the ServiceNow incident 'priority' field.
+    The possible values for this field are small integers in the range of 1..5.
+
+    By agreement with Commonwealth, this field will be skipped when creating
+    a new incident.  Under that condition, the ServiceNow side is populating
+    the Priority as "4 - Low".
+
+Short Description:  the ServiceNow incident 'short_description' field.
+    This string will be manufactured on the GroundWork side to contain a
+    brief overview of the incident, depending on the conditions it represents.
+    Currently, we generate the following types of messages:
+
+	"Service $MonitorStatus alert for $HostName $ServiceDescription"
+	"Host $MonitorStatus alert for $HostName"
+	"$ApplicationType $Severity alert"
+	"Service $MonitorStatus alert for $HostName $ServiceDescription"
+	"Host $MonitorStatus alert for $HostName"
+	"$ApplicationType $Severity alert"
+
+Opened By:  the ServiceNow incident 'opened_by' field.
+    We will pass the same string here as we pass for the caller_id field,
+    namely either the name of the user logged in to the GroundWork system,
+    or the configured NewIncidentCaller value.
+
+Contact Type:  the ServiceNow incident 'contact_type' field.
+    This string can be configured as a fixed value on the GroundWork side, as
+    the NewIncidentContactType value in the servicenow_module.conf config file.
+    It is usually set to a value such as "Email".  The ServiceNow integration
+    can be configured to send no value for this field.  Currently under that
+    condition, the ServiceNow side is populating the "Contact type" as "Phone".
+
+State:  the ServiceNow incident 'state' field.
+    This string will be set on the GroundWork side to a fixed
+    configurable value, that being the NewIncidentState option value in
+    the servicenow_module.conf config file.  It is typically set to "New",
+    as befits the initial creation of an incident.
+
+Assignment Group:  the ServiceNow incident 'assignment_group' field.
+    By agreement with Commonwealth, we will attempt to look up (in Foundation)
+    the GroundWork ServiceGroup associated with the Host:Service of the
+    incident events, and then map that ServiceGroup to an Assignment
+    Group name via a static lookup using data from a config file
+    (servicegroup_to_assignment_group_mapping.conf).
+
+    There was some discussion of possibly trying to fetch an appropriate
+    contact-group email address and use that instead.  I don't think that
+    makes sense since Commonwealth already has an established enumerated set of
+    Assignment Group strings.  Within the ServiceNow Incident model, the only
+    fields that seem somewhat close are 'contact_type' and 'u_email_address'.
+    But whether the "u_..." fields in the model would be appropriate to use
+    is not clear to me, as the collection of such fields seems to relate
+    to individual financial-services customers rather than internal-service
+    objects.  The 'contact_type' field could possibly be used, though it seems
+    to have a separate, already-established enumerated set of standard values.
+    More critically, storage and access of contact email addresses is part
+    of the Nagios handling of notifications, and this data is not directly
+    accessible to Foundation, from whence events are processed and ServiceNow
+    incidents will be created.  So we don't have at hand an easy way to map
+    Host:Service information to some set of email addresses at this level.
+
+    The lookup mechanism does work in testing.  However, if the resultant
+    Assignment Group value is not already configured in ServiceNow, the
+    "Assignment group" field in the ServiceNow UI is blank.  It seems that
+    while this doesn't affect our ability to create a ServiceNow incident,
+    the 'assignment_group' value we send is not displayed unless the value
+    is one of the set of previously established strings on the ServiceNow side.
+
+Assigned To:  the ServiceNow incident 'assigned_to' field.
+    By agreement with Commonwealth, this field will be skipped when creating a
+    new incident.  (Unless we have some sort of mapping from, say, the host's
+    child server to a human name, it only makes sense to fill in this field
+    manually, once the incident has been reviewed by a person to see how it
+    should be handled.)
+
+Comments:  the ServiceNow incident 'comments' field.
+    This field will be filled in as we handled the "Additional Comments"
+    for the original ServiceNow integration.  It lists a variety of details
+    about the GroundWork events which are to be associated with this new
+    ServiceNow incident.
+
+    The ServiceNow WSDL incident model appears to have the following set of
+    related fields:
+
+	comments
+	comments_and_work_notes
+	work_notes
+	work_notes_list
+
+    We're going to use the 'comments' field for this information, as we have
+    historically, not the 'work_notes' field.
+
+    Testing with the ServiceNow test instance shows that the comments are
+    being displayed under the general Notes section of the ServiceNow UI
+    screen, in a light-gray-background box.  This appears to be a good
+    logical place for said information.
+
+    Testing the comments_and_work_notes field demonstrates that its value
+    does not show up anywhere in the ServiceNow UI.
+
+Work Notes:  the ServiceNow incident 'work_notes' field.
+    This field will be filled in from the text typed by the operator into
+    the "Input required" pop-up dialog box that appears in response to
+    the "Create a ServiceNow Incident" action in the Event Console.
+
+    If the operator does not fill in any text, we will substitute a short
+    message listing the GroundWork log-message IDs that were selected to
+    create this ServiceNow incident.
+
+    Testing with the ServiceNow test instance shows that the work notes
+    are being displayed at the bottom of the general Notes section of the
+    ServiceNow UI screen, in a light-yellow-background box.  This appears
+    to be a good logical place for said information.
+
+Other possible incident fields:
+    Historically, we also set the following Incident field:
+
+    The 'severity' field was set to the fixed configured NewIncidentSeverity
+    value, such as "3".
+
+    While this field does appear in the WSDL model, it does not appear in
+    the Commonwealth ServiceNow UI screen.  Commonwealth has not asked for
+    this field, so we will not send a value for it.

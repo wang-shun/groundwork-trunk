@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# Helper script to install the assets into a GWME system.
+# !!! IF this is 702, install SP03 first !!!
+
+DO=
+src="."  # set this to where the source files are, eg "src=."
+$DO source /usr/local/groundwork/scripts/setenv.sh
+
+# install stuff
+echo deploying main feeder bits
+$DO cp $src/gwevents_to_es.conf        			/usr/local/groundwork/config/.
+$DO cp $src/logbridge_feeder.conf        		/usr/local/groundwork/config/.
+$DO cp $src/logbridge_feeder_localhost.conf		/usr/local/groundwork/config/.
+$DO cp $src/logbridge_feeder.log4perl.conf        	/usr/local/groundwork/config/.
+$DO cp $src/logbridge-groups.xml			/usr/local/groundwork/config/.
+$DO cp $src/logbridge_feeder.pl                         /usr/local/groundwork/foundation/feeder/.
+$DO cp $src/gwevents_to_es.pl                           /usr/local/groundwork/foundation/feeder/.
+
+# ownerships
+echo setting perms and ownerships stuff
+$DO chown nagios:nagios \
+        /usr/local/groundwork/config/logbridge* \
+        /usr/local/groundwork/config/gwevents_to_es* \
+        /usr/local/groundwork/foundation/feeder/logbridge_feeder.pl \
+        /usr/local/groundwork/foundation/feeder/gwevents_to_es.pl
+
+# perms
+$DO chmod 755 \
+        /usr/local/groundwork/foundation/feeder/logbridge_feeder.pl \
+        /usr/local/groundwork/foundation/feeder/gwevents_to_es.pl
+
+# supervise bits
+echo deloying supervise bits
+cp -a /usr/local/groundwork/core/services/feeder-{cacti,logbridge_feeder}
+run='/usr/local/groundwork/core/services/feeder-logbridge_feeder/run'
+echo '#!/bin/sh' > $run
+echo '# Script for Supervise : logbridge feeder' >> $run
+echo 'exec /usr/local/groundwork/common/bin/setuidgid nagios /usr/local/groundwork/foundation/feeder/logbridge_feeder.pl >> /dev/null 2>&1' >> $run
+chown nagios:nagios $run
+chmod 755 $run
+
+cp -a /usr/local/groundwork/core/services/feeder-{cacti,gwevents_to_es}
+run='/usr/local/groundwork/core/services/feeder-gwevents_to_es/run'
+echo '#!/bin/sh' > $run
+echo '# Script for Supervise : elastic scanner' >> $run
+echo 'exec /usr/local/groundwork/common/bin/setuidgid nagios /usr/local/groundwork/foundation/feeder/gwevents_to_es.pl >> /dev/null 2>&1' >> $run
+chown nagios:nagios $run
+chmod 755 $run
+
+# logfiles
+ln -s /usr/local/groundwork/foundation/container/logs/logbridge_feeder.log /usr/local/groundwork/logs/logbridge_feeder.log
+ln -s /usr/local/groundwork/foundation/container/logs/gwevents_to_es.log /usr/local/groundwork/logs/gwevents_to_es.log
+
+echo
+echo Final manual steps :
+echo 1. update elasticsearch endpoints and enable feeders
+echo 2. if 702, make sure SP03 was installed
+
+
+echo Done

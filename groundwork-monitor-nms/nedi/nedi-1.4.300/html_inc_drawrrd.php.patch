@@ -1,0 +1,19 @@
+--- nedi/html/inc/drawrrd.php.orig	2014-10-27 13:12:26.000000000 -0700
++++ nedi/html/inc/drawrrd.php	2015-02-27 16:22:45.000000000 -0800
+@@ -166,7 +166,15 @@
+ 	echo "<pre>$rrdcmd graph - -a PNG $opts\n\t$draw</pre>";
+ }else{
+ 	header("Content-type: image/png");
+-	passthru("$rrdcmd graph - -a PNG $opts $draw");
++	passthru("$rrdcmd graph - -a PNG $opts $draw", $stat);
++	if( $stat ) {
++		$image = Imagecreate(160, 80);
++		$black = ImageColorAllocate($image, 0, 0, 0);
++		$red   = ImageColorAllocate($image, 200, 0, 0);
++		ImageString($image, 6, 10, 30, "$nonlbl RRD $fillbl?", $red);
++		Imagepng($image);
++		Imagedestroy($image);
++	}
+ }
+ 
+ ?>

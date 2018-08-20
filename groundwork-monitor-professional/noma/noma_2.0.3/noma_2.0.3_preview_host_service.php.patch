@@ -1,0 +1,75 @@
+*** noma_2.0.3/share/inc/preview_host_service.php.orig	Mon Nov 21 03:25:25 2011
+--- noma_2.0.3/share/inc/preview_host_service.php	Wed Sep 26 20:39:53 2012
+***************
+*** 55,74 ****
+  
+  // determine table
+  switch ($p['entity']) {
+! 	case 'r':       $column = 'name1';
+!                                 $objecttype_id = 10;
+                                  break;
+!         case 'sg':      $column = 'name1';
+!                                 $objecttype_id = 4;
+                                  break;
+! 	case 'hg':	$column = 'name1';
+! 				$objecttype_id = 3;
+  				break;
+! 	case 'h':	$column = 'name1';
+! 				$objecttype_id = 1;
+  				break;
+! 	case 's':	$column = 'name2';
+! 				$objecttype_id = 2;
+  				break;
+  
+  	default:	exit;
+--- 55,79 ----
+  
+  // determine table
+  switch ($p['entity']) {
+! 	case 'r':       $column = "trim('')";
+!                                 $view_tables = 'now()';   # function call used as dummy table name
+!                                 $where_clause = 'false';  # no contacts in our view
+                                  break;
+!         case 'sg':      $column = 'c.name';
+!                                 $view_tables = 'category c, entitytype et';
+!                                 $where_clause = "et.name='SERVICE_GROUP' and c.entitytypeid=et.entitytypeid";
+                                  break;
+! 	case 'hg':	$column = 'name';
+! 				$view_tables = 'hostgroup';
+! 				$where_clause = 'true';
+  				break;
+! 	case 'h':	$column = 'hostname';
+! 				$view_tables = 'host';
+! 				$where_clause = 'true';
+  				break;
+! 	case 's':	$column = 'servicedescription';
+! 				$view_tables = 'servicestatus';
+! 				$where_clause = 'true';
+  				break;
+  
+  	default:	exit;
+***************
+*** 107,117 ****
+  // generate query
+  $query = sprintf(
+  	'select distinct %s
+! 		from %sobjects
+! 		where objecttype_id=%s %s order by %s asc',
+  	$column,
+! 	$dbNDO['table_prefix'],
+! 	$objecttype_id,
+  	$filter,
+  	$column
+  );
+--- 112,122 ----
+  // generate query
+  $query = sprintf(
+  	'select distinct %s
+! 		from %s
+! 		where %s %s order by %s asc',
+  	$column,
+! 	$view_tables,
+! 	$where_clause,
+  	$filter,
+  	$column
+  );

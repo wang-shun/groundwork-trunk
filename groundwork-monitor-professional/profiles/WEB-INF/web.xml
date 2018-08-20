@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns="http://java.sun.com/xml/ns/javaee" xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+	id="WebApp_ID" version="2.5">
+	<display-name>profiles</display-name>
+	<servlet>
+		<servlet-name>cgi</servlet-name>
+		<servlet-class>org.groundwork.web.filter.CGIServlet</servlet-class>
+		<init-param>
+			<param-name>executable</param-name>
+			<param-value>/usr/local/groundwork/perl/bin/perl</param-value>
+		</init-param>
+		<init-param>
+			<param-name>passShellEnvironment</param-name>
+			<param-value>true</param-value>
+		</init-param>
+		<init-param>
+			<param-name>cgiPathPrefix</param-name>
+			<param-value>/</param-value>
+		</init-param>
+		<load-on-startup>5</load-on-startup>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>cgi</servlet-name>
+		<url-pattern>*.cgi</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>cgi</servlet-name>
+		<url-pattern>*.pm</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>cgi</servlet-name>
+		<url-pattern>*.pl</url-pattern>
+	</servlet-mapping>
+	
+	<!-- This filter will provide security context, if present -->
+	<filter>
+		<filter-name>JOSSOGenericServletFilter</filter-name>
+		<filter-class>org.josso.servlet.agent.GenericServletSSOAgentFilter</filter-class>
+		<init-param>
+			<param-name>AUTHORIZED_ROLES</param-name>
+			<param-value>GWAdmin,GWOperator</param-value>
+		</init-param>
+	</filter>
+
+	<!-- This filter will automatically request user authentication -->
+	<filter>
+		<filter-name>JOSSOWebAccessControlServletFilter</filter-name>
+		<filter-class>org.josso.agent.http.WebAccessControlFilter</filter-class>
+	</filter>
+
+	<!-- User information will be available when accessing this URLs -->
+	<filter-mapping>
+		<filter-name>JOSSOGenericServletFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+
+
+	<!-- User must be authenticated to access this URLs -->
+	<filter-mapping>
+		<filter-name>JOSSOWebAccessControlServletFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+
+	<welcome-file-list>
+		<welcome-file>index.html</welcome-file>
+		<welcome-file>index.htm</welcome-file>
+		<welcome-file>index.jsp</welcome-file>
+		<welcome-file>default.html</welcome-file>
+		<welcome-file>default.htm</welcome-file>
+		<welcome-file>default.jsp</welcome-file>
+	</welcome-file-list>
+	 <session-config>
+        <session-timeout>482</session-timeout>
+    </session-config>
+
+</web-app>

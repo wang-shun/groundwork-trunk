@@ -1,0 +1,58 @@
+<!-- 
+$Id$
+GroundWork Monitor - The ultimate data integration framework.
+Copyright (C) 2004-2006  GroundWork Open Source Solutions info@itgroundwork.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+  --> 
+<!-- Test -->
+<!--  Main entry point for deploying tools 
+   --> 
+<project default="allBuild"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+
+<goal name="allDeploy"
+        description="Deploy the master project and all subprojects">
+    <attainGoal name='tools.deploy' />
+</goal>
+
+<goal name="allBuild"
+        description="Build the master project and all subprojects">
+</goal>
+
+<goal name="allClean"
+        description="Clean the master project and all subprojects">
+    <attainGoal name='tools.clean' />
+</goal>
+
+<goal name="tools.deploy" description="Deploys all components of tools">
+ <mkdir dir="${org.groundwork.deploy.prefix}/tools"/>
+ <copy todir="${org.groundwork.deploy.prefix}/tools">
+	<fileset dir="${basedir}" includes="**/*" excludes="**/*.svn*,maven.xml,project.xml" />
+ </copy>
+ <chmod perm="go-rwx" type="file">
+  <fileset dir="${org.groundwork.deploy.prefix}/tools">
+    <include name="**/*" />
+   </fileset>
+ </chmod>
+</goal>
+
+<goal name="tools.clean" description="Cleans the build and the deployment section of tools">
+ <delete dir="${org.groundwork.deploy.prefix}/tools"/>
+</goal>
+</project>

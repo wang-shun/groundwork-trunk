@@ -1,0 +1,416 @@
+================================================================
+README.FIRST for the Mirantis Fuel Plugin for GroundWork Monitor
+================================================================
+
+Thes file documents the condition in which I left the Fuel Plugin
+development as of early August 2016.  It is designed to orient someone
+approaching this set of files with the goal of upgrading the plugin
+to include the GWMEE 7.1.1 release instead of the GWMEE 7.1.0 release,
+to support the current version of Mirantis OpenStack, and to complete
+the testing and documentation that Mirantis demands as the gateway to
+their accepting a plugin into their advertised set of available plugins.
+
+Executive Summary (May 2017):  The Fuel plugin was fully working on
+a technical level, at the time we left it.  We had some final steps
+to take to complete the test documentation that Mirantis required.
+But we were unable to obtain from them enough information to run and
+re-run the last tests, involving some Mirantis OpenStack (MOS) upgrade
+scenarios.  I got frustrated with the lack of useful response, and was
+busy with other work, and so just abandoned further work on the plugin.
+Since then, Mirantis has released new versions of MOS.  So we will need
+to accommodate the new versions in our builds, and re-qualify our plugin
+under the latest version (currently MOS 9.2 and Fuel 9.2).  We still
+need information on how to run and re-run the final test scenarios, so we
+can revise and complete the test documentation and submit it to Mirantis.
+
+----------------------------------------------------------------
+Stuff you need for GroundWork Fuel Plugin development
+----------------------------------------------------------------
+
+Building the plugin requires that you first install the MOS tooling
+for Fuel Plugin development on your computer.  In MOS 8, at least, the
+primary tool is called "fpb" (fuel plugin builder).  Also, certain OS
+packages are needed for the build, depending on what Linux platform you
+are building on.
+
+See the fuel-plugin-groundwork-monitor/README.md file for details on
+both of these external requirements, as well as a brief overview of
+the steps for modifying the plugin to accommodate a new GWMEE release,
+and the steps for building and installing the plugin.  The top-level
+Makefile documents all the detailed steps for upgrading the plugin to
+use a new GWMEE release.  At the time of this development, we had not
+gone through any updates of the Fuel Plugin development tooling (notably,
+"fpb"), so we have no documentation on what such an update might entail.
+
+The Test Plan and Test Report for our plugin are maintained in the
+LibreOffice native file format (.odt files).  Stick with it; attempting
+to switch to a .doc or .docx (Microsoft Word) format will likely lose
+important formatting information and make a mess.  The best approach is
+to install a recent version of LibreOffice on your machine before editing
+these docs.  You should export the documents from LibreOffice as PDF files
+(File > Export as PDF...) for publication of the test docs to Mirantis.
+
+The Test Plan and Test Report make careful use of LibreOffice styles,
+to ensure consistent formatting and a clean appearance throughout the
+documents.  If you're not used to using paragraph and character styles,
+you need to learn about them, and use the styles already defined in
+these files.  Otherwise, the documents will degrade from a professional
+production into ransom notes.
+
+The test documentation requires a fair number of fonts to be installed
+on your machine before you edit the Test Plan and Test Report doc files.
+The fuel-plugin-groundwork-monitor/specs/7.1.0/README.testdocs file
+describes the complete set of required fonts, and how to install them.
+
+The NotoSansSymbols-unhinted.zip font is provided in the Downloads/
+directory here.  See the README.testdocs file for the rest of the
+required fonts.
+
+----------------------------------------------------------------
+Special concerns with code maintenance
+----------------------------------------------------------------
+
+In order to ensure that GroundWork has captured a copy of this code,
+it is now checked into our Professional Subversion repository.
+However, Mirantis wants to be able to inspect the plugin code in
+a Github repository.  To allow that, we began development of the
+fuel-plugin-groundwork-monitor/ content using the github repository
+(https://github.com/gwos/fuel-plugin-groundwork-monitor), and that is
+up-to-date with the code as we left it in August 2016.  Now that we
+also have a copy in Subversion, it will be somewhat tricky to manage
+where code check-ins happen without having the two code-control systems
+interfere with each other.
+
+To simplify matters, we do not include the .git/ subdirectory as part of
+our Subversion repository.  On the git side, we should probably also add
+".svn" to the ".gitignore" file in the fuel-plugin-groundwork-monitor/
+directory, and make sure that change gets checked into github.
+
+We don't have experience in trying to manage code which is concurrently
+managed by two parallel rode-control systems, so we cannot provide
+further practical advice here.  Just be aware of the situation, and be
+careful to synchronize the codebases as necessary.
+
+----------------------------------------------------------------
+Supporting files
+----------------------------------------------------------------
+
+The files documented here comprise the complete body of source code and
+documentation used in the plugin development, except for a copy of the
+GroundWork Monitor GWMEE installer.  That one component is not and must
+not be bundled inside the plugin RPM that we develop, so we can control
+customer access to our software.  This procedure has been agreed to by
+all parties within GroundWork.
+
+README.FIRST
+    This file.
+
+archives/rpms/
+    This directory is the designated place to store final as-built RPMs
+    of the Fuel plugin for distribution.  If necessary, we can create
+    a parallel debs/ directory for archiving copies of those .rpm files
+    converted by "alien" to .deb files.  See the "make deb" target in the
+    fuel-plugin-groundwork-monitor/Makefile and other commentary in that
+    Makefile for more information on such conversions.
+
+archives/rpms/fuel-plugin-groundwork-monitor-7.1-7.1.0-1.noarch.rpm-blessed-20160711
+    This is a copy of the last as-built plugin that we tested with,
+    and that is referred to by our Test Plan and Test Report documents.
+    That said, this RPM is now obsolete, on several counts.
+
+    (+) The available versions of GWMEE 7.1.0 were confused by
+	some messiness in our GWMEE build process at the time
+	this Fuel Plugin development was underway.  We used the
+	groundworkenterprise-7.1.0-br391-gw2842-linux-64-installer.run
+	build as the basis for our testing, although the somewhat earlier
+	groundworkenterprise-7.1.0-br389-gw2833-linux-64-installer.run
+	build appears to be what we settled on as the "official"
+	7.1.0 release.
+
+    (+) At this point in time, we would not want to use the
+	GWMEE 7.1.0 release as the basis for our Fuel Plugin,
+	anyway.  We would use the 7.1.1 release instead, and the
+	groundworkenterprise-7.1.1-br415-gw3089-linux-64-installer.run
+	file as the official release.  This means that all our plugin
+	qualification tests need to be re-run, and the test documentation
+	needs to be updated to reflect this new version, both in the name
+	of the Test Plan and Test Report, and in the version of GWMEE
+	that the Test Report describes as having undergone testing.
+	We'll have more to say about this down below.
+
+    (+) The name of this file will need to be updated to reflect
+	the switch from the GWMEE 7.1.0 to the GWMEE 7.1.1 release.
+	That name is automatically generated by the Fuel Plugin Builder,
+	based on version information it finds in these files:
+
+	    fuel-plugin-groundwork-monitor/doc/source/conf.py
+	    fuel-plugin-groundwork-monitor/metadata.yaml
+
+	You will need to not only update the version strings there, but
+	also run a recursive grep on the complete set of plugin files
+	to find all other literal instances of the old version (e.g.,
+	throughout the documentation) and get them updated properly.
+	See the build notes below.
+
+    (+) The name of this file includes a "-blessed-20160711" suffix,
+	which would not be part of the final released RPM.  I attached
+	that suffix to this copy so I could keep track of which one
+	among several copies I had floating around was the final build.
+
+    (+) At the time we tested, Mirantis OpenStack (MOS) 8.0 was the
+	current release.  So we tailored the Fuel plugin to operate in
+	that context.  At the time of this writing, MOS 9.2 is current,
+	and there is a separate Fuel 9.2 component.  We have not yet
+	investigated what changes have come in Fuel Plugin package
+	structure between the 8.0 and 9.2 releases, but we can certainly
+	anticipate that some changes probably exist.  At a minimum, our
+	plugin declares itself to be compatible only with the MOS 8.0
+	environment (see "version: liberty-8.0" in a couple of places in
+	the fuel-plugin-groundwork-monitor/metadata.yaml file), and that
+	would need to be changed to support a later release.  "liberty"
+	was the code name for the MOS 8.0 release; I believe without
+	checking that this would be "mitaka" in the MOS 9.X releases.
+	Some investigation and care will be needed to change the plugin
+	in this area.  It should be possible, if we desire, to build a
+	plugin that still supports MOS 8 -- although that seems a bit
+	silly at this point.
+
+fuel-plugin-docs/
+    This directory contains the test documents for Mirantis, as
+    well as a bunch of files recording email to Mirantis during
+    the development process and some other notes collected along
+    the way.  It is necessary to keep these files stored outside of the
+    fuel-plugin-groundwork-monitor/ directory, because all files in that
+    file tree will be picked up and included in an as-built Fuel Plugin.
+
+    Fuel-Plugin-Development-Steps
+        Early planning notes on what it would take to build this plugin.
+
+    GroundWorkLoginSplashScreen.png
+        An image file, captured for use in the plugin's internal documentation:
+	fuel-plugin-groundwork-monitor/doc/source/images/GroundWorkLoginSplashScreen.png
+
+    GroundWork_logo.png
+        An image file for use in the test documents.  This has already
+        been folded into our Test Plan and Test Report.
+
+    NOTES
+        Early development notes.  Probably of little interest now.
+
+    TestPlanForGroundWorkFuelPlugin-7.1.0.odt
+    TestPlanForGroundWorkFuelPlugin-7.1.0.pdf
+    TestReportForGroundWorkFuelPlugin-7.1.0.odt
+    TestReportForGroundWorkFuelPlugin-7.1.0.pdf
+        These are the official Test Plan and Test Report documents,
+        as we maintain them locally (.odt files) and as we supply them
+        to Mirantis (.pdf files).
+
+    Testing
+        Early testing notes.  Probably of little interest now.
+
+    build-error
+        Early development notes.  Probably of little interest now.
+
+    build-space-requirements
+        An important note about how much disk space you need for the
+        plugin build to complete.
+
+    copyright
+	A description of the Copyright notice we should be including
+	in any of the plugin files we write that will accommodate such
+	comments.  I have not gone back to check whether we did in fact
+	include such a notice wherever it ought to be present.
+
+    day10
+    day11
+    day9
+        Some emails written during the development process, noting
+        progress and issues along the way.  Perhaps of little interest
+        now.
+
+    fuel_problems
+	A long email about problems encountered while developing this
+	plugin.  Quite possibly still of interest.
+
+    mirantis-questions
+        Email to Mirantis.
+
+    plugin-testing
+        Early notes on possible test scenarios.
+
+    serious_problems
+    serious_problems_2
+        Strong personal opinions on Fuel Plugin development.  Put on
+        your best armor before reading.
+
+    test-results
+        Email to Mirantis.
+
+    testing-diatribe
+        Strong personal opinions on Fuel Plugin testing.  Put on your
+        best armor before reading.
+
+    testing-errors
+	Notes taken while testing.  Perhaps of transient value.
+
+    version-diatribe
+        Strong personal opinions on Fuel Plugin version numbering.
+        Put on your best armor before reading.
+
+fuel-plugin-groundwork-monitor/
+    As listed in the fuel-plugin-groundwork-monitor/.git/config file
+    (if we still had that file here), this directory is a checked-out
+    copy of the https://github.com/gwos/fuel-plugin-groundwork-monitor
+    code repository.  However, for purposes of checking this code
+    into Subversion, the entire .git/ subdirectory has been excised,
+    so Subversion cannot mess with any of the control and tracking
+    information used by git.  We have not resolved what procedures will
+    be necessary to ensure that changes made in Subversion are correctly
+    copied into git, and vice versa.
+
+    This file tree forms the main body of our GroundWork Fuel Plugin
+    development.  Missing from this file tree is the test documentation.
+    That is partly because the plugin packaging process picks up
+    essentially any random file it happens to find in this file tree, and
+    packages it in as part of the plugin.  But said test documentation
+    doesn't belong inside the plugin; those documents are separate
+    external artifacts.  See the sibling fuel-plugin-docs/ directory
+    for those docs.
+
+    If you were using git for code maintenance, while in this top-level
+    directory, you would type "git status" to see what you have changed
+    locally.
+
+upstream/
+    This directory contains certain files downloaded from upstream
+    sources in service of the Fuel Plugin development.
+
+    NotoSansSymbols-unhinted.zip
+	The fonts that were referenced by the upstream documentation
+	were unusable in certain respects in the LibreOffice context.
+	For instance, the upstream doc may have referenced certain
+	fonts only available on the Windows platform.  We switched to
+	the Noto font in this file for things like bullets that were
+	sized compatibly with the fonts we were otherwise using in our
+	edited copy of the documents for our GroundWork Fuel Plugin.
+	You will need to install it on your computer before editing the
+	Test Plan and Test Report documents; see above.
+
+    TestPlanforPluginnameFuelPlugin.docx
+    TestPlanforPluginnameFuelPlugin.odt
+    TestReportforPluginnameFuelPlugin.docx
+    TestReportforPluginnameFuelPlugin.odt
+	These .docx files were the original upstream template documents
+	that Mirantis wanted us to use for documenting our Fuel plugin,
+	to fit the mold they have established for qualifying third-party
+	Fuel plugins.  Inasmuch as I was not editing such doc on a Windows
+	machine, and the existing formatting of these documents left a
+	lot to be desired, I immediately converted them to LibreOffice
+	format (.odt files).  But even those copies remain just templates.
+	For the actual documents we edited for our plugin, see below.
+
+    plugin-guide-template.rst
+	An upstream template for writing documentation.  Of little
+	interest now that we have documentation written.
+
+----------------------------------------------------------------
+Other resources
+----------------------------------------------------------------
+
+Not described above is the documentation for the Fuel plugin package
+data and the development tooling.  That upstream documentation was
+in poor shape when I started this effort, and toward the end of the
+process, Mirantis was putting some effort into revising it.  I have
+not since tracked whatever improvements they have made.  At the time of
+this development, I printed out a copy of what existed then, and used
+that to understand what was required, as best I could.  I also printed
+out documentation on the Markdown (*.md) format which is used for the
+top-level README.md file and for the ReStructured Text (*.rst) format
+used by the plugin (https://en.wikipedia.org/wiki/ReStructuredText).
+
+----------------------------------------------------------------
+Tasks to upgrade to a new GroundWork Monitor release or to a
+new upstream MOS/Fuel release
+----------------------------------------------------------------
+
+(*) The top-level fuel-plugin-groundwork-monitor/Makefile documents the
+    full procedure for upgrading to a new release of GroundWork Monitor.
+
+(*) Type just "make" in the top-level fuel-plugin-groundwork-monitor/
+    directory to display a list of useful make targets.  There is lots
+    of automation in play here; take advantage of it!
+
+(*) You will need to sweep through the complete file tree of source-code
+    files, and update references to the GroundWork version.  The best
+    thing to do is to follow the procedure described in the top-level
+    Makefile, and then try to build the plugin.  Some information from
+    the Makefile will be automatically propagated into other files,
+    significantly reducing the amount of residual manual work.
+
+(*) Now that MOS has been updated, you will probably also need to update
+    information about the version of Fuel in use.  Search for the string
+    "8.0" in the following files:
+
+    fuel-plugin-groundwork-monitor/doc/source/installation.rst
+    fuel-plugin-groundwork-monitor/doc/source/system_requirements.rst
+    fuel-plugin-groundwork-monitor/doc/source/index.rst
+    fuel-plugin-groundwork-monitor/components.yaml
+    fuel-plugin-groundwork-monitor/metadata.yaml
+    fuel-plugin-groundwork-monitor/README.md
+
+(*) The fuel-plugin-groundwork-monitor/metadata.yaml file contains
+    references not just to the Fuel version number, but also to the
+    MOS version code name ("liberty", for MOS 8).  This will need to
+    be updated to reflect the code name for whatever new MOS version
+    you support.  Note that it may be possible to declare the plugin
+    in the fuel-plugin-groundwork-monitor/metadata.yaml file as being
+    compatible with more than one MOS version.  But that would probably
+    require separate testing on each supported version of MOS.
+
+(*) Updated versions of Fuel may require an updated version of the
+    format of the Fuel plugin packaging.  We declare that format version
+    in the fuel-plugin-groundwork-monitor/metadata.yaml file as the
+    package_version value.
+
+	  package_version: '4.0.0'
+
+    There might be some limitations on how far you can push up this
+    version if you wish to retain backward compatibility with older
+    releases of Fuel and MOS.
+
+(*) Once you are satisfied with all your changes to the GroundWork
+    Fuel plugin, and before you build the plugin for testing, make
+    sure you clean up any extraneous files you have created within the
+    fuel-plugin-groundwork-monitor/ directory.  Otherwise, those files
+    will be inappropriately included in the plugin distribution.
+
+(*) Mirantis demands both a Test Plan and a Test Report as part of
+    qualifying a plugin for release.  You will need to clone the existing
+    documents, renaming them to reflect the new release version, and
+    edit them thoroughly to update all version information, filenames,
+    checksums, and the like.  You will then need to run the specified
+    tests and record the results in the Test Report.
+
+(*) Once everything has settled down, make sure you commit your changes
+    to our github repository, while at the same time ensuring that the
+    exact same changes are in our Subversion repository and that any
+    metadata used by either of the two systems does not get trampled in
+    the process.  Yes, this will be a challenge.  We don't have standard
+    procedures for it.
+
+    Be sure *NOT* to add and check in the copy of the GWMEE installer that
+    you added to the fuel-plugin-groundwork-monitor/deployment_scripts/
+    directory while building the plugin, either into Subversion or
+    into git.  In particular, the GWMEE installer is sacred and HAS
+    NO BUSINESS being checked into the github repository.  We DO NOT
+    want people to use github as a secondary source for the installer,
+    outside the normal distribution channels.
+
+    Note that our github repository only includes files designed to be
+    included in the as-built Fuel plugin.  It does not include our Test
+    Plan or Test Report, for reasons just described.  Those files are
+    preset only in our Subversion repository.
+
+    Recommended reading on git:
+    book:  "Pro Git", second edition, Scott Chacon and Ben Straub
+

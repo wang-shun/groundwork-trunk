@@ -1,0 +1,81 @@
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' check_pagefile.wsf
+' checks the total pagefile usage
+'
+
+<job>
+<runtime>
+  <description>
+check_pagefile (nrpe_nt-plugin) 0.1
+The nagios plugins come with ABSOLUTELY NO WARRANTY. You may redistribute
+copies of the plugins under the terms of the GNU General Public License.
+For more information about these matters, see the file named COPYING.
+Copyright (c) 1999-2001 Ethan Galstad/Justin Fitzhugh (justin@studiox.net)
+
+This plugin will return and check total the pagefile usage
+  </description>
+  <named
+    name="h"
+    helpstring="Help"
+    type="simple"
+    required="false" 
+  />
+  <named
+    name="w"
+    helpstring="Warning watermark. Must be lower that critical"
+    type="string"
+    required="true"
+  />
+  <named
+    name="c"
+    helpstring="Critical watermark. Must be higher that warning"
+    type="string"
+    required="true"
+  />
+  <example>
+Example: check_ram.wsf /w:80 /c:90
+  </example>
+</runtime>
+<script language="VBScript">
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Const's and Var's
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'Cons for return val's
+Const intOK = 0
+Const intWarning = 1
+Const intCritical = 2
+Const intUnknown = 3
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Help
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+  If Wscript.Arguments.Named.Exists("h") Or Not Wscript.Arguments.Named.Exists("w") Or Not Wscript.Arguments.Named.Exists("c") Or CLng(Wscript.Arguments.Named("w")) >= CLng(Wscript.Arguments.Named("c")) Then
+	Wscript.Echo "Plugin help screen:"
+      Wscript.Arguments.ShowUsage()
+      Wscript.Quit(intUnknown)
+  End If
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Main
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!/root/cimv2")
+Set colPageFile = objWMIService.ExecQuery("Select * from Win32_PerfFormattedData_PerfOS_PagingFile",,48)
+'Set colPageFile = objWMIService.ExecQuery("Select * from Win32_PerfFormattedData_PerfOS_PagingFile where Name = '_Total'")
+
+For Each objPageFile In colPageFile
+	If objPageFile.PercentUsage > CInt(Wscript.Arguments.Named("c")) Then 
+		Wscript.Echo "Pagefile usage is CRITICAL ("& objPageFile.PercentUsage&"% used)"
+		Wscript.Quit(intCritical) 'Quit with Critical 
+	Elseif objPageFile.PercentUsage > CInt(Wscript.Arguments.Named("w")) Then 
+		Wscript.Echo "Pagefile usage is WARNING ("& objPageFile.PercentUsage&"% used)"
+		Wscript.Quit(intWarning) 'Quit with Warning 	
+	End If 
+	Wscript.Echo "Pagefile usage is OK ("& objPageFile.PercentUsage&"% used)"
+	Wscript.Quit(intOK)
+next
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+</script>
+</job>

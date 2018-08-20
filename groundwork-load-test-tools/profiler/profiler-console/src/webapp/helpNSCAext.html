@@ -1,0 +1,120 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" media="screen" href="css/style.css" />
+<style>
+
+p{width:300;color: blue; text-align:justify;}
+p#cont1{width:300;color: blue; text-align:justify;;padding-left: 12px;}
+p#cont2{width:300;color: blue; text-align:justify;;padding-left: 44px;}
+p#title{text-align:justify;color: black;font-weight: bold;font-size:16px;}
+p#title1{text-align:justify;color: black;font-weight: bold;padding-left: 12px;}
+
+p#qte{text-align:justify;color: #4B0082;font-weight: bold;}
+div {width:750px;}
+
+
+DIV.headerAppdx{width:75%;BORDER-RIGHT: black 3px solid;BORDER-LEFT: black 3px solid;PADDING-RIGHT: 22px;
+BORDER-TOP: black 3px solid;PADDING-LEFT: 22px;FONT-WEIGHT: bolder;
+FONT-SIZE: x-small;PADDING-BOTTOM: 22px;MARGIN: 2px 10% 10px;
+TEXT-TRANSFORM: none;BORDER-LEFT: #87ceeb 1px slargeolid;COLOR: #191970;PADDING-TOP: 22px;
+BORDER-BOTTOM: black 3px solid;FONT-STYLE: normal;FONT-FAMILY: Verdana, Arial;
+BACKGROUND-COLOR:#8FBC8F;TEXT-ALIGN: left;FONT-VARIANT: normal;TEXT-DECORATION: none}
+</style>
+<title>Insert title here</title>
+</head>
+<body>
+
+
+<table><tr><th align="middle"><a href=""  class="ti">Foundation Profiler Tool</a></th></tr>
+
+<tr><td align="middle">
+<div class="headerH0">
+<table bgcolor="black" width="710"><tr>
+<td align="middle" style="background-color:#DC143C;color:#FFFFFF"><a href="index.html" style="font-weight:bold;text-decoration:none;color:#FFFFFF" target="_self">About</a></td>
+<td align="middle" bgcolor="#FFD700"><a href="index.jsp?cmd=simplesa" style="font-weight:bold;text-decoration:none;" target="_self">SystemAdmin</a></td>
+<td align="middle" bgcolor="#FFA500"><a href="helpSystemAdmin.html" style="font-weight:bold;text-decoration:none;" target="_self">Help SystemAdmin</a></td>
+<td align="middle" bgcolor="#FFD700"><a href="index.jsp?cmd=newconfig" style="font-weight:bold;text-decoration:none;" target="_self">Foundation 1.5</a></td>
+<td align="middle" bgcolor="#FFA500"><a href="helpLegacy.html" style="font-weight:bold;text-decoration:none;" target="_self">Help Foundation 1.5</a></td>
+<td align="middle" bgcolor="#FFD700"><a href="index.jsp?cmd=nscaext" style="font-weight:bold;text-decoration:none;" target="_self">NSCA Extension</a></td>
+<td align="middle" bgcolor="#FFA500"><a href="helpNSCAext.html" style="font-weight:bold;text-decoration:none;" target="_self">Help NSCA Extension</a></td>
+</tr>
+<table>
+<div class="headerHelp">
+<p id="title">
+Last Update: July 16, 2008
+</p>
+
+
+<p id="title1">
+<span style="font-size:24px;color:black;">Content</span>
+</p>
+<p style="padding-left:44px">
+<a href="#overview">0. Overview</a><br>
+
+</p>
+<p id="title1">
+<a name="overview">Overview</a>
+</p>
+<p id="cont1">
+The NSCA Extension Profiler Tool allows the user to simulate <b style="color: red;">passive checks</b> which
+are send to Nagios on  port 5667, processed by Nagios, and send to Foundation on port 4613. The tool
+generates service checks which can be <b style="color: red;">OK</b> or <b style="color: red;">CRITICAL</b>. A number of hosts and
+services must be specified, but also the root of the host name and service name. Thus,
+for example given n (number of hosts), and m (number of services ) we might specifiy <br>
+<b style="color: red;padding-left:20px">Host Name = atlantis</b><br>
+<b style="color: red;padding-left:20px">Service Name = queen</b><br>
+then the system generates automatically names like:<br>
+<b style="color: red;padding-left:20px">atlantis1, atlantis2, ..., atlatnisn</b><br>
+<b style="color: red;padding-left:20px">queen_1, queen_2, ...,queen_m</b><br>
+Simlarly, we specify an IP Address, like <b style="color: red;">100.001.210.</b><br>
+The system generates following IP addresses: <br>
+<b style="color: red;padding-left:20px">100.001.210.1, 100.001.210.2, ..., 100.001.210.n</b><br>
+</p>
+<p id="cont1">
+Because the Profiler Tool builds messages, which are bundled in workloads, which are send repeatedly
+in the case of the NSCA Extension to Nagios on port 5667, we must specify also <b style="color: red;">Number of batches</b>
+(how many times a workload is repeatedly send to Nagios), the <b style="color: red;">Interval between batches</b> (waiting
+time between two batches), and a  <b style="color: red;">Threshold</b> (the maximum time limit in seconds it takes a message to
+arrive in the Foundation storage, typically 5 seconds).
+</p>
+<p id="cont1">
+We also specify a <b style="color: red;">NSCA Start</b> value, which can be <b style="color: red;">y</b> or <b style="color: red;">n</b>. <br>
+When <b style="color: red;">NSCA Start = y</b> it means that the system will reconfigure Nagios with the new values
+you specified. Each time a reconfiguration takes places, Nagios configuration files, 
+ <b style="color: red;">../nagios/etc/services.cfg</b> and <b style="color: red;">../nagios/etc/hosts.cfg</b> are rewritten and the Nagios service
+ is stopped and restarted.
+</p>
+<p id="cont1">
+The test you create is saved in the configuration file you specify. By choosing a configuration you can run a test (execute).
+You can run the same test every time you choose to. To speed up the execution by specifying <b style="color: red;">NSCA Start = n</b>
+you tell the Profiler Tool to disable the Nagios reconfiguration. Nagios assumes that hosts.cfg and services.cfg
+are configured correctly.
+</p>
+<p id="cont1">
+Also, the user is allowed to simulate a real situation by specifying a percentage of how many times
+a service changes the status from <b style="color: red;">OK</b> to <b style="color: red;">CRITICAL</b>. The field <b style="color: red;">Toggle the Service Status in % (OK)</b><br>
+does this. For example a value of <b style="color: red;">70</b> means that in 70% of the cases the service status is OK.
+</p>
+<p id="cont1">
+The installation comes with preinstalled examples (configuration files) which can be changed or executed. By doing so this
+examples can be expanded to address various needs.
+</p>
+<p id="cont1">
+For the case of NSCA Extension tests it is important to check the progress of the tests by observing
+the /usr/local/groundwork/nagios/var/nagios.log files or the /usr/local/groundwork/foundation/container/logs/profiler.log.
+This log files help the user to observe the execution of the tests.
+</p>
+<p id="cont1">
+The Profiler configuration files are stored in $path_to_webapp/profilersa/xml. There are two installation types:<br>
+1. By copying the groundwork-profiler.war in the directory /usr/local/groundwork/foundation/container/webapp/
+2. By unzipping the jetty installation which can run on any operating system.
+</p>
+</div>
+</div>
+</td>
+</tr>
+</table>
+</body>
+</html>

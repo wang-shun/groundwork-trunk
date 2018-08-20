@@ -1,0 +1,68 @@
+--- nagios-4.2.4/include/locations.h.in.orig	2016-12-07 08:31:10.000000000 -0800
++++ nagios-4.2.4/include/locations.h.in	2017-02-05 23:28:23.635852167 -0800
+@@ -17,18 +17,18 @@
+  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+  ************************************************************************/
+ 
+-#define DEFAULT_TEMP_FILE			"@localstatedir@/tempfile"
+-#define DEFAULT_TEMP_PATH                       "/tmp"
+-#define DEFAULT_CHECK_RESULT_PATH		"@localstatedir@/spool/checkresults"
+-#define DEFAULT_STATUS_FILE			"@localstatedir@/status.dat"
++#define DEFAULT_TEMP_FILE			"@localstatedir@/nagios.tmp"
++#define DEFAULT_TEMP_PATH                       "@TMPDIR@"
++#define DEFAULT_CHECK_RESULT_PATH		"@localstatedir@/checkresults"
++#define DEFAULT_STATUS_FILE			"@localstatedir@/status.log"
+ #define DEFAULT_LOG_FILE			"@localstatedir@/nagios.log"
+ #define DEFAULT_LOG_ARCHIVE_PATH		"@localstatedir@/archives/"
+ #define DEFAULT_DEBUG_FILE                      "@localstatedir@/nagios.debug"
+ #define DEFAULT_COMMENT_FILE			"@localstatedir@/comments.dat"
+ #define DEFAULT_DOWNTIME_FILE			"@localstatedir@/downtime.dat"
+-#define DEFAULT_RETENTION_FILE			"@localstatedir@/retention.dat"
+-#define DEFAULT_COMMAND_FILE			"@localstatedir@/rw/nagios.cmd"
+-#define DEFAULT_QUERY_SOCKET            "@localstatedir@/rw/nagios.qh"
++#define DEFAULT_RETENTION_FILE			"@localstatedir@/nagiosstatus.sav"
++#define DEFAULT_COMMAND_FILE			"@localstatedir@/spool/nagios.cmd"
++#define DEFAULT_QUERY_SOCKET			"@localstatedir@/spool/nagios.qh"
+ #define DEFAULT_CONFIG_FILE			"@sysconfdir@/nagios.cfg"
+ #define DEFAULT_PHYSICAL_HTML_PATH		"@datadir@"
+ #define DEFAULT_URL_HTML_PATH			"@htmurl@"
+--- nagios-4.2.4/configure.orig	2016-12-07 08:31:10.000000000 -0800
++++ nagios-4.2.4/configure	2017-02-05 23:09:00.150373015 -0800
+@@ -4893,7 +4893,7 @@
+ fi
+ 
+ if test x$CHECKRESULTDIR = xno; then
+-	CHECKRESULTDIR="$localstatedir/spool/checkresults"
++	CHECKRESULTDIR="$localstatedir/checkresults"
+ fi
+ 
+ 
+--- nagios-4.2.4/Makefile.in.orig	2016-12-07 08:31:10.000000000 -0800
++++ nagios-4.2.4/Makefile.in	2017-02-05 23:09:00.150373015 -0800
+@@ -30,6 +30,7 @@
+ CGIDIR=@sbindir@
+ LIBEXECDIR=@libexecdir@
+ LIBDIR=@libdir@
++TMPDIR=@TMPDIR@
+ INCLUDEDIR=@includedir@/nagios
+ HTMLDIR=@datadir@
+ datarootdir=@datarootdir@
+@@ -247,6 +248,7 @@
+ 	$(MAKE) install-basic
+ 
+ install-basic:
++	$(INSTALL) -m 755 $(INSTALL_OPTS) -d $(DESTDIR)$(TMPDIR)
+ 	$(INSTALL) -m 775 $(INSTALL_OPTS) -d $(DESTDIR)$(LIBEXECDIR)
+ 	$(INSTALL) -m 775 $(INSTALL_OPTS) -d $(DESTDIR)$(LOGDIR)
+ 	$(INSTALL) -m 775 $(INSTALL_OPTS) -d $(DESTDIR)$(LOGDIR)/archives
+@@ -350,8 +352,8 @@
+ 
+ 
+ install-commandmode:
+-	$(INSTALL) -m 775 $(COMMAND_OPTS) -d $(DESTDIR)$(LOGDIR)/rw
+-	chmod g+s $(DESTDIR)$(LOGDIR)/rw
++	$(INSTALL) -m 755 $(COMMAND_OPTS) -d $(DESTDIR)$(LOGDIR)/spool
++	chmod g+s $(DESTDIR)$(LOGDIR)/spool
+ 
+ 	@echo ""
+ 	@echo "*** External command directory configured ***"

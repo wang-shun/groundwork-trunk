@@ -1,0 +1,55 @@
+#!/bin/bash -e
+
+# Container script to run database-modification scripts needed to
+# remove the helpdesk ticketing integration.
+
+# Copyright 2013-2017 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+credentials=`sed -e 's/#.*//' -e 's/^ *//' -e 's/ *$//' /usr/local/groundwork/config/db.properties | fgrep collage.`
+
+for key_value in $credentials
+do
+    # collage.field=value
+    key=${key_value%%=*}
+    value=${key_value#*=}
+    case $key in 
+	(collage.database) database=$value;;
+	(collage.dbhost)   hostname=$value;;
+	(collage.username) username=$value;;
+	(collage.password) password=$value;;
+    esac
+done
+
+# This selection ought to be configured in the db.properties file, but
+# until it is, we need to compute this ourselves.
+if [ "$hostname" = 'localhost' ]; then
+    # FIX LATER:  In a future release, this could be drawn from the name
+    # of the /usr/local/groundwork/postgresql/.s.PGSQL.5432 file.
+    # port_or_sock=`netstat -npa | grep postgres | grep CONNECTED | sed -e s/^.*PGSQL\.//g`
+    port_or_sock="--port 5432"
+else
+    port_or_sock="--port 5432"
+fi
+
+# We need the "|| true" at the end to sidestep the bash -e flag for this one command,
+# primarily because fgrep clumsily changes its return code depending on whether or not
+# it matches anything, regardless of whether the command otherwise ran successfully.
+running=`/usr/local/groundwork/ctlscript.sh status gwservices | egrep -v '(is|not|copies) running' | fgrep -c running || true`
+
+# Make sure gwservices is down, to prevent interference from a cached copy
+# of the tables we're about to change. 
+/usr/local/groundwork/ctlscript.sh stop gwservices
+
+gwpath=/usr/local/groundwork
+helpdeskpath=$gwpath/ticketing
+psql=$gwpath/postgresql/bin/psql
+
+echo "Deleting helpdesk actions ..."
+su nagios -c "$psql -h '$hostname' $port_or_sock -q -d '$database' -U '$username' -w < $helpdeskpath/db/delete_helpdesk_actions.sql"
+
+# Restart gwservices only if it was already running before we made these changes.
+if [ $running -ne 0 ]; then
+    /usr/local/groundwork/ctlscript.sh start gwservices
+fi
+

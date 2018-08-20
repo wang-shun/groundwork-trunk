@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2012 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<ice:panelGroup>
+			<ice:panelSeries id="icePnlSrs"
+				value="#{eventsPieHandler.hostGroupMap}" var="map"
+				style="float:left">
+				<!-- employee box is repeated for each employee record -->
+				<ice:panelGroup id="groupName" styleClass="heatMapBox">
+					<ice:panelGroup styleClass="gwPnlDatTblColHdr">
+						<ice:outputText id="name" value="#{map.truncatedGroupName}" />
+					</ice:panelGroup>
+					<ice:panelGroup title="header=[#{map.groupName}] body=[#{map.statToolTip}]">
+						<ice:outputLink id="eventPie_lnkConsole"
+											value="#{map.consoleURL}">
+						<ice:graphicImage value="#{map.chart}"
+							rendered="#{map.chart!=null}"></ice:graphicImage>
+							</ice:outputLink>
+					</ice:panelGroup>
+
+					
+				</ice:panelGroup>
+			</ice:panelSeries>
+		</ice:panelGroup>
+	</ui:define>
+</ui:composition>

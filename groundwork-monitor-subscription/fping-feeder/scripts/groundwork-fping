@@ -1,0 +1,70 @@
+# logrotate configuration for GroundWork Monitor fping feeder files
+#
+# For easier maintenance, this configuration file handles pathnames and
+# scripting environments for both pre-GW-5.3 and GW-5.3-and-later releases.
+
+# The logfile written to by the freedt (supervise) dumblog process invoked by
+# the GroundWork Monitor fping feeder, for either GW-5.2.1.7 and earlier, or
+# GW-5.3 and later releases.
+#
+/usr/local/groundwork/services/feeder-nagios-fping/log/main/log
+/usr/local/groundwork/core/services/feeder-nagios-fping/log/main/log
+{
+    weekly
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    size 10M
+    rotate 4
+    postrotate
+	service='feeder-nagios-fping/log'
+	# Signal the dumblog process so it closes and opens its log file.  The
+	# process we need to send a HUP signal to is the particular instance of
+	# dumblog which has a parent "supervise $service" process.  We find which
+	# is the proper "supervise" process by examining its command arguments.
+	ppids=`ps -o pid,args --no-headers -C supervise | fgrep $service | awk '{print $1}'`
+	if [ -n "$ppids" ]; then
+	    parent_pids=`echo $ppids | sed -e 's/ /,/g'`
+	    # This is a bit blind, killing all children of the appropriate "supervise" process rather than
+	    # selecting a "dumblog" process, but "ps" doesn't allow us to AND process-selection conditions
+	    # and we don't want to bother with a more-complex computation here.  Nonetheless, that supervise
+	    # process should only have the one child process running.
+	    pids=`ps -o pid --no-headers --ppid $parent_pids | awk '{print $1}'`
+	    if [ -n "$pids" ]; then
+		kill -HUP $pids || true
+	    fi
+	fi
+    endscript
+}
+
+# /usr/local/groundwork/foundation/container/logs/fping.log
+# is configured in fping_process.conf as the logfile option.  This
+# option is used by the fping_process.pl script, which can be run either
+# as a Nagios plugin or as a persistent daemon.  The file is opened and
+# appended to, and never closed except upon request via a HUP signal.
+#
+/usr/local/groundwork/foundation/container/logs/fping.log
+{
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 8
+    postrotate
+	# Signal the process so it closes the old logfile and writes to the new logfile.
+	# For ease of maintenance, we make this construction portable across GW5.3
+	# and later releases, and earlier releases where life is simpler.
+	if [ -x /usr/local/groundwork/perl/bin/perl ]; then
+	    # GW 5.3 and later
+	    pids=`ps -o pid,args --no-headers -C .perl.bin | fgrep /usr/local/groundwork/foundation/feeder/fping_process.pl | awk '{print $1}'`
+	    if [ -n "$pids" ]; then
+		kill -HUP $pids || true
+	    fi
+	else
+	    # GW 5.2.1.7 and earlier
+	    /usr/bin/killall --exact -HUP fping_process.pl || true
+	fi
+    endscript
+}

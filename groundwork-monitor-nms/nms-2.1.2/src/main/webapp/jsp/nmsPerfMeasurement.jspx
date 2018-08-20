@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<jsp:root version="1.2" xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<jsp:directive.page contentType="text/html;charset=ISO-8859-1"
+		pageEncoding="ISO-8859-1" />
+	<f:view>
+		<ice:outputDeclaration doctypeRoot="HTML"
+			doctypePublic="-//W3C//DTD HTML 4.01 Transitional//EN"
+			doctypeSystem="http://www.w3.org/TR/html4/loose.dtd" />
+		<html>
+		<body>
+		<ice:portlet>
+			<ui:composition template="/templates/template.xhtml">
+				<ui:define name="content">
+					<!-- <f:loadBundle basename="#{localeBean.baseName}" var="message" />-->
+					<ice:form partialSubmit="true"
+						id="#{nmsPerfMeasurementBean.perfMeasurementfrmID}">
+<ice:inputHidden id="nmsperfmeasurement_Portlet_hiddenField"
+			value="#{nmsPerfMeasurementBean.perfHiddenField}"></ice:inputHidden>
+						<!-- panel group render when message is set true -->
+						<ice:panelGroup rendered="#{nmsPerfMeasurementBean.message}"
+							id="PMpanelsgrpError">
+							<ice:column id="PMcolumnError"
+								rendered="#{nmsPerfMeasurementBean.error}">
+								<ui:include src="/jsp/error.jspx">
+									<ui:param name="errorMessage"
+										value="#{nmsPerfMeasurementBean.errorMessage}" />
+								</ui:include>
+							</ice:column>
+							<ice:column id="PMcolumninfo"
+								rendered="#{nmsPerfMeasurementBean.info}">
+								<ui:include src="/jsp/info.jspx">
+									<ui:param name="infoMessage"
+										value="#{nmsPerfMeasurementBean.infoMessage}" />
+								</ui:include>
+							</ice:column>
+							<ice:commandButton id="PMcmdRetryNow" value="Retry Now"
+								actionListener="#{nmsPerfMeasurementBean.reloadPage}"></ice:commandButton>
+						</ice:panelGroup>
+						<ice:panelGroup rendered="#{!PerformanceMeasurementBean.message}"
+							id="nmsperfmeasurement_Portlet_panelsgrpError1"
+							style="padding-left:109px;">
+							<table id="nmsperfmeasurement_Portlet_tbl_outer">
+								<tr align="right">
+									<td><ice:outputLabel
+										for="nmsperfmeasurement_Portlet_menuTimeSelector"
+										id="nmsperfmeasurement_Portlet_lblTimeSelector"
+										value="Time">
+									</ice:outputLabel> <!-- Time selector drop down list as selectOneMenu component -->
+									<ice:selectOneMenu
+										id="nmsperfmeasurement_Portlet_menuTimeSelector"
+										value="#{nmsPerfMeasurementBean.selectedTime}">
+										<f:selectItems
+											value="#{nmsPerfMeasurementBean.timeSelectorList}" />
+									</ice:selectOneMenu> <!-- 'Apply' command button --> <span
+										style="padding-left: 5px"> <ice:commandButton
+										value="apply"
+										id="nmsperfmeasurement_Portlet_submitApply" type="submit"
+										actionListener="#{nmsPerfMeasurementBean.applyTimeFilter}"
+										styleClass="cust_portlet_filter_button">
+									</ice:commandButton></span></td>
+								</tr>
+								<tr>
+									<td><ice:dataTable id="tblnmsperfmeasurement_Portlet"
+										value="#{nmsPerfMeasurementBean.rrdGraphList}" var="rrdbean">
+										<ice:column id="column1">
+											<ice:panelCollapsible
+												id="nmsperfmeasurement_Portlet_pnlCollapsible"
+												
+												expanded="#{rrdbean.expanded}" toggleOnClick="true">
+												<f:facet name="header">
+													<ice:panelGroup
+														id="nmsperfmeasurement_Portlet_pnlGroupCollapsible"
+														style="width:730px">
+														<ice:outputText
+															id="nmsperfmeasurement_Portlet_pnlCollapsible_outtxt"
+															value="#{rrdbean.collapsibleTitle}" />
+
+													</ice:panelGroup>
+												</f:facet>
+												<ice:panelGroup>
+													<ice:graphicImage
+														id="#{nmsPerfMeasurementBean.perfGraphicImgID}"
+														value="#{rrdbean.rrdGraphBytes}"
+														rendered="#{rrdbean.rrdGraphBytes !=null}"></ice:graphicImage>
+													<ice:graphicImage id="nmsimgRrdgraphconnectactive"
+														value="/images/connect_active.gif"
+														rendered="#{rrdbean.rrdGraphBytes ==null}"></ice:graphicImage>
+												</ice:panelGroup>
+												<f:attribute name="collapsibleTitle"
+													value="#{rrdbean.collapsibleTitle}" />
+
+											</ice:panelCollapsible>
+										</ice:column>
+									</ice:dataTable></td>
+								</tr>
+							</table>
+						</ice:panelGroup>
+					</ice:form>
+				</ui:define>
+			</ui:composition>
+		</ice:portlet>
+
+		</body>
+		</html>
+	</f:view>
+</jsp:root>

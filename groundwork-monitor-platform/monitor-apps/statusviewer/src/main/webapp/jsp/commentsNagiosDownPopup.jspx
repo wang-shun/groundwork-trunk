@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<jsp:root version="1.2" xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<jsp:directive.page contentType="text/html;charset=ISO-8859-1"
+		pageEncoding="ISO-8859-1" />
+	<!-- Panel pop-up to be displayed , when nagios is down. -->
+	<ice:panelPopup id="commentsNagiosDown" modal="true"
+		styleClass="icePnlPop" autoPosition="manual"
+		autoCentre="#{commenthsHandler.inStatusViewer}"
+		rendered="#{commentsHandler.nagiosDown}"
+		style="#{commentsHandler.popupStyle}">
+		<!-- POPUP HEADER -->
+		<f:facet name="header">
+			<ice:panelGrid id="commentsPanelGridTitleHeader" cellpadding="0"
+				cellspacing="0" columns="2" style="text-align: left;" width="500px;">
+
+				<ice:column id="commentsNagiosErr_HdrCol1">
+					<ice:outputText id="txtcommentsTitle_nagiosError"
+						value="#{commentsHandler.title}">
+					</ice:outputText>
+				</ice:column>
+
+				<ice:column id="commentsNagiosErr_HdrCol2">
+					<div class="cust_poupmodes" style="align: right"><span
+						title="Close Window"> <ice:commandButton
+						id="cmdButtonCommentsNagiosErr" type="button"
+						image="/css/css-images/popup_modeBtn_close.gif"
+						action="#{commentsHandler.closeNagiosDownPopup}"
+						title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+						 alt="Close" /> </span></div>
+				</ice:column>
+			</ice:panelGrid>
+		</f:facet>
+
+		<f:facet name="body">
+			<ice:panelGroup id="commentsPanelGrpNagiosErrMain">
+				<ice:panelGrid id="commentsPanelGridNagiosErrMain" columns="3"
+					style="text-align:left; border:solid 1px #006400; background:#32CD32;color:#222222; padding:4px;text-align:left; margin: 10px; padding: 10px;">
+					<ice:column id="commentsNagiosErr_col1">
+						<ice:graphicImage id="commentsNagiosErr_imgNagiosError"
+							value="/images/info.jpeg"
+							style="margin-left: 10px; margin-right: 10px"></ice:graphicImage>
+					</ice:column>
+					<ice:column id="commentsNagiosErr_col2">
+						<ice:outputText id="comments_txtNagiosDownErrorMsg"
+							value="#{message['com_groundwork_portal_statusviewer_actionsPortlet_event_broker_not_listening']}"></ice:outputText>
+					</ice:column>
+
+				</ice:panelGrid>
+				<div id="commentsNagiosErr_btnOk_align" align="center"><ice:commandButton
+					id="commentsNagiosErr_btnOk" type="submit" style="align:center;"
+					immediate="true" value="Ok"
+					action="#{commentsHandler.closeNagiosDownPopup}"
+					title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+					alt="Close"></ice:commandButton></div>
+			</ice:panelGroup>
+		</f:facet>
+
+	</ice:panelPopup>
+</jsp:root>

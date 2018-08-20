@@ -1,0 +1,47 @@
+#!/bin/bash -e
+
+# dump_nedi_database
+#
+# Script to dump out the "nedi" database schema (-s option) or seed data (-a option),
+# to create the nedi-db.sql or nedi-seed.sql for our builds.
+#
+# Copyright (c) 2016 GroundWork, Inc.  All rights reserved.
+
+if [ $# != 1 ]; then
+    echo "usage:  dump_nedi_database -s"
+    echo "        dump_nedi_database -a"
+    echo "where: -s means dump out the database schema (only)"
+    echo "       -a means dump out the database content (only)"
+    exit 1
+fi
+
+dump_type_option="$1"
+case $dump_type_option in
+    -s) sqlfile=nedi-db.sql;
+        # clean_option=--clean;
+	# if_exists_option=--if-exists;
+	;;
+    -a) sqlfile=nedi-seed.sql;
+        clean_option=;
+	if_exists_option=;
+	;;
+esac
+
+dbhost=localhost
+dbname=nedi
+dbuser=postgres
+
+echo ""
+echo "You wiil be asked for the \"$dbuser\" user's PostgreSQL password,"
+echo "to dump the schema for the desired objects from the database."
+echo ""
+
+/usr/local/groundwork/postgresql/bin/pg_dump "--host=$dbhost" "--username=$dbuser" \
+    "--file=$sqlfile" --format=plain $dump_type_option $clean_option $if_exists_option \
+    --encoding=LATIN1 $dbname
+
+echo ""
+echo "The desired SQL file is now available:"
+echo ""
+echo "    $sqlfile"
+echo ""

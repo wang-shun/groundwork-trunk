@@ -1,0 +1,93 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:ui="http://java.sun.com/jsf/facelets"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:c="http://java.sun.com/jstl/core"
+	xmlns:ice-cc="http://www.icesoft.com/icefaces-composite-comps">
+	<html>
+	<head>
+	<link rel="stylesheet" type="text/css"
+		href="/foundation-webapp/xmlhttp/css/rime/rime.css" />
+	<link rel="stylesheet" type="text/css"
+		href="/foundation-webapp/styles/groundwork.css" />
+	<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"></meta>
+	<title>Plugin Management</title>
+	</head>
+	<body>
+	<ice:panelGroup>
+		<ice:form id="pluginList" partialSubmit="true">
+			<ice-cc:roundCorners id="outerTop" bgcolor="#FFF" fgcolor="#94AECE"
+				corners="all">
+				<div
+					style="padding:6px 3px 3px 3px; background-color: #ff9933;">
+				<div style="margin-bottom: 2px;"><ice:outputText
+					value="Plugin List"
+					style="font-size:larger;font-weight:bold;color:#FFF;" />&amp;nbsp;
+				</div>
+				<ice-cc:roundCorners id="innerTop" bgcolor="#94AECE" fgcolor="#FFF"
+					corners="all">
+					<div style="padding: 8px 8px 4px 8px; background-color: #FFF;">
+					<ice:dataTable id="pluginList" var="plugin"
+						value="#{pluginBean.pluginList}" rows="0"
+						columnClasses="tableCol">
+						<ice:column>
+							<ice:rowSelector value="#{plugin.selected}" multiple="true"
+								selectedClass="tableRowSelected"
+								mouseOverClass="tableRowMouseOver" immediate="false" />
+							<f:facet name="header">
+								<ice:outputText id="column1" value="Name" />
+							</f:facet>
+							<ice:outputText id="Name" value="#{plugin.name}" />
+						</ice:column>
+
+						<ice:column>
+							<f:facet name="header">
+								<ice:outputText id="column2" value="URL" />
+							</f:facet>
+							<ice:outputText id="Url" value="#{plugin.url}" />
+						</ice:column>
+
+						<ice:column>
+							<f:facet name="header">
+								<ice:outputText id="column3" value="Platform" />
+							</f:facet>
+							<ice:outputText id="Platform"
+								value="#{plugin.pluginPlatform.description}" />
+						</ice:column>
+						<ice:column>
+							<f:facet name="header">
+								<ice:outputText id="column4" value="Dependencies" />
+							</f:facet>
+							<ice:outputText id="dependencies" value="#{plugin.dependencies}" />
+						</ice:column>
+						<ice:column>
+							<f:facet name="header">
+								<ice:outputText id="column5" value="LastUpdateTimestamp" />
+							</f:facet>
+							<ice:outputText id="LastUpdateTimestamp"
+								value="#{plugin.lastUpdateTimestamp}" />
+						</ice:column>
+
+					</ice:dataTable> <ice:panelGrid columns="2" >
+						<ice:outputLink id="BLOutLnk" value="add-plugin.iface"
+							target="_self">
+							<ice:graphicImage url="/images/add-plugin-icon.png" />
+						</ice:outputLink>
+						<ice:commandLink id="BLOutLnk" action="#{pluginBean.deletePlugin}"
+							target="_self" panelConfirmation="deleteConfirmPanel">
+							<ice:graphicImage url="/images/delete-plugin-icon.png" />
+						</ice:commandLink>
+
+					</ice:panelGrid> <ice:panelConfirmation id="deleteConfirmPanel"
+						message="Please confirm your delete action! " acceptLabel="Delete"
+						rendered="true" /></div>
+				</ice-cc:roundCorners></div>
+			</ice-cc:roundCorners>
+
+		</ice:form>
+
+	</ice:panelGroup>
+	</body>
+	</html>
+</ui:composition>

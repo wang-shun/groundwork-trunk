@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2013  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License
+    as published by the Free Software Foundation.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.groundwork</groupId>
+        <artifactId>gw-monitor-apps-pom</artifactId>
+        <version>7.2.2-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>portal-groundwork-base</artifactId>
+    <version>7.2.2-SNAPSHOT</version>
+    <name>GroundWork Base Apps WAR</name>
+    <description>Groundwork Portal Base Application WAR</description>
+    <packaging>war</packaging>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.groundwork</groupId>
+            <artifactId>gw-dashboard-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>servlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>javax.portlet</groupId>
+            <artifactId>portlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.spec.javax.security.jacc</groupId>
+            <artifactId>jboss-jacc-api_1.4_spec</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.groundwork.portal.extension</groupId>
+            <artifactId>groundwork-container-ext-model</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.groundwork.portal.extension</groupId>
+            <artifactId>groundwork-container-ext-rest-client</artifactId>
+        </dependency>
+
+        <!-- monitor dashboard dependencies -->
+        <dependency>
+            <groupId>org.groundwork</groupId>
+            <artifactId>collagerest-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.groundwork</groupId>
+            <artifactId>collage-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.portals.pluto</groupId>
+            <artifactId>pluto-taglib</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.web</groupId>
+            <artifactId>jstl-impl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <finalName>portal-groundwork-base</finalName>
+        <plugins>
+            <plugin>
+                <groupId>ro.isdc.wro4j</groupId>
+                <artifactId>wro4j-maven-plugin</artifactId>
+                <version>1.6.3</version>
+                <executions>
+                    <execution>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <targetGroups>DASHBOARD_CSS,DASHBOARD_LIB_JS,DASHBOARD_GW_JS</targetGroups>
+                    <minimize>false</minimize>
+                    <destinationFolder>${basedir}/target/portal-groundwork-base/wro/</destinationFolder>
+                    <!--<cssDestinationFolder>d:/static/css/</cssDestinationFolder>-->
+                    <!--<jsDestinationFolder>d:/static/js/</jsDestinationFolder>-->
+                    <contextFolder>${basedir}/src/main/webapp/</contextFolder>
+                    <wroFile>${basedir}/src/main/webapp/WEB-INF/wro.xml</wroFile>
+                    <!--<wroManagerFactory>com.mycompany.MyCustomWroManagerFactory</wroManagerFactory>-->
+                    <ignoreMissingResources>false</ignoreMissingResources>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>jboss</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>org.groundwork</groupId>
+                    <artifactId>gw-portal-common</artifactId>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>*</groupId>
+                            <artifactId>*</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>tomcat</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.groundwork</groupId>
+                    <artifactId>gw-portal-common</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>wsdl4j</groupId>
+                    <artifactId>wsdl4j</artifactId>
+                    <version>1.6.2</version>
+                </dependency>
+                <dependency>
+                    <groupId>commons-discovery</groupId>
+                    <artifactId>commons-discovery</artifactId>
+                </dependency>
+            </dependencies>
+            <build>
+                <resources>
+                <resource>
+                    <directory>src/tomcat-resources</directory>
+                    <includes>
+                        <include>log4j.properties</include>
+                    </includes>
+                </resource>
+                </resources>
+            </build>
+        </profile>
+    </profiles>
+
+</project>

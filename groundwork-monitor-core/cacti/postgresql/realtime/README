@@ -1,0 +1,170 @@
+The Cacti "realtime" 0.5-2 plugin has now been ported by GroundWork to
+support the PostgreSQL database in addition to its prior support for
+the MySQL database.  It is now a built-in part of GroundWork Monitor,
+starting with the 7.1.1 release.
+
+================================================================
+
+Documentation
+-------------
+
+Useful documentation on the "realtime" plugin is somewhat sparse.
+You should start with the advice on the plugin's official page, here:
+
+    http://docs.cacti.net/plugin:realtime
+
+Here is practical advice for setting up and using this plugin under
+GroundWork Monitor:
+
+(1) Go to the Cacti plugins page:  Advanced > Network Graphing > Plugin
+    Management.
+
+(2) Install and Enable the "Realtime" plugin by clicking on the blue-arrow
+    button for that plugin, then the green-arrow button for that plugin.
+
+(3) While logged in to a terminal window as the "nagios" user, make a
+    directory for the "realtime" plugin to use to store its RRD files
+    (its "Cache Directory").  For general security, make sure the
+    directory is created with appropriately restricted permissions.
+
+	# Here is a suggested location for the
+	# Cacti "realtime" plugin Cache Directory.
+	su nagios
+	umask 22
+	mkdir /usr/local/groundwork/cacti/htdocs/plugins/realtime/rrd
+	exit
+
+(4) Go to Settings > Misc.  In the "Realtime Graphs" section, choose
+    the setup options you desire.  Use Ajax if you can; it operates
+    smoother than not using it.  Set the Cache Directory to the absolute
+    pathname of the directory you just created.  Scroll down to the bottom
+    of the screen, and click the Save button.  Scroll back up and look
+    at the notation under the Cache Directory setting, to ensure that
+    the path you have chosen is acceptable to the "realtime" plugin.
+
+(5) Go to User Management > {user name} > Realm Permissions, and verify
+    that you have given access to "Plugin -> Realtime" to the user who
+    will be operating this plugin.  If you make a change, Save it.
+
+(6) Now go to the "graphs" tab at the top of the Cacti screen.  For each
+    graph, you should now see a small squiggley-line icon to the right
+    of each graph image.  If you hover your mouse pointer over that icon,
+    you will see a "Realtime" tooltip show up.  Just click on that icon to
+    see a pop-up window containing the real-time version of that graph.
+    If this is the first time you have viewed the real-time version of
+    a particular graph, it may take a cycle or two of the configured
+    Interval for data to start showing up in the displayed graph.
+
+(7) You can experiment with the other plugin-level Settings and the
+    controls for an individual graph in its pop-up window.  We won't
+    describe those further here.
+
+(8) That's the extent of this plugin.
+
+================================================================
+
+The files in this directory are currently:
+
+README
+    The file you are now reading.
+
+cacti_htdocs_plugins_realtime-0.5-2.tar.gz
+    The Cacti "realtime" plugin code, version 0.5-2, including the
+    GroundWork changes to allow use with PostgreSQL and other fixes.
+    Created by running the following command against a system with the
+    ported plugin installed:
+
+	tar cvfz cacti_htdocs_plugins_realtime-0.5-2.tar.gz \
+	    -C /usr/local/groundwork cacti/htdocs/plugins/realtime
+
+    This tarball can be used with any PostgreSQL-based GroundWork release
+    before 7.1.1.
+
+dump_cacti_realtime_plugin_table
+    Script to generate realtime_table_for_migration_to_postgresql.sql.tar.gz
+    from a PostgreSQL-based system with the Cacti "realtime" plugin available
+    and installed.
+
+make_realtime_plugin_porting_patches
+    A script to generate the realtime-0.5-2-patch-for-postgres9.tar.gz
+    tarball from the original plugin files and our ported files.
+
+plugin:realtime-v0.5-2.tgz
+    The official Cacti "realtime" plugin code, version 0.5-2.  This version
+    works only with a MySQL-based Cacti installation.  Our build process
+    uses this file.
+
+realtime-0.5-2-patch-for-postgres9.tar.gz
+    The patches to port the 0.5-2 version of the "realtime" plugin code to
+    also work with a PostgreSQL-based Cacti distribution, as created by
+    the make_realtime_plugin_porting_patches script.  These patches also
+    include some cleanup not directly related to porting to PostgreSQL,
+    to make the plugin work within the GroundWork Monitor context and
+    so the pop-up windows operate more smoothly.  Our build process uses
+    this file.
+
+realtime_table_for_migration_to_postgresql.sql.tar.gz
+    This file is to be used in migrating data from a MySQL-based Cacti
+    to a PostgreSQL-based Cacti.  It creates the one table needed by
+    the "realtime" plugin, but does not populate it.  The table is
+    then ready to receive data during the migration process.  See the
+    instructions below.
+
+================================================================
+
+Upgrading a MySQL-based GroundWork release using the "realtime" plugin
+----------------------------------------------------------------------
+
+If a customer was using the "realtime" plugin in a MySQL-based Cacti
+and now wants to migrate to the PostgreSQL-based Cacti in our recent
+GroundWork Monitor releases, some extra steps are needed to make sure
+that an empty version of the one "cacti"-database table used by the
+"realtime" plugin is available on the PostgreSQL side to receive data
+during the migration process.  The following extra steps must be run at
+the very beginning of the "MySQL to PostgreSQL Data Migration" section
+in the "Installing or Upgrading to GroundWork Monitor X.X.X" document
+you are using.
+
+Before running the "master_migration_to_pg.pl" script in this section,
+download the realtime_table_for_migration_to_postgresql.sql.tar.gz
+file from GroundWork and place it into the /tmp directory.  Then run
+these commands to add the necessary table to the "cacti" database:
+
+    cd /tmp
+    tar xvfz realtime_table_for_migration_to_postgresql.sql.tar.gz
+
+    /usr/local/groundwork/postgresql/bin/psql -U postgres -d cacti \
+	-f /tmp/realtime_table_for_migration_to_postgresql.sql
+
+You might need to take similar steps at this point to also create
+empty Cacti tables for other plugins (e.g., "aggregate" and "nectar")
+that GroundWork has historically not bundled with Cacti.
+
+You may then proceed with the rest of the "MySQL to PostgreSQL Data
+Migration" section, as documented.
+
+================================================================
+
+Installing the "realtime" plugin on older GroundWork releases
+-------------------------------------------------------------
+
+NOTE:  If you were upgrading from a MySQL-based release, first take the
+steps in the previous section during the migration process.  Once the
+GroundWork system is fully up and running, come back here and take these
+steps to complete the process.
+
+To install the "realtime" plugin on a PostgreSQL-based GroundWork release
+before 7.1.1, download this one file from GroundWork and place it into
+the /tmp directory:
+
+    cacti_htdocs_plugins_realtime-0.5-2.tar.gz
+
+Then run the following commands:
+
+    su nagios
+    cd /usr/local/groundwork
+    tar xvfz /tmp/cacti_htdocs_plugins_realtime-0.5-2.tar.gz
+    exit
+
+The "Realtime" plugin should now appear in the "Plugin Management"
+section of the Cacti screens.

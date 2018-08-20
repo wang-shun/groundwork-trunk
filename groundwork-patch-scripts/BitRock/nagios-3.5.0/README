@@ -1,0 +1,119 @@
+----------------------------------------------------------------
+
+March 19, 2013
+
+The nagios-3.5.0.tar.gz tarball untars into an unversioned "nagios"
+directory, not the "nagios-3.5.0" directory it ought to be for clarity.
+Hence you must manually rename the directory to be "nagios-3.5.0"
+immediately after untarring the tarball, so that the rest of these
+instructions will make sense.  This convention also makes it possible to
+tell from the outside what version this directory contains, especially
+when you have this version untarred with sibling directories containing
+other versions.  A base directory containing the version number was
+the standard setup straight from the tarball, through the nagios-3.2.3
+release; I have no idea why the Nagios developers decided to stop doing
+the sensible thing in their official release tarballs.
+
+For generating future patches, note that we should always run the
+nagios-X.X.X/indent-all.sh script on our modified files before generating
+patch files.  This presupposes that you have the "astyle" program installed
+on your machine (http://astyle.sourceforge.net/).  This is the source-code
+formatter used by the Nagios project, so we should follow their conventions
+in case we want to submit any of our patches back to the project.
+
+----------------------------------------------------------------
+
+Whenever we need to patch Nagios in this way, the status of our patches
+must be reflected in our GWiki "Nagios patches" page, in the section
+for that Nagios release, in the order they should be applied.
+
+----------------------------------------------------------------
+
+Our circular-dependency patch should be submitted back to the Nagios
+developer's list, accompanied by our test tool that generates configurations
+with arbitrary dependencies, along with instructions on running the tool
+to prove the correctness and performance of the patch.
+
+----------------------------------------------------------------
+
+The patches here have been developed against the Nagios 3.5.0 release.
+They apply without any errors (fuzz, offsets, or outright rejection)
+in the 3.5.0 release, in the following order:
+
+    % cd nagios-3.5.0
+    % patch -p1 -b < ../patches/nagios-3.5.0-header_order_fix.patch
+    patching file common/macros.c
+    % patch -p1 -b < ../patches/nagios-3.5.0-obsolete_variable.patch
+    patching file cgi/cgiutils.c
+    % patch -p1 -b < ../patches/nagios-3.5.0-circular-dependency-analysis.patch 
+    patching file base/config.c
+    patching file common/objects.c
+    patching file include/objects.h
+    % patch -p1 -b < ../patches/nagios-3.5.0-non-static-logging.patch
+    patching file base/logging.c
+    patching file include/logging.h
+    % patch -p1 -b < ../patches/nagios-3.5.0-mutex_check_result_fixes.patch 
+    patching file base/utils.c
+    patching file base/checks.c
+    % patch -p1 -b < ../patches/nagios-3.5.0-cgi-refresh.patch 
+    patching file cgi/extinfo.c
+    patching file cgi/outages.c
+    patching file cgi/status.c
+    patching file cgi/statusmap.c
+    patching file cgi/tac.c
+    % patch -p1 -b < ../patches/nagios-3.5.0-Makefile.in.statuswml2.patch 
+    patching file cgi/Makefile.in
+    % patch -p1 -b < ../patches/nagios-3.5.0-no_update_check.patch 
+    patching file base/utils.c
+    % patch -p1 -b < ../patches/nagios-3.5.0-saved_stamp.patch
+    patching file cgi/avail.c
+
+We have ordered the patch-application sequence so any patches which we
+could/should release publicly come first.  That way, they can be provided in
+unaltered form to the upstream developers with line numbers that will reflect
+the virgin files those developers will expect to start with.  Currently,
+the circular-dependency patch falls in this category, and possibly the
+mutex patch (to correctly support Bronx).  With regard to the preceding
+header-order and obsolete-variable patches, these fixes have already been
+reported to the Nagios developer's list, shortly after the 3.5.0 release
+was cut, and we expect that they will be folded into the next release by
+the upstream developers.
+
+Summarizing the above:  to eliminate patch messages about patch hunks being
+applied at some number of lines offset from where the patch file says they
+should go, and thereby minimize the chance of a patch not being applied
+correctly, the Nagios 3.5.0 patches should be applied in this order:
+
+    cd nagios-3.5.0
+    patch -p1 -b < /path-to/nagios-3.5.0-header_order_fix.patch
+    patch -p1 -b < /path-to/nagios-3.5.0-obsolete_variable.patch
+    patch -p1 -b < /path-to/nagios-3.5.0-circular-dependency-analysis.patch
+    patch -p1 -b < /path-to/nagios-3.5.0-non-static-logging.patch
+    patch -p1 -b < /path-to/nagios-3.5.0-mutex_check_result_fixes.patch
+    patch -p1 -b < /path-to/nagios-3.5.0-cgi-refresh.patch
+    patch -p1 -b < /path-to/nagios-3.5.0-Makefile.in.statuswml2.patch
+    patch -p1 -b < /path-to/nagios-3.5.0-no_update_check.patch
+    patch -p1 -b < /path-to/nagios-3.5.0-saved_stamp.patch
+
+The commands above are suitable for use in the nagios-3.5.0/ directory where
+the Nagios source code has been untarred (the -p1 option shown reflects this
+location of the files to patch relative to the pathnames in the patches).
+See the note above on this directory naming convention.
+
+In addition to the patches described, the cgi/statuswml2.c file stored here
+should be placed in the nagios-3.5.0/cgi/ directory before the build.
+
+----------------------------------------------------------------
+
+At least here at GroundWork for development testing, Nagios can be built by:
+
+    cd nagios-3.5.0
+    ./configure --prefix=/usr/local/groundwork/nagios
+
+This will create include files which can be installed in
+/usr/local/groundwork/common/include/nagios/ for use in building Bronx.
+Note that the locations.h file created during the build is for some reason
+created with 600 permissions; they need to be changed to 644 so the Bronx
+build can see the file content.
+
+----------------------------------------------------------------

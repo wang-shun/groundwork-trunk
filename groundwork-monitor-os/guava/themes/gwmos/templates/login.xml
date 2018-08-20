@@ -1,0 +1,128 @@
+
+<script type="text/javascript">
+//<![CDATA[
+
+var bannerNumber = 1;
+
+function bannerFade() {
+    if(bannerNumber == 3) {
+	targetBanner = 1;
+    }
+    else {
+	targetBanner = bannerNumber + 1;
+    }
+    dojo.lfx.combine(dojo.fx.fade('banner' + bannerNumber, 5000, 1, 0), dojo.fx.fade('banner' + targetBanner, 5000, 0, 1)).play();
+    bannerNumber++;
+    if(bannerNumber == 4) {
+	bannerNumber = 1;
+    }
+    setTimeout("bannerFade()", 10000);
+}
+
+// Attach event to document load
+// DISABLED DUE TO GWMON-30
+//dojo.addOnLoad(bannerFade);
+
+// ]]>
+</script>
+
+<div id="login">
+    <table id="loginPage" cellpadding="0" cellspacing="0" align="center" border="0">
+	<tr>
+	    <td class="logo">
+		<img src="themes/gwmos/images/logo.gif" class="gwlogo" align="left" />
+	    </td>
+	</tr>
+	<tr>
+	    <td>
+		<div class="mainText">
+		    <div style="text-align: center">
+			<div style="float:left; width:250; vertical-align:top">
+			    <a href="http://www.groundworkopensource.com/services/training/" target="self">
+				<img style="padding: 5px;" src="themes/gwmos/images/logo-training.gif" border="0" />
+			    </a>
+			</div>
+			<div style="float:left; width:250; vertical-align:top">
+			    <a href="http://www.groundworkopensource.com/community" target="self">
+				<img style="padding: 5px;" src="themes/gwmos/images/logo-questions.gif" border="0" />
+			    </a>
+			</div>
+			<div style="float:left; width:250; vertical-align:top">
+			    <a href="http://www.groundworkopensource.com/services/support/gwmce-support.html">
+				<img style="padding: 5px;" src="themes/gwmos/images/logo-support.gif" border="0" />
+			    </a>
+			</div>
+		    </div>
+		</div>
+	    </td>
+	</tr>
+	<tr>
+	    <td>
+		&nbsp;
+	    </td>
+	</tr>
+	<tr>
+	    <td>
+		<table id="contacts" border="0" cellpadding="5" align="center">
+		    <tr>
+			<td class="left">
+			    GroundWork Open Source, Inc.<br />
+			    139 Townsend Street, Suite&nbsp;100<br />
+			    San Francisco, CA 94107
+			</td>
+			<td class="right">
+			    phone +1 866-899-4342<br />
+			    fax +1 415-947-0684<br />
+			    <a href="http://www.groundworkopensource.com/">www.groundworkopensource.com</a>
+			</td>
+		    </tr>
+		    <tr>
+			<td colspan="2">
+			    &nbsp;
+			</td>
+		    </tr>
+		    <tr>
+			<td colspan="2">
+			    <div align="center" class="text-legal">
+				&copy; 2009 GroundWork Open Source, Inc.&nbsp; All rights reserved.
+			    </div>
+			</td>
+		    </tr>
+		</table>
+	    </td>
+	</tr>
+    </table>
+    <div class="overlay" align="center">
+	<table class="positioning" align="center">
+	    <tr>
+		<td>
+		    <table id="credentials" align="right">
+			<tr>
+			    <td class="label">Username&nbsp;&nbsp; </td>
+			    <td><input class="text" tal:replace="structure username/toString" type="text" value="" /></td>
+			</tr>
+			<tr>
+			    <td class="label">Password&nbsp;&nbsp; </td>
+			    <td><input class="text" tal:replace="structure password/toString" type="password" /></td>
+			</tr>
+			<tr>
+			    <td>
+				&nbsp;
+			    </td>
+			    <td>
+				<div class="loginButton" align="left">
+				    <input tal:replace="structure submit/toString" class="button" type="submit" value="Login" />
+				</div>
+			    </td>
+			</tr>
+			<script type="text/javascript">
+			    //<![CDATA[
+			    document.getElementsByTagName('input')[0].focus();
+			    // ]]>
+			</script>
+		    </table>
+		</td>
+	    </tr>
+	</table>
+    </div>
+</div>

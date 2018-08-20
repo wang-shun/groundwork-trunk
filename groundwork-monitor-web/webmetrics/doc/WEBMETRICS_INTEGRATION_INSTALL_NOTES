@@ -1,0 +1,520 @@
+================================================================
+Installation Notes for the Webmetrics Integration
+================================================================
+
+(1) The Webmetrics Integration is supplied as an RPM file that is to be
+    installed or upgraded in the usual manner, with an "rpm" command such as this:
+
+	rpm -Uvh groundwork-webmetrics-integration-1.0.0-18227.el5.x86_64.rpm
+
+    The package can be uninstalled with a command like:
+
+	rpm -e groundwork-webmetrics-integration
+
+(2) In this version of the Webmetrics Integration, hosts and services
+    must be added manually to Monarch so that Nagios can receive the results
+    of the Webmetrics monitoring.  Each customer resource being monitored
+    by Webmetrics, known in Webmetrics terminology as a service, will be
+    mapped to a corresponding distinct host in Monarch.  By default, the
+    Nagios/Monarch host name will be derived from the Webmetrics service
+    name, by a simple cleanup transformation.  Since Webmetrics restricts
+    service names to alphanumerics plus hyphens and underscores, this
+    transformation is fairly simple:  underscores are changed to hyphens,
+    since underscores are not valid characters in Internet hostnames
+    (http://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names).
+    Underscores will not be valid characters in a future version of Monarch
+    where hostnames are constrained to only contain valid Internet hostname
+    characters, so we avoid them now.
+
+    This integration provides a simple tool that uses the same routine
+    as the integration uses internally to map Webmetrics service names to
+    Nagios host names.  You can run it if you want to verify how a given
+    Webmetrics service name will be treated.  For instance:
+
+	% /usr/local/groundwork/webmetrics/bin/webmetrics_host My_Website
+	Webmetrics service "My_Website" => Nagios host "My-Website"
+
+    An alternative, completely custom naming scheme can be set up using the
+    host_map capability of the query_webmetrics.conf configuration file.
+
+    The Webmetrics monitoring appears to use a pseudo-random choice of
+    which Webmetrics location should be used on each monitoring cycle to
+    probe a given customer resource.  Thus it does not seem sensible to keep
+    track of the monitoring results for this web-monitoring provider on a
+    per-location basis.  Therefore, the results from all Webmetrics locations
+    are mapped into a single Nagios service on each host which is configured
+    as above, with a service name set by the "standardized_service_name" value
+    (typically "webmetrics") in the query_webmetrics.conf configuration file.
+
+(3) After the RPM is installed, and before you modify the configuration
+    file and enable the daemons in the following step, you must take
+    some manual steps to import and create certain configuration objects.
+
+    (a) Under Configuration -> Profiles -> Profile importer, select the
+	following items:
+
+	    host-profile-webmetrics-resource.xml
+	    service-profile-webmetrics-daemons.xml
+	    service-profile-webmetrics-probes.xml
+
+	and then scroll down and click "Import" at the bottom of the page.
+	This step will create the following objects within Monarch:
+
+	    command:
+		check_webmetrics_daemon_fresh
+		check_webmetrics_resource_fresh
+		check_webmetrics_location_fresh
+
+	    host profile:
+		host-profile-webmetrics-resource
+
+	    host template:
+		webmetrics-resource
+
+	    service:
+		Webmetrics_Status
+		Webmetrics_Location
+
+	    service profile:
+		webmetrics-daemons
+		webmetrics-probes
+
+	    service template:
+		webmetrics-status
+		webmetrics-location
+
+	The "Webmetrics_Location" service should be renamed to whatever Nagios
+	service name you wish to use as the "standardized_service_name"
+	(typically "webmetrics", as noted above, as specified in the
+	query_webmetrics.conf file).  You will need to add this service to
+	each host you add to Monarch that is to be monitored by Webmetrics.
+	The easiest way to do that is to add the "webmetrics-probes" service
+	profile to the "host-profile-webmetrics-resource" host profile,
+	then assign and apply that host profile to those hosts.  Or you can
+	apply this service profile directly to individual hosts, if you prefer.
+
+    (b) The "webmetrics-resource" host template is available to assist in
+	setting up hosts in Monarch that correspond to what Webmetrics calls
+	services.  Use of this template is optional; you may have already
+	established other means of configuring such hosts.  This host template
+	is referred to in the "host-profile-webmetrics-resource" host profile.
+
+	This host template is imported without any Contact Groups
+	assigned, so if you intend to use this template (generally via the
+	"host-profile-webmetrics-resource" host profile), you must fix that.
+	Go into Configuration -> Hosts -> Host templates -> Modify ->
+	webmetrics-resource, and establish the Contact Groups you wish to
+	use for all Webmetrics-monitored hosts.  Then scroll down to the
+	bottom of the page and Save.
+
+    (c) The "host-profile-webmetrics-resource" host profile is available
+	to assist in setting up hosts in Monarch that correspond to what
+	Webmetrics calls services.  Use of this profile is optional; you
+	may have already established other means of configuring such hosts.
+    
+	If you intend to use it, one adjustment should be made to the
+	"host-profile-webmetrics-resource" host profile:  namely, associating
+	it with a hostgroup to which all customer resources monitored by
+	Webmetrics will be assigned.  To do this:
+
+	(*) Go into Configuration -> Hosts -> Host groups -> New, and create
+	    such a hostgroup with no member hosts.  This hostgroup will
+	    typically be named "Webmetrics Resources", with Alias "Customer
+	    resources monitored by Webmetrics".  Scroll down and click Add.
+
+	(*) Go into the Configuration -> Profiles -> Host profiles -> Modify
+	    -> host-profile-webmetrics-resource -> Hostgroups tab, add the
+	    "Webmetrics Resources" hostgroup, and Save.
+
+	(*) Similarly, go into the parallel Assign Hostgroups tab, add the
+	    "Webmetrics Resources" hostgroup, and Save.
+
+    (d) The "Customer Resource State and Notification Model" section below
+	describes how web-monitoring alerts are to be handled.	Based on
+	your own local conventions for dealing with Nagios notifications,
+	and on whether you will be generating host-check results from
+	this integration, you may wish to adjust the notifications-enabled
+	setting in the "webmetrics-location" service template, and in the
+	"webmetrics-resource" host template.
+
+    (e) Finally, you must manually create the one passive service that
+	will be used to track the operation of the Webmetrics monitoring
+	daemon.  Go into Configuration -> Hosts -> Hosts -> Linux Servers ->
+	localhost -> Detail -> Service Profiles, add the "webmetrics-daemons"
+	service profile, scroll down and select "Merge with existing service
+	profiles and services.", then click "Assign and Apply" at the bottom
+	of the page.
+
+(4) Once the package is installed, the following configuration file in
+    the /usr/local/groundwork/webmetrics/config/ directory will need to be
+    modified by the customer to reflect local preferences.  Documentation
+    on the file content format is included directly in the file.
+
+    query_webmetrics.conf
+	This file contains a variety of parameters.  You should look at
+	and perhaps modify at least the following setup:
+
+	(a) the enable_processing flag
+	    The shipped file has the enable_processing flag at the top
+	    of the file turned off so the software does not start until
+	    the rest of the settings are localized as needed.
+
+	(b) possibly, the debug_level setting
+	    GroundWork generally recommends that the debug_level be set to
+	    4 (NOTICE) or perhaps just 3 (WARNING) in ordinary production.
+	    These settings provide a reasonable compromise between utility
+	    and detail of the logged messages.  An initial deployment may
+	    wish to bump this up to 6 (INFO) until the software is seen to
+	    be working, at which point it should be set back down to avoid
+	    the i/o overhead of the extra logging.  The value can always be
+	    bumped up again (and the Webmetrics daemons bounced to pick up
+	    the change, as described below) to help in diagnosing problems.
+
+	(c) possibly, the expected metrics latency within Webmetrics
+	    We don't have good visibility into the internal workings of the
+	    Webmetrics monitoring, but we presume there will be some amount of
+	    latency between when the timestamp for a given service/location
+	    metrics probe is captured, and the moment that data is available
+	    for retrieval via the Webmetrics Report API.  In particular, if
+	    the reported timestamp is taken at the start of each probe, we
+	    must allow for the longest monitoring timeout configured within
+	    Webmetrics, plus a bit of time to allow the data to appear in their
+	    database.  The distributed configuration file makes a guess as to
+	    the total latency we should allow for, but you may wish to compare
+	    this with the maximum of all the monitoring timeouts configured
+	    within Webmetrics for all your monitored services, and set the
+	    latency configured here to just a bit higher to allow time for
+	    insertion into their database.
+
+	(d) possibly, the standardized service name
+	    See comments above in this document.
+
+	(e) the Webmetrics server web-access credentials
+	    Adjust as needed for your installation.  The "webmetrics_password"
+	    is the long string that Webmetrics refers to as your "api_key".
+
+	(f) possibly, the master timezone
+	    This value is defined by Webmetrics for each of their customers;
+	    consult with them for the correct value for your setup.
+	    (In practice, this value is not currently used for this
+	    web-monitoring provider, inasmuch as we do not specify unmarked
+	    string timestamps when making queries, and all the status data
+	    returned by queries is self-describing in this regard.)
+
+	(g) possibly, the host and service maps
+	    See comments above in this document.  If you are satisfied with
+	    the standard transformation from Webmetrics service names to
+	    Nagios host names, you won't need to adjust these maps from
+	    their initial disabled states in the configuration file.
+	    Making judicious choices for your Webmetrics service names
+	    so the standard transformation can be used will simplify your
+	    maintenance burden.
+
+	The status_cycle_time is set to 5 minutes as the initial value
+	in the distributed configuration file.  This should be adequate
+	for normal use, given that Webmetrics probes are typically set
+	to run every 5 minutes.
+
+	The metrics_cycle_time is set to 25 minutes as the initial value
+	in the distributed configuration file.	Currently, this is just
+	scaffolding for a possible future extension.
+
+(5) After the package is configured and enabled, a cron job will start the
+    Webmetrics_Status daemon service within 5 minutes.  Once your new hosts
+    and services have been manually added to Monarch as described above,
+    and you run a Commit to push out the updated configuration, Nagios will
+    be able to accept data from the Webmetrics monitoring.
+
+(6) During the initial period when all the new hosts and services are first
+    added to the system, the Event Console will be flooded with new messages
+    announcing the status of each host/service combination.  This is normal,
+    and will not persist.  Thereafter, host/service state changes will
+    generate new messages as usual.
+
+(7) On the next cycle of the Webmetrics_Status daemon service after a Commit
+    operation, it will automatically recognize that a Commit has occurred,
+    and kill itself to force a re-initialization.  The cron job will restart
+    the daemon 5 minutes later.  Once performance data from the monitoring
+    streams through Nagios and the GroundWork performance data processing,
+    the Status Viewer will be able to create and display metric-data graphs
+    for these services.
+
+(8) To actually view graphs, you will need to establish a graphing setup
+    in the Configuration > Performance page.  The current release of the
+    Webmetrics Integration does not do this for you.  A typical setup might
+    look like the following, if you have renamed the "Webmetrics_Location"
+    service to "webmetrics":
+
+    name:			webmetrics - *
+    graph label:		webmetrics
+    service:			Webmetrics Service Load Time
+    use service as regex:	ON
+    host:			*
+    regex:
+    use parsing:		OFF
+    rrd name:			/usr/local/groundwork/rrd/$HOST$_$SERVICE$.rrd
+    rrd create command:		$RRDTOOL$ create $RRDNAME$ --step 600 --start n-1yr
+				DS:$LABEL1$:GAUGE:1800:U:U
+				RRA:AVERAGE:0.5:1:8640 RRA:AVERAGE:0.5:12:9480
+    rrd update command:		$RRDTOOL$ update $RRDNAME$ $LASTCHECK$:$VALUE1$ 2>&1
+    custom graph command:	'rrdtool graph - --vertical-label="Time (s)"
+				DEF:a="rrd_source":ds_source_0:AVERAGE CDEF:cdefa=a
+				AREA:cdefa#0000FF:"Webmetrics Service Load Time"
+				GPRINT:cdefa:MIN:min=%.2lf
+				GPRINT:cdefa:AVERAGE:avg=%.2lf
+				GPRINT:cdefa:MAX:max=%.2lf
+				-c BACK#FFFFFF -c CANVAS#FFFFFF -c GRID#C0C0C0
+				-c MGRID#404040 -c ARROW#FFFFFF -Y --height 120 -l 0'
+    enable:			ON
+
+================================================================
+Theory of Operation
+================================================================
+
+The Webmetrics integration is designed to operate with very little manual
+intervention.  It performs the following actions:
+
+(*) Periodically collect customer-resource (Webmetrics service) status and
+    basic metric data from Webmetrics.  For each such resource, only the
+    latest available status will be retrieved.
+(*) Filter out data for Webmetrics services which are currently disabled
+    within Webmetrics.  Webmetrics maintenance windows are ignored for
+    this purpose; only the service enabled/disabled state affects this
+    filtering.
+(*) Generate service-check results for the monitoring from Webmetrics
+    locations which probe the monitored customer resources.  These results
+    include the top-level "loadtime" metric for each probe, labeled as
+    "Timings_Total" in the generated graphs.
+(*) Optionally generate host-check results for the monitored resources,
+    by rolling up the service-check results for the Webmetrics locations
+    from which the resources are monitored.  In practice, with the way that
+    this web-monitoring provider operates, this host-check result will
+    always reflect the status of the single "webmetrics" service on that host.
+    Since that may or may not be desired, we allow this rollup to be disabled,
+    so that other methods can be used to determine host status (e.g., ping
+    or the fping feeder).
+(*) Log significant events that occur while collecting data from Webmetrics
+    and passing it to GroundWork Monitor.
+
+----------------------------------------------------------------
+Customer Resource State and Notification Model
+----------------------------------------------------------------
+
+The Webmetrics Integration generates both service checks and (optionally) host
+checks which are sent to Nagios.  Because of the way that the web-monitoring
+probes are consolidated into a single Nagios service for each host, and the
+way that host checks are generated for this web-monitoring integration, the
+host checks simply reflect the same alert level as the respective service
+checks for the customer resources that are the target of this monitoring.
+Thus either the service checks, or the host checks (if enabled), but not
+both, should be used to generate Nagios alerts.
+
+For simplicity, we have notifications enabled in the shipped copy of the
+"webmetrics-location" service template which is to be applied to all the host
+services reflecting Webmetrics monitoring locations.  Conversely, we have
+notifications disabled in the shipped copy of the "webmetrics-resource" host
+template which can be applied to all the hosts reflecting customer resources.
+These settings can be locally adjusted as needed.
+
+----------------------------------------------------------------
+Internal Operations
+----------------------------------------------------------------
+
+The Webmetrics integration works by running a daemon process to fetch data
+from Webmetrics and inject it into GroundWork Monitor.  The daemon process
+fetches status data and submits service-check and possibly host-check
+results to Nagios.
+
+Once started, the daemon normally stays running forever.  The daemon is
+started via this command, run as either root or nagios:
+
+    /usr/local/groundwork/webmetrics/bin/control_webmetrics_integration start
+
+A cron job installed by the Webmetrics Integration RPM executes that command
+every 5 minutes.  If the daemon is already running, the command has no effect.
+If the daemon is down, the cron job will start it.
+
+This control script can also be run manually to start or stop the daemon,
+or to check its current status:
+
+    /usr/local/groundwork/webmetrics/bin/control_webmetrics_integration start
+    /usr/local/groundwork/webmetrics/bin/control_webmetrics_integration stop
+    /usr/local/groundwork/webmetrics/bin/control_webmetrics_integration status
+
+For most of its execution, the daemon shuts down in a regulated manner,
+meaning it internally records the fact that a shutdown signal has been
+received, but waits until a safe time to actually quit.  This allows sensitive
+operations to complete without interruption.  However, if a daemon is in
+the middle of a long-running operation, this protection is removed so the
+daemon will shut down immediately.  Otherwise, it could take some time for
+the daemon to finally exit.  These controls, along with the implementation of
+a complicated file-locking protocol, are needed to synchronize the actions
+of this data feeder with possible asynchronous Nagios/Monarch pre-flight
+and commit operations.
+
+Stopping the daemon will work briefly, but the next execution of the cron
+job will start it up again.  If you really need to disable the daemon for
+a long period, set "enable_processing = no" in the query_webmetrics.conf
+configuration file, then stop the daemon using the control script.
+Otherwise, the daemon runs continuously, even when the rest of GroundWork
+Monitor is down.
+
+In general, the daemon attempts to cope with failure and continue running.
+In the current release, any alarm conditions sensed by Webmetrics will
+be dropped if Nagios is down when the Status copy of the daemon runs.
+However, if the condition persists, the next service check sent to Nagios
+when it is back up will reflect the alarm condition.
+
+Operational status of the daemon is sent to Nagios on each processing cycle,
+as a service check for the "Webmetrics_Status" service on localhost.
+
+----------------------------------------------------------------
+Configuration Changes
+----------------------------------------------------------------
+
+In this version of the Webmetrics integration, Nagios host and service changes
+reflecting the addition and deletion (or long-term enablement/disablement)
+of Webmetrics services must be made manually.
+
+Each Webmetrics service is mapped to a unique host in Monarch, named after the
+Webmetrics service.  That Monarch host must have a standard uniformly-named
+Monarch service applied, typically "webmetrics" (see above).
+
+If you are creating new hosts for this purpose, it may be easiest to apply
+the "host-profile-webmetrics-resource" host profile when the host is added
+to Monarch.  In turn, that profile can be set up to assign such hosts to the
+"Webmetrics Resources" hostgroup, as noted above.  All services created in
+this way should have the "webmetrics-location" service template applied when
+the service is added to Monarch.  This will be automatic if you renamed the
+"Webmetrics_Location" service as described above.
+
+As usual, modifications to Monarch do not affect the operation of Nagios,
+and thus the recognition of corresponding web-monitoring results, until
+the next Commit operation within Monarch.
+
+----------------------------------------------------------------
+Logging
+----------------------------------------------------------------
+
+The daemon has its own log file to provide detailed messages on the internal
+operation of the program:
+
+    /usr/local/groundwork/webmetrics/logs/query_webmetrics_status.log
+
+This file is where you might need to look to diagnose a non-OK status on
+the aforementioned "Webmetrics_Status" service.
+
+================================================================
+Troubleshooting
+================================================================
+
+(*) If you find missing graphs, look at the following:
+
+    (+) Does the name you gave to the Webmetrics_Location service match the
+	name specified as standardized_service_name in query_webmetrics.conf?
+
+    (+) Do you have a Configuration > Performance setup that will match
+	this service?
+
+(*) If you find large empty spaces in graphs, or even completely empty graphs,
+    look at the following:
+
+    (+) Is the Webmetrics service still configured within Webmetrics to
+	be monitored?  If not, you might perhaps want to delete this host
+	from Monarch.
+
+(*) Most messages in the log files are simple but generally
+    self-explanatory.  An exception is the following message, which may
+    occasionally show up:
+
+	NOTICE:  Caught SIGABRT signal!
+
+    That message is a notice that a long-running operation has been forcibly
+    timed out, to prevent the daemon from stalling indefinitely.  Details of
+    what operation has failed in this manner will be listed in an immediately
+    following message.  The time allowed for such operations is controlled
+    by the network_server_timeout parameter in the configuration file.
+
+================================================================
+Maintenance Instructions
+================================================================
+
+The daemon scripting will internally rotate its log file when it grows too
+large, so no manual intercession is ever needed to prevent infinite use of
+disk space.
+
+Should an actively monitored Webmetrics service be configured within
+Webmetrics to stop monitoring, that service will thereafter be ignored
+by the daemon script.  However, no attempt will be made to automatically
+delete the corresponding host or service from Monarch, so Nagios will begin
+to execute its freshness checks and corresponding alarms will be generated.
+Because Nagios, when analyzing the state of a service in this state, won't
+be able to tell the difference between the daemon being down (not functioning
+correctly) and the daemon intentionally not reporting status for the service,
+the freshness-check message in this situation will suggest the daemon is down,
+when in fact the problem is that the service is no longer being monitored
+by Webmetrics.  It will be up to the system operators to disable or remove
+such objects from Monarch, and Commit a modified configuration, as needed.
+
+================================================================
+Implementation Limitations
+================================================================
+
+This version of the Webmetrics Integration has the following limitations.
+
+(*) Metric data for Webmetrics-monitored customer resources is stored by
+    this software in corresponding RRD files.  One characteristic of this
+    data store is that the time resolution at which data will be stored and
+    accepted is defined up front, at the time the RRD file is first created.
+
+    Because handling of performance metric data is deferred to the normal
+    downstream processing implemented within GroundWork Monitor, this
+    integration uses the step size declared by the ordinary Performance
+    Configuration setup, rather than the monitoring interval declared
+    by the Webmetrics configuration for each separate service, to define
+    the time step size with the RRD file for the corresponding RRD file.
+    Special attention should be paid to ensure that the step size and
+    related RRD parameters configured within the RRD create command within
+    Performance Configuration make sense for all the Webmetrics services
+    to which it will be uniformly applied.  Currently, this integration
+    does not support different step sizes for different Webmetrics services.
+
+    Also, if the monitoring interval is ever changed within Webmetrics, that
+    modification will not be reflected in the definition of the RRD file,
+    and that discrepancy may result in problems with graphing the resultant
+    stored data.  Currently, the only solution is to remove the existing
+    RRD file and allow the software to create a new RRD file reflecting a
+    new setup which matches the Webmetrics monitoring schedule.
+
+(*) Generation of host-check data for customer resources, if enabled, depends
+    in turn on generation of service-check data for the respective Webmetrics
+    locations.  And that depends in turn on the Webmetrics_Status service
+    being up and running regularly while Nagios is running.  Normally this
+    will not be an issue, because the script implementing this service is
+    restarted by a cron job should it ever fail.
+
+    If this service did fail to generate data for Nagios, all the services and
+    thereby all the hosts (if host-check data is being generated) would soon
+    go into an alarm state, with a corresponding flood of host notifications.
+    We would like to prevent that from happening, by imposing an appropriate
+    set of dependencies.  We would want to have the proper dependencies on the
+    Webmetrics Status daemon automatically established when new services and
+    hosts are eventually added automatically by the Webmetrics Status daemon,
+    so the system is self-maintaining.  In effect, we would need to have all
+    the related hosts depend on the Webmetrics_Status service.  However,
+    Nagios seems to provide only hosts depending on hosts, and services
+    depending on services.  So until we can work out some clever way to
+    implement the dependency model we need, this issue will remain unresolved.
+
+    In the meantime, it is possible to set up appropriate service
+    dependencies ("webmetrics" on each host depending on "Webmetrics_Status"
+    on localhost), but that has not yet been folded into this integration.
+    The site administrator can do this locally.
+
+(*) Currently, sample-data timestamps retrieved from Webmetrics are expressed
+    in the configured master timezone (generally some human-preferred
+    local timezone), not in UTC.  This will likely cause brief disruptions
+    and incorrect operation around Daylight Savings Time transitions.
+    Webmetrics is aware of this issue and may address it in a future revision
+    of the retrieval API.
+

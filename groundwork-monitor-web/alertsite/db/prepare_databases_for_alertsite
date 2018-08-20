@@ -1,0 +1,172 @@
+#!/bin/bash -e
+
+# Container script to run database-modification scripts needed to
+# support the AlertSite web monitoring integration.
+
+# Copyright 2011 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+# FIX MINOR:  The specfile for this AlertSite Integration passes a -e
+# flag to this script, to force it to insist on drawing MYSQL_HOST and
+# MYSQL_PASS from environment variables, and to cause the script to fail if
+# it doesn't get what it needs via that route, rather than interactively
+# prompting the user for these values if they are not so provided.  Add
+# explicit support for this flag to this script, if there is not a conflict
+# or intentional overlap of that flag with the bash -e option.
+
+# First, prepare to die.
+#
+# FIX LATER:  there are improved ways to name a temporary file
+# that provide even better security
+my_root_cnf="/usr/local/groundwork/tmp/my_root.cnf.$$"
+trap "/bin/rm -f $my_root_cnf;" EXIT
+
+# FIX LATER:  someday we should specify root_dataport="${MYSQL_PORT:-3306}" as well,
+# with appropriate security validation checking of the $MYSQL_PORT value
+root_hostname="${MYSQL_HOST:-localhost}"
+root_database="mysql"
+root_username="root"
+root_password="$MYSQL_PASS"
+
+# Security check:  Make sure $root_hostname only contains a valid hostname,
+# before we go blindly substituting it into a command line.
+# Reference:  http://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names
+# * FQDN max length:  255 characters
+# * FQDN structure:  a series of FQDN components, separated by single "." characters
+# * FQDN component length:  1 to 63 characters
+# * FQDN component character set:  [-a-zA-Z0-9]
+# * FQDN component structure:  cannot start or end with a hyphen
+
+# Disable automatic script failure for this next command.
+set +e
+
+/usr/local/groundwork/perl/bin/perl -e '
+sub is_valid_hostname {
+    my $name = shift;
+    return 0 if not defined $name;
+    my $name_length = length $name;
+    return 0 if $name_length < 1 || $name_length > 255;
+    foreach my $part ( split(/\./, $name, -1) ) {
+	my $part_length = length $part;
+	return 0 if $part_length < 1 || $part_length > 63;
+	return 0 if $part =~ /[^-a-zA-Z0-9]/;
+	return 0 if $part =~ /^-/;
+	return 0 if $part =~ /-$/;
+    }
+    return 1;
+}
+
+# We need to turn success upside down for the exit code to properly reflect it.
+exit ! is_valid_hostname $ARGV[0];
+' "$root_hostname"
+
+if [ $? -ne 0 ]; then
+    echo "ERROR:  The MYSQL_HOST environment variable does not contain"
+    echo "        a legal hostname.  Execution is being aborted."
+    exit 1;
+fi
+
+# Enable automatic script failure for subsequent commands.
+set -e
+
+if [ "$root_hostname" = 'localhost' ]; then
+    root_port_or_sock="--socket=/usr/local/groundwork/mysql/tmp/mysql.sock"
+else
+    root_port_or_sock="--port=3306"
+fi
+
+/bin/rm -f $my_root_cnf
+touch $my_root_cnf
+chmod 600 $my_root_cnf
+cat > $my_root_cnf << eof
+[mysql]
+user=$root_username
+password=$root_password
+eof
+
+# We need the "|| true" at the end to sidestep the bash -e flag for this one command,
+# primarily because fgrep clumsily changes its return code depending on whether or not
+# it matches anything, regardless of whether the command otherwise ran successfully.
+# FIX LATER:  We might not need that protection, because fgrep is running in a subshell.
+running=`/usr/local/groundwork/ctlscript.sh status gwservices | egrep -v '(is|not|copies) running' | fgrep -c running || true`
+
+# Make sure gwservices is down, to prevent interference from a cached copy
+# of the tables we're about to change. 
+/usr/local/groundwork/ctlscript.sh stop gwservices
+
+gwpath=/usr/local/groundwork
+alertsitepath=$gwpath/alertsite
+mysql=$gwpath/mysql/bin/mysql.bin
+
+echo "Creating the alertsite database ..."
+$mysql --defaults-extra-file=$my_root_cnf -h $root_hostname $root_port_or_sock -s $root_database < $alertsitepath/db/create_alertsite_database.sql
+
+# Modify /usr/local/groundwork/config/db.properties
+# to include the alertsite database access credentials.
+
+new_properties='
+# AlertSite integration database:
+alertsite.dbhost=localhost
+alertsite.database=alertsite
+alertsite.username=webmonitor
+alertsite.password=gwrk
+'
+
+timestamp=`date +"%Y-%m-%d.%H_%M_%S"`
+old_file=/usr/local/groundwork/config/db.properties
+# FIX LATER:  there are improved ways to name a temporary file
+# that provide even better security
+new_file=/usr/local/groundwork/config/db.properties.new.$$
+sav_file=/usr/local/groundwork/config/db.properties.$timestamp.pre_alertsite
+
+# Disable automatic script failure for the rest of this script, inasmuch as
+# we are checking return codes explicitly for all of the critical commands.
+set +e
+
+old_properties=`cat $old_file`
+if [ $? -ne 0 ]; then
+    echo "FATAL:  AlertSite Integration could not read the old db.properties" 1>&2
+    exit 1
+fi
+# We only bother to check one critical property, even though several properties
+# are involved.
+#
+# If we had the bash -e flag in force here, apparently it does not carry through
+# to the subshell that executes this pipe, so we don't need to protect against a
+# non-zero exit status if fgrep doesn't find the string.
+if [ "`echo \"$old_properties\" | sed -e 's/#.*//' | fgrep -c 'alertsite.database'`" -eq 0 ]; then
+    # The new properties are not installed.  Do so now.  We don't bother to try to delete
+    # existing properties if they are currently commented out; we just add new ones.
+
+    # First, prepare the new file by copying the content along with ownership and permissions.
+    cp -p $old_file $new_file
+    if [ $? -ne 0 ]; then
+	echo "FATAL:  AlertSite Integration could not copy the db.properties file." 1>&2
+	exit 1
+    fi
+    # Just append to the file, as there is no obvious particular place to put the new properties.
+    echo "$new_properties" >> $new_file
+    if [ $? -ne 0 ]; then
+	echo "FATAL:  AlertSite Integration could not create a revised db.properties file." 1>&2
+	exit 1
+    fi
+    cp -p $old_file $sav_file
+    if [ $? -ne 0 ]; then
+	echo "FATAL:  AlertSite Integration could not back up the db.properties file." 1>&2
+	exit 1
+    fi
+    mv $new_file $old_file
+    if [ $? -ne 0 ]; then
+	echo "FATAL:  AlertSite Integration could not install a new db.properties file." 1>&2
+	exit 1
+    fi
+else
+    echo "NOTICE:  The AlertSite Integration database access credentials"
+    echo "    were already in place."
+fi
+
+# Restart gwservices only if it was already running before we made these changes.
+if [ $running -ne 0 ]; then
+    /usr/local/groundwork/ctlscript.sh start gwservices
+fi
+

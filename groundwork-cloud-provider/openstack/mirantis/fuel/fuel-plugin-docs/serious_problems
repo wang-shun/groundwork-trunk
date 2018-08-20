@@ -1,0 +1,110 @@
+NOTE:  The following exposition contains strong personal opinions,
+and might not represent the opinion of GroundWork.
+
+
+Dangerous Fuel Deployment Practices
+===================================
+
+While testing Fuel plugin deployment this weekend, I noticed several
+behaviors of the Fuel system as a whole that cause me great concern.
+This writeup details those observations.
+
+Most of my testing involved this simple sequence of actions, to
+test fixes to the plugin:
+
+    (+) Install the plugin, from the command line.
+    (+) Enable the plugin within the Fuel UI.
+    (+) Apply the plugin's role to an uncommited node.
+    (+) Deploy, to get the new node built up with the plugin
+	locally deployed.
+    (+) Delete the node that has the plugin deployed.
+    (+) Disable the plugin witin the Fuel UI.
+    (+) Remove the plugin, from the command line.
+
+After a few hours of this sequencing, something very alarming
+happened.  When trying execute the Deploy step for a new copy of
+the plugin, suddenly *all* of the nodes were getting re-deployed
+from scratch, not just the one new node!  And then those deployments
+began to fail, with the result that I ended up with an ERROR state
+on all nodes, not just the new GroundWork-related node.
+
+This is truly horrifying.  My belief is that if it happened during
+due-diligence product evaluation, it would be cause for completely
+rejecting the Mirantis product.  And if it happened to a production
+system, this would be cause for a walk-you-out-the-door firing
+for having failed to perform due diligence before the product was
+purchased and put into production.
+
+Why am I being so [FIX MAJOR:  down] about this?  It's because of
+several inter-related issues:
+
+(*) Specific actions on a particular node should NEVER trigger
+    unrelated actions on unrelated nodes.
+
+(*) Nodes can contain precious configuration and operational data
+    which MUST NOT be unceremoniously destroyed.  Such data can be
+    the lifeblood of a business.  Think of it as "precious cargo",
+    something you might label with a "baby on board" sign.
+
+(*) After repeated attempts to Deploy, the system as a whole was
+    unable to bring itself back up.  Successive Deploy actions would
+    fail again, and eventually the last Deploy I tried simply hung,
+    for over a half hour before I gave up on it.
+
+(*) The Fuel administrator is not allowed to stop deployment for
+    this cluster, even when it is hung for more than half an hour.
+
+(*) The display of information on the progress of a deploy operation
+    was confusing.  In the dashboard screen, I observed "installing
+    OpenStack" on 2 nodes, immediately after an Ubuntu install
+    (when I would have expected just the one new node to require
+    an OpenStack install), then that number falling to 1 node,
+    then later climbing to 3 nodes.  Perhaps those indications
+    were correct, in that all of the nodes in the cluster were
+    perhaps being re-installed from scratch.  But it was certainly
+    disconcerting to see this when all I had done was to attempt
+    to add one new node to the cluster.
+
+Re-installation of the Controller node took a really long time.
+    Typically, it hung at 11% installed.
+
+- incremental Deploy actions seem poor -- starts all over from scratch
+
+Deployment slowed to a crawl.  The system was installing OpenStack
+on multiple nodes, and eventually came to a dead halt, around
+Saturday midnight my time (which to me is prime time for software
+development).
+
+What log file in the Fuel Master should be looked at, to see
+why this happened?  Shouldn't the location of that log info be
+prominently displayed in the UI for easy tracking of the overall
+ongoing deployment process?
+
+- it is alarmingly easy to delete a node, with no block because the
+node's configuration data or the operational data it contains is
+precious -- is the action node deletion securely logged somewhere for
+later forensic work?  allowing trivial node deletion is wonderfully
+helpful during rapid software development like this, but otherwise
+scary (for production use); this is the sort of thing that will
+get Mirantis products dismissed if discovered during due-diligence
+product evaluation, and will get you fired for having recommended
+te product if it happens to a valuable production site.  you need
+some safeguards built into the system, much like a "two separate
+keys need to be turned simultaneously by two different people to
+fire the missile" protocol provides critical protection
+
+
+- "ERROR" state on all nodes, not just the GW node!  (in one test
+where GW failed to install)
+
+    - will GW get wiped out when some *other* node is added to
+    the environment???
+
+    - all nodes in ERROR state, seemed to be re-installed with MOS
+    on the next Deploy action
+
+- can easily delete the *entire environment*, losing all precious
+data; need hooks to run plugin-provided scripting to preserve
+critical data, add extra warnings, completely block deletion unless
+forcibly overridden with the missile-launch protocol
+

@@ -1,0 +1,53 @@
+<div class="modal-header" gwp-sliding-dialog>
+    <button type="button" class="close" aria-hidden="true" ng-click="close()">&times;</button>
+    <h4 class="modal-title" ng-show="!deviceTemplate.deviceIdentification">New Device Template<span ng-show="deviceTemplate.deviceIdentification.length">: {{deviceTemplate.deviceIdentification}}</span></h4>
+    <h4 class="modal-title" ng-show="deviceTemplate.deviceIdentification">Device Template Detail: <span>{{deviceTemplate.deviceIdentification}}</span></h4>
+</div>
+<form role="form" novalidate class="form-horizontal css-form">
+    <div class="modal-body">
+        <div class="form-group">
+            <label for="host-uuid" class="col-sm-2 control-label">Device Identification:</label>
+            <div class="col-md-10 col-sm-10">
+                <input type="text" id="host-uuid" class="form-control" placeholder="new-device-template" ng-model="deviceTemplate.deviceIdentification" ng-class="{error: !isValidHostName()}" gwp-autofocus gwp-no-spaces />
+                <span id="helpBlock" class="help-block">Enter a unique device identification</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="host-name" class="col-sm-2 control-label">Cacti Template:</label>
+            <div class="col-md-10 col-sm-10">
+                <input type="text" id="host-name" class="form-control" ng-disabled="deviceTemplate.monarchHostProfile.length" ng-model="deviceTemplate.cactiHostTemplate" />
+                <span id="helpBlock" class="help-block">Enter a cacti-template name</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="host-name" class="col-sm-2 control-label">Monarch Template:</label>
+            <div class="col-md-10 col-sm-10">
+                <input type="text" id="host-name" class="form-control" ng-disabled="deviceTemplate.cactiHostTemplate.length" ng-model="deviceTemplate.monarchHostProfile" />
+                <span id="helpBlock" class="help-block">Enter a monarch-template name</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="host-name" class="col-sm-2 control-label">Description:</label>
+            <div class="col-md-10 col-sm-10">
+                <input type="text" id="host-name" class="form-control" ng-model="deviceTemplate.deviceDescription" />
+                <span id="helpBlock" class="help-block">Edit a description (optional)</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="host-name" class="col-sm-2 control-label">Timestamp:</label>
+            <div class="col-md-10 col-sm-10">
+                <input type="text" id="host-name" class="form-control" readonly ng-model="deviceTemplate.timestamp" />
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-md-10 col-sm-10 padding-left0">
+                <alert ng-repeat="alert in alerts" type="alert.type" close="closeAlert($index)"><strong>{{alert.msg}}</strong></alert>
+            </div>
+            <br />
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-default" ng-click="close()">Cancel</button>
+        <button type="submit" class="btn btn-primary" ng-disabled="!deviceTemplate.deviceIdentification.length || !isValidHostName()" ng-click="add()">Save</button>
+    </div>
+</form>

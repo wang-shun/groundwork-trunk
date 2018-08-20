@@ -1,0 +1,448 @@
+NAME
+    ppm - Perl Package Manager, version 4.03
+
+SYNOPSIS
+    Invoke the graphical user interface:
+
+        ppm
+        ppm gui
+
+    Install, upgrade and remove packages:
+
+        ppm install [--area <area>] [--force] <pkg>
+        ppm install [--area <area>] [--force] <module>
+        ppm install [--area <area>] <url>
+        ppm install [--area <area>] <file>.ppmx
+        ppm install [--area <area>] <file>.ppd
+        ppm install [--area <area>] <num>
+        ppm upgrade [--install]
+        ppm upgrade <pkg>
+        ppm upgrade <module>
+        ppm remove [--area <area>] [--force] <pkg>
+
+    Manage and search install areas:
+
+        ppm area list [--csv] [--no-header]
+        ppm area sync
+        ppm list [--fields <fieldnames>] [--csv]
+        ppm list <area> [--fields <fieldnames>] [--csv]
+        ppm files <pkg>
+        ppm verify [<pkg>]
+
+    Manage and search repositories:
+
+        ppm repo list [--csv] [--no-header]
+        ppm repo sync [--force] [<num>]
+        ppm repo on <num>
+        ppm repo off <num>
+        ppm repo describe <num>
+        ppm repo add <name>
+        ppm repo add <url> [<name>] [--username <user> [--password <passwd>]]
+        ppm repo rename <num> <name>
+        ppm repo location <num> <url>
+        ppm repo suggest
+        ppm search <pattern>
+        ppm describe <num>
+        ppm tree <package>
+        ppm tree <num>
+
+    Obtain version and copyright information about this program:
+
+        ppm --version
+        ppm version
+
+DESCRIPTION
+    The "ppm" program is the package manager for ActivePerl. It simplifies
+    the task of locating, installing, upgrading and removing Perl packages.
+
+    Invoking "ppm" without arguments brings up the graphical user interface,
+    but ppm can also be used as a command line tool where the first argument
+    provide the name of the sub-command to invoke. The following
+    sub-commands are recognized:
+
+    ppm area init *area*
+        Will initialize the given area so that PPM starts tracking the
+        packages it contains.
+
+        PPM allows for the addition of new install areas, which is useful
+        for shared ActivePerl installations where the user does not have
+        write permissions for the *site* and *perl* areas. New install areas
+        are added by simply setting up new library directories for perl to
+        search, and PPM will set up install areas to match. The easiest way
+        to add library directories for perl is to specify them in the
+        "PERL5LIB" environment variable, see perlrun for details. PPM will
+        create etc, bin, html directories as needed when installing
+        packages. If the last segment of the library directory path is lib
+        then the other directories will be created as siblings of the lib
+        directory, otherwise they will be subdirectories.
+
+    ppm area list [ --csv [ *sep* ] ] [ --no-header ]
+        Lists the available install areas. The list displays the name,
+        number of installed packages and "lib" directory location for each
+        install area. If that area is read-only, the name appears in
+        parenthesis. You will not be able to install packages or remove
+        packages in these areas. The default install area is marked with a
+        "*" after its name.
+
+        The order of the listed install areas is the order perl uses when
+        searching for modules. Modules installed in earlier areas override
+        modules installed in later ones.
+
+        The --csv option selects CSV (comma-separated values) format for the
+        output. The default field separator can be overridden by the
+        argument following --csv.
+
+        The --no-header option suppresses column headings.
+
+    ppm area sync [ *area* ... ]
+        Synchronizes installed packages, including those installed by means
+        other than PPM (e.g. the CPAN shell), with the ppm database. PPM
+        searches the install area(s) for packages, making PPM database
+        entries if they do not already exist, or dropping entries for
+        packages that no longer exist. When used without an *area* argument,
+        all install areas are synced.
+
+    ppm config *name* [ *value* ]
+        Get or set various PPM configuration values.
+
+    ppm config list
+        List all configuration options currently set.
+
+    ppm describe *num*
+        Shows all properties for a particular package from the last search
+        result.
+
+    ppm files *pkg*
+        Lists the full path name of the files belonging to the given
+        package, one line per file.
+
+    ppm help [ *subcommand* ]
+        Prints the documentation for ppm (this file).
+
+    ppm install *pkg* [ --area *area* ] [ --force ] [ --nodeps ]
+    ppm install *module* [ --area *area* ] [ --force ] [ --nodeps ]
+    ppm install *file*.ppmx [ --area *area* ] [ --nodeps ]
+    ppm install *file*.ppd [ --area *area* ] [ --nodeps ]
+    ppm install *url* [ --area *area* ] [ --nodeps ]
+    ppm install *num* [ --area *area* ] [ --nodeps ]
+        Install a package and its dependencies.
+
+        The argument to ppm install can be the name of a package, the name
+        of a module provided by the package, the file name or the URL of a
+        PPMX or PPD file, or the associated number for the package returned
+        by the last "ppm search" command.
+
+        If the package or module requested is already installed, PPM
+        installs nothing. The --force option can be used to make PPM install
+        a package even if it's already present. With --force PPM resolves
+        file conflicts during package installation or upgrade by allowing
+        files already installed by other packages to be overwritten and
+        ownership transferred to the new package. This may break the package
+        that originally owned the file.
+
+        By default, new packages are installed in the "site" area, but if
+        the "site" area is read only, and there are user-defined areas set
+        up, the first user-defined area is used as the default instead. Use
+        the --area option to install the package into an alternative
+        location.
+
+        The --nodeps option makes PPM attempt to install the package without
+        resolving any dependencies the package might have.
+
+    ppm list [ *area* ] [ --matching *pattern* ] [ --csv [ *sep* ] ] [
+    --no-header ] [ ---fields fieldlist ]
+        List installed packages. If the *area* argument is not provided,
+        list the content of all install areas.
+
+        The --matching option limits the output to only include packages
+        matching the given *pattern*. See ppm search for *pattern* syntax.
+
+        The --csv option selects CSV (comma-separated values) format for the
+        output. The default field separator can be overridden by the
+        argument following --csv.
+
+        The --no-header option suppress printing of the column headings.
+
+        The --fields argument can be used to select what fields to show. The
+        argument is a comma separated list of the following field names:
+
+        name
+            The package name. This field is always shown, but if specified
+            alone get rid of the decorative box.
+
+        version
+            The version number of the package.
+
+        release_date
+            The release date of the package.
+
+        abstract
+            A one sentence description of the purpose of the package.
+
+        author
+            The package author or maintainer.
+
+        area
+            Where the package is installed.
+
+        files
+            The number of files installed for the package.
+
+        size
+            The combined disk space used for the package.
+
+        ppd_uri
+            The location of the package description file.
+
+    ppm log [ --errors ] [ *minutes* ]
+        Print entries from the log for the last few minutes. By default
+        print log lines for the last minute. With --errors option suppress
+        warnings, trace and debug events.
+
+    ppm query *pattern*
+        Alias for ppm list --matching *pattern*. Provided for PPM version 3
+        compatibility.
+
+    ppm remove [ --area *area* ] [ --force ] *pkg* ...
+        Uninstalls the specified package. If *area* is provided unininstall
+        from the specified area only. With --force uninstall even if there
+        are other packages that depend on features provided by the given
+        package.
+
+    ppm rep ...
+        Alias for ppm repo. Provided for PPM version 3 compatibility.
+
+    ppm repo
+        Alias for ppm repo list.
+
+    ppm repo add *name*
+        Add the named resposity for PPM to fetch packages from. The names
+        recognized are shown by the ppm repo suggest command. Use ppm repo
+        add activestate if you want to restore the default ActiveState repo
+        after deleting it.
+
+    ppm repo add *url* [ *name* ] [ --username *user* [ --password
+    *password* ]
+        Set up a new repository for PPM to fetch packages from.
+
+    ppm repo delete *num*
+        Remove repository number *num*.
+
+    ppm repo describe *num*
+        Show all properties for repository number *num*.
+
+    ppm repo list [ --csv [ *sep* ] ] [ --no-header ]
+        List the repositories that PPM is currently configured to use. Use
+        this to identify which number specifies a particular repository.
+
+        The --csv option selects comma-separated values format for the
+        output. The default field separator can be overridden by the
+        argument following --csv.
+
+        The --no-header option suppress printing of the column headings.
+
+    ppm repo *num*
+        Alias for ppm repo describe *num*.
+
+    ppm repo *num* *cmd*
+        Alias for ppm repo *cmd* *num*.
+
+    ppm repo off *num*
+        Disable repository number *num* for ppm install or ppm search.
+
+    ppm repo on *num*
+        Enable repository number *num* if it has been previously disabled
+        with ppm repo off.
+
+    ppm repo rename *num* *name*
+        Change name by which the given repo is known.
+
+    ppm repo location *num* *url*
+        Change the location of the given repo. This will make PPM forget all
+        cached data from the old repository and try to refetch it from the
+        new location.
+
+    ppm repo search ...
+        Alias for ppm seach.
+
+    ppm repo suggest
+        List some known repositories that can be added with ppm add. The
+        list only include repositories that are usable by this perl
+        installation.
+
+    ppm repo sync [ --force ] [ --max-ppd *max* ] [ *num* ]
+        Synchronize local cache of packages found in the enabled
+        repositories. With the --force option, download state from remote
+        repositories even if the local state has not expired yet. If *num*
+        is provided, only sync the given repository.
+
+        PPM will need to download every PPD file for repositories that don't
+        provide a summary file (package.xml). This can be very slow for
+        large repositories. Thus PPM refuses to start the downloads with
+        repositores linking to more that 100 PPD files unless the --max-ppd
+        option provides a higher limit.
+
+    ppm search *pattern*
+        Search for packages matching *pattern* in all enabled repositories.
+
+        For *pattern*, use the wildcard "*" to match any number of
+        characters and the wildcard "?" to match a single character. For
+        example, to find packages starting with the string "List" search for
+        "list*". Searches are case insensitive.
+
+        If *pattern* contains "::", PPM will search for packages that
+        provide modules matching the pattern.
+
+        If *pattern* matches the name of a package exactly
+        (case-sensitively), only that package is shown. A *pattern* without
+        wildcards that does not match any package names exactly is used for
+        a substring search against available package names (i.e. treated the
+        same as "**pattern**").
+
+        The output format depends on how many packages match. If there is
+        only one match, the ppm describe format is used. If only a few
+        packages match, limited information is displayed. If many packages
+        match, only the package names and version numbers are displayed, one
+        per line.
+
+        The number prefixing each entry in search output can be used to look
+        up full information with ppm describe *num*, dependencies with ppm
+        tree *num* or to install the package with ppm install *num*.
+
+    ppm tree *package*
+    ppm tree *num*
+        Shows all the dependencies (recusively) for a particular package.
+        The package can be identified by a package name or the associated
+        number for the package returned by the last "ppm search" command.
+
+    ppm uninstall ...
+        Alias for ppm remove.
+
+    ppm update ...
+        Alias for ppm upgrade.
+
+    ppm upgrade [ --install ]
+        List packages that there are upgrades available for. With --install
+        option install the upgrades as well.
+
+    ppm upgrade *pkg*
+    ppm upgrade *module*
+        Upgrades the specified package or module if an upgrade is available
+        in one of the currently enabled repositories.
+
+    ppm verify [ *pkg* ]
+        Checks that the installed files are still present and unmodified. If
+        the package name is given, only that packages is verified.
+
+    ppm version
+        Will print the version of PPM and a copyright notice.
+
+FILES
+    The following lists files and directories that PPM uses and creates:
+
+    $HOME/.ActivePerl/$VERSION/
+        Directory where PPM keeps its state. On Windows this directory is
+        $LOCAL_APPDATA/ActiveState/ActivePerl/$VERSION. The $VERSION is a
+        string like "818".
+
+    $HOME/.ActivePerl/$VERSION/ppm-$ARCH.db
+        SQLite database where ppm keeps its configuration and caches meta
+        information about the content of the enabled repositories.
+
+    $HOME/ppm4.log
+        Log file created to record actions that PPM takes. On Windows this
+        is logged to $TEMPDIR/ppm4.log.
+
+    $PREFIX/etc/ppm-$NAME-area.db
+        SQLite database where PPM tracks packages installed in the install
+        area under $PREFIX.
+
+    $TEMPDIR/ppm-XXXXXX/
+        Temporary directories used during install. Packages to be installed
+        are unpacked here.
+
+    *.ppmx
+        These files contains a single package that can be installed by PPM.
+        They are compressed tarballs containing the PPD file for the package
+        and the blib tree to be installed.
+
+    *.ppd
+        XML files containing meta information about packages. Each package
+        has its own .ppd file. See ActivePerl::PPM::PPD for additional
+        information.
+
+    package.xml
+        Meta information about repositories. When a repository is added, PPM
+        looks for this file and if present, monitors it too stay in sync
+        with the state of the repository.
+
+    package.lst
+        Same as package.xml but PPM 3 compatible. PPM will use this file if
+        package.xml is not available.
+
+ENVIRONMENT
+    The following environment variables affect how PPM behaves:
+
+    "ACTIVEPERL_PPM_DEBUG"
+        If set to a TRUE value, makes PPM print more internal diagnostics.
+
+    "ACTIVEPERL_PPM_BOX_CHARS"
+        Select what kind of box drawing characters to use for the "ppm *
+        list" outputs. Valid values are "ascii", "dos" and "unicode". The
+        default varies.
+
+    "ACTIVEPERL_PPM_HOME"
+        If set, use this directory to store state and configuration
+        information for PPM. This defaults to
+        $LOCAL_APPDATA/ActiveState/ActivePerl/$VERSION on Windows and
+        $HOME/.ActivePerl/$VERSION/ on Unix systems.
+
+    "ACTIVEPERL_PPM_LOG_CONS"
+        If set to a TRUE value, make PPM print any log output to the console
+        as well.
+
+    "DBI_TRACE"
+        PPM uses DBI to access the internal SQLite databases. Setting
+        DBI_TRACE allow you to see what queries are performed. Output goes
+        to STDERR. See DBI for further details.
+
+WHAT'S NEW IN VERSION 4
+    PPM version 4 is a complete rewrite. The main changes since PPM version
+    3 are:
+
+    *   The command line shell has been replaced with a graphical user
+        interface.
+
+    *   Support for *.ppmx files (since PPM version 4.3)
+
+    *   PPM can now manage different installation areas.
+
+    *   No more 'precious' packages. PPM can upgrade itself as well other
+        bundled and core modules.
+
+    *   Installation of packages and their dependencies happen as atomic
+        transactions.
+
+    *   PPM tracks what files it has installed and can notice if files have
+        been modified or deleted. The command 'ppm verify' will report on
+        mismatches.
+
+    *   State is kept in local SQLite databases. All repository state is
+        kept local which makes searching much faster.
+
+    *   PPM will pick up and manage packages installed by other means (e.g.
+        manually or with the CPAN shell).
+
+    *   No more SOAP.
+
+    *   Underlying modules moved to the "ActivePerl::PPM::" namespace.
+
+SEE ALSO
+    activeperl
+
+    <http://search.cpan.org/dist/PPM-Repositories/>
+
+COPYRIGHT
+    Copyright (C) 2007 ActiveState Software Inc. All rights reserved.
+
+

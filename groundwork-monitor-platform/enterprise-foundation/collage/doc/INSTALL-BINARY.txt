@@ -1,0 +1,202 @@
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2006  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+last update: September 5, 2006
+Install instructions for Foundation the ultimate data integration framework.
+
+Table of Contents
+=================
+1 Current Version
+2 Introduction
+3 Prerequisites
+4 Installing Foundation 1.5
+4.1 Configuring the servlet container
+4.2 Configuring the database
+4.3 Starting foundation
+5 Test Application / UI access
+6 Configuring Foundation for an existing Nagios 1.2 install
+7 Configuring Foundation for an existing Nagios 2.0 install
+8 Run the Foundation listener and the Nagios feeder
+9 Configuring Foundation Nagios feeder with Nagios running on a different server
+10 Questions & suggestions
+
+1 Current Version
+===============
+GroundWork Foundation 1.5 Release
+
+downloadable for sourceforge: http://sourceforge.net/projects/gwfoundation
+
+2 Introduction
+============
+The following document describes how to install and configure the binary
+distribution of Foundation for a existing Nagios install.
+
+3 Prerequisites:
+============
+JAVA
+    Java SDK 5.0 (jdk-1.5)needs to be installed and configured.
+    Downloads
+        JDK 5.0:         http://java.sun.com/j2se/1.5.0/download.jsp
+
+MySQL
+    MySQL 5.0.x
+    
+    Downloads:
+        MySQL 5.0: http://dev.mysql.com/downloads/mysql/5.0.html
+
+4 Installing Foundation 1.5
+==============================
+
+Foundation is now packaged as a web application running inside a servlet container. The binary
+distribution (Foundation-1.5-full.tar.gz) includes Jetty (http://www.mortbay.org/) as the preferred
+Servlet container.
+
+If you have already a web container (Jetty/Tomcat) or if you have installed the previous full distribution
+you can just download the updated war files for Foundation, Birt and the report server (Foundation-1.5-webapps.tar.gz) 
+
+The distribution includes as well a report viewer (Eclipse Birt), the Foundation WebService API
+and Foundation Admin Frontend.
+
+Untar foundation-1.5-full.tar.gz into a directory of your choice.
+The file includes the following sub-directories:
+foundation
+foundation/container
+foundation/eclipse
+foundation/database
+foundation/feeder
+
+4.1 Updating the web appllications (war files)
+==============================================
+The following sections describes how  to upgrade an existing Foundation installation. It assumes
+that Jetty is used as the preferred servlet container. Any examples for command are for Jetty but 
+could easaly replaced with commands for Tomcat.
+
+Untar Foundation-1.5-webapps.tar.gz into a directory of your choice. The tar includes the following webapplications:
+webapps/birt.war
+webapps/foundation-reportserver.war
+webapps/foundation-webapp.war
+
+These files need to be copied into Jetty's webapps folder
+Steps:
+Stop the servlet container foundation/container/stop-foundation.sh
+
+4.1 Configuring the servlet container
+=====================================
+By default the servlet container listens on port 8080. If you have already an application
+running using this port you have to edit the Jetty config file which can be found in
+
+	foundation/container/etc/foundation.xml
+	           
+
+4.2 Configuring the database
+==========================
+In the subdirectory foundation database are all scripts for creating the initial
+database.
+
+Step into the directory and run the scripts in the following order:
+
+mysql -uroot mysql < create-production-db.sql
+mysql -uroot GWCollageDB < GWCollageDB.sql
+mysql -uroot GWCollageDB < GWCollage-Version.sql
+mysql -uroot GWCollageDB < GWCollage-Console.sql
+mysql -uroot GWCollageDB < GWCollage-State.sql
+mysql -uroot GWCollageDB < GWCollage-Metadata.sql
+mysql -uroot GWCollageDB < nagios-properties.sql
+mysql -uroot GWCollageDB < system-properties.sql
+mysql -uroot GWCollageDB < snmp-properties.sql
+
+Note:
+If you decide to use different credential for the database user (create-production-db.sql)
+make sure that the config file in foundation/container/config/db.properties is updated
+
+The entries should look like the following:
+
+#Collage Datasource
+connection.driver_class=com.mysql.jdbc.Driver
+collage.url=jdbc:mysql://localhost/GWCollageDB
+collage.username=collage
+collage.password=gwrk
+
+4.3 Starting Foundation
+=======================
+
+Once the database is populated you can launch the application as following:
+
+Step into foundation/container
+./start-foundation.sh &
+
+To stop the container just invoke
+./stop-foundation.sh
+
+
+5 Test Application / UI access
+==============================
+To check if the application is running just go to:
+
+http://localhost:8080/foundation-webapp
+
+This should bring up the overview page
+
+For any trouble shooting check the log file in foundation/container/logs
+
+6 Configuring Foundation for an existing Nagios 1.2 install
+=========================================================
+Adjust the path to the Nagios Status (status.log) file:
+    Edit foundation/feeder/nagiso2collage_socket.pl and adjust the path. In
+    the same file set the variable my $nagios_version to 1
+
+Adjust the path to the Nagios event (nagios.log) files:
+Edit ./foundation/feeder/nagiso2collage_event.pl and adjust the path
+
+
+7 Configuring Foundation for an existing Nagios 2.0 install
+=========================================================
+Adjust the path to the Nagios Status (status.dat) file:
+Edit foundation/feeder/nagios2collage_socket.pl and adjust the path
+
+Adjust the path to the Nagios event (nagios.log) files:
+Edit foundation/feeder/nagios2collage_event.pl and adjust the path
+
+8 Run the Nagios feeders
+=================================================
+
+Once the feeder scripts have been updated make sure that the foundation
+webapp is running (step 4.3) and then start the feeders from the foundation/feeder directory:
+
+> ./nagios2collage_socket.pl &
+> ./nagios2collage_event.pl &
+
+9 Configuring Foundation Nagios feeder with Nagios running on a different server
+==============================================================================
+If Nagios is installed on a different server than Foundation the following steps are necessary
+to configure the feeders:
+    Copy the feeder scripts onto the server where nagios is running
+    In addition to the above steps to set the version and the path you need to specify
+    the server where Foundation is running by setting the variable my $thisnagios
+    in both scripts.
+
+	make sure the Foundation application is running (Step 4.3) 
+   
+    before the feeder scripts are started on the server with nagios
+    > ./nagios2collage_socket.pl &
+	> ./nagios2collage_event.pl &
+    
+10 Questions & suggestions
+==========================
+Please use the Projects mailing list gwfoundation-devel@lists.sourceforge.net
+for comments/suggestions regarding Foundation.
+

@@ -1,0 +1,121 @@
+<!--
+Copyright 2008 GroundWork Open Source, Inc. ("GroundWork")
+All rights reserved. This program is free software; you can redistribute it
+and/or modify it under the terms of the GNU General Public License version 2
+as published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.Â  See the GNU General Public License for
+more details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<!--
+	Top level build script for GroundWork OpenSource
+
+	Make sure that the build/prepare.sh run before invoking this build script
+-->
+
+<project default="allBuild"
+		 xmlns:j="jelly:core"
+		 xmlns:maven="jelly:maven"
+		 xmlns:ant="jelly:ant">
+
+	<goal name='build'
+		description="Builds all components for Groundwork Bookshelf">
+
+		<attainGoal name="bookshelf.build" />
+		<attainGoal name="data-build.build" />
+	</goal>
+
+	<goal name='deploy'
+		description="Moves all components packages for Groundwork Bookshelf into the deplyoment folders">
+
+		<attainGoal name="bookshelf.deploy" />
+		<attainGoal name="data-build.deploy" />
+	</goal>
+
+	<goal name='allBuild'
+		description="Moves all components packages for Groundwork Bookshelf into the deplyoment folders">
+	
+		<attainGoal name="build" />
+	</goal>
+
+	<goal name='allDeploy'
+		description="Moves all components packages for Groundwork Bookshelf into the deplyoment folders">
+
+		<attainGoal name="deploy" />
+	</goal>
+
+	<goal name="allClean"
+		description="Clean the master project and all subprojects">
+		
+		<attainGoal name="subClean"/>
+		<attainGoal name="clean"/>
+	</goal>
+
+	<goal name="subClean"
+		description="Clean all subprojects">
+		
+		<maven:reactor
+		basedir="${basedir}"
+		includes="boolshelf/project.xml"
+		goals="allClean"
+		banner="Cleaning"
+		ignoreFailures="false"/>
+	</goal>
+
+	<!--
+	Build individual components of the Groundwork Bookshelf
+
+	Add a goal for any new component
+	-->
+
+	<goal name="bookshelf.build"
+		description="Build Bookshelf">
+
+		<maven:reactor
+		basedir="${basedir}/bookshelf"
+		includes="project.xml"
+		goals="allBuild"
+		postProcessing="false"
+		ignoreFailures="false"/>
+	</goal>
+
+	<goal name="bookshelf.deploy"
+		description="Deploy Bookshelf">
+
+		<maven:reactor
+		basedir="${basedir}/bookshelf"
+		includes="project.xml"
+		goals="allDeploy"
+		postProcessing="false"
+		ignoreFailures="false"/>
+	</goal>
+	
+	<goal name="data-build.build"
+		description="Build Bookshelf-data-build">
+
+		<maven:reactor
+		basedir="${basedir}/data-build"
+		includes="project.xml"
+		goals="allBuild"
+		postProcessing="false"
+		ignoreFailures="false"/>
+	</goal>
+
+	<goal name="data-build.deploy"
+		description="Deploy Bookshelf-data-build">
+
+		<maven:reactor
+		basedir="${basedir}/data-build"
+		includes="project.xml"
+		goals="allDeploy"
+		postProcessing="false"
+		ignoreFailures="false"/>
+	</goal>
+	
+</project>

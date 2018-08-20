@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+-->
+<plugin>
+   <extension
+         id="%oda.data.source.id"
+         point="org.eclipse.datatools.connectivity.oda.dataSource">
+      <dataSource
+            driverClass="org.groundwork.report.birt.data.oda.ws.impl.Driver"
+            defaultDisplayName="%data.source.name"
+            setThreadContextClassLoader="true"
+            odaVersion="3.1"
+            id="%oda.data.source.id">
+         <properties>
+            <property
+                  name="GW_SERVER_URL"
+                  allowsEmptyValueAsNull="true"
+                  defaultDisplayName="GroundWork Server URL"
+                  type="string"
+                  isEncryptable="false"
+                  defaultValue="http://localhost:8080"
+                  canInherit="true">
+            </property>         
+         </properties>
+      </dataSource>
+      <dataSet
+            defaultDisplayName="%data.set.name"
+            id="org.groundwork.report.birt.data.oda.ws.dataSet">
+         <dataTypeMapping
+               nativeDataTypeCode="1"
+               odaScalarDataType="String"
+               nativeDataType="String">
+         </dataTypeMapping>
+         <dataTypeMapping
+               nativeDataTypeCode="2"
+               odaScalarDataType="Integer"
+               nativeDataType="Integer">
+         </dataTypeMapping>
+         <dataTypeMapping
+               nativeDataTypeCode="3"
+               odaScalarDataType="Double"
+               nativeDataType="Double">
+         </dataTypeMapping>
+         <dataTypeMapping
+               nativeDataTypeCode="5"
+               odaScalarDataType="Integer"
+               nativeDataType="Boolean">
+         </dataTypeMapping>
+         <dataTypeMapping
+               nativeDataTypeCode="6"
+               odaScalarDataType="Timestamp"
+               nativeDataType="Timestamp">
+         </dataTypeMapping>
+         <dataTypeMapping               
+               nativeDataTypeCode="7"
+               odaScalarDataType="Decimal"
+               nativeDataType="Long">
+		</dataTypeMapping>               
+      </dataSet>
+   </extension>
+   <extension
+         point="org.eclipse.datatools.connectivity.connectionProfile">
+      <category
+            name="%data.source.name"
+            parentCategory="org.eclipse.datatools.connectivity.oda.profileCategory"
+            id="%oda.data.source.id">
+      </category>
+      <connectionProfile
+            pingFactory="org.eclipse.datatools.connectivity.oda.profile.OdaConnectionFactory"
+            name="%connection.profile.name"
+            category="%oda.data.source.id"
+            id="%oda.data.source.id">
+      </connectionProfile>
+      <connectionFactory
+            name="ODA Connection Factory"
+            profile="%oda.data.source.id"
+            class="org.eclipse.datatools.connectivity.oda.profile.OdaConnectionFactory"
+            id="org.eclipse.datatools.connectivity.oda.IConnection">
+      </connectionFactory>
+   </extension>
+
+</plugin>

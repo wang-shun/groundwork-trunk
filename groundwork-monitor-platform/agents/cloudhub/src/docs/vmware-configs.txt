@@ -1,0 +1,79 @@
+TODO provide examples of each
+---------------------
+Groundwork Functions - namespaced with GW:
+---------------------
+// use format functions to round KB, MB, GB
+GW:KB                                           double      converts byte value to Kilobyte value
+GW:MB                                           double      converts byte value to Megabyte value
+GW:GB                                           double      converts byte value to Gigabyte value
+GW:TB                                           double      converts byte value to Terabyte value
+
+GW:scalePercentageUsed                          Get docs from Java doc
+GW:scalePercentageUnused                        ""
+GW:percentageUsed                               ""
+GW:percentageUnused                             ""
+GW:divideToPercentage                           ""
+GW:toPercentage                                 ""
+
+---------------------
+Math Functions - namespaced with Math:
+---------------------
+Math:min                                        2 numbers  given 2 numbers, returns the minimum value
+Math:max                                        2 number   given 2 numbers, returns the maximum value
+Math:abs                                        number     returns the absolute value of any number
+TODO: document all Math functions
+
+-----------------
+Hosts
+-----------------
+summary.quickStats.overallCpuUsage              metric      MHz - Aggregated CPU usage across all cores on the host in MHz.
+summary.quickStats.overallMemoryUsage           metric      MB - Physical memory usage on the host in MB
+summary.quickStats.uptime                       config      seconds  - The system uptime of the host in seconds.
+syn.host.cpu.used                               synthetic   percentage(integer) - summary.quickStats.overallCpuUsage over summary.quickStats.overallCpuUsage
+syn.host.mem.used                               synthetic   percentage(integer) - summary.quickStats.overallMemoryUsage over summary.hardware.memorySize
+
+The speed of the CPU cores. This is an average value if there are multiple speeds
+-----------------
+Virtual Machines
+-----------------
+summary.quickStats.balloonedMemory              metric       MB - sparse, 2 VMs ad.demo.com 1227, linuxgdma 2473
+summary.quickStats.compressedMemory             metric       KB - sparse, ad.demo.com 175680, qa-testsuite3 qa-testsuite3
+summary.quickStats.consumedOverheadMemory       metric       MB - not sparse, ex D-Exchange-2010 119
+summary.quickStats.guestMemoryUsage             metric       MB - more than half, eng-rh6-dev1 573
+summary.quickStats.hostMemoryUsage              metric       MB - lots, gw-logstash-02 16302, eng-rh6-dev1 8010
+summary.quickStats.overallCpuDemand             metric       MHz - lots, only running, maloja 2486
+summary.quickStats.overallCpuUsage              metric       MHz - lots, only running maloja 90 (syn candidate: usage / demand = percent cpu granted
+summary.quickStats.privateMemory                metric       MB - maloja 2011
+summary.quickStats.sharedMemory                 metric       MB - maloja 1, exchange-2007 6325
+summary.quickStats.ssdSwappedMemory             metric toxic KB - all zeros
+summary.quickStats.swappedMemory                metric       MB - sparse, linuxgdma 511, ad.demo.com 151
+summary.quickStats.uptimeSeconds                metric       seconds - eng-rh6-dev1  28207844
+
+summary.runtime.bootTime                        config       timestamp for up vms 2016-10-24T22:03:10.894685Z
+summary.runtime.connectionState                 config       all CONNECTED except qa-cent6-64-2 INACCESSIBLE
+summary.runtime.memoryOverhead                  ?            BYTES, deprecated, consider deprecating
+summary.runtime.powerState                      config       POWERED_ON or POWERED_OFF
+
+summary.storage.committed                       metric
+summary.storage.uncommitted                     metric
+
+syn.vm.mem.balloonToConfigMemSize.used          syn           ad.demo.com 60%
+syn.vm.mem.compressedToConfigMemSize.used       syn           ad.demo.com 100%
+syn.vm.mem.sharedToConfigMemSize.used           syn
+syn.vm.mem.swappedToConfigMemSize.used          syn
+syn.vm.mem.guestToConfigMemSize.used            syn
+syn.vm.cpu.cpuToMax.used                        syn
+
+snapshots.count                                 calc metric
+snapshots.childCount                            calc metric
+snapshots.rootCount                             calc metric
+snapshots.oldestInDays                          calc metric
+
+        new BaseQuery("summary.runtime.bootTime", 0, 0, false, false), //crit
+        new BaseQuery("summary.runtime.connectionState", 0, 0, false, false),
+        new BaseQuery("summary.runtime.host", 0, 0, false, false), //crit
+        new BaseQuery("summary.runtime.memoryOverhead", 0, 0, true, false),
+        new BaseQuery("summary.runtime.maxCpuUsage", 0, 0, true, false),
+        new BaseQuery("summary.runtime.maxMemoryUsage", 0, 0, true, false),
+        new BaseQuery("summary.runtime.powerState", 0, 0, false, false),
+

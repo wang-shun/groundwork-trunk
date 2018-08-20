@@ -1,0 +1,47 @@
+<div class="modal-header" gwp-sliding-dialog>
+    <button type="button" class="close" aria-hidden="true" ng-click="close()">&times;</button>
+    <h4 class="modal-title" ng-show="!hostIdentity.hostIdentityId">New Host Identity<span ng-show="hostIdentity.hostName.length">: {{hostIdentity.hostName}}</span></h4>
+    <h4 class="modal-title" ng-show="hostIdentity.hostIdentityId">Host Identity Detail: <span>{{hostIdentity.hostName}}</span></h4>
+</div>
+<form name="hostIdentityForm" role="form" novalidate class="form-horizontal css-form">
+    <div class="modal-body">
+        <div class="form-group">
+            <label for="host-name" class="col-sm-2 control-label">Host Name</label>
+            <div class="col-md-10 col-sm-10">
+                <input type="text" name="hostname" id="host-name" class="form-control" placeholder="new-host-name" ng-disabled="hostIdentity.hostIdentityId"
+                       ng-model="hostIdentity.hostName" ng-class="{error: hostIdentityForm.hostname.$invalid}"
+                       typeahead="name for name in getHostNames($viewValue)" typeahead-wait-ms="400" gwp-autofocus gwp-no-spaces gwp-host-name />
+                <span ng-if="hostIdentityForm.hostname.$dirty && hostIdentityForm.hostname.$invalid" class="error-message">Invalid host name. Please reenter.</span>
+                <span ng-if="!hostIdentityForm.hostname.$dirty || !hostIdentityForm.hostname.$invalid" id="helpBlock" class="help-block">Enter full host name.</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="alias" class="col-sm-2 control-label">Aliases</label>
+            <div class="col-md-10 col-sm-10">
+                <div class="margin-bottom10 no-padding" ng-repeat="hn in hostIdentity.hostNames track by $index">
+                    <ng-form name="hostIdentityAliasForm">
+                        <div class="input-group" style="display:flex;flex-direction:row">
+                            <input type="text" name="alias" id="alias" class="form-control" style="flex:1" ng-model="hostIdentity.hostNames[$index]"
+                                   ng-class="{error: hostIdentityAliasForm.alias.$invalid}" gwp-no-spaces gwp-host-name />
+                            <button class="btn btn-danger" type="button" ng-show="!hostIdentity.hostName || hostIdentity.hostNames[$index] != hostIdentity.hostName"
+                                    ng-click="removeAlias($index)">-</button>
+                        </div>
+                        <span ng-if="hostIdentityAliasForm.alias.$dirty && hostIdentityAliasForm.alias.$invalid" class="error-message">Invalid alias host name. Please reenter.</span>
+                    </ng-form>
+                </div>
+                <button class="btn btn-default" type="button" ng-click="addAlias()">+</button>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-md-10 col-sm-10 padding-left0">
+                <alert ng-repeat="alert in alerts" type="alert.type" close="closeAlert($index)"><strong>{{alert.msg}}</strong></alert>
+            </div>
+            <br />
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-default" ng-click="close()">Cancel</button>
+        <input type="submit" class="btn btn-primary" ng-click="add()" ng-disabled="hostIdentityForm.$invalid" ng-show="!hostIdentity.hostIdentityId" value="Add"></input>
+        <input type="submit" class="btn btn-primary" ng-click="add()" ng-disabled="hostIdentityForm.$invalid" ng-show="hostIdentity.hostIdentityId" value="Update"></input>
+    </div>
+</form>

@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# make_aggregate_plugin_porting_patches
+#
+# Script to create a patch tarball for the Cacti "aggregate" plugin
+# to allow operation under PostgreSQL in addition to MySQL.
+#
+# Copyright (c) 2016 GroundWork, Inc.  All rights reserved.
+
+# The generated patch file is to be used as follows:
+#     cd {wherever}/cacti-0.8.7g  # Or whatever release you want to patch.
+#     patch -b -V simple -z .old -p0 < /tmp/aggregate-0.75-patch-for-postgres9
+
+# The diff commands below work to create the patches we need because,
+# during the porting effort, we left behind copies of all the original
+# files we had to change to move to PostgreSQL.
+#
+# Note:  The patch(1) man page says in part:
+#
+#     Avoid sending patches that compare backup file names like
+#     README.orig, since this might confuse patch into patching a backup
+#     file instead of the real file. Instead, send patches that compare 
+#     the same base file names in different directories, e.g. old/README
+#     and new/README.
+#
+# We haven't followed that advice here, because we are deriving our
+# patches from the files we left behind in our porting.  Oh well, live
+# and learn.
+
+all_aggregate_patches=aggregate-0.75-patch-for-postgres9
+
+(
+    # Where we have Cacti installed.
+    cd /usr/local/groundwork;
+
+    # Create a patch for the aggregate plugin. 
+    (
+    cd cacti/htdocs;
+    diff -u plugins/aggregate/aggregate.php.orig			plugins/aggregate/aggregate.php;
+    diff -u plugins/aggregate/aggregate_functions.php.orig		plugins/aggregate/aggregate_functions.php;
+    diff -u plugins/aggregate/color_templates.php.orig		plugins/aggregate/color_templates.php;
+    diff -u plugins/aggregate/color_templates_items.php.orig	plugins/aggregate/color_templates_items.php;
+    diff -u plugins/aggregate/setup.php.orig			plugins/aggregate/setup.php;
+    ) > /tmp/$all_aggregate_patches;
+)
+
+(
+    tar cfz $all_aggregate_patches.tar.gz -C /tmp $all_aggregate_patches;
+    rm /tmp/$all_aggregate_patches;
+)
+

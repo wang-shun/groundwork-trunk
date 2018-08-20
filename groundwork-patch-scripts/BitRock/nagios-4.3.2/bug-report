@@ -1,0 +1,37 @@
+[This has not yet been reported upstream, given that it's unclear whether
+this fix has already been adopted.  It kind of looks like it has, but the
+currently exposed Nagios full-file code does not reflect that.  This does
+not actually affect the GroundWork build, because we comment out the calls
+to logit() in our build.]
+
+The following relates to the Nagio 4.3.2 code and its line numbering.
+
+In the Nagios 4.3.2 release, an attempt was made to fix some
+option-deprecation notices in the xdata/xodtemplate.c file, per the forum
+report at https://support.nagios.com/forum/viewtopic.php?f=34&t=42888 .
+
+However, while the [icode]strcmp()[/icode] calls were changed, the warning text in the
+accompanying [icode]logit()[/icode] calls was left as-is.  This means that the 4.3.2
+code is now checking for [icode]retry_check_interval[/icode] and if found, warning
+against the use of [icode]normal_retry_interval[/icode] instead.  This occurs in two
+places in this file:
+
+[code]
+2400  else if(!strcmp(variable, "retry_interval") || !strcmp(variable, "retry_check_interval")) {
+2401      if(!strcmp(variable, "retry_check_interval"))
+2402          logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: The normal_retry_interval attribute is deprecated and will be removed in future versions. Please use retry_interval instead.\n");
+
+2859  else if(!strcmp(variable, "retry_interval") || !strcmp(variable, "retry_check_interval")) {
+2860      if(!strcmp(variable, "retry_check_interval"))
+2861          logit(NSLOG_CONFIG_WARNING, TRUE, "WARNING: The normal_retry_interval attribute is deprecated and will be removed in future versions. Please use retry_interval instead.\n");
+[/code]
+
+The code currently exposed on github:
+
+https://github.com/NagiosEnterprises/nagioscore/blob/master/xdata/xodtemplate.c
+
+still contains these errors.  See
+https://github.com/NagiosEnterprises/nagioscore/issues/345 and
+https://github.com/NagiosEnterprises/nagioscore/pull/380 and
+https://github.com/NagiosEnterprises/nagioscore/pull/380/commits/456247cbd466d857ffda82a54f3688d1fed5c714
+for more information.

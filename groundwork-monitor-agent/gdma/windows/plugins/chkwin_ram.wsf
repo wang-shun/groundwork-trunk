@@ -1,0 +1,104 @@
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' "chkwin_ram.wsf"
+' nagios@samurai.inka.de
+'
+' 02.06.2003 ver 0.1
+' WMI query works but is far away from the way I wan't it
+' 
+' 04.06.2003 ver 1.1
+' Minor help bugfixes
+'
+' 17.07.2003 ver 1.2
+' Renaming script to chkwin_XXXXX.wsh
+' Changed the script so it doesn't use "WbemScripting.SWbemRefresher" anymore
+'   (Did only run on XP/2003 Server)
+'
+' --------------------------------------------------------------
+' This plugin will return amount of free physical memory
+'
+' ToDo
+' ====
+' Give you the choice to enter the watermarks as MB or %
+'
+
+<job>
+<runtime>
+  <description>
+check_cputime (nrpe_nt-plugin) 1.1
+The nagios plugins come with ABSOLUTELY NO WARRANTY. You may redistribute
+copies of the plugins under the terms of the GNU General Public License.
+For more information about these matters, see the file named COPYING.
+Copyright (c) 1999-2001 Ethan Galstad/Hagen Deike (nagios@samurai.inka.de)
+
+This plugin will return amount of free physical memory.
+  </description>
+  <named
+    name="h"
+    helpstring="Help"
+    type="simple"
+    required="false" 
+  />
+  <named
+    name="w"
+    helpstring="Warning watermark. Must be higher that critical"
+    type="string"
+    required="true"
+  />
+  <named
+    name="c"
+    helpstring="Critical watermark. Must be lower that warning"
+    type="string"
+    required="true"
+  />
+  <example>
+Example: check_ram.wsf /w:30 /c:10
+  </example>
+</runtime>
+<script language="VBScript">
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Const's and Var's
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'Cons for return val's
+Const intOK = 0
+Const intWarning = 1
+Const intCritical = 2
+Const intUnknown = 3
+
+' Cons for FSO
+Const ForReading = 1
+Const ForWriting = 2
+
+intMemorySum = 0
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Help
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+  If Wscript.Arguments.Named.Exists("h") Or Not Wscript.Arguments.Named.Exists("w") Or Not Wscript.Arguments.Named.Exists("c") Or CLng(Wscript.Arguments.Named("w")) <= CLng(Wscript.Arguments.Named("c")) Then
+	Wscript.Echo "Plugin help screen:"
+      Wscript.Arguments.ShowUsage()
+      Wscript.Quit(intUnknown)
+  End If
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Main
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Set objWMIService = GetObject("winmgmts:/root/cimv2")
+Set objMemory = objWMIService.ExecQuery("Select * from Win32_PerfRawData_PerfOS_Memory",,48)
+
+For Each objAvailableBytes In objMemory
+	intMemorySum = intMemorySum + objAvailableBytes.AvailableMBytes
+Next
+
+If CLng(intMemorySum) <= CLng(Wscript.Arguments.Named("c")) Then
+	Wscript.Echo "Physical memory is CRITICAL low ("& intMemorySum &" MB)"
+	Wscript.Quit(intCritical)
+Elseif CLng(intMemorySum) <= CLng(Wscript.Arguments.Named("w")) Then
+	Wscript.Echo "Physical memory is running low ("& intMemorySum &" MB)"
+	Wscript.Quit(intWarning)
+End If
+	Wscript.Echo "Physical memory is OK ("& intMemorySum &" MB)"
+	Wscript.Quit(intOK)
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+</script>
+</job>

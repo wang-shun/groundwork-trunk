@@ -1,0 +1,1160 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:bookshelf="http://guava.sf.net/bookshelf/">
+  <head>
+<title>Monarch Administrator Guide 2.0</title>
+<link rel="stylesheet" type="text/css" href="/monarch/groundwork.css"/>
+  </head>
+  <body>
+<!-- Start Main table-->
+<table class="main" border="0" cellpadding="1" cellspacing="0">
+  <tbody>
+  <tr>
+
+    <td valign="top"><h1 class="chapter"><img src="/monarch/doc/images/square.gif" border="0" alt="Square" /> GROUNDWORK MONITOR ARCHITECT<font color="#fa840f"><i> (MONARCH)</i></font> Administrator Guide 2.0</h1>
+    <h4>Copyright 2006 GroundWork <i>Open Source</i>, Inc. ("GroundWork").<br />
+    All rights reserved. Use is subject to GroundWork commercial license.</h4>
+    </td>
+  </tr>
+ <tr>
+    <td class="bookshelf_textBg"><p>This section covers the overall configuration process for GroundWork Monitor <i>Open Source</i>. GroundWork bases this software on Nagios&#174;, an open source network-management application, and enables you to more easily and rapidly set-up and maintain your IT system by allowing you to configure it through the Configuration web-based interface rather than having to manually edit actual configuration files. Configuration is the first step in working with GroundWork Monitor <i>Open Source</i>. This section will detail configuration of the monitoring environment.</p>
+    <h5>Section Contents</h5>
+    <ul class="level01">
+
+      <li><a href="#section5chapter1">Chapter 1 Configuration Overview</a></li>
+      <li><a href="#section5chapter1.5">Chapter 2 Security: Users and User Groups</a></li>
+	  <li><a href="#section5chapter2">Chapter 3 Configuration EZ - Getting Started</a></li>
+      <li><a href="#section5chapter3">Chapter 4 Advanced Configuration - Configuring Services</a></li>
+      <li><a href="#section5chapter4">Chapter 5 Advanced Configuration - Configuring Profiles</a></li>
+      <li><a href="#section5chapter5">Chapter 6 Advanced Configuration - Configuring Hosts</a></li>
+      <li><a href="#section5chapter6">Chapter 7 Advanced Configuration - Managing Hosts</a></li>
+      <li><a href="#section5chapter7">Chapter 8 Advanced Configuration - Defining Contacts</a></li>
+      <li><a href="#section5chapter8">Chapter 9 Advanced Configuration - Configuring Escalations</a></li>
+      <li><a href="#section5chapter9">Chapter 10 Advanced Configuration - Defining Commands</a></li>
+      <li><a href="#section5chapter10">Chapter 11 Advanced Configuration - Defining Time Periods</a></li>
+      <li><a href="#section5chapter11">Chapter 12 Advanced Configuration - Defining Groups</a></li>
+      <li><a href="#section5chapter12">Chapter 13 Advanced Configuration - Using the Control Option</a></li>
+      <li><a href="#section5chapter13">Chapter 14 Advanced Configuration - Using the Tools Option</a></li>
+    </ul>
+<!-- Start S5 Chapter 1 -->
+    <a name="section5chapter1"></a><h1 class="chapter"><a href="#section5"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></a> Chapter 1 Configuration Overview</h1>
+<hr />
+    <h5>Chapter Contents</h5>
+    <ul class="level01">
+      <li><a href="#s5chapter1">About Configuration</a>
+
+      <ul class="level02">
+      <li><a href="#s5chapter1_1a">Architectural View of Configuration</a></li>
+      <li><a href="#s5chapter1_1b">Structure of Configuration Concepts</a></li>
+      <li><a href="#s5chapter1_1c">Configuration User Interface</a></li>
+      </ul></li>
+    </ul>
+    <a name="s5chapter1"></a><h1 class="wMargins"><a href="#section5chapter1">About Configuration</a></h1>
+
+    <p>GroundWork's configuration (Configuration or Monarch) application is a full-featured, easy-to-use web based system for use with Nagios&#174;. Configuration consists of a set of tools that allow a user to easily configure and maintain Nagios&#174; or GroundWork Monitor <i>Open Source</i>. Configuration fills a key functionality gap of Nagios&#174;: the required use of a command line text editor to configure by hand the monitoring system for each monitored application, Service, device, etc. GroundWork Monitor Architect (Monarch) is GroundWork's open source version for the same package.</p>
+    <p>Managing your information systems starts with availability and performance measurement. GroundWork Monitor <i>Open Source</i> provides the measurements that are the foundation of good IT management. Using this package to make these measurements is straightforward. For current Nagios&#174; users, Configuration writes and reads Nagios&#174; configuration files, enabling it to easily be integrated into an existing installation. You can simply install the package and import your existing configuration. Experienced Nagios&#174; users can edit the Nagios&#174; configuration files and use Configuration interchangeably. If you are new to Nagios&#174;, you can choose to input your configurations into the web interface under Configuration, create a spreadsheet or delimited text file to import, or configure Nagios&#174; from scratch via text files.</p>
+
+    <p>Beginner and advanced configuration options also provide rapid time-to-value through mass Host import or guided discovery to import Hosts and assign monitoring Profiles. Post-installation, using Configuration, simplifies maintenance of the monitoring system when adds, changes and deletes are made to the IT infrastructure.</p>
+    <a name="s5chapter1_1a"></a><h2>Architectural View of Configuration</h2>
+    <p>Configuration is a set of .cgi scripts written in Perl. When performing a Configuration Load operation all of the Nagios&#174; configuration files get updated in the MySQL monarch database, mirroring the entire configuration in the database. Configuration then operates by manipulating this database. In addition to the Nagios&#174; configuration information there are extra data structures that Configuration uses to add functionality, such as; Host and Service Profiles, Escalation Trees, and Configuration access rights.</p>
+    <p>Once you are finished making modifications, you can execute the Pre Flight Test, equivalent of the Nagios&#174; -v command, to provide options for controlling your production configuration. This will verify the configuration and will write the updated Nagios&#174; configuration files into a Workspace Directory. At this point your current Nagios&#174; configuration has not been affected providing you the opportunity to view and manually manipulate the configuration files.</p>
+
+    <p>Configuration also gives you the capability to commit the files into your production configuration. The Commit command will make a backup of your old configuration in a separate backup directory and copy the updated configuration files back into your production <code class="bookshelfcode">nagios/etc</code> directory. Commit then performs a Nagios&#174; restart, activating the configuration.</p>
+    <h4>Figure 5.1.1a. Architectural View of Configuration</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter1_1a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /><br />
+    <a name="s5chapter1_1b"></a><h2>Structure of Configuration Concepts</h2>
+    <h3>Host and Service Templates</h3>
+
+    <p>Host and Service Templates store common object properties that are used to define multiple Hosts and Services. Templates are used to reduce the number of repetitive entries when defining objects. For example, when defining a new Host you would first create a Host Template with common properties. Then, to define a specific Host, you apply the properties using a Host Template. You would define a new Service in the same way, starting with a Service Template and applying the template to the Service Definition.</p>
+    <h4>Figure 5.1.1b. Host and Service Templates and Definitions</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter1_1b.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+    <h3>Services</h3>
+    <p>A Service in Configuration is a combination of a Service Template and a Service Definition. A Service is generic until it has been applied to a specific Host. A Host, when fully implemented, has a Host Template, a unique Host Definition, and Services.</p>
+    <h4>Figure 5.1.1c. Fully Implemented Host</h4>
+
+    <img src="/monarch/doc/images/OSPadm_s5chapter1_1c.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+    <h3>Service Profiles</h3>
+    <p>A Service Profile is a collection of multiple Services. Configuration uses device-specific profiles that contain both pre-defined and user-definable monitoring parameter settings. Using Profiles, Administrators can quickly configure GroundWork Monitor <i>Open Source</i> to monitor groups of similar devices and benefit from GroundWork's deep expertise in monitoring design recommended practices. Example: You have 50 web servers on which you will want to monitor CPU, memory, disk, http, and apache processes. Instead of creating 50 definitions you would create a Service Definition for each Service CPU, memory, disk, etc. You can then create a Service Profile called <i>Web Monitoring</i> and include all of the Services in the Service Profile. You would then associate this Service Profile with each of the 50 web servers. Configuration does this with a Host Profile.</p>
+    <h4>Figure 5.1.1d. Service Profiles</h4>
+
+    <img src="/monarch/doc/images/OSPadm_s5chapter1_1d.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+    <h3>Host Profiles</h3>
+    <p>Once you have a Service Profile defined you can combine it with a Host Template and create a Host Profile. These Profiles are not associated with a specific Host. Once you have the Host Profile you can apply this combined definition to each of your 50 specific web servers. This concept will allow you to generically define the different roles of the different devices you are monitoring and easily apply them. Once the above steps are complete, if you want to change one of the parameters and apply it to all 50 of your web servers, you can make a change to either the Host Profile, the Service Profile, or in the Service, which will then be applied to all 50 web servers.</p>
+    <h4>Figure 5.1.1e. Host Profiles</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter1_1e.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+    <a name="s5chapter1_1c"></a><h2>Configuration User Interface</h2>
+    <p>When you start the Configuration application you will see the menu items listed in the table below. Here, each menu item is briefly described with specific category options listed in the next row. The menu options are listed in a <i>most likely</i> use of left to right, although it depends on your design and management needs at the time as to what item you will start with.</p>
+
+    <h4>Table 5.1.1a. Menu Items</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+  <tbody>
+  <tr>
+    <td width="15%" class="row1" valign="top">Services</td>
+    <td width="55%" valign="top" >The Services option is used to define and manage Services which run on Hosts or some other type of metric associated with a Host. Service definitions are used in Host and Service Templates, and Profiles. 
+    </td>
+    <td valign="top" >
+    - New Service<br />
+
+    - Clone Service<br />
+    - Search Service<br />
+    - Services<br />
+    - Service Templates<br />
+    - Service Dependencies<br />
+    - Service Extended Info<br />
+
+    - Service Groups</td>
+  </tr>
+  <tr>
+    <td class="row1" valign="top">Profiles</td>
+    <td valign="top" >The Profiles option is used to define, modify, and import Host and Service profiles. Profiles are used aid in the design and management of Hosts and Services.
+    </td>
+    <td valign="top" >
+    - Host Profiles<br />
+
+    - Service Profiles<br />
+    - Profile Importer</td>
+  </tr>
+  <tr>
+    <td class="row1" valign="top">Hosts</td>
+    <td valign="top" >The Hosts option is used to define and manage Hosts, a physical server, workstation, device, etc. that resides on your network. Host definitions are used in Host Groups, and Profiles. 
+    </td>
+    <td valign="top" >
+
+    - Host Wizard<br />
+    - Clone Host<br />
+    - Search Host<br />
+    - Hosts<br />
+    - Host Groups<br />
+    - Parent Child<br />
+
+    - Host Templates<br />
+    - Host Extended Info<br />
+    - Host Dependencies</td>
+  </tr>
+  <tr>
+    <td class="row1" valign="top">Contacts</td>
+    <td valign="top" >The Contacts option is used to define who is to be contacted in the event of a problem on your network. Contact Group definitions group one or more Contacts together for the purpose of sending out alert/recovery Notifications to all Contacts in the Contact Group. Contact definitions are used in Host and Service Templates, Services, Profiles, and Escalations.
+    </td>
+
+    <td valign="top" >
+    - Contacts<br />
+    - Contact Groups<br />
+    - Contact Templates
+    </td>
+  </tr>
+  <tr>
+    <td class="row1" valign="top">Escalations</td>
+
+    <td valign="top" >The Escalations option is used to define Host and Service Escalation Trees. Escalations are used to escalate Contact Notifications for a particular Service, Host, or Host Group. An Escalation Tree is a grouping of multiple Escalations which is then assigned to a Host, Host Profile, Host Group, or a Service to escalate Notifications.
+    </td>
+    <td valign="top" >
+    - Escalations<br />
+    - Escalation Trees
+    </td>
+  </tr>
+  <tr>
+    <td class="row1" valign="top">Commands</td>
+
+    <td valign="top" >The Commands option is used to define commands including Service and Host checks, Service and Host Notifications, Service and Host event handlers. Command definitions are used in Host and Service Templates, and Profiles.
+    </td>
+    <td valign="top" >
+    - New<br />
+    - Copy<br />
+    - Modify<br />
+    </td>
+  </tr>
+
+  <tr>
+    <td class="row1" valign="top">Time Periods</td>
+    <td valign="top" >The Time Periods option is used to define a list of times during various days that are considered to be <i>valid</i> times for Notifications and Service checks. Time Period definitions are used in Host and Service Templates, Profiles, and Contacts.
+    </td>
+    <td valign="top" >
+    - New<br />
+    - Copy<br />
+
+    - Modify
+    </td>
+  </tr>
+  <tr>
+    <td class="row1" valign="top">Groups</td>
+    <td valign="top" >The Groups option is used to split Hosts into different Nagios&#174; configuration files. In their most complex implementation they extend the configuration to Multiple Instances of Nagios&#174;. Groups can also determine Group Macro values applied to Service Checks.</td>
+    <td valign="top" >
+
+    - New<br />
+    - Groups<br />
+    - Macros<br />
+    </td>
+  </tr>
+  <tr>
+    <td class="row1" valign="top">Control</td>
+
+    <td valign="top" >The Control tab includes options used in Configuration administration, setup, and for controlling implementation.
+    </td>
+    <td valign="top" >
+    - Setup<br />
+    - Nagios&#174; CGI Configuration<br />
+    - Nagios&#174; Main Configuration<br />
+
+    - Nagios&#174; Resource Macros<br />
+    - Load<br />
+    - Pre Flight Test<br />
+    - Commit</td>
+  </tr>
+  <tr>
+
+    <td class="row1" valign="top">Tools</td>
+    <td valign="top" >The Tools tab is used to export configuration files.
+    </td>
+    <td valign="top" >
+    - Export<br />
+    - Host Delete Tool<br />
+    - Service Delete Tool
+    </td>
+
+  </tr>
+</tbody>
+</table>
+<!-- Start S5 Chapter 1.5 -->
+    <a name="section5chapter1.5"></a><h1 class="chapter"><a href="#section5"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></a> Chapter 2 Security - Users and User Groups</h1>
+<hr />
+    <h5>Chapter Contents</h5>
+      <ul class="level01">
+        <li><a href="#s5chapter1.5a">Setting Secutiry Mode and Timeout</a>
+        <li><a href="#s5chapter1.5b">Defining/Managing User Groups</a></li>
+          <ul class="level02">
+            <li><a href="#s5chapter1.5aCCa">Setting Access - General</a></li>
+            <li><a href="#s5chapter1.5aCCb">Setting Access - Groups</a></li>
+            <li><a href="#s5chapter1.5aCCc">Setting Access - EZ Interface</a></li>
+          </ul>
+        <li><a href="#s5chapter1.5c">Defining/Managing Users</a>
+        </li>
+      </ul>
+
+    <p>This chapter will help you determine what users can do with configuration, and how it integrates into your environment. You will notice there is one system group <b>super_users</b> and one system user account <b>super_user</b>. The user account super_user has complete access to everything and members of the group super_users are granted the equivalent of super_user privileges. Please note that the super_users group does not have an access list, and that neither the super_users group nor the super_user account can be removed from the system.</p>
+	<p>The steps you will need to follow are:</p>
+
+    <h4>Table 5.1.2a. Security Configuration</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+      <tbody>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>Setup</b></td>
+          <td>Determine how users access Monarch. Are users required to login? If so, how long can their session be idle before it expires?</td>
+        </tr>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>User Groups</b></td>
+          <td>Determine user rolls. Set the interface(s) to display (EZ/Main) and which functions are available to a group of users.</td>
+        </tr>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>Users</b></td>
+          <td>Add users and assign user groups to set access.</td>
+        </tr>
+      </tbody>
+</table>    
+
+    <a name="s5chapter1.5a"></a><h1 class="wMargins"><a href="#section5chapter1.5">Setting Secutiry Mode and Timeout</a></h1>
+    <a name="s5chapter2aCCa"></a><h2>Setup</h2>
+
+    <ol>
+      <li>Select <b>Conrol</b> from the Configuration Main menu options.</li>
+
+      <li>Select <b>Setup</b>.</li>
+      <li>In the <b>Setup</b> screen, select the <b>Login authentication</b> mode (see <b>Table 5.1.2b.</b>) and set the <b>Session timeout seconds</b>. The maximum timeout value is 48 hours (172800 seconds).</li>
+      <li>Select <b>Save</b>. Selecting <b>Cancel</b> will exit the Setup screen without saving.
+    <h4>Figure 5.1.2a. Setting the security mode and timeout</h4>
+
+    <img src="/monarch/doc/images/security_setup.gif" border="0" alt="Setup" />
+      <h4>Table 5.1.2b. Login authentication</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+      <tbody>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>None</b></td>
+          <td>There is no login and anyone given the correct URL will have complete access to everything. (Not recommended).
+        </td>
+        </tr>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>Active</b></td>
+          <td>Users are asked to login to begin a new session or when the timeout value is exceeded in an existing session. A session will expire after a period of inactivity equal to or greater than the <b>Session timeout seconds</b> value in <b>Setup</b>. The maximum timeout value is 48 hours (172800 seconds). Access rules are determined by <b>User group</b> membership (see below).</td>
+        </tr>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>Passive</b></td>
+          <td><b>Single sign on method:</b> This option assumes Monarch is embedded in another tool such as a portal. The external source can call Monarch by passing the name value pair <b>user_acct=<i>USERNAME</i></b> or by setting the Apache <b>REMOTE_USER</b> value to <b><i>USERNAME</i></b>. There is no session timeout, but access rules are determined by <b>User group</b> membership (see below).</td>
+        </tr>
+      </tbody>
+</table>    
+    </ol>
+
+    <a name="s5chapter1.5b"></a><h1 class="wMargins"><a href="#section5chapter1.5">Defining/Managing User Groups</a></h1>
+    <a name="s5chapter2aCCb"></a><h2>User groups</h2>
+
+    <ol>
+      <li>Select <b>Conrol</b> from the Configuration Main menu options.</li>
+
+      <li>Select <b>User groups</b>.</li>
+      <li>Select <b>New</b> to create a new group or <b>Modify</b> to change an existing group.</li>
+      <li>In the <b>User Group</b> screen, fill in the name and the description.</li>
+      <li>Select <b>Add</b> for a new group or <b>Set Access Values</b>. Selecting <b>Cancel/Close</b> will exit the User groups screen without saving.
+    <h4>Figure 5.1.2b. Defining/Managing User Groups</h4>
+
+    <img src="/monarch/doc/images/security_user_group.gif" border="0" alt="User groups" />
+    </ol>
+    <a name="s5chapter1.5aCCa"></a><h2>Access Values - General</h2>
+    <ol>
+      <li>Use the tabs at the top of the form to navigate between access panes.</li>
+      <li>Select <b>Save</b> to save changes before navigating to a different pane.</li>
+ 
+    <h4>Figure 5.1.2c. Access Values - General</h4>
+
+    <img src="/monarch/doc/images/security_access_general.gif" border="0" alt="Access Lists - General" />
+      <h4>Table 5.1.2c. Access Values - General</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+      <tbody>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>Design Manage</b></td>
+          <td>For each option check <b>Add, Modify, </b> and/or <b>Delete</b> to grant the level of access desired.</td>
+        </tr>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>Groups</b></td>
+          <td>See below.</td>
+        </tr>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>Tools</b></td>
+          <td>Check each option to grant access.</td>
+        </tr>
+       <tr>
+          <td valign="top" width="30%" class="row1"><b>Control</b></td>
+          <td>Check each option to grant access.</td>
+        </tr>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>EZ</b></td>
+          <td>See below.</td>
+        </tr>
+      </tbody>
+</table>    
+    </ol>
+
+    <a name="s5chapter1.5aCCb"></a><h2>Access Values - Groups</h2>
+    <ol>
+      <li>Select the <b>Groups</b> tab.</li>
+      <li>Set properties (see table 5.1.2d. below).</li>
+      <li>Select <b>Save</b> to save changes before navigating to another tab.</li>
+
+    <h4>Figure 5.1.2d. Access Values - Groups</h4>
+
+    <img src="/monarch/doc/images/security_access_groups.gif" border="0" alt="Access Lists - Groups" />
+      <h4>Table 5.1.2d. Seting Group Access</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+      <tbody>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>Groups and macros</b></td>
+          <td>Check <b>Manage</b> to make the Groups option available. Members of the user group will by default have complete access to groups they or other members of the user group create. 
+        </td>
+        </tr>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>Admistered groups</b></td>
+          <td>Check one or more groups to grant access.</td>
+        </tr>
+      </tbody>
+</table>    
+    </ol>
+
+    <a name="s5chapter1.5aCCc"></a><h2>Access Values - EZ Interface</h2>
+    <ol>
+      <li>Select the <b>EZ</b> tab.</li>
+      <li>Set properties (see table 5.1.2e. below).</li>
+      <li>Select <b>Save</b> to save changes before navigating to another tab.</li>
+    <h4>Figure 5.1.2e. Access Values - EZ</h4>
+
+    <img src="/monarch/doc/images/security_access_ez.gif" border="0" alt="Access Lists - EZ" />
+      <h4>Table 5.1.2e. Setting EZ Access</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+      <tbody>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>Enable EZ</b></td>
+          <td>You must check enable to make the EZ interface available to users.</td>
+        </tr>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>View option</b></td>
+          <td>Select the default interface. To make EZ the only view available to the group, select the EZ option. Select EZ-Main to make the EZ interface the default view when users login, and select Main-EZ to make the main view the default.</td>
+        </tr>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>EZ options</b></td>
+          <td>Check the options available to users of the EZ interface.</td>
+        </tr>
+      </tbody>
+</table>    
+    </ol>
+
+    <a name="s5chapter1.5c"></a><h1 class="wMargins"><a href="#section5chapter1.5">Defining/Managing Users</a></h1>
+    <a name="s5chapter2aCCa"></a><h2>Users</h2>
+    <ol>
+      <li>Select <b>Conrol</b> from the Configuration Main menu options.</li>
+
+      <li>Select <b>Users</b>.</li>
+      <li>Select <b>New</b> to create a new group or <b>Modify</b> to change an existing user.</li>
+      <li>In the <b>User</b> screen, set the user's propertires and add user groups to grant access.</li>
+      <li>Select <b>Add</b> for a new user or <b>Save</b>. Selecting <b>Cancel/Close</b> will exit the user screen without saving.
+
+    <h4>Figure 5.1.2f. User Account</h4>
+
+    <img src="/monarch/doc/images/security_user.gif" border="0" alt="Access Lists - EZ" />
+    </ol>
+
+
+<!-- Start S5 Chapter 2 -->
+    <a name="section5chapter2"></a><h1 class="chapter"><a href="#section5"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></a> Chapter 3 Configuration EZ - Getting Started</h1>
+<hr />
+    <h5>Chapter Contents</h5>
+      <ul class="level01">
+        <li><a href="#s5chapter2a">Defining Hosts</a>
+
+          <ul class="level02">
+            <li><a href="#s5chapter2aCCa">Defining a Host Manually</a></li>
+            <li><a href="#s5chapter2aCCb">Defining Hosts Using Import</a></li>
+            <li><a href="#s5chapter2aCCc">Defining Hosts Using Discover</a></li>
+            <li><a href="#s5chapter2aCCd">Modifying Existing Hosts</a></li>
+          </ul>
+        </li>
+
+        <li><a href="#s5chapter2b">Defining Host Groups</a></li>
+        <li><a href="#s5chapter2c">Configuring Profiles</a></li>
+        <li><a href="#s5chapter2d">Setting Up Notifications</a></li>
+        <li><a href="#s5chapter2e">Using Commit</a></li>
+        <li><a href="#s5chapter2f">Using Setup</a></li>
+      </ul>
+
+    <p>This chapter will get you started with configuration using the feature Configuration EZ. Configuration EZ allows you to more easily configure your monitoring system by providing access to the most commonly used configuration functions. As the main prerequisite for EZ to be effective, Host Profiles must already be defined. An advanced Administrator can use the standard Configuration option to define all the settings associated with a Host Profile. The task of assigning and implementing Profiles to the monitoring system can be accomplished using EZ.</p>
+    <p>There are several options one may use to get started with an initial configuration. One can simply use the existing commands, Services, and Profiles to set up monitoring on Hosts, import an existing Nagios&#174; configuration, or configure Nagios&#174; in the usual way using text files, and load the results.</p>
+
+    <p>The Configuration EZ option makes use of the Profiles to simplify the addition of new Hosts. Once Host and Service Profiles are selected and configured, they are available to be used in Configuration EZ. The Administrator can import delimited text files, run guided network discovery, or simply input Host details with the new Host wizard. Once input, these Hosts can be assigned to Profiles, and implemented in the system. The Configuration EZ application is provided under a separate application option to allow delegation of simple changes to various Administrators. The advanced options such as setting up new Services and Service Profiles, or making global changes can be performed by another system Administrator with the advanced knowledge needed.</p>
+
+    <p>Finally, one can set up a Nagios&#174; server in the usual way, and import configurations as described above. This method is sometimes preferable for Nagios&#174; users simply because it avoids the need to learn how Configuration works before getting to use it on a large number of Hosts and Services, and because the act of loading an existing configuration creates all the Service definitions that can then be used to create Profiles. It is a matter of choice, which is what Open Source is all about. The functions EZ provides are:</p>
+    <h4>Table 5.2.0. Configuration EZ Functions</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+      <tbody>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>Hosts</b></td>
+
+          <td>Defining new Hosts for the monitoring system. There are three methods available: 1) manually entering Host information using the Configuration EZ web pages, 2) using the Import option to load data from a comma separated file, or 3) using the Discover option to autodiscover devices.</td>
+        </tr>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>Host Groups</b></td>
+          <td>Adding new Host Groups and assigning Hosts to Host Groups.</td>
+        </tr>
+        <tr>
+
+          <td valign="top" width="30%" class="row1"><b>Profiles</b></td>
+          <td>Assigning Profiles to Hosts.</td>
+        </tr>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>Notifications</b></td>
+          <td>Defining Notification parameters such as Time Periods and Contacts.</td>
+        </tr>
+
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>Commit</b></td>
+          <td>Checking your configuration with a Pre Flight Check and committing your changes to Nagios&#174; with the Commit option.</td>
+        </tr>
+        <tr>
+          <td valign="top" width="30%" class="row1"><b>Setup</b></td>
+
+          <td>Set the default parameters.</td>
+        </tr>
+      </tbody>
+</table>    
+    <a name="s5chapter2a"></a><h1 class="wMargins"><a href="#section5chapter2">Defining Hosts</a></h1>
+    <a name="s5chapter2aCCa"></a><h2>Defining a Host Manually</h2>
+    <ol>
+      <li>Select <b>Hosts</b> from the Configuration EZ menu options.</li>
+
+      <li>Select <b>New</b>.</li>
+      <li>In the <b>Host</b> screen, enter the properties, see <b>Table 5.2.1a.</b>.</li>
+      <li>Select <b>Save</b>. Selecting <b>Cancel</b> will exit the Host screen without saving. <b>Delete</b> removes the Host.
+    <h4>Figure 5.2.1a. Defining a New Host</h4>
+
+    <img src="/monarch/doc/images/OSPadm_s5chapter2_1a.gif" border="0" alt="Host" />
+      <h4>Table 5.2.1a. Host</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>[Required] Host name. If the Address directive in a Host definition is not specified, the name of the Host will be used as its address. Recommended practice: Do not include spaces in Host names, if necessary use "_".</td>
+  </tr>
+
+  <tr>
+    <td valign="top" class="row1"><b>Alias</b></td>
+    <td>[Required] This directive is used to define a longer name or description used to identify the Host. It is provided in order to allow you to more easily identify a particular Host.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Address</b></td>
+    <td>[Required] This directive is used to define the address of the Host. Normally, this is an IP address, although it could really be anything you want (so long as it can be used to check the status of the Host). You can use a FQDN to identify the Host instead of an IP address, but if DNS Services are not available this could cause problems. When used properly, the $HOSTADDRESS$ macro will contain this address. <b>Note</b>: If you do not specify an address directive in a Host definition, the name of the Host will be used as its address. A word of caution about doing this, however - if DNS fails, most of your Service checks will fail because the plugins will be unable to resolve the Host name.</td>
+
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Host Groups</b></td>
+    <td>[Required] Each Host that you define must be a member of at least one Host Group - even if it is the only Host in that Group. Hosts can be in more than one Host Group. When a Host goes down, becomes unreachable, or recovers, Nagios&#174; will find which Host Group(s) the Host is a member of, get the Contact Group for each of those Host Groups, and notify all Contacts associated with those Contact Groups.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Host Profile</b></td>
+
+    <td>[Optional] Host Profiles can be used to aid the design and management of Hosts.</td>
+  </tr>
+</tbody>
+</table>
+      </li>
+    </ol>
+    <a name="s5chapter2aCCb"></a><h2>Defining Hosts Using Import</h2>
+    <p>If you have Host information in a file, such as a spreadsheet, the Import tool will allow you to upload that file to the GroundWork Monitor server, map file fields to Host definitions, and selectively import the new Host definitions into the configuration database. The minimum data that is required for the Import tool includes Name, Alias and Address.</p>
+
+    <ol>
+      <li>Select <b>Hosts</b> from the Configuration EZ menu options.</li>
+      <li>Select <b>Import</b>.</li>
+      <li>In the <b>Import Host Wizard</b> screen, <b>Step 1: Upload File</b>, select or enter the file field delimiter. Typically this is "," for comma separated files. Enter or select the Upload File.  This is a file on your system that will be uploaded to the server and processed. Use the browse option to navigate to your file.  When finished, select <b>Next</b> to go to the next page.
+    <h4>Figure 5.2.1b1. Step 1: Upload File</h4>
+
+    <img src="/monarch/doc/images/OSPadm_s5chapter2_1b1.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></li>
+      <li>In the next screen, <b>Step 2: Set Schema</b>, you can assign the fields in your file to the Host parameters. The first line of your file is shown for reference. For each field in your file, select the Host parameter from the drop down list. Assign the name, address and alias fields to the appropriate fields. When finished, select <b>Next</b> to go to the next page.
+    <h4>Figure 5.2.1b2. Step 2: Set Schema</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter2_1b2.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></li>
+      <li>In <b>Step 3: Process Hosts</b> the Hosts discovered from the scan are displayed. Notice the <b>Sort Keys</b> color coded import status. An orange box indicates that the Host was missing data or was unable to be imported, the Blue box indicates the Host exists in your monitoring configuration already (Hosts can be overwritten), and the White box indicates a good Host to import. You may also <b>sort</b> the list of discovered Hosts by selecting the Name, Alias, Address, OS, Profile, or Other titles in the Sort columns section.</li>
+
+      <li>Check the boxes of the <b>Hosts</b> you wish to import.</li>
+      <li>In the <b>Host Profile</b> section, select the Host Profile to apply to the selected Hosts.</li>
+      <li>Select <b>Add</b> to add the selected Hosts to the monitoring system configuration.</li>
+
+      <li>Select <b>Discard</b> to remove from the list the Hosts you don't want to monitor or those you do not want to process because they may already be in the system. The Hosts added will be displayed in the navigation tree under Hosts. Hosts that have been associated with a Host Group will be displayed within a Host Group, other Hosts not associated with a Host Group are listed under <b>unassigned</b>.
+    <h4>Figure 5.2.1b3. Step 3: Process Hosts</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter2_1b3.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></li>
+    </ol>
+    <a name="s5chapter2aCCc"></a><h2>Defining Hosts Using Discover</h2>
+    <p>The Configuration Discover option uses network discovery protocols to automatically generate a list of Hosts which you may import. The Nmap tool is used to scan the ports of the designated IP address range. Based on this scan, a list of Hosts including the Host name, IP address, and operating system are displayed. You may then select the Hosts you wish to import into the monitoring system configuration. <b>Note</b>: The system must be configured to enable reverse DNS lookups in order to generate the correct Host name, if not, the IP address will be used as the Host name.</p>
+
+    <ol>
+      <li>Select <b>Hosts</b> from the Configuration EZ menu options.</li>
+      <li>Select <b>Discover</b>.</li>
+      <li>In the Discover Host Wizard screen, <b>Step 1: Scan Parameters</b>, enter the start and end range of the IP addresses to be scanned.</li>
+
+      <li>Select <b>Next</b> to start the scan.
+    <h4>Figure 5.2.1c1. Step 1: Scan Parameters</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter2_1c1.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></li>
+      <li>In the next screen, <b>Step 2: Scanning</b>, you will see the results as each network address is scanned. You may stop the scan at any time by selecting <b>Cancel</b>. As each scan is complete, you will see the Host name, IP address, operating system and status. When the scan is finished, select <b>Next</b> to go to Step 3: Process Hosts.
+    <h4>Figure 5.2.1c2. Step 2: Scanning</h4>
+
+    <img src="/monarch/doc/images/OSPadm_s5chapter2_1c2.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></li>
+      <li>In <b>Step 3: Process Hosts</b> the Hosts discovered from the scan are displayed. Notice the <b>Sort Keys</b> color coded import status. An orange box indicates that the Host was missing data or was unable to be imported, the Blue box indicates the Host exists in your monitoring configuration already (Hosts can be overwritten), and the White box indicates a good Host to import. You may also <b>sort</b> the list of discovered Hosts by selecting the Name, Alias, Address, OS, Profile, or Other titles in the Sort columns section.</li>
+      <li>Check the boxes of the <b>Hosts</b> you wish to import.</li>
+
+      <li>In the <b>Host Profile</b> section, select the Host Profile to apply to the selected Hosts.</li>
+      <li>Select <b>Add</b> to add the selected Hosts to the monitoring system configuration.</li>
+      <li>Select <b>Discard</b> to remove from the list the Hosts you don't want to monitor or those you do not want to process because they may already be in the system. The Hosts added will be displayed in the navigation tree under Hosts. Hosts that have been associated with a Host Group will be displayed within a Host Group, other Hosts not associated with a Host Group are listed under <b>unassigned</b>.
+    <h4>Figure 5.2.1c3. Step 3: Process Hosts</h4>
+
+    <img src="/monarch/doc/images/OSPadm_s5chapter2_1c3.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></li>
+    </ol>
+    <a name="s5chapter2aCCd"></a><h2>Modifying Existing Hosts</h2>
+    <p>Once a Host is imported using any other methods above, you can modify the Host settings. To find a Host, expand the Host node in the navigation tree,  then select Host from the list.  An alternate way of finding a Host is to use the Search option.  Start typing the name of the Host you want.  As you type each letter, a list of Hosts that match will dynamically appear. You can then select the name the Host in the list. Once you select a Host, you can modify the Alias, IP Address, Host Group or Host Profile for that Host.</p>
+    <h4>Figure 5.2.1c4. Modifying Existing Hosts</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter2_1c4.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /><br />
+    <a name="s5chapter2b"></a><h1 class="wMargins"><a href="#section5chapter2">Defining Host Groups</a></h1>
+
+    <p>This option allows you to create a new Host Group, and assign existing Hosts to a Host Group.</p>
+        <ol>
+      <li>Select <b>Hosts Groups</b> from the Configuration EZ menu options.</li>
+      <li>Select <b>New</b>.</li>
+      <li>In the <b>Host Group</b> screen, enter the properties, see <b>Table 5.2.2a.</b>.</li>
+
+      <li>Select <b>Add</b> to save the new Host Group.
+    <h4>Figure 5.2.2a. Creating a New Host Group</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter2_2a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      <h4>Table 5.2.2a. Host Group</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+
+    <td>[Required] Host Group name.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Alias</b></td>
+    <td>[Required] This directive is used to define a longer name or description used to identify the Host Group. It is provided in order to allow you to more easily identify a particular Host Group.</td>
+  </tr>
+  <tr>
+
+    <td valign="top" class="row1"><b>Hosts</b></td>
+    <td>[Required] This is a list of the short names of Hosts that should be included in this Host Group.</td>
+  </tr>
+</tbody>
+</table>
+      </li>
+    </ol>
+    <a name="s5chapter2c"></a><h1 class="wMargins"><a href="#section5chapter2">Configuring Profiles</a></h1>
+
+    <p>This option allows you to assign existing Host Profiles to Hosts.</p>
+        <ol>
+      <li>Select <b>Profiles</b> from the Configuration EZ menu options.</li>
+      <li>Expand the <b>Profiles</b> drop-down menu.</li>
+
+      <li>Select the Profile to be configured.</li>
+      <li>In the <b>Host Profile</b> screen, enter the properties, see <b>Table 5.2.3a.</b></li>
+      <li>Select <b>Add</b> to go to the <b>Host Profile</b> screen.
+    <h4>Figure 5.2.3a. New Host Profile</h4>
+
+    <img src="/monarch/doc/images/OSPadm_s5chapter2_3a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      <h4>Table 5.2.3a. New Host Profile</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1">Name</td>
+    <td>[Required] Name of the Host Profile.</td>
+  </tr>
+
+  <tr>
+    <td valign="top" class="row1">Host Profile</td>
+    <td>[Required] Host Profiles can be used to aid the design and management of Hosts.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1">Hosts</td>
+    <td>List of Hosts to add to Host Profile.</td>
+
+  </tr>
+</tbody>
+</table>
+      </li>
+    </ol>
+    <a name="s5chapter2d"></a><h1 class="wMargins"><a href="#section5chapter2">Setting Up Notifications</a></h1>
+    <p>In Configuration EZ you can use the Notifications option to add and change basic contact data including turning Notifications on or off, creating Time Periods for Notifications, and defining Notification Contacts. To set up Notifications you will need to associate a Contact with a Host or Service, or set up an Escalation Tree. You can set up Escalation Trees so that some groups get notified for a while and others are escalated to. These trees define who gets notified and when, and you can then assign the tree to individual Hosts, Services, or Host and Service Groups.</p>
+    <p>You can dive into these areas further using the Configuration option to manage the assignment of Contacts to Contact Groups. Just create a Contact Group and add Contacts to it. This group can then be assigned to Host Groups, which will make the members default Contacts for all Host problems that are detected within the group. You can do the same with Services, Service Groups, and Hosts, if you prefer. <b>Note</b>: Services require the default Contact Group to be assigned for Notifications to occur unless you are using Escalations. For more information see <b>Section 4 Configuring GroundWork Monitor <i>Open Source</i></b> in this guide.</p>
+
+        <h2>Step 1 - Defining a New Time Period</h2>
+    <ol>
+      <li>Select <b>Notifications</b> from the Configuration menu options.</li>
+      <li>Expand the <b>Time Periods</b> drop-down menu.</li>
+
+      <li>Select <b>New</b> to create a new Time Period.</li>
+      <li>In the <b>Time Period</b> screen, enter the properties, see <b>Table 5.2.4a.</b>.</li>
+      <li>Select <b>Add</b> to add the new Time Period. You will be prompted in the next screen that the Time Period has been saved.
+    <h4>Figure 5.2.4a. Time Period Properties</h4>
+
+    <img src="/monarch/doc/images/OSPadm_s5chapter2_4a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      <h4>Table 5.2.4a. Time Period</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>Time Period name.</td>
+  </tr>
+
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Alias</b></td>
+    <td>[Required] This directive is a longer name or description used to identify the time period.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Sunday-Saturday</b></td>
+    <td>[Optional] The Sunday through Saturday directives are comma-delimited lists of time ranges that are 'valid' times for a particular day of the week. Notice that there are seven different days for which you can define time ranges (Sunday through Saturday). Each time range is in the form of HH: MM-HH: MM, where hours are specified on a 24 hour clock. For example, 00: 15-24: 00 means 12: 15am in the morning for this day until 12: 20am midnight (a 23 hour, 45 minute total time range). If you wish to exclude an entire day from the Time Period, simply do not include it in the timeperiod definition.</td>
+
+  </tr>
+</tbody>
+</table>
+      </li>
+    </ol>
+    <h2>Step 2 - Defining a New Contact</h2>
+    <ol>
+      <li>Select <b>Notifications</b> from the Configuration EZ menu options.</li>
+
+      <li>Expand the <b>Contacts</b> drop-down menu.</li>
+      <li>Select <b>New</b>.</li>
+      <li>In the <b>Contact Properties</b> screen, enter the properties, see <b>Table 5.2.4b.</b>.</li>
+
+      <li>Select <b>Add</b>.</li>
+      <li>You will be prompted that the Contact has been added. Select <b>Continue</b>.<br /><br />
+      <b>Note</b>: To modify or delete a Contact select <b>Modify</b>. You will then be able to edit and <b>Save</b> a modified Contact. Select <b>Delete</b> to remove a selected Contact, <b>Rename</b> to change the name, or <b>Cancel</b> to exit out without any changes.
+    <h4>Figure 5.2.4b. Contact Properties</h4>
+
+    <img src="/monarch/doc/images/OSPadm_s5chapter2_4b.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      <h4>Table 5.2.4b. Contact</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>Contact name.</td>
+  </tr>
+
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Notification Period</b></td>
+    <td>[Required] Select the period for which this Contact is available to receive Notifications.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Alias</b></td>
+    <td>[Required] This directive is used to define a longer name or description for the Contact. Under the rights circumstances, the $CONTACTALIAS$ macro will contain this value.</td>
+
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Email</b></td>
+    <td>[Optional] This directive is used to define an email address for the Contact. Depending on how you configure your Notification commands, it can be used to send out an alert email to the Contact. Under the right circumstances, the $CONTACTEMAIL$ macro will contain this value.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Pager</b></td>
+
+    <td>[Optional] This directive is used to define a pager number for the Contact. It can also be an email address to a pager gateway (i.e. pagejoe@pagenet.com). Depending on how you configure your Notification commands, it can be used to send out an alert page to the Contact. Under the right circumstances, the $CONTACTPAGER$ macro will contain this value.</td>
+  </tr>
+</tbody>
+</table>
+      </li>
+    </ol>
+    <h2>Step 3 - Turning On Notifications</h2>
+    <ol>
+      <li>Select <b>Notifications</b> from the Configuration EZ menu options.</li>
+
+      <li>Click on the <b>Notifications</b> option.</li>
+      <li>Select <b>off</b> or <b>on</b> from the Notifications drop-down box.</li>
+      <li>Select <b>Close</b>
+
+    <h4>Figure 5.2.4c. Notifications</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter2_4c.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    <a name="s5chapter2e"></a><h1 class="wMargins"><a href="#section5chapter2">Using Commit</a></h1>
+    <p>Any changes made with the configuration tool are not effective until the change is committed. This option provides the processes for committing changes to the monitoring system.</p>
+    <p><b>Note</b>: Before committing, your are advised to run the Preflight Test option.  This option will check the configuration for errors, but will not implement the change.  If there are any errors, they will be listed in the Nagios&#174; Pre Flight Test window after the PreFlight Test option is selected.</p>
+
+    <p>To implement the change, select the Commit option on the navigation tree.  You will be presented with an option to Abort, Backup or Commit. The <b>Backup</b> option will make a copy of the current Nagios&#174; configuration files (before the changes are applied) and execute a database dump of the monarch configuration database. By default, these are placed in a timestamped directory in <code class="bookshelfcode">/usr/local/groundwork/monarch/backup</code>.  If needed, you can restore to any backup configuration by copying the Nagios&#174; configuration files to the <code class="bookshelfcode">/usr/local/groundwork/nagios/etc directory</code>, and/or restoring the monarch MySQL database with the dumped backup file.</p>
+    <ol>
+      <li>Select <b>Commit</b> from the Configuration EZ menu options.</li>
+
+      <li>Select <b>Commit</b>.</li>
+      <li>In the <b>Nagios&#174; Commit</b> screen you will be prompted first to <b>Backup</b> the active Nagios&#174; configuration.</li>
+
+      <li>Select <b>Commit</b> to overwrite the active Nagios&#174; configuration and restart Nagios&#174;.
+    <h4>Figure 5.2.5a. Nagios&#174; Commit</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter2_5a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+    <h4>Table 5.2.5a. Nagios&#174; Commit</h4>
+
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" class="row1" width="30%"><b>Commit</b></td>
+    <td>Select <b>Commit</b> to Overwrite your active Nagios&#174; configuration and restarts Nagios&#174;.</td>
+  </tr>
+
+  <tr>
+    <td valign="top" class="row1" width="30%"><b>Backup</b></td>
+    <td>Select <b>Backup</b> to backup Nagios&#174; records in the database.</td>
+  </tr>
+  <tr>
+
+    <td valign="top" class="row1" width="30%"><b>Abort</b></td>
+    <td>Abort or cancel loading of Nagios&#174; records.</td>
+  </tr>
+</tbody>
+</table>
+      </li>
+    </ol>
+    <a name="s5chapter2f"></a><h1 class="wMargins"><a href="#section5chapter2">Using Setup</a></h1>
+
+    <p>This option allows you to set up default values that will be applied when new definitions are created.</p>
+    <ol>
+      <li>Select <b>Setup</b> from the Configuration EZ menu options.</li>
+      <li>Select the <b>Setup</b> option.</li>
+
+      <li>In the <b>Configuration Defaults</b> screen, enter the properties, see <b>Table 5.2.6a.</b>.</li>
+      <li>Select <b>Save</b>.
+    <h4>Figure 5.2.6a. Configuration Defaults</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter2_6a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      <h4>Table 5.2.6a. Configuration Defaults</h4>
+
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" class="row1" width="30%"><b>Host Profile</b></td>
+    <td>[Required] Select the appropriate Host Profile for all Hosts added with this tool. This should in most circumstances be a simple ping Profile.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1" width="30%"><b>Contact Group</b></td>
+
+    <td>[Required] Select the appropriate Contact Group for all Contacts added with this tool.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1" width="30%"><b>Contact Template</b></td>
+    <td>[Required] Select the appropriate Contact template for all Contacts added with this tool.</td>
+  </tr>
+</tbody>
+</table>
+
+      </li>
+    </ol>
+<!-- S5 Chapter 3 -->
+    <a name="section5chapter3"></a><h1 class="chapter"><a href="#section5"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></a> Chapter 4 Advanced Configuration - Configuring Services</h1>
+<hr />
+    <h5>Chapter Contents</h5>
+    <ul class="level01">
+      <li><a href="#s5chapter3a">Services</a></li>
+
+      <li><a href="#s5chapter3c">Service Templates</a></li>
+      <li><a href="#s5chapter3d">Service Dependencies</a></li>
+      <li><a href="#s5chapter3e">Service Extended Info</a></li>
+      <li><a href="#s5chapter3f">Service Groups</a></li>
+    </ul>
+    <p>This chapter will focus on Service configuration. This reference is intended to provide you with a more detail look into all aspect of Service configuration. Each <i>How to</i> takes you step by step through the configuration process. Before starting, check the list below each <i>How to</i> to view any required prerequisites.</p>
+
+    <a name="s5chapter3a"></a><h1 class="wMargins"><a href="#section5chapter3">Services</a></h1>
+    <p>A Service definition is used to identify a <i>Service</i> that runs on a Host. A <i>Service</i> can be an actual Service that runs on the Host (POP, SMTP, HTTP, etc.) or some other type of metric associated with the Host (response to a ping, number of logged in users, free disk space, etc.). A Service incorporates multiple definitions (Service Template, Check Command, Command Line, Service Dependencies, Service Extended Info, and Service Groups. These <i>How To's</i> will take you through the process of defining a new Service, cloning an existing Service, searching existing Services, and viewing a list of available Services. You will need to start with any listed prerequisites.</p>
+    <ul class="level01">
+
+      <li><a href="services.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Define a New Service?</a>
+        <ul class="level02">
+          <li><a href="services.html" bookshelf:href="relative" bookshelf:target="popup">Service Template</a></li>
+          <li><a href="commands.html" bookshelf:href="relative" bookshelf:target="popup">Commands (required unless defined in the template)</a></li>
+        </ul>
+      </li>
+      <li><a href="services.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Clone a Service?</a></li>
+
+    </ul>
+    <a name="s5chapter3c"></a><h1 class="wMargins"><a href="#section5chapter3">Service Templates</a></h1>
+    <p>A Service Template is useful when you have common attributes for multiple Services. A Service Template incorporates multiple Service detail directives and Service Check definitions. This <i>How To</i> will take you through the process of defining a new Service Template.</p>
+    <p>Example: In a Service Template (<code class="bookshelfcode">generic-win-disk-c</code>), the Check command <code class="bookshelfcode">check_nt_disk</code> has a Command Line of <code class="bookshelfcode">$USER1$/check_nt -H $HOSTADDRESS$ -p 1248 -v USEDDISKSPACE -l $ARG1$ -w $ARG2$ -c $ARG3$</code> where the values are set to <code class="bookshelfcode">check_nt_disk!C!85!95</code>, which becomes the default Command Line value for a Service <code class="bookshelfcode">check_disk_c</code>. Now, if you want to create a Service <code class="bookshelfcode">check_disk_d</code>, you can select the Service Template <code class="bookshelfcode">generic-win-disk-c</code>, uncheck <i>Inherit all values from template</i>, and replace the <i>C</i> parameter with a <i>D</i>.</p>
+
+    <ul class="level01">
+      <li><a href="services.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Create a Service Template?</a>
+        <ul class="level02">
+          <li><a href="timeperiods.html" bookshelf:href="relative" bookshelf:target="popup">Time Periods</a></li>
+          <li><a href="commands.html" bookshelf:href="relative" bookshelf:target="popup">Commands</a></li>
+          <li><a href="contacts.html" bookshelf:href="relative" bookshelf:target="popup">Contact Groups (required if Notifications are specified)</a></li>
+        </ul>
+
+      </li>
+    </ul>
+    <a name="s5chapter3d"></a><h1 class="wMargins"><a href="#section5chapter3">Service Dependencies</a></h1>
+    <p>Service Dependencies allow you to suppress Notifications and active checks of Services based on the status of one or more other Services.</p>
+    <ul class="level01">
+      <li><a href="services.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Configure a Service Dependency Template?</a>
+        <ul class="level02">
+
+          <li><a href="services.html" bookshelf:href="relative" bookshelf:target="popup">Services</a></li>
+        </ul>
+      </li>
+    </ul>
+    <a name="s5chapter3e"></a><h1 class="wMargins"><a href="#section5chapter3">Service Extended Info</a></h1>
+    <p>Service Extended Info Templates are basically used to make the output from the status and extinfo CGIs look good. They have no effect on monitoring and are completely optional. This <i>How To</i> will take you through the steps to create an Extended Service Info Template.</p>
+
+    <ul class="level01">
+      <li><a href="services.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Create Service Extended Info Templates?</a></li>
+    </ul>
+    <a name="s5chapter3f"></a><h1 class="wMargins"><a href="#section5chapter3">Service Groups</a></h1>
+    <p>A Service Group definition is used to group one or more Services together for the purposes of simplifying Notifications. When a Service goes down, becomes unreachable, or recovers, Nagios&#174; will find which Service Group(s) the Service is a member of, get the Contact Group for each of those Service Groups, and notify all Contacts associated with those Contact Groups. Service Groups allow for flexibility in determining who gets paged for what kind of problems. Service Groups allow you to group Services together for display purposes in the CGIs and can be referenced in Service Dependency and Service Escalation definitions to make configuration a bit easier. This <i>How To</i> will take you through the steps to create a new Service Group. The prerequisites for Service Groups are defined Hosts with Services and Services assigned to Hosts.</p>
+
+    <ul class="level01">
+      <li><a href="services.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Create Service Groups?</a></li>
+    </ul>
+<!-- S5 Chapter 4 -->
+    <a name="section5chapter4"></a><h1 class="chapter"><a href="#section5"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></a> Chapter 5 Advanced Configuration - Configuring Profiles</h1>
+<hr />
+    <p>This chapter will focus on Profile configuration. This reference is intended to provide you with a more detail look into all aspect of Profile configuration. Each <i>How to</i> takes you step by step through the configuration process. Before starting, check the list below each <i>How to</i> to view any required prerequisites.</p>
+
+    <h5>Chapter Contents</h5>
+    <ul class="level01">
+      <li><a href="#s5chapter4a">Host Profiles</a></li>
+      <li><a href="#s5chapter4b">Service Profiles</a></li>
+      <li><a href="#s5chapter4c">Importing Profiles</a></li>
+    </ul>
+    <a name="s5chapter4a"></a><h1 class="wMargins"><a href="#section5chapter4">Host Profiles</a></h1>
+
+    <p>Host Profiles store Host Templates and Service Profiles. Once you have a Host Profile you can apply this combined definition to a number of Hosts, for example to 50 specific web servers. Host Profiles are not associated with a specific Host. This concept will allow you to generically define the different roles of the different devices you are monitoring and easily apply them. Once the Host Profile is define you may want to change one of the parameters which then would be applied to all of the specified Hosts. You can make a change to either the Host Profile, the Service Profile, or in the Service, which will then be applied to all Hosts.</p>
+    <ul class="level01">
+      <li><a href="profiles.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Define a Host Profile?</a>
+      <ul class="level02">
+        <li><a href="profiles.html" bookshelf:href="relative" bookshelf:target="popup">Service Profiles (if used)</a></li>
+        <li><a href="hosts.html" bookshelf:href="relative" bookshelf:target="popup">Hosts</a></li>
+        <li><a href="hosts.html" bookshelf:href="relative" bookshelf:target="popup">Host Templates (applied to this Host Profile)</a></li>
+
+        <li><a href="hosts.html" bookshelf:href="relative" bookshelf:target="popup">Host Groups (applied to this Host Profile)</a></li>
+      </ul>
+      </li>
+    </ul>
+    <a name="s5chapter4b"></a><h1 class="wMargins"><a href="#section5chapter4">Service Profiles</a></h1>
+    <p>A Service Profile is a collection of multiple Services. Once you have a Service Profile you can combine this with a Host Template and create a Host Profile. With GroundWork Monitor <i>Open Source</i>, you get a preloaded set of Service Checks for multiple types of servers, devices, etc. that you can use out of the box. Service Profiles encapsulate a set of standard Services with Plugins and Best Practices that can be applied toward monitoring specific devices or protocols. The advantages of using a Service Profile is that it is pre-integrated. Using Profiles, you can quickly configure GroundWork Monitor <i>Open Source</i> to monitor groups of devices the same way. This <i>How To</i> will take you through the process of defining a new Service Profile including Step 1 - New Service Profile; assigning a name and assigning a configuration file, and Step 2 - Defining the Service Profile properties.</p>
+
+    <ul class="level01">
+      <li><a href="profiles.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Define a Service Profile?</a>
+      <ul class="level02">
+        <li><a href="services.html" bookshelf:href="relative" bookshelf:target="popup">Services</a></li>
+        <li><a href="services.html" bookshelf:href="relative" bookshelf:target="popup">Service Template</a></li>
+      </ul>
+      </li>
+
+    </ul>
+    <a name="s5chapter4c"></a><h1 class="wMargins"><a href="#section5chapter4">Importing Profiles</a></h1>
+    <p>Profiles, which contain both pre-defined and user-definable monitoring parameter settings, can be imported into Configuration for use in designing and managing Hosts and Services. Profiles can be exported by the <b>Export</b> button in the <i>Profile Detail</i> screen making Profiles portable and enabling the sharing of files.</p>
+    <ul class="level01">
+      <li><a href="profiles.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Import a Profile?</a></li>
+
+    </ul>
+<!-- S5 Chapter 5 -->
+    <a name="section5chapter5"></a><h1 class="chapter"><a href="#section5"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></a> Chapter 6 Advanced Configuration - Configuring Hosts</h1>
+<hr />
+    <p>This chapter will focus on Host configuration. This reference is intended to provide you with a more detail look into all aspect of Host configuration. Each <i>How to</i> will take you step by step through each procedure. Before starting, check the list below each <i>How to</i> to view any required prerequisites.</p>
+
+    <h5>Chapter Contents</h5>
+    <ul class="level01">
+      <li><a href="#s5chapter5a">Hosts</a></li>
+      <li><a href="#s5chapter5b">Host Templates</a></li>
+      <li><a href="#s5chapter5c">Host Groups</a></li>
+      <li><a href="#s5chapter5d">Parent/Child</a></li>
+
+      <li><a href="#s5chapter5e">Extended Host Info Templates</a></li>
+      <li><a href="#s5chapter5f">Host Dependencies</a></li>
+    </ul>
+    <a name="s5chapter5a"></a><h1 class="wMargins"><a href="#section5chapter5">Hosts</a></h1>
+    <p>A Host definition is used to define a physical server, workstations, device, etc. that resides on your network. This <i>How To</i> will take you through the process of defining a new Host to be monitored. You will need to start with the prerequisites. To create a Host you will continue through several steps including defining Host Vitals, Host Attributes 1 and 2, and Selecting Host Services to add specific Services to this Host. When creating a new Host if a Host Profile is chosen the fields Parents, Host Groups, Extended Host Info, Host Escalation Tree, and Service Escalation Tree will be automatically populated and can be modified.</p>
+
+    <ul class="level01">
+      <li><a href="hosts.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Define a New Host?</a>
+      <ul class="level02">
+      <li><a href="hosts.html" bookshelf:href="relative" bookshelf:target="popup">Host Template</a></li>
+      <li><a href="control.html" bookshelf:href="relative" bookshelf:target="popup">Hosts and Services Configuration Files</a></li>
+      </ul>
+      </li>
+
+    </ul>
+    <a name="s5chapter5b"></a><h1 class="wMargins"><a href="#section5chapter5">Host Templates</a></h1>
+    <p>Host Templates store common object properties that are used to define multiple Hosts. Templates are used to reduce the number of repetitive entries when defining objects. For example, when defining a new Host you would first create a Host Template with common properties. Then, to define a specific Host, you apply the properties using a Host Template.</p>
+    <ul class="level01">
+      <li><a href="hosts.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Configure a Host Template?</a>
+      <ul class="level02">
+        <li><a href="timeperiods.html" bookshelf:href="relative" bookshelf:target="popup">Time Periods</a></li>
+
+      </ul>
+      </li>
+    </ul>
+    <a name="s5chapter5c"></a><h1 class="wMargins"><a href="#section5chapter5">Host Groups</a></h1>
+    <p>A Host Group definition is used to group one or more Hosts together for the purposes of simplifying Notifications. Each Host that you define must be a member of at least one Host Group - even if it is the only Host in that Group. Hosts can be in more than one Host Group. When a Host goes down, becomes unreachable, or recovers, Nagios&#174; will find which Host Group(s) the Host is a member of, get the Contact Group for each of those Host Groups, and notify all Contacts associated with those Contact Groups. Host Groups allow for flexibility in determining who gets paged for what kind of problems.</p>
+    <ul class="level01">
+      <li><a href="hosts.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Create a New Host Group?</a>
+
+      <ul class="level02">
+        <li><a href="hosts.html" bookshelf:href="relative" bookshelf:target="popup">Hosts</a></li>
+        <li><a href="contacts.html" bookshelf:href="relative" bookshelf:target="popup">Contact Groups</a></li>
+      </ul>
+      </li>
+    </ul>
+    <a name="s5chapter5d"></a><h1 class="wMargins"><a href="#section5chapter5">Parent/Child</a></h1>
+
+    <p>Parents Hosts are typically routers, switches, firewalls, etc. that lie between the monitoring Host and a remote Host. A router, switch, etc. which is closest to the remote Host is considered to be that Host's <i>Parent</i>. If this Host is on the same network segment as the Host doing the monitoring (without any intermediate routers, etc.) the Host is considered to be on the local network and will not have a parent Host.</p>
+    <ul class="level01">
+      <li><a href="hosts.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Create a Parent/Child Relationship?</a>
+      <ul class="level02">
+        <li><a href="hosts.html" bookshelf:href="relative" bookshelf:target="popup">Hosts</a></li>
+      </ul>
+
+      </li>
+    </ul>
+    <a name="s5chapter5e"></a><h1 class="wMargins"><a href="#section5chapter5">Extended Host Info Templates</a></h1>
+    <p>Extended Host information entries are basically used to make the output from the status, statusmap, statuswrl, and extinfo CGIs look good. They have no effect on monitoring and are completely optional. For example, <b>Figure 5.5.1a.</b> below shows a server icon next to each Host. This icon image is designated in the Extended Host Info Template as server.png in the Status Map Image property field.</p>
+    <ul class="level01">
+      <li><a href="hosts.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Create Extended Host Info Templates?</a>
+
+    <h4>Figure 5.5.1a. Extended Host Info Template - Status Map Image</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter5_1aa.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></li>
+    </ul>
+    <a name="s5chapter5f"></a><h1 class="wMargins"><a href="#section5chapter5">Host Dependencies</a></h1>
+    <p>Host Dependencies allow you to suppress Notifications for Hosts based on the status of one or more other Hosts. Service Dependencies allow you to suppress Notifications and active checks of Services based on the status of one or more other Services.</p>
+    <ul class="level01">
+      <li><a href="hosts.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Create Host Dependencies?</a>
+
+      <ul class="level02">
+        <li><a href="hosts.html" bookshelf:href="relative" bookshelf:target="popup">Hosts</a></li>
+      </ul>
+      </li>
+    </ul>
+<!-- S5 Chapter 6 -->
+    <a name="section5chapter6"></a><h1 class="chapter"><a href="#section5"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></a> Chapter 7 Advanced Configuration - Managing Hosts</h1>
+<hr />
+
+    <p>This chapter will focus on managing Host configuration. After creating new Hosts using the New Host Wizard or cloning Hosts you can use the search feature to find a previously defined Host or you can expand the Hosts option in the navigation tree and select an existing Host. Once a defined Host has been selected you have access to manage Host Detail, Host and Service Profiles, Parents, Host Groups, Escalations, and Services from one screen. Each Host management tab is listed below, click on the link to get step by step instructions for modifying Host properties.</p>
+    <h5>Chapter Contents</h5>
+    <ul class="level01">
+      <li><a href="#s5chapter6a">Managing Host Detail</a></li>
+      <li><a href="#s5chapter6b">Managing Host Profiles</a></li>
+      <li><a href="#s5chapter6c">Managing Host - Parents</a></li>
+
+      <li><a href="#s5chapter6d">Managing Host - Host Groups</a></li>
+      <li><a href="#s5chapter6e">Managing Host - Escalations</a></li>
+      <li><a href="#s5chapter6f">Managing Host - Services</a></li>
+    </ul>
+    <a name="s5chapter6a"></a><h1 class="wMargins"><a href="#section5chapter6">Managing Host Detail</a></h1>
+    <p>The Host Detail tab in the Manage Host screen lists the defined Host name, Alias, Address of the Host, and the pre selected Host template properties which are all editable. Click <b>Set Inheritance</b> to set all directive to inherit values from the selected template. Uncheck the left checkbox on the directive in the lower half of the screen to override the template values.</p>
+
+    <ul class="level01">
+      <li><a href="managinghosts.html" bookshelf:href="relative" bookshelf:target="popup">Host Detail</a></li>
+    </ul>
+    <a name="s5chapter6b"></a><h1 class="wMargins"><a href="#section5chapter6">Managing Host Profiles</a></h1>
+    <p>The Profile tab in the Manage Host screen enables you to assign and apply Host Profiles and Service Profiles. After making changes, use the refresh button to update the Service list on this page. Also, make sure you select the appropriate Service option before selecting Apply. You can either select <b>Replace Existing Services</b> which will remove all Services from the current Host and replace them with the ones you have selected. <b>Merge with Existing Services</b> will leave any existing Services unchanged. Assigning a Host Profile from the Profile tab in Manage Host creates the association so that the Host can be managed from the Profile and will have no other effect on the Host configuration.</p>
+
+    <ul class="level01">
+      <li><a href="managinghosts.html" bookshelf:href="relative" bookshelf:target="popup">Host Profiles</a></li>
+    </ul>
+    <a name="s5chapter6c"></a><h1 class="wMargins"><a href="#section5chapter6">Managing Host - Parents</a></h1>
+    <p>The Parents tab in the Manage Host screen lets you assign Parent Host(s) to a Host definition. Parent child relationships may also be managed directly by going to Hosts>Parent Child. Parent Hosts are typically routers, switches, firewalls, etc. that lie between the monitoring Host and a remote Host.</p>
+    <ul class="level01">
+      <li><a href="managinghosts.html" bookshelf:href="relative" bookshelf:target="popup">Host - Parents</a></li>
+
+    </ul>
+    <a name="s5chapter6d"></a><h1 class="wMargins"><a href="#section5chapter6">Managing Host - Host Groups</a></h1>
+    <p>The Host Groups tab in the Manage Host screen is used to assign defined Host Groups to a Host definition. Host Groups may also be managed directly by going to Hosts>Host Groups. When a Host goes down, becomes unreachable, or recovers, Nagios&#174; will find which Host Group(s) the Host is a member of, get the Contact Group for each of those Host Groups, and notify all Contacts associated with those Contact Groups.</p>
+    <ul class="level01">
+      <li><a href="managinghosts.html" bookshelf:href="relative" bookshelf:target="popup">Host - Host Groups</a></li>
+    </ul>
+
+    <a name="s5chapter6e"></a><h1 class="wMargins"><a href="#section5chapter6">Managing Host - Escalations</a></h1>
+    <p>The Escalations tab in the Manage Host screen enables you to optionally select Host and Service Escalation trees appropriate for a Host. When a Service Escalation is assigned, all Services on the selected Host will use the same Escalation. To use different Escalations for different Services, each Service must have its own Escalation and in this case you would not assign a Service Escalation. The Escalations option is used to define Host and Service Escalation Trees. Escalations are used to escalate Contact Notifications for a particular Service, Host, or Host Group. An Escalation Tree is a grouping of multiple Escalations which is then assigned to a Host, Host Profile, Host Group, or a Service to escalate Notifications.</p>
+    <ul class="level01">
+      <li><a href="managinghosts.html" bookshelf:href="relative" bookshelf:target="popup">Host - Escalations</a></li>
+    </ul>
+    <a name="s5chapter6f"></a><h1 class="wMargins"><a href="#section5chapter6">Managing Host - Services</a></h1>
+    <p>The Service tab in the Manage Host screen lets you manage the Services that are assigned to a Host. You can add, modify and remove Services for a Host. Managing Services from this page will in all likelihood put the Host out of sync with its Service Profiles. After making changes, use caution when applying Profiles to this Host.</p>
+
+    <ul class="level01">
+      <li><a href="managinghosts.html" bookshelf:href="relative" bookshelf:target="popup">Host - Services</a></li>
+    </ul>
+<!-- Section 5 Chapter 7 -->
+    <a name="section5chapter7"></a><h1 class="chapter"><a href="#section5"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></a> Chapter 8 Advanced Configuration - Defining Contacts</h1>
+<hr />
+    <p>This chapter will focus on Contact, Contact Template, and Contact Group configuration. Each <i>How to</i> will take you step by step through each procedure. Before starting, check the list below each <i>How to</i> to view any required prerequisites.</p>
+
+    <h5>Chapter Contents</h5>
+    <ul class="level01">
+      <li><a href="#s5chapter7a">Contacts</a></li>
+      <li><a href="#s5chapter7b">Contact Groups</a></li>
+      <li><a href="#s5chapter7c">Contact Templates</a></li>
+    </ul>
+    <a name="s5chapter7a"></a><h1 class="wMargins"><a href="#section5chapter7">Contacts</a></h1>
+
+    <p>A Contact definition is used to identify someone who should be contacted in the event of a problem on your network.</p>
+    <ul class="level01">
+        <li><a href="contacts.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Define a New Contact?</a>
+      <ul class="level02">
+        <li><a href="contacts.html" bookshelf:href="relative" bookshelf:target="popup">Contact Templates</a></li>
+        <li><a href="timeperiods.html" bookshelf:href="relative" bookshelf:target="popup">Time Periods</a></li>
+      </ul>
+
+        </li>
+    </ul>
+    <a name="s5chapter7b"></a><h1 class="wMargins"><a href="#section5chapter7">Contact Groups</a></h1>
+    <p>Contact Groups are definitions of one or more Contacts for the purpose of sending out alert/recovery Notifications. When a Host or Service has a problem or recovers, Nagios&#174; will find the appropriate Contact Groups to send Notifications to, and notify all Contacts in those Contact Groups. In Nagios&#174; 2.5 it is required that you set at least one Contact Group in a Host before running Commit. Contact Groups can be applied to Escalation Templates and Escalation Trees to be used in setting up Notifications for Hosts and Services.</p>
+    <ul class="level01">
+
+        <li><a href="contacts.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Create a Contact Group?</a>
+      <ul class="level02">
+        <li><a href="contacts.html" bookshelf:href="relative" bookshelf:target="popup">Contacts</a></li>
+      </ul>
+        </li>
+    </ul>
+    <a name="s5chapter7c"></a><h1 class="wMargins"><a href="#section5chapter7">Contact Templates</a></h1>
+
+    <p>A Contact Template is useful when creating multiple Contacts with common attributes. A Contact definition is used to identify someone who should be contacted in the event of a problem on your network.</p>
+    <ul class="level01">
+        <li><a href="contacts.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Define a Contact Template?</a>
+      <ul class="level02">
+        <li><a href="timeperiods.html" bookshelf:href="relative" bookshelf:target="popup">Time Periods</a></li>
+      </ul>
+         </li>
+
+    </ul>
+<!-- Section 5 Chapter 8 -->
+    <a name="section5chapter8"></a><h1 class="chapter"><a href="#section5"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></a> Chapter 9 Advanced Configuration - Configuring Escalations</h1>
+<hr />
+    <p>This chapter will focus on Escalations configuration. Each <i>How to</i> will take you step by step through each procedure. Before starting, check the list below each <i>How to</i> to view any required prerequisites.</p>
+
+    <h5>Chapter Contents</h5>
+    <ul class="level01">
+      <li><a href="#s5chapter8a">Escalations</a></li>
+      <li><a href="#s5chapter8b">Escalation Trees</a></li>
+    </ul>
+    <a name="s5chapter8a"></a><h1 class="wMargins"><a href="#section5chapter8">Escalations</a></h1>
+    <p>Notifications and escalations are how the GroundWork Monitor's Nagios&#174; engine alerts its users when monitoring Services change between states (OK, WARNING, CRITICAL, and UNKNOWN). Escalations combine specified Contact Groups that are to be notified when a Notification is escalated. An Escalation Tree is a grouping of multiple Escalations which are then assigned to a Host, Host Profile, Host Group, or a Service. Escalation are optional.</p>
+
+    <ul class="level01">
+      <li><a href="escalations.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Configure a Host or Service Escalation?</a>
+      <ul class="level02">
+        <li><a href="timeperiods.html" bookshelf:href="relative" bookshelf:target="popup">Time Periods</a></li>
+      </ul>
+      </li>
+    </ul>
+    <a name="s5chapter8b"></a><h1 class="wMargins"><a href="#section5chapter8">Escalation Trees</a></h1>
+
+    <p>Escalation Trees are groupings of multiple Host and Service Escalations that can be assigned to a Host, Host Profile, Host Group, or a Service.
+</p>
+    <ul class="level01">
+      <li><a href="escalations.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Define a Host or Service Escalation Tree?</a>
+      <ul class="level02">
+        <li><a href="hosts.html" bookshelf:href="relative" bookshelf:target="popup">Defined Hosts</a></li>
+        <li><a href="hosts.html" bookshelf:href="relative" bookshelf:target="popup">Defined Host Groups</a></li>
+        <li><a href="services.html" bookshelf:href="relative" bookshelf:target="popup">Defined Services</a></li>
+
+        <li><a href="services.html" bookshelf:href="relative" bookshelf:target="popup">Defined Service Groups</a></li>
+      </ul>
+      </li>
+      </ul>
+<!-- Section 5 Chapter 9 -->
+    <a name="section5chapter9"></a><h1 class="chapter"><a href="#section5"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></a> Chapter 10 Advanced Configuration - Defining Commands</h1>
+<hr />
+    <p>This chapter will focus on Command configuration. A Command line, which defines a Command, is referenced in Contact, Host, and Service definitions among other places. Commands that can be defined include Service checks, Service Notifications, Service event handlers, Host checks, Host Notifications, and Host event handlers. By default, Configuration uses <i>commands.cfg</i> to store check command definitions.</p>
+
+    <p>Command definitions can contain macros, but you must make sure that you include only those macros that are <i>valid</i> for the circumstances when the command will be used. Immediately prior to the execution of a command, Nagios&#174; will replace all macros in the command with their corresponding values. This allows you to define a few generic commands to handle all your needs. You must make sure that you include only those macros in command definitions that are <i>valid</i> for the circumstances when the command will be used. See the Nagios&#174; <a href="http://nagios.sourceforge.net/docs/1_0/macros.html" target="new">documentation</a> for the complete list and usage of macros. Each <i>How to</i> will take you step by step through each procedure. Before starting, check the list below each <i>How to</i> to view any required prerequisites.</p>
+
+    <ul class="level01">
+      <li><a href="commands.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Define a New Command?</a></li>
+    </ul>
+<!-- S5 Chapter 10 -->
+    <a name="section5chapter10"></a><h1 class="chapter"><a href="#section5"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></a> Chapter 11 Advanced Configuration - Defining Time Periods</h1>
+<hr />
+    <p>This chapter will focus on Time Period configuration. Time Periods are lists of times during various days that are considered to be <i>valid</i> times for Notifications and Service checks. Each <i>How to</i> will take you step by step through each procedure. Before starting, check the list below each <i>How to</i> to view any required prerequisites.</p>
+
+    <ul class="level01">
+        <li><a href="timeperiods.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Define a New Time Period?</a></li>
+    </ul>
+<!-- S5 Chapter 11 -->
+    <a name="section5chapter11"></a><h1 class="chapter"><a href="#section5"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></a> Chapter 12 Advanced Configuration - Defining Groups</h1>
+<hr />
+    <p>This chapter will focus on the new GroundWork Monitor <i>Open Source</i> feature Groups. The Groups feature is very flexible and powerful. With great power comes great responsibility, so care should be considered in administering them. In the simplest form, Groups can be used to split Hosts into different Nagios&#174; configuration files, in their most complex implementation they extend the configuration to multiple instances of Nagios&#174;, and in between, Groups can determine Group Macro values applied to Service Checks.</p>
+
+    <p>Apart from file management, and managing multiple instances of Nagios&#174;, the real advantage of Groups to most users is to scale the number of Services required to manage Hosts. Properly implemented, Group Macros will help reduce the number of redundant Services that were required in the past. As a novelty, you can use Groups to run a Pre Flight Test against a Host Group or even a single Host (Note: The Test will fail if its Parents are not included in the Group). Groups also provide an alternate way to assign Contact Groups to Hosts and Services.</p>
+    <ul class="level01">
+      <li><a href="groups.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Define and Manage Groups?</a></li>
+    </ul>
+<!-- S5 Chapter 12 -->
+    <a name="section5chapter12"></a><h1 class="chapter"><a href="#section5"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></a> Chapter 13 Advanced Configuration - Using the Control Option</h1>
+<hr />
+
+    <p>This chapter will focus on Control options within Nagios&#174; such as Nagios&#174; directories, CGI and Main configuration, resource macros listing which are defined in Commands, etc. Each <i>How to</i> will take you step by step through each procedure.</p>
+    <ul class="level01">
+      <li><a href="control.html" bookshelf:href="relative" bookshelf:target="popup">How Do I View My Current Nagios&#174; and Configuration Folders?</a></li>
+
+      <li><a href="control.html" bookshelf:href="relative" bookshelf:target="popup">How Do I View/Edit Settings for the Nagios&#174; CGI Configuration?</a></li>
+      <li><a href="control.html" bookshelf:href="relative" bookshelf:target="popup">How Do I View/Edit Settings in the Nagios&#174; Main Configuration?</a></li>
+      <li><a href="control.html" bookshelf:href="relative" bookshelf:target="popup">How Do I View Nagios&#174; Resource Macros?</a></li>
+      <li><a href="control.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Load a Nagios&#174; Configuration?</a></li>
+
+      <li><a href="control.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Run a Pre Flight Test?</a></li>
+      <li><a href="control.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Commit a Nagios&#174; Configuration?</a></li>
+    </ul>
+<!-- Section 5 Chapter 13 -->
+    <a name="section5chapter13"></a><h1 class="chapter"><a href="#section5"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></a> Chapter 14 Advanced Configuration - Using the Tools Option</h1>
+<hr />
+    <p>This chapter enables you to <b>export</b> all the configuration files for viewing and debugging. These are valid configuration files which are downloaded to the directory <code class="bookshelfcode">/usr/local/groundwork/apache2/htdocs/monarch/download</code>. Also, there is now an easy way to delete one, many, or all Hosts. The <b>Host Delete Tool</b> completely removes the Host, it's associated Services, and any reference such a a membership in Host Groups, Service Groups, Groups, and Profiles. And the <b>Service Delete Tool</b> is used to delete Services that are no longer in use. Services can be removed from one or many Hosts.</p>
+
+    <ul class="level01">
+      <li><a href="tools.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Export Configuration Files?</a></li>
+      <li><a href="tools.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Remove a Host Using Host Delete?</a></li>
+      <li><a href="tools.html" bookshelf:href="relative" bookshelf:target="popup">How Do I Remove a Service Using Service Delete?</a></li>
+    </ul>
+    </td>
+  </tr>
+
+
+
+
+
+<!-- End -->
+</tbody>
+</table>
+  </body>
+
+</html>

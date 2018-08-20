@@ -1,0 +1,32 @@
+<groundwork_performance_configuration>
+<service_profile name="service profile name">
+<graph name="graph 1">
+<host>*</host>
+<service regx="0"><![CDATA[check_cpu_test]]></service>
+<type>nagios</type>
+<enable>1</enable>
+<label>Label Of Graph 1</label>
+<rrdname><![CDATA[/usr/local/groundwork/rrd/$HOST$_$SERVICE$.rrd]]></rrdname>
+<rrdcreatestring><![CDATA[$RRDTOOL$ create $RRDNAME$ --step 300 --start n-1yr DS:percent:GAUGE:900:U:U RRA:AVERAGE:0.5:1:2880 RRA:AVERAGE:0.5:5:4032 RRA:AVERAGE:0.5:15:5760 RRA:AVERAGE:0.5:60:8640]]></rrdcreatestring>
+<rrdupdatestring><![CDATA[$RRDTOOL$ update $RRDNAME$ $LASTCHECK$:$VALUE1$ 2>&1]]></rrdupdatestring>
+<graphcgi><![CDATA[/nagios/cgi-bin/percent_graph.cgi]]></graphcgi>
+<parseregx first="0"><![CDATA[(\d+)]]></parseregx>
+<perfidstring>1234</perfidstring>
+</graph>
+
+<graph name="graph 2">
+<host>*</host>
+<service regx="0"><![CDATA[check_cpu_test2]]></service>
+<type>nagios</type>
+<enable>1</enable>
+<label>Label Of Graph 2</label>
+<rrdname><![CDATA[/usr/local/groundwork/rrd/$HOST$_$SERVICE$.rrd]]></rrdname>
+<rrdcreatestring><![CDATA[$RRDTOOL$ create $RRDNAME$ --step 300 --start n-1yr DS:percent:GAUGE:900:U:U RRA:AVERAGE:0.5:1:2880 RRA:AVERAGE:0.5:5:4032 RRA:AVERAGE:0.5:15:5760 RRA:AVERAGE:0.5:60:8640]]></rrdcreatestring>
+<rrdupdatestring><![CDATA[$RRDTOOL$ update $RRDNAME$ $LASTCHECK$:$VALUE1$ 2>&1]]></rrdupdatestring>
+<graphcgi><![CDATA[/nagios/cgi-bin/percent_graph.cgi]]></graphcgi>
+<parseregx first="0"><![CDATA[(\d+)]]></parseregx>
+<perfidstring>5678</perfidstring>
+</graph>
+
+</service_profile>
+</groundwork_performance_configuration>

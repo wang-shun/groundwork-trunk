@@ -1,0 +1,73 @@
+## -*- shell-script -*- ######################################################
+##                                                                          ##
+##  JBoss Bootstrap Script Configuration                                    ##
+##                                                                          ##
+##############################################################################
+
+### $Id: run.conf 62747 2007-05-02 17:43:36Z dimitris@jboss.org $
+
+#
+# This file is optional; it may be removed if not needed.
+#
+
+#
+# Specify the maximum file descriptor limit, use "max" or "maximum" to use
+# the default, as queried by the system.
+#
+# Defaults to "maximum"
+#
+#MAX_FD="maximum"
+
+#
+# Specify the profiler configuration file to load.
+#
+# Default is to not load profiler configuration file.
+#
+#PROFILER=""
+
+#
+# Specify the location of the Java home directory.  If set then $JAVA will
+# be defined to $JAVA_HOME/bin/java, else $JAVA will be "java".
+#
+JAVA_HOME="/usr/local/groundwork/java"
+
+#
+# Specify the exact Java VM executable to use.
+#
+#JAVA=""
+
+#
+# Specify options to pass to the Java VM.
+#
+if [ "x$JAVA_OPTS" = "x" ]; then
+#   JAVA_OPTS="-Xms256m -Xmx1024m -Dsun.rmi.dgc.client.gcInterval=3600000 -Dsun.rmi.dgc.server.gcInterval=3600000"
+   JAVA_OPTS="-Xms512m -Xmx1024m -XX:MaxPermSize=256m"
+fi
+
+# Sample JPDA settings for remote socket debuging
+#JAVA_OPTS="$JAVA_OPTS -Xrunjdwp:transport=dt_socket,address=8787,server=y,suspend=n"
+
+# Sample JPDA settings for shared memory debugging 
+#JAVA_OPTS="$JAVA_OPTS -Xrunjdwp:transport=dt_shmem,server=y,suspend=n,address=jboss"
+
+JAVA_OPTS="$JAVA_OPTS -Dorg.apache.commons.logging.LogFactory=org.apache.commons.logging.impl.LogFactoryImpl -Djavax.net.ssl.trustStore=$JAVA_HOME/jre/lib/security/cacerts -DANTLR_USE_DIRECT_CLASS_LOADING=true"
+
+# Directory config arguments
+GROUNDWORK_HOME=/usr/local/groundwork
+FOUNDATION_HOME=$GROUNDWORK_HOME/foundation
+FOUNDATION_CONTAINER_NAME=container
+FOUNDATION_CONTAINER_HOME=$FOUNDATION_HOME/$FOUNDATION_CONTAINER_NAME
+JBOSS_HOME=$FOUNDATION_HOME/jboss
+JAVA_OPTS="$JAVA_OPTS \
+    -Duser.language=en \
+    -Duser.region=us \
+    -Djboss.home.dir=$JBOSS_HOME \
+    -Djboss.server.name=$FOUNDATION_CONTAINER_NAME \
+    -Djboss.server.home.dir=$FOUNDATION_CONTAINER_HOME \
+    -Djboss.server.home.url=file://$FOUNDATION_CONTAINER_HOME \
+    -Djboss.server.log.dir=$FOUNDATION_CONTAINER_HOME/logs \
+    -Djboss.server.lib.url=file://$FOUNDATION_CONTAINER_HOME/lib/jboss \
+    -Djboss.server.config.url=file://@CONFIG_DIR@"
+ 
+LD_LIBRARY_PATH=$GROUNDWORK_HOME/common/lib:$GROUNDWORK_HOME/mysql/lib:$GROUNDWORK_HOME/foundation/jboss/native/lib
+export LD_LIBRARY_PATH

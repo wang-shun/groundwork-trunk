@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ~ JBoss, a division of Red Hat                                              ~
+  ~ Copyright 2006, Red Hat Middleware, LLC, and individual                   ~
+  ~ contributors as indicated by the @authors tag. See the                    ~
+  ~ copyright.txt in the distribution for a full listing of                   ~
+  ~ individual contributors.                                                  ~
+  ~                                                                           ~
+  ~ This is free software; you can redistribute it and/or modify it           ~
+  ~ under the terms of the GNU Lesser General Public License as               ~
+  ~ published by the Free Software Foundation; either version 2.1 of          ~
+  ~ the License, or (at your option) any later version.                       ~
+  ~                                                                           ~
+  ~ This software is distributed in the hope that it will be useful,          ~
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of            ~
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU          ~
+  ~ Lesser General Public License for more details.                           ~
+  ~                                                                           ~
+  ~ You should have received a copy of the GNU Lesser General Public          ~
+  ~ License along with this software; if not, write to the Free               ~
+  ~ Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA        ~
+  ~ 02110-1301 USA, or see the FSF site: http://www.fsf.org.                  ~
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+
+<deployment xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="urn:jboss:bean-deployer bean-deployer_1_0.xsd"
+            xmlns="urn:jboss:bean-deployer">
+
+   <bean name="DataSourceConfig" class="org.jboss.portal.test.framework.embedded.DataSourceSupport$Config">
+      <constructor factoryMethod="getBean">
+         <factory bean="BeanFactory"/>
+         <parameter>DataSourceConfig</parameter>
+      </constructor>
+   </bean>
+
+   <bean name="HibernateConfig" class="org.jboss.portal.test.framework.embedded.HibernateSupport$Config">
+      <constructor factoryMethod="getBean">
+         <factory bean="BeanFactory"/>
+         <parameter>HibernateConfig</parameter>
+      </constructor>
+   </bean>
+
+   <bean name="JNDISupport" class="org.jboss.portal.test.framework.embedded.JNDISupport">
+   </bean>
+
+   <bean name="TransactionManagerSupport" class="org.jboss.portal.test.framework.embedded.TransactionManagerSupport">
+   </bean>
+
+   <bean name="ConnectionManagerSupport" class="org.jboss.portal.test.framework.embedded.ConnectionManagerSupport">
+      <property name="transactionManager"><inject bean="TransactionManagerSupport" property="transactionManager"/></property>
+   </bean>
+
+   <bean name="DataSourceSupport" class="org.jboss.portal.test.framework.embedded.DataSourceSupport">
+      <property name="transactionManager"><inject bean="TransactionManagerSupport" property="transactionManager"/></property>
+      <property name="connectionManagerReference"><inject bean="ConnectionManagerSupport"
+                                                          property="connectionManagerReference"/></property>
+      <property name="config"><inject bean="DataSourceConfig"/></property>
+   </bean>
+
+   <bean name="HibernateSupport" class="org.jboss.portal.test.framework.embedded.HibernateSupport">
+      <property name="config"><inject bean="HibernateConfig"/></property>
+      <property name="mappings">
+         <list elementClass="java.lang.String">
+            <value>conf/hibernate/portal/domain.hbm.xml</value>
+         </list>
+      </property>
+      <property name="jNDIName">java:/SessionFactory</property>
+   </bean>
+
+   <bean name="AuthorizationDomainRegistry" class="org.jboss.portal.security.impl.JBossAuthorizationDomainRegistryImpl">
+   </bean>
+
+   <bean name="AuthorizationManagerFactory"
+         class="org.jboss.portal.security.impl.jacc.JACCPortalAuthorizationManagerFactory">
+      <property name="authorizationDomainRegistry"><inject bean="AuthorizationDomainRegistry"/></property>
+   </bean>
+
+   <bean name="ContentProviderRegistry" class="org.jboss.portal.test.core.model.content.SimpleContentProviderRegistry">
+   </bean>
+
+   <bean name="PortletContentProvider" class="org.jboss.portal.test.core.model.content.SimpleContentProvider">
+      <constructor>
+         <parameter class="java.lang.String">portlet</parameter>
+      </constructor>
+      <property name="registry"><inject bean="ContentProviderRegistry"/></property>
+   </bean>
+
+   <bean name="PortalObjectContainer" class="org.jboss.portal.core.impl.model.portal.PersistentPortalObjectContainer">
+      <property name="sessionFactoryJNDIName">java:/SessionFactory</property>
+      <property name="authorizationDomainRegistry"><inject bean="AuthorizationDomainRegistry"/></property>
+      <property name="portalAuthorizationManagerFactory"><inject bean="AuthorizationManagerFactory"/></property>
+      <property name="contentProviderRegistry"><inject bean="ContentProviderRegistry"/></property>
+   </bean>
+
+   <bean name="CoordinationService" class="org.jboss.portal.core.impl.coordination.CoordinationService">
+      <property name="portalObjectContainer"><inject bean="PortalObjectContainer"/></property>
+   </bean>
+
+   <bean name="TestBean" class="org.jboss.portal.test.core.model.portal.coordination.CoordinationServiceTestCase">
+      <constructor factoryMethod="getBean">
+         <factory bean="BeanFactory"/>
+         <parameter>TestBean</parameter>
+      </constructor>
+      <property name="hibernate"><inject bean="HibernateSupport"/></property>
+      <property name="portalObjectContainer"><inject bean="PortalObjectContainer"/></property>
+      <property name="authorizationManagerFactory"><inject bean="AuthorizationManagerFactory"/></property>
+      <property name="cos"><inject bean="CoordinationService"/></property>
+   </bean>
+</deployment>

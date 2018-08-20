@@ -1,0 +1,138 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.jboss.epp.migration</groupId>
+    <artifactId>epp5-migration</artifactId>
+    <version>1.0.0</version>
+  </parent>
+  <artifactId>epp43-export</artifactId>
+  <packaging>jar</packaging>
+
+  <name>EPP 4.3 Exporter</name>
+  <url>http://maven.apache.org</url>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+	<repositories>
+		<repository>
+
+			<id>jboss-public</id>
+			<name>JBoss Public Nexus Repository</name>
+			<url>https://repository.jboss.org/nexus/content/groups/public</url>
+		</repository>
+		<repository>
+			<id>jboss-repository</id>
+			<url>https://repository.jboss.org/nexus/content/repositories/releases</url>
+		</repository>
+		<repository>
+			<id>deprecated</id>
+			<name>JBoss Deprecated</name>
+			<url>https://repository.jboss.org/nexus/content/repositories/deprecated</url>
+		</repository>
+	</repositories>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>2.2</version>
+        <configuration>
+          <source>1.5</source>
+          <target>1.5</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>copy-dependencies</id>
+            <phase>package</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/dist</outputDirectory>
+              <overWriteReleases>false</overWriteReleases>
+              <overWriteSnapshots>false</overWriteSnapshots>
+              <overWriteIfNewer>true</overWriteIfNewer>
+              <excludeScope>provided</excludeScope>
+              <excludeArtifactIds>jems-lib,junit</excludeArtifactIds>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+      
+  </build>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.jboss.epp.migration</groupId>
+      <artifactId>migration-support</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jboss.portal.identity</groupId>
+      <artifactId>identity-identity</artifactId>
+      <version>1.1.1</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>jboss.jbossas.core-libs</groupId>
+      <artifactId>jboss-system</artifactId>
+      <version>4.0.4.GA</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jboss.portal.common</groupId>
+      <artifactId>common-common</artifactId>
+      <version>1.2.5</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jboss.portal</groupId>
+      <artifactId>jems-lib</artifactId>
+      <version>2.7</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/../lib/portal-jems-lib.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>org.jboss.portal</groupId>
+      <artifactId>core-lib</artifactId>
+      <version>2.7</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/../lib/portal-core-lib.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>org.jboss.portal.portlet</groupId>
+      <artifactId>portlet-portlet</artifactId>
+      <version>2.0.9</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/../lib/portal-portlet-lib.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>commons-lang</groupId>
+      <artifactId>commons-lang</artifactId>
+      <version>2.6</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+      <version>1.2.12</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>3.8.1</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

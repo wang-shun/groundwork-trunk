@@ -1,0 +1,75 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+# "verify" is a GroundWork-internal script used to run unit, integration, and system tests.
+
+# Copyright 2014 GroundWork Open Source, Inc. ("GroundWork")
+# All rights reserved.  Use is subject to GroundWork commercial license terms.
+
+# Revision History:
+#
+# 2014-07-09 GH 0.0.0	Original version.
+
+use strict;
+use warnings;
+
+use Test::Class;
+
+sub print_usage {
+    print "usage:  verify {package_name} {package_argument} ...\n";
+}
+
+my $verify_class;
+
+# This code (dynamically requiring the package specified on the command line)
+# has to be included in a BEGIN block to get any "Test" attributes in that
+# package correctly processed.
+BEGIN {
+    if ( @ARGV < 1 ) {
+	print_usage();
+	exit(1);
+    }
+
+    # Generally we don't want the user to specify the test-class filename,
+    # preferring that the classname be specified instead.  But we also
+    # accept a filename simply for convenience.  However, note that we
+    # don't strip any leading pathname components, so this won't work if
+    # what you specify includes any arbitrary directories before the one
+    # that represents the first component of the test-class name.
+    $verify_class = shift;
+    $verify_class =~ s/\.pm$//;
+    $verify_class =~ s{/+}{::}g;
+
+    # FIX LATER:  I'm not sure that this import() call will work for any arbitrary class
+    # (since it's just a class method, which might not exist), but testing to see if it
+    # might be available doesn't seem to exactly mirror the cases where a parent class
+    # might have it defined.  We might need to revisit this if we run into trouble.
+    eval "require $verify_class; import $verify_class;";
+    die $@ if $@;
+}
+
+print "# Loaded class $verify_class; tests start now (" . ( scalar localtime ) . ").\n";
+
+# Capture the STDERR stream along with the STDOUT stream in whatever log file
+# gets used to record the results of this verification run.
+if (open (STDERR, '>>&STDOUT')) {
+    ## Apparently, appending STDERR to the STDOUT stream isn't by itself enough
+    ## to get the line disciplines of STDOUT and STDERR synchronized and their
+    ## respective messages appearing in order as produced.  The combination is
+    ## apparently happening at the file-descriptor level, not at the level of
+    ## Perl's i/o buffering.  So it's still possible to have their respective
+    ## output streams inappropriately interleaved, brought on by buffering of
+    ## STDOUT messages.  To prevent that, we need to have STDOUT use the same
+    ## buffering as STDERR, namely to flush every line as soon as it is produced.
+    ## This is certainly a less-efficient use of system resources, but we don't
+    ## expect this program to write too much to the STDOUT stream anyway. 
+    STDOUT->autoflush(1);
+}
+else {  
+    print "# ERROR:  STDERR cannot be redirected to STDOUT!\n";
+    exit (1);
+}
+
+# Run the test methods in the class we just loaded, passing along any
+# command-line arguments to the class constructor so they can be used
+# for such things as selecting test datasets or particular tests to run.
+$verify_class->new(@ARGV)->runtests;

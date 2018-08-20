@@ -1,0 +1,501 @@
+#!/usr/bin/perl -w --
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+# FIX MINOR:
+# We will use the generic OS-supplied Perl for initial testing, until we package
+# this all up for delivery.  At that time, we will evaluate the situation to see
+# if there is some reason to use or not use a particular version of Perl.
+#
+# See comments at the top of replication_state_engine and GWMON-8508 for details
+# of why we are forced to use the OS-supplied version of Perl for the time being.
+
+# Client UI for Disaster Recovery control.
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+# ================================================================
+# Development tasks.
+# ================================================================
+
+# To do:
+# (*) Figure out what the exit status ought to be in the "recover command"
+#     mode of operation, if we do connect to the remote server but the
+#     remote command fails in some manner.
+# (*) Perhaps someday, allow multiple commands to be specified on the
+#     command line, separated by commas (i.e., by something simple which
+#     is not a shell metacharacter).
+# (*) Figure out why if we start our command prompt with a newline, every
+#     line printed to the terminal has an extra newline inserted, even the
+#     non-prompt lines.  And then report that as a bug in whatever package
+#     is making that happen.
+# (*) Report a problem with the POE::Component::IKC::Client documentation,
+#     namely that it's not clear how to shut down a particular client
+#     without shutting down the entire IKC.
+# (*) Report an RFE:  POE::Component::IKC::Client->spawn() should accept a
+#     connection timeout parameter and/or a means to cancel a pending but
+#     hung connection which is blocked on the server side, so the client
+#     process can forcibly cancel the connection attempt in a reasonable
+#     time if a connection attempt hangs indefinitely and the on_connect
+#     event is never called because the POE::Component::IKC::Server's
+#     concurrency setting is blocking further connections from completing.
+#     Essentially, this means encapsulating the timeout mechanism we have
+#     implemented here and including it in the standard package.
+# (*) Report a bug:  In POE::Component::IKC::Client->spawn(), if we subscribe
+#     to multiple session/state values in the remote server having the same
+#     session, then when we go to destroy the connection, the destruction of
+#     the first will destroy the alias for the second and later subscriptions,
+#     and generate an error.  It suffices to just subscribe once to the entire
+#     remote kernel and session, without subscribing to individual states in
+#     that session.  (For that matter, it doesn't seem to matter if we don't
+#     even subscribe at all, as long as the remote server did publish its
+#     available services.)  This situation ought to either be detected and
+#     complained about during the subscription, or the finding of an undefined
+#     alias ought to be ignored during the destruction processing.
+#     subscribe => [qw(poe://$unqualified_local_hostname-command-server/ticktock/call_now
+#         poe://$unqualified_local_hostname-command-server/ticktock/post_now)],
+#     subscribe => [qw(poe://$unqualified_local_hostname-command-server/ticktock)],
+
+# ================================================================
+# Documentation.
+# ================================================================
+
+# Supported usage patterns:
+#
+#    recover
+#        allows interactive entry of commands from the terminal;
+#        end the session with the "quit" or "exit" command, or EOF
+#        on the input stream
+#
+#    recover command and arguments
+#        executes a single command taken directly from the command line
+#
+#    echo command and arguments | recover
+#        allows one or multiple commands to be read from the standard
+#        input stream, with different commands entered on separate lines
+
+# ================================================================
+# Perl setup.
+# ================================================================
+
+use strict;
+
+# This is where we'll pick up any Perl packages not in the standard Perl
+# distribution, to make this a self-contained package anchored in a single
+# directory.
+use FindBin qw($Bin);
+use lib "$Bin/../perl/lib";
+
+use Errno qw(ECONNREFUSED);
+use Sys::Hostname;
+use Text::Tabs;
+use POE;
+use POE::Component::IKC::Responder;
+use POE::Component::IKC::Client;
+use POE::Wheel::ReadLine;
+
+my $PROGNAME = "recover";
+
+# Be sure to update this as changes are made to this script!
+my $VERSION = '0.3.0';
+
+# ================================================================
+# Command-line execution options and working variables.
+# ================================================================
+
+# This option should be 0 in production.  We sometimes set it to 1
+# for development use, so we can see what kinds of warnings we might
+# be suppressing and need to deal with otherwise.
+my $spill_warnings = 0;
+
+# Control whether to print extra help info when starting up.
+my $verbose_startup = 1;
+
+# FIX MINOR:  draw the port number (only) from the config file
+my $local_replication_host = 'localhost';
+my $local_command_port     = 43210;
+
+my $connected_to_console  = 0;
+my $connected_to_server   = 1;
+my $reconnected_to_server = 0;
+
+# How many seconds to wait for an initial connection to the server.
+my $server_connection_timeout = 5;
+
+my   $qualified_local_hostname = undef;
+my $unqualified_local_hostname = undef;
+
+my $result_indent = '  ';
+
+my $input_is_a_tty = -t STDIN;
+
+my $command_line_args = join(' ', @ARGV);
+my $user_input_line   = undef;
+my $input_exception   = undef;
+
+my $client_session_ID = undef;
+
+# This variable is used to hoist the console reference out of session context and
+# into a place where it can be seen by a POE::Wheel::ReadLine key binding routine.
+my $terminal_console = undef;
+
+my $exit_status = 0;
+
+# ================================================================
+# Program.
+# ================================================================
+
+   $qualified_local_hostname = hostname();
+($unqualified_local_hostname = $qualified_local_hostname) =~ s/\..*//;
+
+POE::Session->create(
+    inline_states => {
+	_start => sub {
+	    $_[KERNEL]->alias_set("$unqualified_local_hostname-watchdog");
+	    $_[HEAP]{connect_timeout_alarm} = $_[KERNEL]->delay_set ('timeout', $server_connection_timeout);
+	    $client_session_ID = connect_to_command_server();
+	},
+	timeout       => \&connection_timeout,
+	waive_timeout => \&waive_connection_timeout,
+	_stop => sub {
+	    $_[KERNEL]->post($client_session_ID, 'shutdown') if $client_session_ID;
+	    $client_session_ID = undef;
+	    $_[KERNEL]->alias_remove("$unqualified_local_hostname-watchdog");
+	},
+    },
+);
+
+# FIX LATER:  I don't know for sure why we need to call this manually.
+# The documentation says that POE::Component::IKC::Client will typically do this
+# for us, but in practice if we don't do this ourselves, we get a warning message:
+# POE::Component::IKC::Channel has no IKC responder.
+#     at .../perl/lib/POE/Component/IKC/Channel.pm line 183.
+# Perhaps it's because we're calling POE::Component::IKC::Client->spawn() before
+# we call POE::Kernel->run(), so the resources to do the work are not yet available.
+# But if we don't do that, then we would need some other way to get the thing
+# kickstarted when the kernel starts running.
+POE::Component::IKC::Responder->spawn();
+
+POE::Kernel->run();
+
+exit $exit_status;
+
+# ================================================================
+# Supporting subroutines.
+# ================================================================
+
+sub waive_connection_timeout {
+    $poe_kernel->alarm_remove ($_[HEAP]{connect_timeout_alarm}) if $_[HEAP]{connect_timeout_alarm};
+    delete $_[HEAP]{connect_timeout_alarm};
+}
+
+sub connection_timeout {
+    print "Cannot contact the replication command server at $local_replication_host port $local_command_port.\n";
+    delete $_[HEAP]{connect_timeout_alarm};
+    $_[KERNEL]->post($client_session_ID, 'shutdown') if $client_session_ID;
+    $exit_status = 1;
+}
+
+# This function is different from print() in that it effectively always appends a
+# newline to the specified output, if one does not already exist there.  We also
+# expand tabs, and prepend an externally configured indent string to more readily
+# distinguish remote command output from local command prompts and messages.
+sub term_print {
+    my $lines = join('',@_);
+    chomp $lines;
+    my @lines = split /\n/, $lines, -1;
+    my $text = $result_indent . join("\n$result_indent", expand(@lines));
+    @lines = split /\n/, $text, -1;
+    $poe_kernel->post('console', 'print', \@lines);
+}
+
+# FIX LATER:  This is perhaps a clumsy attempt to override all print() calls with our own
+# version, so that third-party code won't spill bad stuff to the screen.  It's not yet
+# clear either that this actually overrides the standard function/operator (actually, I
+# think there is some special syntax for that, that we are not invoking here), or that
+# it will do what we want it to, or that the places we want to affect (generally, error
+# messages) will in fact use print() to get their output printed.
+sub print {
+    term_print(@_);
+}
+
+sub print_to_terminal {
+    my $output  = $_[ARG0];
+    my $console = $_[HEAP]{console};
+    foreach my $line (@$output) {
+	$console->put($line);
+    }
+}
+
+# This routine implements blocking input, unlike most other actions in a POE program.
+# It is done this way so we properly interleave sending commands to the server with
+# printing the results of those commands, in the absence of any kind of ticketing
+# exchanged with the server to track which command response belongs to which command.
+sub read_user_input_line {
+    my $input_line = <STDIN>;
+    if (not defined $input_line) {
+	# eof on input
+	$_[KERNEL]->yield('got_user_input_line', $input_line, 'eot');
+    }
+    elsif ($input_line !~ m{^\s*$}) {
+	chomp $input_line;
+	if (!$input_is_a_tty) {
+	    # Simulate an interactive exchange by printing a prompt and the corresponding
+	    # input command as though the user had just typed it.  This shows the command
+	    # responsible for the following output, making it more decipherable.
+	    my $console = $_[HEAP]{console};
+	    $console->put($_[HEAP]{prompt}.$input_line);
+	}
+	$_[KERNEL]->yield('got_user_input_line', $input_line, '');
+    }
+    else {
+	# reschedule, giving other sessions some time to run before we block again
+	$_[KERNEL]->yield('read_user_input_line');
+    }
+}
+
+sub create_console {
+    POE::Session->create(
+	inline_states => {
+	    _start => sub {
+		$_[KERNEL]->alias_set('console');
+		set_up_user_console(@_);
+		if (!$command_line_args && !$input_is_a_tty) {
+		    $_[KERNEL]->yield('read_user_input_line');
+		}
+	    },
+	    _stop => sub {
+		tear_down_user_console();
+		$_[KERNEL]->alias_remove('console');
+	    },
+	    got_user_input_line    => \&handle_user_input_line,
+	    got_output_error_event => \&handle_output_error_event,
+	    read_user_input_line   => \&read_user_input_line,
+	    print => \&print_to_terminal,
+	    print_command_results => sub {
+		term_print $_[ARG0];
+		# Add a blank line if the text does not already end with one.
+		# This is our convention:  command results should insert their
+		# own leading blank line at the start of the results and wherever
+		# within the results a blank line is needed to separate sections.
+		# The command results need not end with a blank line, but we will
+		# add one here as a convenience to separate the command results
+		# from the next command prompt.
+		term_print ' ' if $_[ARG0] !~ /^\s*\z/m;
+		# Being suicidal here in the middle of a general print routine is
+		# a bit ugly, but it's a quick and dirty way to stop the program
+		# once we've processed a single command from the program arguments.
+		if ($command_line_args) {
+		    # eof on input
+		    $_[KERNEL]->yield('got_user_input_line', undef, 'eot');
+		}
+		elsif (!$input_is_a_tty) {
+		    $_[KERNEL]->yield('read_user_input_line');
+		}
+	    },
+	},
+	heap => {
+	    # FIX LATER:  Starting the prompt with a newline gets one at the start
+	    # of every line printed via put() as well, which is not what we intend
+	    # to happen.  Why this should be so is as yet unclear.  Report this as
+	    # a bug.
+	    prompt => "Command: "
+	}
+    );
+    $connected_to_console = 1;
+}
+
+sub create_command_sessions {
+    $connected_to_server = 1;
+    $poe_kernel->call("$unqualified_local_hostname-watchdog", 'waive_timeout');
+
+    # create sessions that usefully depend on availability of the foreign kernel
+
+    create_console() if !$connected_to_console;
+    if ($reconnected_to_server) {
+	term_print 'INFO:  Connection has been restored.';
+	$poe_kernel->post('console', 'got_user_input_line', $user_input_line, $input_exception);
+    }
+
+    if ($command_line_args) {
+	my $status = $poe_kernel->post('IKC', 'call', "poe://$unqualified_local_hostname-command-server/commands/execute",
+	  $command_line_args, 'poe:///console/print_command_results');
+	if (!$status) {
+	    print "ERROR:  the connection to the server has disappeared.";
+	}
+    }
+
+    # FIX LATER:  we haven't seen this ever be triggered, even when the server
+    # drops while the client stays alive and tries to send additional commands;
+    # rework this the same way we've found monitoring to work on the server side
+    if (0) {
+	$poe_kernel->post('IKC', 'monitor', "$unqualified_local_hostname-command-server", {
+	    unregister  => \&remote_is_down,
+	    unsubscribe => \&remote_is_down,
+	});
+    }
+
+    # FIX LATER:  this is just here to test the subscription monitoring handler on the server;
+    # so far, it's not working when we enable it
+    if (0) {
+	$poe_kernel->post('IKC', 'subscribe', [ "poe://$unqualified_local_hostname-command-server/commands" ]);
+    }
+}
+
+sub command_connection_error {
+    # could not connect; tell the user why not
+    my ($operation, $errnum, $errstr) = @_;
+    if ($operation eq 'connect' && $errnum == ECONNREFUSED) {
+	if ($connected_to_console) {
+	    term_print "Cannot contact the replication command server at $local_replication_host port $local_command_port.\n";
+	}
+	else {
+	    print "Cannot contact the replication command server at $local_replication_host port $local_command_port.\n";
+	}
+	# We waive the timeout because we're going to stop right away,
+	# and having it outstanding would delay that until it expires.
+	$poe_kernel->call("$unqualified_local_hostname-watchdog", 'waive_timeout');
+	$exit_status = 1;
+    }
+}
+
+# FIX LATER:  we haven't seen this ever be triggered
+sub remote_is_down {
+    print "\r\n### Remote server has disconnected. ###\r\n";
+}
+
+# We include our PID in our name to distinguish this client connection from any
+# other that might be coming into the server from other instances of this script.
+sub connect_to_command_server {
+    return POE::Component::IKC::Client->spawn(
+	ip         => $local_replication_host,
+	port       => $local_command_port,	# FIX MINOR:  draw this value (only) from the config file
+	name       => "replication-command-client-$$",
+	on_connect => \&create_command_sessions,
+	on_error   => \&command_connection_error
+    );
+}
+
+sub handle_suspend_signal {
+    # I'd like to retain the existing input so far and restore that portion of the command
+    # upon continuation, but there doesn't seem to be any good way to capture and restore
+    # the input that doesn't involve some unpleasant user interactions (being unable to edit
+    # the prior text, for instance).  So we just start over from scratch once we resume.
+    Term::ReadKey::ReadMode('restore');
+    kill 'TSTP', $$;
+    # Now we're dead.  When we come back alive, show a fresh prompt and allow input to continue.
+    # This also resets the input mode and our interrupt/eof handling, so we're good on all counts.
+    $terminal_console->rl_interrupt('');
+}
+
+sub set_up_user_console {
+    my $console;
+    if ($input_is_a_tty) {
+	$console = $_[HEAP]{console} = POE::Wheel::ReadLine->new(
+	    InputEvent => 'got_user_input_line'
+	);
+	if (!$command_line_args) {
+	    my %control_char = Term::ReadKey::GetControlChars(\*STDIN);
+	    my $suspend_char = $control_char{SUSPEND};
+	    if ($suspend_char ge "\cA" && $suspend_char le "\cZ") {
+		$terminal_console = $console;
+		$console->bind_key('Control-' . chr(ord($suspend_char) - ord("\cA") + ord('a')), \&handle_suspend_signal);
+	    }
+	}
+    }
+    else {
+	$console = $_[HEAP]{console} = POE::Wheel::ReadWrite->new(
+	    InputHandle  => \*STDIN,
+	    OutputHandle => \*STDOUT,
+	    InputEvent   => undef,
+	    ErrorEvent   => 'got_output_error_event',
+	    OutputFilter => POE::Filter::Line->new( Literal => "\n" )
+	);
+    }
+    $SIG{__WARN__} = sub {
+	my $msg = shift;
+	term_print $msg if $spill_warnings;
+	if ($msg =~ /Unknown kernel '$unqualified_local_hostname-command-server'/) {
+	    term_print 'ERROR:  Connection to server has been lost.';
+	    # Here we make an attempt to reconnect; it's not guaranteed.
+
+	    # We shut down the existing client session before we start a new one, as
+	    # a general precaution; it's not actually clear whether we need to do so
+	    # or whether we can just depend on POE garbage collection to clean it up.
+	    # FIX MINOR:  Why are we unable to reference $_[KERNEL] here, and must use
+	    # $poe_kernel instead?  Does that call into question our use of $_[HEAP]
+	    # elsewhere in this routine?
+	    $poe_kernel->call($client_session_ID, 'shutdown') if $client_session_ID;
+
+	    $client_session_ID = connect_to_command_server();
+	    $reconnected_to_server = 1;
+	}
+    };
+    if (!$command_line_args && $input_is_a_tty) {
+	# We don't mention it here, but usually the terminal suspend character will also be in play.
+	if ($verbose_startup) {
+	    $console->put(
+		'',
+		"Enter commands (try \"help\" if you're lost).",
+		'Ctrl-C discards the current command input; Ctrl-D exits the program.',
+		''
+	    ) if !$reconnected_to_server;
+	}
+    }
+    $reconnected_to_server = 0;
+    if (!$command_line_args && $input_is_a_tty) {
+	$console->get($_[HEAP]{prompt});
+    }
+}
+
+sub tear_down_user_console {
+    $SIG{__WARN__} = 'DEFAULT';
+}
+
+sub handle_user_input_line {
+    ($user_input_line, $input_exception) = @_[ARG0, ARG1];
+    my $console = $_[HEAP]{console};
+
+    if ($input_exception eq 'eot' || (!$connected_to_server && $input_exception eq 'interrupt')) {
+	$console->put("End of input.  Bye!") if !$command_line_args;
+	$_[KERNEL]->signal($_[KERNEL], 'UIDESTROY');
+	return;
+    }
+    unless ($input_exception eq 'interrupt' || $input_exception eq 'cancel') {
+	$user_input_line =~ s/^\s+|\s+$//g;
+	if ($user_input_line eq 'quit' || $user_input_line eq 'exit') {
+	    $_[KERNEL]->signal($_[KERNEL], 'UIDESTROY');
+	    return;
+	}
+	elsif ($user_input_line ne '' && $connected_to_server) {
+	    # FIX LATER:  If the server has dropped, we have difficulty in detecting
+	    # this and handling it gracefully here.  The IKC documentation should
+	    # be much clearer about how to detect and handle this condition.  As a
+	    # practical matter, the IKC session itself will still be up, so this
+	    # post() will succeed right away, only to fail later on when the IKC
+	    # event is processed and it tries to forward the request to the remote
+	    # system.
+	    my $status = $_[KERNEL]->post('IKC', 'call', "poe://$unqualified_local_hostname-command-server/commands/execute",
+	      $user_input_line, 'poe:print_command_results');
+	    if (!$status) {
+		$console->put("Internal error:  the connection to the server has disappeared.");
+	    }
+	}
+    }
+
+    if ($input_is_a_tty) {
+	$console->get($_[HEAP]{prompt});
+    }
+}
+
+sub handle_output_error_event {
+    my ($failed_function, $numeric_error, $string_error) = @_[ARG0..ARG2];
+
+    # FIX LATER
+    # We won't schedule any deferred output now because we're about to shut down the entire engine.
+    # We've never seen this routine generate any output anyway, so we're not too concerned about it.
+    # my $console = $_[HEAP]{console};
+    # $console->put("Got $failed_function error ($numeric_error, $string_error)");
+    print("Got $failed_function error: ($numeric_error, $string_error)\n");
+
+    $_[KERNEL]->signal($_[KERNEL], 'UIDESTROY');
+}

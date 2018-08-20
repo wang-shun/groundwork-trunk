@@ -1,0 +1,51 @@
+*** noma_2.0.3/contrib/Makefile.in.orig	Mon Nov 21 03:25:24 2011
+--- noma_2.0.3/contrib/Makefile.in	Wed Aug 29 16:13:50 2012
+***************
+*** 1,6 ****
+--- 1,8 ----
+  SUBST = @abs_top_builddir@/subst.sh
+  INSTALL=@INSTALL@
+  INSTALLOPTS=@INSTALLOPTS@
++ PUBLIC_MODE = -m 644
++ PUBLIC_EXECUTABLE_MODE = -m 755
+  datarootdir = @datarootdir@
+  sysconfdir = @prefix@/etc
+  prefix = @prefix@
+***************
+*** 8,15 ****
+  
+  all: noma
+  
+! FILTER := Makefile%
+! FILES := $(filter-out $(FILTER),$(wildcard *))
+  RELDIR := $(prefix)/$(subst @abs_top_builddir@/,,$(CURDIR))
+  
+  noma: $(FILES)
+--- 10,18 ----
+  
+  all: noma
+  
+! PUBLIC_FILES            := $(wildcard *.php)
+! PUBLIC_EXECUTABLE_FILES := $(wildcard *.pl)
+! FILES := $(PUBLIC_FILES) $(PUBLIC_EXECUTABLE_FILES)
+  RELDIR := $(prefix)/$(subst @abs_top_builddir@/,,$(CURDIR))
+  
+  noma: $(FILES)
+***************
+*** 22,28 ****
+  
+  install: noma
+  	$(INSTALL) $(INSTALLOPTS) -d $(RELDIR)
+! 	$(INSTALL) $(INSTALLOPTS) -t $(RELDIR) $(FILES)
+  
+  .PHONY: install
+  
+--- 25,32 ----
+  
+  install: noma
+  	$(INSTALL) $(INSTALLOPTS) -d $(RELDIR)
+! 	$(INSTALL) $(INSTALLOPTS) $(PUBLIC_MODE)            -t $(RELDIR) $(PUBLIC_FILES)
+! 	$(INSTALL) $(INSTALLOPTS) $(PUBLIC_EXECUTABLE_MODE) -t $(RELDIR) $(PUBLIC_EXECUTABLE_FILES)
+  
+  .PHONY: install
+  

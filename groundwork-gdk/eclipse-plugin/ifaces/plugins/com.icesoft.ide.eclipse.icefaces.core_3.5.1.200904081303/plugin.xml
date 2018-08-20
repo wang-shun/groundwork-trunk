@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.3"?>
+<plugin>
+  <extension
+        id="com.icesoft.eclipse.icefaces.project.facet"
+        name="%PLUGIN_NAME"
+        point="org.eclipse.wst.common.project.facet.core.facets">
+   
+    <project-facet id="%ICEFACES_FACET_ID">
+      <label>%ICEFACES_FACET_LABEL</label>
+      <description>%ICEFACES_FACET_DESCRIPTION</description>
+      <default-version
+            provider="com.icesoft.ide.eclipse.icefaces.core.facet.ICEfacesFacetDefaultVersionProvider">
+      </default-version>
+    </project-facet>
+   
+    <project-facet-version facet="%ICEFACES_FACET_ID" version="1.8">
+        <constraint>
+         <and>
+            <requires facet="jst.jsf" version="[1.1"/>
+         </and>
+      </constraint>
+    </project-facet-version>
+    
+    <action facet="%ICEFACES_FACET_ID" id="icesoft.icefaces.install"  version="1.8" type="INSTALL">
+         <delegate class="com.icesoft.ide.eclipse.icefaces.core.facet.ICEfacesFacetInstallDelegate"/>
+         <config-factory class="com.icesoft.ide.eclipse.icefaces.core.facet.ICEfacesInstallDataModelProvider"/>    
+    </action>
+   
+    <action facet="%ICEFACES_FACET_ID" id="icesoft.icefaces.uninstall" version ="*" type="UNINSTALL">
+	 	<delegate class="com.icesoft.ide.eclipse.icefaces.core.facet.ICEfacesFacetUninstallDelegate"/>
+    </action>
+   
+   </extension>
+
+   <extension point="org.eclipse.wst.common.project.facet.core.presets">
+    <dynamic-preset id="%ICEFACES_FACET_PRESET_ID" >
+       <factory class="com.icesoft.ide.eclipse.icefaces.core.facet.ICEfacesConfigPresetFactory"/>
+     </dynamic-preset>  
+  </extension>
+  
+  <extension point="org.eclipse.wst.common.project.facet.core.runtimes">
+    <supported>
+      <runtime-component any="true"/>
+      <facet id="%ICEFACES_FACET_ID" version="[1.8,3.0]"/>
+    </supported>
+  </extension>
+  
+  <extension point="org.eclipse.wst.common.project.facet.ui.wizardPages">
+  		<wizard-pages action="icesoft.icefaces.install">
+    		<page class="com.icesoft.ide.eclipse.icefaces.core.facet.ui.ICEfacesFacetInstallLibraryPage"/>		
+			<page class="com.icesoft.ide.eclipse.icefaces.core.facet.ui.ICEfacesFacetInstallPage"/>
+    	</wizard-pages>
+  </extension>  
+  
+  <extension point="org.eclipse.ui.editors.templates">
+     <include file="templates/icefaces-default-templates.xml" translations="$nl$/templates/icefaces-default-templates.properties" /> 
+  </extension>
+  
+    
+</plugin>

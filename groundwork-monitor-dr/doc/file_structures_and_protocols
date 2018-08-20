@@ -1,0 +1,1018 @@
+====================================================================
+Here are the file structures and protocols for object replication.
+====================================================================
+
+The desire to keep the applications and databases up and running as much
+as possible, only bringing them down as infrequently as possible for
+the briefest periods possible, means that we will incur many more file
+operations than might otherwise be the case.  We will make extra copies
+of various file trees, only bringing them into play when we know they
+are complete and prepared for use.  Given that we generally expect the
+number of files involved to be moderate, this seems like a good tradeoff.
+
+The following data is from the replication config file, defining the
+roots of critical file trees:
+
+    # * locations of the pending and backup configuration repositories
+    pending-config-base-dir: /usr/local/groundwork/replication/pending/
+    backups-config-base-dir: /usr/local/groundwork/replication/backups/
+
+Certain filesystem areas are critical to the correct execution of our
+replication and installation operations.  For each such area, we define
+a simple term to unambiguously refer to that area.
+
+"working" means the root (/)-based filesystem on either the Primary or
+DR system where in-play files are accessed by the local programs.  In
+practice, we insist in a further standard prefix to be part of the
+working path, to attempt to constrain the replication away from possibly
+touching any randomly located files elsewhere in the system.
+
+    /usr/local/groundwork/...
+
+"staged" means the place on the Primary system where the working files
+will be copied before being sent to the replica on the DR system.  The
+files in this area are only valid during a replication operation, while
+the replication itself controls what files are either placed here or
+deleted from a previous placement.  This tree is never subject to any
+kind of automated cleanup other than what occurs during an individual
+replication cycle.  In a future release, it may be considered possible
+for the replication engine to optionally compare the staged area to
+the working area and avoid pausing or stopping the application if no
+changes at all are seen.  The feasibility and logistics of that kind
+of optimization remain to be worked out, and may require additional
+coordination not present in the original design.
+
+    $backups_config_base_dir/$abbrev/$name/staged/...
+
+"replica" means the place on the DR system where the Primary system
+staged files will land when copied to the DR system:
+
+    $pending_config_base_dir/$abbrev/$name/replica/...
+
+"ready" means the place on the DR system where a complete replica is
+moved to indicate that it is ready to be installed:
+
+    $pending_config_base_dir/$abbrev/$name/ready/...
+
+"erase" means the place on the DR system where a ready tree is moved to
+begin the process of destruction (so that a new complete replica can be
+moved as a whole and become ready), to avoid being confused with a full
+ready setup which may be used to update the working files:
+
+    $pending_config_base_dir/$abbrev/$name/erase/$datetime/...
+
+"shadow" means the place on the DR system where the local working files
+are copied while a complete backup tree is being prepared before ready
+files are rolled into place:
+
+    $backups_config_base_dir/$abbrev/$name/shadow/...
+
+"backup" means the place on the DR system where the shadow files on the
+DR system will be moved just before new files are installed from the
+ready area into the working area:
+
+    $backups_config_base_dir/$abbrev/$name/$datetime/...
+
+"prune" means the place on the DR system where backup files will be
+moved during the deletion process, to avoid being confused with a full
+backup which may still be used to restore the working files:
+
+    $backups_config_base_dir/$abbrev/$name/prune/$datetime/...
+
+"original" means the place on either system where the first set of
+backup files will be moved during the deletion process instead of
+being renamed as delete files and removed, to provide a permanent
+record of the first set of working files to be moved out of play:
+
+    $backups_config_base_dir/$abbrev/$name/original/...
+
+====================================================================
+Application working-area replicated and installed file structure.
+====================================================================
+
+The set of files touched by replication and installation operations for
+applications is controlled by settings in the replication configuration
+file.  The directives listed here are specified independently for
+each application.  In each case, "directory" or "file" may be read
+as specifying either an individual directory or file by literal name,
+or as a glob pattern specifying a set of matching directories or files.
+Whitespace in a filename cannot be matched by a these glob patterns;
+using whitespace in filenames, particularly in server configuration
+contexts such as this, is strongly discouraged.
+
+include-trees
+    These are the top-level directories under which all or most of the
+    directories and files are to be replicated and installed.
+
+exclude-trees
+    These are top-level directories of trees under the configured
+    include-trees directories which are to be skipped on the source
+    system during the replication operation, and not copied to the
+    target system.
+
+include-files
+    These are specific files to be replicated and installed, which do
+    not belong under any of the configured replicated-trees directories.
+
+exclude-files
+    These are specific files within the configured replicated-trees
+    and include-files specifications which are to be skipped on the
+    source system during the replication operation, and not copied to
+    the target system.
+
+These directives, if present for a given application, are applied in
+the order listed above when comparing the existing source files against
+the configured replication setup for that application.  Either a
+include-trees or a include-files directive is required for each
+application; the other directives are optional.
+
+Directory and file patterns specified in these directives must resolve
+to absolute pathnames.  By convention, directory names in include-trees
+and exclude-trees directives are specified in the configuration file with
+a trailing slash, to visually enforce the notion that these represent
+entire trees under those directories.
+
+The initial version of the Replication Engine will concern itself only
+with the existence of the replicated source files on the target system.
+It will pay no attention to the possible existence of other files on
+the target system under the specified replicated-trees.  That is, it
+will take no action to remove any such files that it finds, whether or
+not they match either the excluded-trees or excluded-files directives.
+However, such additional files might be either benign squatters or active
+participants in the local configuration, possibly interfering with a new
+installed configuration that does not expect them to be present.  So a
+future version of the Replication Engine might also support directives
+to ignore or remove certain trees and files on the target system which
+were not part of the source system.
+
+Copies of the replicated files will be rooted in the parent directories
+specified above as the respective "working", "replica", "ready", and
+other file trees.  Within those trees, they will have the same full
+pathnames as they had on the source system.
+
+Only ordinary directories and files will be copied.  All forms of
+special files in the source tree (i.e., symlinks, fifos, sockets, and
+devices) will be ignored.  A future version might allow the copying or
+construction of symlinks in the target tree by an "origin -> endpoint"
+type of link-designation notation.  Hard links will be ignored in
+both the source and target trees, perhaps leading to some surprises.
+A future version might allow the recognition, copying, or construction
+of hard links in the source and target trees by an "origin => endpoint"
+type of link-designation notation (note the subtly different punctuation).
+
+====================================================================
+Database working-area replicated and installed file structure.
+====================================================================
+
+In some later release of the Replication Engine, GroundWork may support
+continuous replication of a database using the database vendor's own
+built-in replication facilities.  However, that is not yet part of the
+current implementation.
+
+Even for the periodic replication which is supported, databases are not
+replicated using file-level copying of raw database files.  That is,
+databases are not replicated using files such as these, containing the
+database tables in their raw form:
+
+    /usr/local/groundwork/mysql/data/ibdata1
+    /usr/local/groundwork/mysql/data/jbossdb/HILOSEQUENCES.frm
+
+Rather, databases are replicated by taking dumps on the source system and
+restoring them on the target system.  The set of tables contained within
+such a dump is specified by the following directives in the replication
+configuration, specified independently for each database:
+
+include-tables
+    These are the specific tables which are to be included in the
+    generated source-system dump file and restored on the target system.
+    Tables may be listed either by individual names or by specifying
+    standard database match patterns (typically, just a single "%"
+    pattern to match all tables in the database).
+
+exclude-tables
+    These are specific tables within the configured include-tables
+    specification which are to be skipped on the source system and not
+    included in the dump file, and thus not copied to the target system.
+    Tables may be listed either by individual names or by specifying
+    standard database match patterns (such as "Foo%" to exclude all
+    tables whose name starts with "Foo").
+
+These directives, if present for a given database, are applied in the
+order listed above when comparing the existing source tables against
+the configured replication setup for that database.  A include-tables
+directive is required for each database; the exclude-tables directive
+is optional.
+
+Copies of the dump files will appear in the locations described below
+within the filesystem, with pathnames equivalent to those shown above
+for application files.  In each case, though, there will only be one
+database dump file within a given directory.  To distinguish the many
+database dump files which may accumulate in various places, each dump
+file will be named thusly:
+
+    {source-system-name}.{database-name}.{timestamp}.sql
+
+A file which is in the process of being created by the dump process on
+the source system, or which is still in flight between source and target
+systems, will be named as:
+
+    {source-system-name}.{database-name}.{timestamp}.tmp
+
+to distinguish it from a fully dumped or fully transferred file.  Bear in
+mind that the filename will name the database but give no hint as to
+which tables are not included in the file.
+
+Timestamps will be specified in this fixed format:
+
+    YYYY-MM-DD.hh_mm_ss
+
+We would have preferred to use this format instead:
+
+    YYYY-MM-DD@hh:mm:ss 
+
+since it is a more conventional way to represent a time, but files
+containing the "@" and ":" characters are difficult to transfer
+between machines using scp, which wants to interpret those characters
+as field separators to identify user and host fields in a remote file
+specification.
+
+The "staged" directory will be used on the source system to write a new
+dump file into.
+
+The "replica" directory will be used on the target system to receive a
+dump file sent from the source system.
+
+The "ready" directory will be used on the target system to hold a dump
+file which is poised to be loaded into the database.
+
+The "erase" directory will be used on the target system to hold old dump
+files, in timestamped directories reflecting the points at which they
+were moved out of the ready directory.
+
+The "shadow" directory will be used on the target system to hold a
+database dump being taken on that system before a dump from the source
+system is loaded.
+
+The "backup" directory will be used on the target system to hold old
+local database dumps moved from the shadow area after they are complete,
+just before new dumps from the ready area are loaded into the database.
+
+The "prune" directory will be used for databases just as it is for
+applications, to maintain consistency between the handling of these
+objects, even though with only one dump file to deal with per backup
+directory, this could have been simplified if we were willing to
+special-case this handling.
+
+The "original" directory will be used for databases as it is for
+applications, to save the first local database dump taken when replication
+begins.  This is essentially just a worst-case emergency fallback measure.
+
+====================================================================
+Replication and installation protocols.
+====================================================================
+
+In the first version of the Replication Engine, each application and
+database is replicated as an independent object, with no thought as to how
+they might be related or how they might be more efficiently replicated
+in certain groupings.  The one exception is that an application may
+have a single associated database, and if that linkage is established
+in the replication configuration, then the replication and installation
+operations for these two objects will be grouped together when they are
+scheduled to run at the same time.
+
+FIX THIS:  Such coordination will take extra development work, and may
+not be part of the initial implementation.  We must, though, avoid any
+conflicts, so at a minimum some serialization enforcement may be needed.
+
+You will see from the descriptions below that careful coordination is
+needed between replication and the applications whose configuration data
+is being replicated.  In an initial implementation, we can simplify the
+problem by just insisting that the application be down whenever a deploy
+action is running.  But this may be too harsh, causing the applications
+to be bounced too often, so the action sequences documented here allow
+for less restrictive interactions.  Implementing such protocols may take
+knowing cooperation from the applications, which means that standard
+versions of those applications might need internal modifications before
+they are suitable for running under this regime.
+
+A complete replication operation on the remote system consists of these
+possible actions, in order:
+
+  * block any other replication actions for this application;
+    this should be unnecessary but might be a good precaution,
+    at least so we don't start a replication operation while
+    some old one is somehow still in progress
+  * optionally block, stop, or flush/pause the application
+  * capture application working files to staged area
+  * optionally resume, start, or unblock the application
+  * copy staged area to remote replica (unconditionally, for now)
+  * unblock replication actions for this application; this should
+    be unnecessary (see above) but might be a good precaution
+
+A consideration here is how long to take the application out of commission
+while replication is occurring.  Best is if we can limit that time to
+the period when the files themselves are captured, and not tie up the
+application while the files are being sent to the remote replica (which
+action might be subject to all manner of network mischief and delay).
+This means that we need to keep a local (staged) copy of the working
+files during the replication operation.
+
+In the first implementation, we won't check to see if the application
+files have changed on the source system before initiating a capture
+operation.  In a future release, we might keep a local copy of the
+last files we successfully sent to the remote system, and compare
+them with the existing working files, to see if we even need to run a
+capture cycle.  That type of optimization needs more thinking to figure
+out the exact conditions under which particular actions can be skipped,
+what extra file copies need to be kept around (and where), and when and
+where comparisons need to be run to potentially control the execution
+of certain replication actions.
+
+A complete installation operation on the local system consists of the
+following possible actions, in order.  Execution of this operation
+presumes that we believe the local replica now contains a complete
+and consistent set of files that should be placed into play.
+
+  * block any other installation actions for this application;
+    this should be unnecessary but might be a good precaution,
+    at least so we don't start an installation operation while
+    some old one is somehow still in progress
+
+  * block replication actions from the remote system, in a manner
+    which is interlocked with replication so we only continue
+    once we know that replication is not in the middle of
+    updating the replica and we have a complete and consistent
+    set of files there, to the best of our knowledge
+  * move the existing ready area into a newly timestamped subtree of
+    the erase area
+  * move the existing replica into the ready area, by a simple rename
+  * create a new replica area for further replication to populate
+  * unblock replication actions from the remote system
+
+  * block the application from starting (if it was unblocked before
+    the installation operation)
+  * optionally stop, pause, or signal the application, so it doesn't
+    try to read or modify configuration data while it is in transition
+  * copy configured application data files from the working area into
+    the shadow area
+  * move the shadow tree into the backup area as a timestamped backup,
+    so it is immediately available for rollback should anything
+    untoward subsequently happen
+  * copy application data files from the ready area into the working
+    area, deleting configured files from the working area that are not
+    in the ready area (remember, this is full and exact replication)
+  * unblock application starting (if it was unblocked before the
+    installation operation)
+  * optionally signal, resume, or start the application
+
+  * unblock installation actions for this application; this should
+    be unnecessary (see above) but might be a good precaution
+
+Periodically, the erase area can be cleaned up by separate session,
+so that need not be handled by the installation operation.  This is
+safe from concurrency issues (will not interfere with the installation
+operation) because placing a ready tree into the erase area is done via an
+atomic rename operation, with no further involvement of the installation
+operation.  One might equip the erase action with the ability to remove
+only subtrees older than a certain age.  We do not envision having any
+operation which involves putting trees in the erase area back into play,
+so no interlocking of erasure with such operations is needed.
+
+Periodically, the backup area can be cleaned up by a separate session,
+so that need not be handled by the installation operation.  This is
+safe from concurrency issues (will not interfere with the installation
+operation) because removing a tree from the backup area is done by
+first moving it into the prune area, via an atomic rename operation,
+with no further involvement of the installation operation.  A backup
+tree in the prune are would then be subject to gradual destruction.
+However, pruning would need to be interlocked with restore operations,
+to ensure that we don't remove a set of backup files while they are
+in the middle of being copied back to the working area.
+
+Somehow the application must be suspended while the new configuration
+is being deployed, and once the new configuration is in place, it needs
+to know that it must pick up the new configuration.
+
+  * If the application runs periodically, it must be blocked from starting
+    up before the deploy action runs.  But if we find after we block it
+    that it already started running a cycle before the blocking was fully
+    in place, we must either stop it or wait for this cycle to complete
+    before continuing on to the deploy action.
+
+  * If the application runs continuously, it must be blocked from starting
+    up before the deploy action runs (in case it happened to be down at
+    this point), then stopped or paused before the deploy action runs
+    (if we find it is running).  If we pause the application, that is to
+    be taken by the application as a signal that it must not try to read
+    the configuration data for the interim (though it might continue to
+    otherwise continue to operate, as long as we're not worried about
+    changing the configured locations of places it might write to).
+
+  * If the application runs periodically, there may be no need to get it
+    running directly from the installation operation.  It may suffice to
+    let its normal scheduling controls come into play to run it again on
+    its usual cycle.
+
+  * If the application runs continuously, there may be no need to get it
+    running directly from the installation operation, if startup will be
+    triggered naturally again by some external supervisory agent.
+
+  * If the application runs continuously and was paused for the duration
+    of the deploy action, then it must be equipped so that a resume
+    operation is interpreted as a directive to re-read its configuration
+    data before continuing operation.  If that is not possible, a pause
+    will not be sufficient and the application must be stopped rather
+    than paused.
+
+  * If the application runs continuously and can be guaranteed not to
+    read its configuration data during the deploy action, there
+    may be no reason to pause or stop it before the deploy action.
+    All that may be needed might be a signal afterward for it to
+    re-read its configuration now that it has been updated.  However,
+    if the application is not stopped or paused beforehand, one faces
+    the danger of not knowing whether its phase of reading configuration
+    data is already over when you go to run the deploy action.  So you
+    would need to signal the application beforehand, to ensure that
+    it is past such an initialization phase.  This is very much like a
+    pause but would only suspend the application if it is not already
+    past its internal configuration phase.
+
+  * With either a pause or signal action, there must be handshaking
+    between application and replication to ensure that the application
+    has received the signal and fully acted on it before replication
+    proceeds.
+
+In the future, one might be allowed to just signal the application
+after the deploy action rather than stopping it beforehand and
+starting it afterward.
+
+Replication and installation of databases will follow a similar
+protocol, differing only in details.
+
+====================================================================
+Basic operations for application file trees.
+====================================================================
+
+Each of these primitive operations assumes that all the necessary
+preconditions for running the indicated operation have already been
+met and verified as such external to the script.  So all the script
+needs to do is to carry out its own individual operation, with
+attendant error detection and reporting.
+
+FIX THIS:  Verify that all required interlocking is taken care of,
+when these primitive operations are invoked.
+
+FIX THIS:  Revisit the descriptions here, and compare them with how
+I have actually implemented these primitive operations.  In some
+cases, for instance, the parameters are slightly different from those
+currently listed.
+
+FIX THIS:  Add the application start/stop flags needed for each basic
+operation to each script definition below (i.e., should the script stop
+and start the application while it does its work, to avoid interference?).
+
+FIX THIS:  Revisit these descriptions, and update them with the actual
+parameters we found to be necessary for each basic operation.
+
+make_staged_app
+    need the working pathname, staged pathname, and the full structure
+    of the working tree to be copied
+
+make_replica_app
+    need the staged pathname, replica machine, replica user credentials,
+    and replica pathname; this is really just a remote file distribution
+    operation, with cleanup of files on the target side that do not exist
+    on the source side; the staged and replica areas are presumed to be
+    stable for the duration of the action, and not being interfered with
+    by any other concurrent actions
+
+make_ready_app
+    need the replica pathname, ready pathname, and erase pathname;
+    this is really just a directory rename, with error checking
+
+make_shadow_app
+    need working pathname, shadow pathname, and the full structure
+    of the working tree to be copied; probably equivalent to
+    make_staged_app except exchanging shadow area for staged area
+
+make_backup_app
+    need shadow pathname and backup pathname; this is really just a
+    directory rename operation, with error checking
+
+make_working_app
+    need the ready pathname, working pathname, and possibly the full
+    structure of the working copy to be replicated (unless we just
+    want to depend on the structure of the ready tree as being what
+    needs to be put into play, without any file deletions from the
+    working copy for files that don't show up in the ready tree)
+
+erase_readies_obj
+    need the individual object's erase base directory
+
+prune_backups_obj
+    need the individual object's prune base directory, plus the minimum
+    number of backups to be kept, plus the minimum age of backups to delete
+
+====================================================================
+Basic operations for database dump files.
+====================================================================
+
+Each of these primitive operations assumes that all the necessary
+preconditions for running the indicated operation have already been
+met and verified as such external to the script.  So all the script
+needs to do is to carry out its own individual operation, with
+attendant error detection and reporting.
+
+FIX THIS:  Verify that all required interlocking is taken care of,
+when these primitive operations are invoked.
+
+FIX THIS:  Revisit these descriptions, and update them with the actual
+parameters we found to be necessary for each basic operation.
+
+make_staged_db
+    need the database name, database access credentials, staged pathname,
+    and the replicated and excluded table patterns
+
+make_replica_db
+    need the staged pathname, replica machine, replica user credentials,
+    and replica pathname; this is really just a remote file distribution
+    operation, with renaming at the end to indicate the dump file has
+    been fully received; the staged and replica areas are presumed to
+    be stable for the duration of the action, and not being interfered
+    with by any other concurrent actions
+
+make_ready_db
+    need the replica pathname, ready pathname, and erase pathname;
+    this is really just a directory rename, with error checking
+
+make_shadow_db
+    need the database name, database access credentials, shadow pathname,
+    and the replicated and excluded table patterns; probably equivalent
+    to make_staged_db except exchanging shadow area for staged area
+
+make_backup_db
+    need shadow pathname and backup pathname; this is really just a
+    directory rename operation, with error checking
+
+make_working_db
+    need the ready pathname, database name, database access credentials,
+    and possibly the full name of the dump file to be loaded (unless
+    we just want to depend on the structure of the ready tree as being
+    what needs to be put into play, presuming it will contain exactly
+    one dump file)
+
+erase_readies_obj
+    need the individual object's erase base directory
+
+prune_backups_obj
+    need the individual object's prune base directory, plus the minimum
+    number of backups to be kept, plus the minimum age of backups to delete
+
+====================================================================
+Replication action scripts.
+====================================================================
+
+We have four types of higher-level operations that will call the
+primitive operations as needed to carry out replication actions.
+These are specified in action scripts named after the particular objects
+(applications and databases) for which they take the specified action.
+
+object.capture
+    This script is run remotely in response to a local "obtain" action
+    which requests that the remote system take action on behalf of the
+    local system.  The capture action encompasses all steps needed to
+    safely grab a consistent copy of the object's state and send it back
+    to the local system's replica area.
+
+object.stop
+    This script is run locally to bring the object into a safe state for
+    changing its configuration.  The simplest way to do so may well be
+    to entirely stop certain processes, but other strategies may also
+    be followed.  For periodically-run objects, we might need instead
+    to block the periodic running, and to either wait for an existing
+    process to exit or stop it just like a continuously-run object.
+    Depending on the specifics of the object, the stop script might be
+    called as part of the capture script's operation.  We will know more
+    about that possibility when we get into the actual development.
+
+object.deploy
+    This script is run locally to put configuration changes in place for
+    the object.  A new configuration will have been already prepared
+    (captured on the remote system and sent to the local system) by
+    the time the deploy script is run, and the object itself will be
+    in a state where there will be no interference from the object as
+    configuration changes are made.
+
+object.start
+    This script is run locally to bring the object back into operation
+    after changing its configuration.  The simplest way to do so may
+    well be to start certain processes which were previously down,
+    but other strategies may also be followed.  For periodically-run
+    objects, we might need instead to unblock the periodic running,
+    and re-start the regular scheduling.  Depending on the specifics of
+    the object, the start script might be called as part of the capture
+    script's operation.  We will know more about that possibility when
+    we get into the actual development.
+
+Generic action scripts will be available to cover cases where no special
+action needs to be taken to accommodate a particular object.  In such
+a case, the object's action script can simply be a symlink to the
+corresponding read-only generic script.  Should this situation change
+over time, the link must be broken and specialized changes made to an
+object-specific copy of the action script.
+
+In each case, we need to pass arguments to an action script corresponding
+to the primitive operations it is likely to run.  These are:
+
+object.capture
+    make_staged_obj:
+	make_staged_app {working_path} {staged_path} {copy_pattern} ...
+	make_staged_db {dump_command} {staged_path} {local_dump_prefix}
+    make_replica_obj:
+	make_replica_app {staged_path} {replica_machine} {replica_user} {replica_path}
+	make_replica_db {staged_path} {replica_machine} {replica_user} {replica_path}
+
+object.stop
+    (no generic primitive operations called)
+
+object.deploy
+    make_ready_obj:
+	make_ready_obj {replica_path} {ready_path} {erase_path}
+    make_shadow_obj:
+	make_shadow_app {working_path} {shadow_path} {copy_pattern} ...
+	make_shadow_db {dump_command} {shadow_path} {local_dump_prefix}
+    make_backup_obj:
+	make_backup_obj {shadow_path}
+    make_working_obj:
+	make_working_app {ready_path} {working_path}
+	make_working_db {ready_path} {remote_dump_prefix} {load_command}
+
+object.start
+    (no generic primitive operations called)
+
+So the full set of arguments to the action scripts, and their sequencing
+on the command line, will be the following.  The parameter ordering is
+swapped around a bit from what might seem to directly correspond to the
+calls above, simply to make certain parallelism between application and
+database objects a bit more apparent.  Also, the arguments whose number
+may vary must be placed at the end, for obvious reasons.
+
+application.capture
+    {staged_path} {replica_machine} {replica_user} {replica_path} {working_path} {copy_pattern} ...
+
+database.capture
+    {staged_path} {replica_machine} {replica_user} {replica_path} {dump_command} {local_dump_prefix}
+
+application.deploy
+    {replica_path} {ready_path} {erase_path} {shadow_path} {working_path} {copy_pattern} ...
+
+database.deploy
+    {replica_path} {ready_path} {erase_path} {shadow_path} {dump_command} {local_dump_prefix} {remote_dump_prefix} {load_command}
+
+Note that the design of this interface seems a bit brittle, inasmuch
+as there are a lot of arguments and whatever we might need to do in
+the future to extend them will likely break the fixed positions used
+to pass them to the action scripts, if we need more or fewer of them.
+Hence an alternative design might be used in a future release.  It may
+even be the case that deploy actions could be fully automated straight
+out of the Replication Engine, without object-specific scripting for
+this unless some exceptional case arises.  That could happen simply
+because these are mostly simple file or database-load operations, not
+likely requiring specialization for particular objects.  Capture scripts,
+though, are likely to remain separate because like stop and start scripts
+they need to interact with objects whose nature will vary significantly.
+
+Note also that generic object capture and deploy scripts generally ought
+to have this structure, when stop/start actions are taken into account:
+
+object.capture
+    (stop object if needed)
+    make_staged_obj
+    (start object if needed)
+    make_replica_obj
+
+object.deploy
+    make_ready_obj
+    (stop object if needed)
+    make_shadow_obj
+    make_backup_obj
+    make_working_obj
+    (start object if needed)
+
+Note where the stop and start operations reside -- often in the middle of
+these macro operations.  While the rest of the processing may be generic,
+these portions will typically be specific to the particular object.
+In a future release, we may split the capture and deploy operations
+into finer granularity as far as the Replication Engine is concerned.
+That would allow us to:
+
+  * understand when these stop/start actions are actually occurring
+
+  * better control potential soft pausing and blocking actions rather
+    than just using wholesale kill actions (see the potential control
+    flags listed in the following section), and perhaps thereby better
+    keep the macro operation scripting very general
+
+  * limit the amount of time the object is down to only the period
+    when it actually needs to be down, as opposed to the present
+    practice of running stop and start actions around the entire
+    deploy script
+
+  * better coordinate the object's reported state with its actual state
+    while the action script is still running
+
+====================================================================
+Cleanup scripts.
+====================================================================
+
+The replication directory structure is sufficiently parallel for applications
+and databases that we don't need separate scripts named erase_readies_app and
+erase_readies_db, or prune_backups_app and prune_backups_db.  Instead we just
+use generic erase_readies_obj and prune_backups_obj scripts for both types of
+objects.  Each script deals with just one named object per invocation.  These
+scripts have the following arguments:
+
+erase_readies_obj
+    {erase_path}
+
+prune_backups_obj
+    {prune_path} {min_kept_count} {min_kept_age}
+
+Backups of data that has been rolled out of production are kept in number
+and for a period which are configurable on a per-object basis.  Backups will
+be deleted in an oldest-first order, and two minimum thresholds must both
+be met for a backup to be removed.  One (the min_kept_count, configured as
+min-kept-backups) is based on a count of how many backups exist in total
+for that object, and one (the min_kept_age, configured as min-backup-time)
+is based on the age of the backup under consideration for deletion.
+
+The cleanup (erase and prune) scripts are called on their own schedule,
+independent of when replication action (capture, stop, deploy, and start)
+scripts are called.  The schedule for cleanup scripts is determined by the
+configured cleanup-period and cleanup-phase settings for each object.
+
+====================================================================
+Dependency analysis.
+====================================================================
+
+Ordinarily, capture and deploy operations are implemented as self-contained
+scripts that execute all necessary application stop/start actions in
+additon to whatever file or database manipulation is required.  However,
+sometimes separate objects are related in their dependency on a common
+resource, typically a database.  In such a case, we must guarantee that the
+stop/start actions run by the various objects do not collide and invalidate
+some capture or deploy operations.  This can be done manually by scheduling
+the replication of such objects to occur at times which are sufficiently
+separated as to avoid such collisions.  That is the mode in which the first
+Replication Engine prototype must operate.
+
+However, such a setup is suboptimal.  It may involve bouncing applications
+many more times than truly needed, once per object.  Proper coordination
+between the related objects could combine and interleave their actions so
+as to effect the minimal amount of application bouncing and blocking.
+
+An internal extension to the Replication Engine for this purpose would modify
+its present behavior in the following ways.
+
+(*) Pay attention to the applications:[] and databases:[] fields within
+    each configured application or database.  Link such objects together,
+    and recognize when their scheduled replication times exactly coincide.
+    (It should not be necessary to have full exact scheduling concordance,
+    but when coincidences do occur, they should be recognized and processed
+    as such.)
+
+(*) Integrate the processing of simultaneously scheduled replication
+    operations.  Instead of creating independently scheduled internal threads
+    for the individual objects, create a merged-object thread which will
+    cycle through the associated object actions as necessary.  This will
+    take a more sophisticated scheduling analysis than is presently used,
+    as well as the manufacture and processing of the merged objects.
+
+(*) Integrate the scripting of the capture/deploy operations.  Pass flags
+    to scripts so they can execute only certain sub-steps.  Only call the
+    stop/start actions once per merged object, not once per component object.
+    Handle error conditions that might arise in one component, and make sure
+    that other components are as little affected as possible.  Do what you
+    can to ensure the rest of the applications come back up after failure
+    of replication of some components.
+
+(*) Define a full set of flags to be recognized by action scripts, to support
+    such sub-step execution in a standardized way.
+
+(*) Clean up the existing pretense that the object.stop and object.start
+    scripts are intended to perform some useful actions, or make them do so,
+    and have them be called in a standard way from the generic capture and
+    deploy scripts.
+
+(*) Implement better flush/pause/handshaking operations to support clean
+    suspension of applications such as gwservices instead of forcing a
+    complete bounce, especially on the capture side.
+
+====================================================================
+Application and database interlocks.
+====================================================================
+
+[FIX THIS:  interlocks:  actual blocking/prevention of configuration changes
+when the system does not have Master Configuration Authority]
+
+Each time a set of application files or a database is replicated, a question
+arises as to how to capture a safe copy, complete and consistent, and not
+subject to inclusion of partial transactions.  Similarly, when a new set
+of replicated files or a new database is installed, a question arises as to
+how to have applications pick up the new values and not try to inadvertently
+mix them up with values picked up before the replication.
+
+The answer to both questions is some type of interlocking between the
+applications and the replication.  The simplest, most primitive interlocking
+is to force applications down before replication operations, both capture
+and deploy actions, and bring them back up afterward.  This can work, but
+it is unsatisfactory for a number of reasons:
+
+(*) Blocking and unblocking cron jobs can be complicated, and unblocking
+    must work in spite of possible failure of the replication action.
+    In some cases, a stopped cron job must be run again afterward, which
+    may have side effects given that it might not be equipped for such
+    interruptions.
+
+(*) An application may be independently downed, and should not necessarily
+    be brought back up after the replication operation.
+
+(*) Bringing an application down may have undesirable side effects (e.g.,
+    loss of existing sessions, forcing users to log out and log in again,
+    asynchronously with respect to what they are otherwise doing, and through
+    no fault of their own).
+
+(*) Signaling independent, possibly transient processes to bring them down
+    may be dangerous to unrelated applications, which may end up receiving
+    such termination or continuation signals instead.
+
+(*) It may be difficult to block certain applications (e.g., UI accesss to
+    monarch.cgi, monarch_auto.cgi, and monarch_discover.cgi, due to repeated
+    Ajax-related invocation chains [perhaps chmod might help with this]).
+
+(*) Because of dependencies (see the previous section), applications may be
+    bounced more often than you might expect.
+
+Hence we look for methods to avoid application bouncing, where possible.
+Such methods will necessarily be somewhat intrusive into the applications, and
+the choice of mechanism will likely vary between applications.  Furthermore,
+extending third-party applications in this way raises a danger of continued
+maintenance issues as new versions are adopted, unless appropriate hooks are
+pushed upstream and accepted by the upstream maintainers in the original
+distributed source code.  Nonetheless, this appears to be the proper means
+to coordinate system operations in a safe manner.
+
+An interlock with an application can take multiple forms.
+
+[FIX THIS:  expand the text here]
+
+(*) An external synchronization object, which is periodically checked by
+    the application to see if it should quiesce itself.  A full handshake
+    is required so that the application (replication) which needs to impose
+    the blockage can know when the target application is successfully quiesced.
+
+(*) Internal synchronization, maintaining multiple parallel copies of a
+    configuration and swapping in a new configuration only when it is fully
+    ready to go and will not cause conflicts.
+
+There are three basic approaches to swapping in a new configuration while
+an application stays alive:
+
+(1) Work on only one in-memory copy of the configuration data.  When it comes
+    time to update, block all new readers, wait for all existing readers
+    to finish their current work, perform all your external querying and
+    updating of the in-memory data structures, and finally unblock readers
+    from accessing the new copy.  This scheme is very simple but might induce
+    a potentially noticeable delay in the actions of individual readers.
+
+(2) Work on two in-memory copies of the configuration data.  When it comes time
+    to update, if it is a full refresh, just do all your external querying to
+    pull in the updated configuration, and dump the results into the offline
+    copy.  Then stop the world (block all new readers and wait for existing
+    readers to let go of the old data), swap out the old and swap in the new,
+    and let the world spin again.  If all the configuration data can be rooted
+    in just a few pointers, the core sawp-in action can be exceedingly fast,
+    just involving a few pointer exchanges.  If it is a partial refresh,
+    treat the writer as another reader long enough to make a copy of the
+    online data into the offline data, then update from external sources,
+    and only then synchronize as before by blocking, swapping old/new copies
+    of the data, and releasing new readers.  This scheme is only trivially
+    more complex, and should limit the blocking delays by cutting out the
+    period during which the external querying happens.  We have successfully
+    implemented this choice in a complex application; there, we only have a
+    need for the full-refresh update for this type of data, but we explain
+    the partial-refresh for completeness.
+
+(3) Work on an arbitrary number of in-memory copies of the configuration data.
+    Have a reference-counted online set, with one reference persistently
+    held by the writer thread (even after the data structure is completely
+    written, so the reference count for the active set never drops to zero),
+    and other references transiently held by worker threads as they need
+    to read the data set.  Whenever a worker thread needs to see the data,
+    it simply grabs a reference to the current online-data object, uses it,
+    and destroys the reference.  When the writer thread gets around in its
+    refresh cycle and has a new data set available, it atomically swaps
+    in the new data set and makes it the active set, then releases its
+    reference to the previous data set.  At some point, either the writer
+    thread or some worker thread will let go of the last reference to the
+    now-obsolete data set, and that data set's destructor will be called.
+    At that point, the entire old data set will evaporate, and the cost may
+    be borne by some worker thread rather than by the background writer
+    thread (or the destruction activity could be passed to a dedicated
+    data-set-destructor thread, so the worker thread need not be delayed).
+    In this scheme, there is only ever a miniscule synchronization delay
+    at the time when the worker thread picks up its reference, never any
+    wholesale blocking of threads as all the readers come to a halt while
+    the writer swaps in new data.  For each update, the writer thread simply
+    creates a new copy of the data, fills it all in, swaps that in as the
+    new reference-counted online copy, and destroys its reference to the old
+    data set.  During all of this activity, multiple reader threads can be
+    operating with multiple older copies of the online data, without every
+    suffering any thread blocking except for the most miniscule lockout
+    around the swapping in of the new online copy, and probably a slight
+    critical-region protection around updating the reference count when a
+    reader decides to take a new reference to the data set.  (We would need
+    to watch for one possible race condition:  taking the reference might
+    fail due to a data race as an old object disappears; recovery would be
+    to loop and take another reference, this time to the new object.)
+
+Depending on the implementation language and the application architecture,
+building in such interlocks may be simple or difficult.  In the worst case,
+significant restructuring may be needed.
+
+The more complex of these mechanisms should be encapsulated into portable
+modules as much as possible, to limit the burden of applying them to new
+programs.
+
+[FIX THIS:  expand by describing database transactions, database locks]
+
+====================================================================
+Flags to control replication and installation on a per-object basis.
+====================================================================
+
+THIS SECTION IS STILL UNDER DEVELOPMENT.
+
+In the replication and installation protocols outlined above, we saw that
+certain actions may be optional for individual applications.  To that
+end, we need flags in the replication config file that tell us when to
+invoke certaion actions and what form they should take.
+
+These flags are needed to control those actions:
+
+pause_before_capture
+    true iff the object must be flushed and paused before a capture cycle
+    begins (a possible future extension, not in first version; would be
+    an alternative to fully stopping and starting the application around
+    a capture cycle)
+
+resume_after_capture
+    true iff the object must be resumed after a replication cycle is done;
+    generally will be set if pause_before_capture is set
+
+stop_before_capture
+    true iff the object must be completely stopped before a capture cycle
+    is run
+
+start_after_capture
+    true iff the object must be (re)started after a capture cycle is done
+
+stop_before_deploy
+    true iff the object must be stopped before installing a new configuration
+
+start_after_deploy
+    true iff the object must be (re)started after installing a new
+    configuration
+
+signal_after_deploy
+    true iff the object must be signaled after installing a new configuration;
+    this only makes sense if it is not stopped beforehand, but can continue
+    running with the old configuration while a new configuration is being
+    deployed
+
+(others ... this needs more thought to come up with a properly elegant set
+of flags to handle all the expected conditions we might need to support)
+
+====================================================================
+Other notes.
+====================================================================
+
+These are random ideational flickers that might end up migrating to
+some position above, or might be discarded.
+
+Who handles directory creation and destruction?  For now, do so in the
+scripts rather than the engine, mostly because the scripts will already
+have the duty of renaming directories at key moments.  This decision
+may be revisited in a future release, in an attempt to manage the basic
+operations directly within the engine so as to reduce the risk of random
+script changes destroying the intended data handling protocol.
+
+Think about the buildup of many timestamped erase and backup directories,
+and how many copies you want to keep around for frequently synchronized
+objects.
+
+Should object synchronization be enabled on a per-object basis in the
+configuration file, to allow a configuration to be set up but disabled
+for some period?  One might want to generate warnings to Foundation in
+such a situation, so anything which is disabled does not go unnoticed
+for a long time.
+

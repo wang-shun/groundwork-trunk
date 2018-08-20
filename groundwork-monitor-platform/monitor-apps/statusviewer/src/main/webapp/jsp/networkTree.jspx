@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<div id="resizable"
+			style="max-height: 969px; height: 100%; margin-left: -5px;">
+			<ice:form id="frmTree">
+
+				<!-- hidden field which will initialize all the members  -->
+				<ice:inputHidden id="networkTreePortlet_ipHiddn"
+					value="#{networkTree.treeHiddenField}"></ice:inputHidden>
+				<ice:panelTabSet id="pnlTbSet" selectedIndex="#{networkTree.index}">
+					<ice:panelTab id="tbHstTree" title="Host Tree" label="Hosts">
+						<div id="divContents"
+							style="overflow-x: scroll; overflow-y: auto; padding-top: 5px; height: 720px;width:252px;">
+							<ui:include src="/jsp/hostTree.jspx" />
+						</div>
+					</ice:panelTab>
+					<ice:panelTab id="tbSrvcTree" title="Service Tree" label="Services">
+						<div id="divContents"
+							style="overflow-x: scroll; overflow-y: auto; padding-top: 5px; height: 720px;width:252px;">
+							<ui:include src="/jsp/serviceTree.jspx" />
+						</div>
+					</ice:panelTab>
+					<ice:panelTab id="tbSrch" title="Search" label="Search"
+						style="height: 100%;">
+						<div id="divContents"
+							style="height: 720px; width: #{networkTree.treeWidth -8}px; overflow-x: hidden; overflow-y: auto; padding-top:5px;">
+							<ui:include src="/jsp/searchTree.jspx" />
+						</div>
+					</ice:panelTab>
+				</ice:panelTabSet>
+			</ice:form>
+		</div>
+		<ice:form id="hiddenForm">
+			<ice:inputHidden id="TreeIpHiddn" name="width" value="230"></ice:inputHidden>
+			<ice:commandButton id="buttonHidden" style="display:none"
+				actionListener="#{networkTree.setTreeWidth}" />
+		</ice:form>
+	</ui:define>
+</ui:composition>

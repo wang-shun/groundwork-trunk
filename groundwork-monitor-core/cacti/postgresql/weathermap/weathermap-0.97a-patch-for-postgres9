@@ -1,0 +1,1424 @@
+diff -Nur weathermap.gw/Weathermap.class.php weathermap/Weathermap.class.php
+--- weathermap.gw/Weathermap.class.php	2010-03-08 12:07:45.000000000 -0800
++++ weathermap/Weathermap.class.php	2012-03-08 14:51:57.000000000 -0800
+@@ -2739,17 +2739,51 @@
+ 			{
+ 				if (function_exists("imagettfbbox"))
+ 				{
+-					// test if this font is valid, before adding it to the font table...
+-					$bounds=@imagettfbbox($matches[3], 0, $matches[2], "Ignore me");
++					// Test if this font is valid, before adding it to the font table.
++					// If we cannot find the font under the given name, and it is a
++					// relative pathname, try prepending "./", and thereafter append
++					// ".ttf", and thereafter make the font an absolute pathname, if
++					// the font name does not already include such detail; this can
++					// allow the GD library to find a file it otherwise might not.
++					// (I suspect it only looks in its own system directories if the
++					// name looks like a simple font name rather than a filename.)
++
++					$fontfile = $matches[2];
++					$bounds=@imagettfbbox($matches[3], 0, $fontfile, "Ignore me");
++
++					if (!isset($bounds[0]) && !preg_match('/\//', $fontfile)) {
++						$fontfile = "./".$fontfile;
++						$bounds=@imagettfbbox($matches[3], 0, $fontfile, "Ignore me");
++					}
+ 
+-					if (isset($bounds[0]))
+-					{
++					if (!isset($bounds[0]) && !preg_match('/\.ttf$/', $fontfile)) {
++						$fontfile = $fontfile.".ttf";
++						$bounds=@imagettfbbox($matches[3], 0, $fontfile, "Ignore me");
++					}
++
++					// In the Weathermap editor context (as opposed to the map-image-creation
++					// context), only absolute pathnames of locally-provided fonts seem to work.
++					// We don't know what the difference is between these two contexts that
++					// would cause the font library to behave differently, but it does.
++					if (!isset($bounds[0]) && !preg_match('/^\//', $fontfile)) {
++						$fontfile = dirname(__FILE__).DIRECTORY_SEPARATOR.$fontfile;
++						$bounds=@imagettfbbox($matches[3], 0, $fontfile, "Ignore me");
++					}
++
++					if (isset($bounds[0])) {
++						# Here we save the font-file pathname that worked, regardless of
++						# what was originally specified in the configuration file.  This
++						# possibly-modified name will be put back into the configuration
++						# file if the map definition is saved in the editor.
+ 						$this->fonts[$matches[1]]->type="truetype";
+-						$this->fonts[$matches[1]]->file=$matches[2];
++						$this->fonts[$matches[1]]->file=$fontfile;
+ 						$this->fonts[$matches[1]]->size=$matches[3];
+ 					}
+-					else { warn
+-						("Failed to load ttf font " . $matches[2] . " - at config line $linecount\n [WMWARN30]"); }
++					else {
++						warn ("Failed to load ttf font $fontfile at config line $linecount\n [WMWARN30]");
++						# FIX MINOR:  There ought to be a better way to get this warning out on-screen.
++						cacti_log("WARNING: Failed to load ttf font $matches[2] at config line $linecount.<br>If you save this map in the editor, the FONTDEFINE line for this font will be lost!<br>",true,"WEATHERMAP");
++					}
+ 				}
+ 				else { warn
+ 					("imagettfbbox() is not a defined function. You don't seem to have FreeType compiled into your gd module. [WMWARN31]\n");
+diff -Nur weathermap.gw/cacti-pick.php weathermap/cacti-pick.php
+--- weathermap.gw/cacti-pick.php	2010-03-01 05:29:08.000000000 -0800
++++ weathermap/cacti-pick.php	2012-03-08 16:16:17.000000000 -0800
+@@ -54,14 +54,10 @@
+ {
+ 	$dataid = intval($_REQUEST['dataid']);
+ 
++	# Note:  title_cache is retrieved but not actually subsequently used.
+ 	$SQL_graphid = "select graph_templates_item.local_graph_id, title_cache FROM graph_templates_item,graph_templates_graph,data_template_rrd where graph_templates_graph.local_graph_id = graph_templates_item.local_graph_id  and task_item_id=data_template_rrd.id and local_data_id=$dataid LIMIT 1;";
+ 
+-	$link = mysql_connect($database_hostname,$database_username,$database_password)
+-		or die('Could not connect: ' . mysql_error());
+-	mysql_selectdb($database_default,$link) or die('Could not select database: '.mysql_error());
+-
+-	$result = mysql_query($SQL_graphid) or die('Query failed: ' . mysql_error());
+-	$line = mysql_fetch_array($result, MYSQL_ASSOC);
++	$line = db_fetch_row($SQL_graphid);
+ 	$graphid = $line['local_graph_id'];
+ 
+ ?>
+@@ -250,7 +246,6 @@
+ 	if( is_array($queryrows)  && sizeof($queryrows) > 0 )
+ 	{
+ 		foreach ($queryrows as $line) {
+-			//while ($line = mysql_fetch_array($result, MYSQL_ASSOC)) {
+ 			echo "<li class=\"row".($i%2)."\">";
+ 			$key = $line['local_data_id']."','".$line['data_source_path'];
+ 			echo "<a href=\"#\" onclick=\"update_source_step1('$key')\">". $line['name_cache'] . "</a>";
+@@ -264,12 +259,6 @@
+ 		print "<li>No results...</li>";
+ 	}
+ 
+-	// Free resultset
+-	//mysql_free_result($result);
+-
+-	// Closing connection
+-	//mysql_close($link);
+-
+ ?>
+ </ul>
+ </div>
+@@ -281,7 +270,7 @@
+ if(isset($_REQUEST['command']) && $_REQUEST["command"]=='node_step1')
+ {
+ 	$host_id = -1;
+-	$SQL_picklist = "SELECT graph_templates_graph.id, graph_local.host_id, graph_templates_graph.local_graph_id, graph_templates_graph.height, graph_templates_graph.width, graph_templates_graph.title_cache, graph_templates.name, graph_local.host_id	FROM (graph_local,graph_templates_graph) LEFT JOIN graph_templates ON (graph_local.graph_template_id=graph_templates.id) WHERE graph_local.id=graph_templates_graph.local_graph_id ";
++	$SQL_picklist = "SELECT graph_templates_graph.id, graph_local.host_id, graph_templates_graph.local_graph_id, graph_templates_graph.height, graph_templates_graph.width, graph_templates_graph.title_cache, graph_templates.name, graph_local.host_id	FROM graph_local CROSS JOIN graph_templates_graph LEFT JOIN graph_templates ON (graph_local.graph_template_id=graph_templates.id) WHERE graph_local.id=graph_templates_graph.local_graph_id ";
+ 	
+ 	$overlib = true;
+ 	$aggregate = false;
+@@ -396,13 +385,6 @@
+ #	$SQL_picklist = "select data_template_data.local_data_id, data_template_data.name_cache, data_template_data.active, data_template_data.data_source_path from data_local,data_template_data,data_input,data_template  left join data_input on data_input.id=data_template_data.data_input_id left join data_template on data_local.data_template_id=data_template.id where data_local.id=data_template_data.local_data_id order by name_cache;";
+ #	$SQL_picklist = "select data_template_data.local_data_id, data_template_data.name_cache, data_template_data.active, data_template_data.data_source_path from data_local,data_template_data,data_input,data_template where data_local.id=data_template_data.local_data_id and data_input.id=data_template_data.data_input_id and data_local.data_template_id=data_template.id order by name_cache;";
+ 
+-	
+-	
+-	#$link = mysql_connect($database_hostname,$database_username,$database_password)
+-	#  or die('Could not connect: ' . mysql_error());
+-	#  mysql_selectdb($database_default,$link) or die('Could not select database: '.mysql_error());
+-
+-	#$result = mysql_query($SQL_picklist) or die('Query failed: ' . mysql_error());
+ ?>
+ 
+ <h3>Pick a graph:</h3>
+@@ -437,7 +419,6 @@
+ 	if( is_array($queryrows) && sizeof($queryrows) > 0)
+ 	{
+ 		foreach ($queryrows as $line) {
+-			//while ($line = mysql_fetch_array($result, MYSQL_ASSOC)) {
+ 			echo "<li class=\"row".($i%2)."\">";
+ 			$key = $line['local_graph_id'];
+ 			echo "<a href=\"#\" onclick=\"update_source_step1('$key')\">". $line['title_cache'] . "</a>";
+@@ -450,11 +431,6 @@
+ 		print "No results...";
+ 	}
+ 
+-	// Free resultset
+-	//mysql_free_result($result);
+-
+-	// Closing connection
+-	//mysql_close($link);
+ ?>
+ </ul>
+ </body>
+diff -Nur weathermap.gw/convert-to-dsstats.php weathermap/convert-to-dsstats.php
+--- weathermap.gw/convert-to-dsstats.php	2010-01-03 07:17:34.000000000 -0800
++++ weathermap/convert-to-dsstats.php	2012-03-12 10:54:26.000000000 -0700
+@@ -179,7 +179,7 @@
+ 							{		
+ 								debug("ConvertDS: Looking for $db_rrdname in the database.");
+ 								
+-								$SQLcheck = "select data_template_data.local_data_id from data_template_data,data_template_rrd where data_template_data.local_data_id=data_template_rrd.local_data_id and data_template_data.data_source_path='".mysql_real_escape_string($db_rrdname)."'";
++								$SQLcheck = "select data_template_data.local_data_id from data_template_data,data_template_rrd where data_template_data.local_data_id=data_template_rrd.local_data_id and data_template_data.data_source_path=".wm_db_escape_literal($db_rrdname);
+ 								debug("ConvertDS: ".$SQLcheck);
+ 								$results = db_fetch_assoc($SQLcheck);
+ 								
+@@ -245,7 +245,7 @@
+ 									
+ 							debug("ConvertDS: Looking for $db_rrdname in the database.");
+ 							
+-							$SQLcheck = "select data_template_data.local_data_id from data_template_data,data_template_rrd where data_template_data.local_data_id=data_template_rrd.local_data_id and data_template_data.data_source_path='".mysql_real_escape_string($db_rrdname)."'";
++							$SQLcheck = "select data_template_data.local_data_id from data_template_data,data_template_rrd where data_template_data.local_data_id=data_template_rrd.local_data_id and data_template_data.data_source_path=".wm_db_escape_literal($db_rrdname);
+ 							debug("ConvertDS: ".$SQLcheck);
+ 							$results = db_fetch_assoc($SQLcheck);
+ 							
+diff -Nur weathermap.gw/database_extension.php weathermap/database_extension.php
+--- weathermap.gw/database_extension.php	1969-12-31 16:00:00.000000000 -0800
++++ weathermap/database_extension.php	2012-03-05 22:04:51.000000000 -0800
+@@ -0,0 +1,44 @@
++<?php
++/*
++// Copyright goes here.
++*/
++
++# The routines provided here mask differences between multiple database types,
++# and provide defaulted access to the underlying ADODB connection object.
++
++# This file contains extensions that ought to be folded into the supported Cacti
++# lib/database.php module.  Until that happens, we supply corresponding routines
++# here with extra "wm_" prefixes.  Once the Cacti routines become available, and
++# thereafter when Weathermap is claimed only to work with the new version of
++# Cacti, these prefixes can presumably be dropped from all such calls, and this
++# file can disappear.
++
++# This routine provides database-dependent safe escaping of literal strings
++# in a database-independent call.  The result will contain enclosing quotes,
++# and must not be further quoted.
++/* wm_db_escape_literal - escape a literal string for insertion into an SQL statement
++   @arg $lit - a string that might contain SQL punctuation
++   @returns - a properly escaped string that can be used directly in SQL with no further quoting
++*/
++function wm_db_escape_literal($lit, $db_conn = FALSE) {
++	global $cnn_id;
++
++	if (!$db_conn) {
++		$db_conn = $cnn_id;
++	}
++
++	return $db_conn->qstr($lit);
++}
++
++/* wm_db_message - get the message, if any, associated with the last DB access call
++   @returns - the last status or error message from accessing the database
++*/
++function wm_db_message($db_conn = FALSE) {
++	global $cnn_id;
++
++	if (!$db_conn) {
++		$db_conn = $cnn_id;
++	}
++
++	return $db_conn->ErrorMsg();
++}
+diff -Nur weathermap.gw/editor.css weathermap/editor.css
+--- weathermap.gw/editor.css	2010-01-03 07:17:34.000000000 -0800
++++ weathermap/editor.css	2012-03-06 15:17:46.000000000 -0800
+@@ -169,7 +169,7 @@
+             font-size: 10pt;
+             line-height: 12pt;
+     		background: #099;
+-            height: 48pt; 
++            height: auto; 
+             padding: 5px;
+ }
+ 
+diff -Nur weathermap.gw/lib/datasources/WeatherMapDataSource_cactithold.php weathermap/lib/datasources/WeatherMapDataSource_cactithold.php
+--- weathermap.gw/lib/datasources/WeatherMapDataSource_cactithold.php	2010-02-18 02:49:52.000000000 -0800
++++ weathermap/lib/datasources/WeatherMapDataSource_cactithold.php	2012-03-06 19:59:01.000000000 -0800
+@@ -26,6 +26,7 @@
+ 	function Init(&$map)
+ 	{
+ 		global $plugins;
++		global $database_default, $database_type;
+ 		
+ 		if($map->context == 'cacti')
+ 		{   
+@@ -51,8 +52,10 @@
+                                 debug("ReadData CactiTHold: THold plugin not enabled. [THOLD002]\n");
+                         }
+ 
+-			$sql = "show tables";
+-			$result = db_fetch_assoc($sql) or die (mysql_error());
++			$sql = ($database_type === "mysql")
++				? ("show tables from `" . $database_default . "`")
++				: ('select table_name from information_schema.tables where table_catalog = current_catalog and table_schema = current_schema');
++			$result = db_fetch_assoc($sql) or die (wm_db_message());
+ 			$tables = array();
+ 			
+ 			foreach($result as $index => $arr) {
+diff -Nur weathermap.gw/lib/datasources/WeatherMapDataSource_dbsample.php weathermap/lib/datasources/WeatherMapDataSource_dbsample.php
+--- weathermap.gw/lib/datasources/WeatherMapDataSource_dbsample.php	2008-03-19 15:37:27.000000000 -0700
++++ weathermap/lib/datasources/WeatherMapDataSource_dbsample.php	2012-03-12 15:05:41.000000000 -0700
+@@ -8,8 +8,8 @@
+ 
+ 	function Init(&$map)
+ 	{
+-		if(! function_exists("mysql_real_escape_string") ) return FALSE;
+-		if(! function_exists("mysql_connect") ) return FALSE;
++		if(! function_exists("wm_db_escape_literal") ) return FALSE;
++		if(! function_exists("wm_db_message") ) return FALSE;
+ 		
+ 		return(TRUE);
+ 	}
+@@ -32,45 +32,54 @@
+ 		$data[OUT] = NULL;
+ 		$data_time = 0;
+ 		
+-		if(preg_match("/^dbplug:([^:]+)$/",$targetstring,$matches))
+-		{
+-			$database_user = $map->get_hint('dbplug_dbuser');
+-			$database_pass = $map->get_hint('dbplug_dbpass');
+-			$database_name = $map->get_hint('dbplug_dbname');
+-			$database_host = $map->get_hint('dbplug_dbhost');
++		# FIX MINOR:  It's not clear without testing whether we actually need to make a separate
++		# connection to the database at this point.  Generally, this seems to be handled by the
++		# enclosing Cacti context, and we don't want to waste resources making connections we
++		# don't need to make.  So we have commented out the parts here that make a new connection.
++		# Also, if we make a connection here using db_connect_real(), then we probably ought to
++		# break that connection as well, using db_close(), to avoid a resource leak.
++		# FIX LATER:  If we do need to make a separate database connection, this could perhaps use an
++		# upgrade in its error handling, once the Cacti team improves the underlying db_connect_real()
++		# routine to not die() if it cannot connect.
++
++		# if(preg_match("/^dbplug:([^:]+)$/",$targetstring,$matches))
++		# {
++			# $dbplug_dbuser = $map->get_hint('dbplug_dbuser');
++			# $dbplug_dbpass = $map->get_hint('dbplug_dbpass');
++			# $dbplug_dbname = $map->get_hint('dbplug_dbname');
++			# $dbplug_dbhost = $map->get_hint('dbplug_dbhost');
++			# $dbplug_dbport = $map->get_hint('dbplug_dbport');
++			# $dbplug_dbtype = $map->get_hint('dbplug_dbtype');
+ 						
+-			$key = mysql_real_escape_string($matches[1]);
++			# if(db_connect_real($dbplug_dbhost, $dbplug_dbuser, $dbplug_dbpass, $dbplug_dbname, $dbplug_dbtype, $dbplug_dbport))
++			# {
++				$key = wm_db_escape_literal($matches[1]);
+ 
+-			$SQL = "select in,out from table where host=$key LIMIT 1";
+-			if(mysql_connect($database_host,$database_user,$database_pass))
+-			{
+-				if(mysql_select_db($database_name))
++				$SQL = "select in,out from table where host=$key LIMIT 1";
++
++				# FIX LATER:  This could perhaps use an upgrade in its error handling, once
++				# the Cacti team improves the underlying db_fetch_row() routine to document
++				# the routine's behavior under error conditions and when the query returns no
++				# rows.  Presumably, it should return an undefined value if the query failed,
++				# and an empty hash if the query returned no rows.
++				$row = db_fetch_row($SQL);
++				if (!isset($row))
+ 				{
+-					$result = mysql_query($SQL);
+-					if (!$result)
+-					{
+-					    warn("dbsample ReadData: Invalid query: " . mysql_error()."\n");
+-					}
+-					else
+-					{
+-						$row = mysql_fetch_assoc($result);
+-						$data[IN] = $row['in'];
+-						$data[OUT] = $row['out'];
+-					}
++					warn("dbsample ReadData: Invalid query: " . wm_db_message()."\n");
+ 				}
+ 				else
+ 				{
+-					warn("dbsample ReadData: failed to select database: ".mysql_error()."\n");
++					$data[IN]  = $row['in'];
++					$data[OUT] = $row['out'];
+ 				}
+-			}
+-			else
+-			{
+-				warn("dbsample ReadData: failed to connect to database server: ".mysql_error()."\n");
+-			}
++			# }
++			# else
++			# {
++				# warn("dbsample ReadData: failed to connect to database server: ".wm_db_message()."\n");
++			# }
+ 			
+ 			$data_time = now();
+-		}
+-		
++		# }
+ 		
+ 		debug ("RRD ReadData: Returning (".($data[IN]===NULL?'NULL':$data[IN]).",".($data[OUT]===NULL?'NULL':$data[IN]).",$data_time)\n");
+ 		
+diff -Nur weathermap.gw/lib/datasources/WeatherMapDataSource_dsstats.php weathermap/lib/datasources/WeatherMapDataSource_dsstats.php
+--- weathermap.gw/lib/datasources/WeatherMapDataSource_dsstats.php	2010-03-07 05:20:08.000000000 -0800
++++ weathermap/lib/datasources/WeatherMapDataSource_dsstats.php	2012-04-17 16:35:32.000000000 -0700
+@@ -7,6 +7,7 @@
+ 	function Init(&$map)
+ 	{
+ 		global $config;
++		global $database_default, $database_type;
+ 		if($map->context=='cacti')
+ 		{
+ 			if( !function_exists('db_fetch_row') )
+@@ -31,8 +32,10 @@
+ 				}
+ 			}		
+ 						
+-			$sql = "show tables";
+-			$result = db_fetch_assoc($sql) or die (mysql_error());
++			$sql = ($database_type === "mysql")
++				? ("show tables from `" . $database_default . "`")
++				: ('select table_name from information_schema.tables where table_catalog = current_catalog and table_schema = current_schema');
++			$result = db_fetch_assoc($sql) or die (wm_db_message());
+ 			$tables = array();
+ 			
+ 			foreach($result as $index => $arr) {
+@@ -139,10 +142,11 @@
+ 		
+ 		if($table != "" and $field != "")
+ 		{
+-			$SQL = sprintf("select %s as name, %s as result from %s where local_data_id=%d and (%s='%s' or %s='%s')", 
++			$SQL = sprintf("select %s as name, %s as result from %s where local_data_id=%d and (%s=%s or %s=%s)", 
+ 					$keyfield, $field, 
+-					$table, $local_data_id, $keyfield, 
+-					mysql_escape_string($dsnames[IN]), $keyfield, mysql_escape_string($dsnames[OUT])
++					$table, $local_data_id,
++					$keyfield, wm_db_escape_literal($dsnames[IN]),
++					$keyfield, wm_db_escape_literal($dsnames[OUT])
+ 				);
+ 
+ 			$results = db_fetch_assoc($SQL);
+@@ -176,9 +180,9 @@
+ 					{
+ 						if($data[$dir] === NULL)
+ 						{
+-							$SQLins = "insert into weathermap_data (rrdfile, data_source_name, sequence, local_data_id) values ('" . 
+-								mysql_real_escape_string($db_rrdname) . "','" . 
+-								mysql_real_escape_string($dsnames[$dir]) . "', 0," . 
++							$SQLins = "insert into weathermap_data (rrdfile, data_source_name, sequence, local_data_id) values (" . 
++								wm_db_escape_literal($db_rrdname) . "," . 
++								wm_db_escape_literal($dsnames[$dir]) . ", 0," . 
+ 								$local_data_id.")";
+ 							// warn($SQLins);
+ 							db_execute($SQLins);
+diff -Nur weathermap.gw/lib/datasources/WeatherMapDataSource_rrd.php weathermap/lib/datasources/WeatherMapDataSource_rrd.php
+--- weathermap.gw/lib/datasources/WeatherMapDataSource_rrd.php	2010-03-07 05:24:28.000000000 -0800
++++ weathermap/lib/datasources/WeatherMapDataSource_rrd.php	2012-03-12 10:59:24.000000000 -0700
+@@ -87,10 +87,10 @@
+ 				{
+ 					debug("RRD ReadData: poller_output - DS name is ".$dsnames[$dir]."\n");
+ 					
+-					$SQL = "select * from weathermap_data where rrdfile='".mysql_real_escape_string($db_rrdname)."' and data_source_name='".mysql_real_escape_string($dsnames[$dir])."'";
++					$SQL = "select * from weathermap_data where rrdfile=".wm_db_escape_literal($db_rrdname)." and data_source_name=".wm_db_escape_literal($dsnames[$dir]);
+ 					
+-					$SQLcheck = "select data_template_data.local_data_id from data_template_data,data_template_rrd where data_template_data.local_data_id=data_template_rrd.local_data_id and data_template_data.data_source_path='".mysql_real_escape_string($db_rrdname)."' and data_template_rrd.data_source_name='".mysql_real_escape_string($dsnames[$dir])."'";
+-					$SQLvalid = "select data_template_rrd.data_source_name from data_template_data,data_template_rrd where data_template_data.local_data_id=data_template_rrd.local_data_id and data_template_data.data_source_path='".mysql_real_escape_string($db_rrdname)."'";
++					$SQLcheck = "select data_template_data.local_data_id from data_template_data,data_template_rrd where data_template_data.local_data_id=data_template_rrd.local_data_id and data_template_data.data_source_path=".wm_db_escape_literal($db_rrdname)." and data_template_rrd.data_source_name=".wm_db_escape_literal($dsnames[$dir]);
++					$SQLvalid = "select data_template_rrd.data_source_name from data_template_data,data_template_rrd where data_template_data.local_data_id=data_template_rrd.local_data_id and data_template_data.data_source_path=".wm_db_escape_literal($db_rrdname);
+ 					
+ 					$worst_time = time() - 8*60;
+ 					$result = db_fetch_row($SQL);
+@@ -121,7 +121,7 @@
+ 							// add the new data source (which we just checked exists) to the table. 
+ 							// Include the local_data_id as well, to make life easier in poller_output
+ 							// (and to allow the cacti: DS plugin to use the same table, too)
+-							$SQLins = "insert into weathermap_data (rrdfile, data_source_name, sequence, local_data_id) values ('".mysql_real_escape_string($db_rrdname)."','".mysql_real_escape_string($dsnames[$dir])."', 0,".$result['local_data_id'].")";
++							$SQLins = "insert into weathermap_data (rrdfile, data_source_name, sequence, local_data_id) values (".wm_db_escape_literal($db_rrdname).",".wm_db_escape_literal($dsnames[$dir]).", 0,".$result['local_data_id'].")";
+ 							debug("RRD ReadData: poller_output - Adding new weathermap_data row for data source ID ".$result['local_data_id']."\n");
+ 							db_execute($SQLins);
+ 						}
+@@ -444,7 +444,7 @@
+ 			    // report DS name error
+ 			    $names = join(",",$heads);
+ 			    $names = str_replace("timestamp,","",$names);
+-			    warn("RRD ReadData: At least one of your DS names (".$dsnames[IN]." and ".$dsnames[OUT].") were not found, even though there was a valid data line. Maybe they are wrong? Valid DS names in this file are: $names [WMRRD06]\n");
++			    warn("RRD ReadData: At least one of your DS names (".$dsnames[IN]." and ".$dsnames[OUT].") was not found, even though there was a valid data line. Maybe the DS name(s) are wrong? Valid DS names in this file are: $names [WMRRD06]\n");
+ 			}
+    
+ 		}
+diff -Nur weathermap.gw/lib/poller-common.php weathermap/lib/poller-common.php
+--- weathermap.gw/lib/poller-common.php	2010-03-07 01:40:31.000000000 -0800
++++ weathermap/lib/poller-common.php	2012-03-12 10:51:10.000000000 -0700
+@@ -87,7 +87,7 @@
+ 		$orig_cwd = getcwd();
+ 		chdir($mydir);
+ 
+-		db_execute("replace into settings values('weathermap_last_start_time','".mysql_escape_string(time())."')");
++		db_replace('settings', array('name' => "'weathermap_last_start_time'", 'value' => wm_db_escape_literal(time())), 'name');
+ 
+ 		// first, see if the output directory even exists
+ 		if(is_dir($outdir))
+@@ -128,7 +128,8 @@
+ 							if(file_exists($mapfile))
+ 							{
+ 								if($quietlogging==0) warn("Map: $mapfile -> $htmlfile & $imagefile\n",TRUE);
+-								db_execute("replace into settings values('weathermap_last_started_file','".mysql_escape_string($weathermap_map)."')");
++								db_replace('settings', array('name' => "'weathermap_last_started_file'", 'value' => wm_db_escape_literal($weathermap_map)), 'name');
++
+ 								$map_start = time();
+ 								weathermap_memory_check("MEM starting $mapcount");
+ 								$wmap = new Weathermap;
+@@ -209,7 +210,7 @@
+ 
+ 								$processed_title = $wmap->ProcessString($wmap->title,$wmap);
+ 								
+-								db_execute("update weathermap_maps set titlecache='".mysql_real_escape_string($processed_title)."' where id=".intval($map['id']));
++								db_execute("update weathermap_maps set titlecache=".wm_db_escape_literal($processed_title)." where id=".intval($map['id']));
+ 								if(intval($wmap->thumb_width) > 0)
+ 								{
+ 									db_execute("update weathermap_maps set thumb_width=".intval($wmap->thumb_width).", thumb_height=".intval($wmap->thumb_height)." where id=".intval($map['id']));
+@@ -220,7 +221,7 @@
+ 								debug("TIME: $mapfile took $map_duration seconds.\n");
+ 								weathermap_memory_check("MEM after $mapcount");
+ 								$mapcount++;
+-								db_execute("replace into settings values('weathermap_last_finished_file','".mysql_escape_string($weathermap_map)."')");
++								db_replace('settings', array('name' => "'weathermap_last_finished_file'", 'value' => wm_db_escape_literal($weathermap_map)), 'name');
+ 							}
+ 							else
+ 							{
+@@ -258,8 +259,8 @@
+ 
+ 		$stats_string = date(DATE_RFC822) . ": $mapcount maps were run in $duration seconds with $total_warnings warnings.";
+ 		if($quietlogging==0) warn("STATS: Weathermap $WEATHERMAP_VERSION run complete - $stats_string\n", TRUE);
+-		db_execute("replace into settings values('weathermap_last_stats','".mysql_escape_string($stats_string)."')");
+-		db_execute("replace into settings values('weathermap_last_finish_time','".mysql_escape_string(time())."')");
++		db_replace('settings', array('name' => "'weathermap_last_stats'", 'value' => wm_db_escape_literal($stats_string)), 'name');
++		db_replace('settings', array('name' => "'weathermap_last_finish_time'", 'value' => wm_db_escape_literal(time())), 'name');
+ 	}
+ 	else
+ 	{
+diff -Nur weathermap.gw/random-bits/README weathermap/random-bits/README
+--- weathermap.gw/random-bits/README	2009-09-24 12:06:14.000000000 -0700
++++ weathermap/random-bits/README	2012-03-12 15:41:31.000000000 -0700
+@@ -29,7 +29,9 @@
+ INFOURL and OVERLIBGRAPH lines it can, where they don't exist. 
+ 
+ You'll need to edit the script to allow it to log in to your Cacti 
+-database. Requires the Perl DBI and DBD::mysql modules. 
++database. Requires the Perl DBI module and either the DBD::mysql or
++DBD::Pg module, depending on what type of database you use (MySQL
++or PostgreSQL). 
+ 
+ Should work with both PHP and perl versions, but not tested with PHP 
+ one. 
+@@ -67,4 +69,4 @@
+ Generates a section of Weathermap config useful for showing traffic for all switch 
+ ports in a small space. Intended to work with cacti-integrate.php
+ 
+-More info here: http://forums.cacti.net/post-152500.html#152500
+\ No newline at end of file
++More info here: http://forums.cacti.net/post-152500.html#152500
+diff -Nur weathermap.gw/random-bits/auto-overlib.pl weathermap/random-bits/auto-overlib.pl
+--- weathermap.gw/random-bits/auto-overlib.pl	2008-03-19 15:37:27.000000000 -0700
++++ weathermap/random-bits/auto-overlib.pl	2012-03-12 16:07:46.000000000 -0700
+@@ -6,10 +6,11 @@
+ $cacti_base = "http://www.mynet.net/cacti";
+ 
+ # How we should access your Cacti database....
+-$db_name     = "cacti";
+-$db_username = "cactiuser";
+-$db_password = "somepassword";
+-$db_host     = "localhost";
++$dbname = "cacti";
++$dbuser = "cactiuser";
++$dbpass = "somepassword";
++$dbhost = "localhost";
++$dbtype = "mysql";  # "mysql" or "postgresql"
+ 
+ #
+ # You shouldn't need to change anything below here
+@@ -18,9 +19,18 @@
+ $cacti_graph = "$cacti_base/graph_image.php?local_graph_id=%d&rra_id=0&graph_nolegend=true&graph_height=100&graph_width=300";
+ $cacti_graphpage = "$cacti_base/graph.php?rra_id=all&local_graph_id=%d";
+ 
+-$DSN = "DBI:mysql:database=$db_name:host=$db_host";
+-
+-$dbh = DBI->connect( $DSN, $db_username, $db_password );
++my $dsn = '';
++if ( defined($dbtype) && $dbtype eq 'postgresql' ) {
++    $dsn = "DBI:Pg:dbname=$dbname;host=$dbhost";
++}
++else {
++    $dsn = "DBI:mysql:database=$dbname;host=$dbhost";
++}
++$dbh = DBI->connect( $dsn, $dbuser, $dbpass, { 'AutoCommit' => 1 } );
++if (!$dbh) {
++    print "ERROR:  Cannot connect to database $dbname: ", $DBI::errstr;
++    exit 1;
++}
+ 
+ $inputfile  = $ARGV[0];
+ $outputfile = $inputfile . ".new";
+@@ -60,7 +70,7 @@
+ sub find_graph_urls {
+     my ($target) = shift;
+ 
+-	# $dbh is global
++    # $dbh is global
+     my ( @bits, $SQL, $sth, $data );
+     my ( $data_template_id, $local_data_id, $count,     $output );
+     my ( $local_graph_id,   $title,         $graph_url, $graphpage_url );
+@@ -77,8 +87,7 @@
+     $local_data_id = $$data{local_data_id};
+     $sth->finish();
+ 
+-    $SQL =
+-"SELECT id FROM data_template_rrd WHERE local_data_id=$local_data_id LIMIT 1";
++    $SQL = "SELECT id FROM data_template_rrd WHERE local_data_id=$local_data_id LIMIT 1";
+     $sth = $dbh->prepare($SQL);
+     $sth->execute();
+     $data                 = $sth->fetchrow_hashref();
+diff -Nur weathermap.gw/random-bits/cacti-integrate.php weathermap/random-bits/cacti-integrate.php
+--- weathermap.gw/random-bits/cacti-integrate.php	2010-02-18 11:52:02.000000000 -0800
++++ weathermap/random-bits/cacti-integrate.php	2012-03-13 15:50:26.000000000 -0700
+@@ -163,7 +163,7 @@
+ // figure out which template has interface traffic. This might be wrong for you.
+ $data_template = "Interface - Traffic";
+ $data_template_id =
+-    db_fetch_cell("select id from data_template where name='" . mysql_real_escape_string($data_template) . "'");
++    db_fetch_cell("select id from data_template where name=" . wm_db_escape_literal($data_template));
+ 
+ $map = new WeatherMap;
+ 
+@@ -205,8 +205,7 @@
+ // by now, if there was a host_id, all 3 are populated. If not, then we should try one of the others to get a host_id
+     else {
+         if ($address != '') {
+-            $res2 = db_fetch_row("select id,description from host where hostname='" . mysql_real_escape_string($address)
+-                . "'");
++            $res2 = db_fetch_row("select id,description from host where hostname=" . wm_db_escape_literal($address));
+ 
+             if ($res2) {
+                 $host_id = $res2['id'];
+@@ -219,8 +218,7 @@
+             }
+         } elseif ($hostname != '') {
+             $res3 =
+-                db_fetch_row("select id,hostname from host where description='" . mysql_real_escape_string($hostname)
+-                    . "'");
++                db_fetch_row("select id,hostname from host where description=" . wm_db_escape_literal($hostname));
+ 
+             if ($res3) {
+                 $host_id = $res3['id'];
+@@ -306,8 +304,8 @@
+                     ) as $field) {
+                         $SQL =
+                             sprintf(
+-                                "select data_local.id, data_source_path, host_snmp_cache.snmp_index from data_template_data, data_local,snmp_query, host_snmp_cache where data_template_data.local_data_id=data_local.id and host_snmp_cache.snmp_query_id = snmp_query.id and data_local.host_id=host_snmp_cache.host_id and data_local.snmp_query_id=host_snmp_cache.snmp_query_id  and data_local.snmp_index=host_snmp_cache.snmp_index and host_snmp_cache.host_id=%d and host_snmp_cache.field_name='%s' and host_snmp_cache.field_value='%s' and data_local.data_template_id=%d order by data_template_data.id desc limit 1;",
+-                                $tgt_host, $field, mysql_real_escape_string($interface), $data_template_id);
++                                "select data_local.id, data_source_path, host_snmp_cache.snmp_index from data_template_data, data_local,snmp_query, host_snmp_cache where data_template_data.local_data_id=data_local.id and host_snmp_cache.snmp_query_id = snmp_query.id and data_local.host_id=host_snmp_cache.host_id and data_local.snmp_query_id=host_snmp_cache.snmp_query_id  and data_local.snmp_index=host_snmp_cache.snmp_index and host_snmp_cache.host_id=%d and host_snmp_cache.field_name='%s' and host_snmp_cache.field_value=%s and data_local.data_template_id=%d order by data_template_data.id desc limit 1;",
++                                $tgt_host, $field, wm_db_escape_literal($interface), $data_template_id);
+                         $res4 = db_fetch_row($SQL);
+ 
+                         if ($res4)
+@@ -401,4 +399,4 @@
+ $map->WriteConfig($outputmapfile);
+ 
+ print "Wrote config to $outputmapfile\n";
+-?>
+\ No newline at end of file
++?>
+diff -Nur weathermap.gw/random-bits/cacti-mapper.php weathermap/random-bits/cacti-mapper.php
+--- weathermap.gw/random-bits/cacti-mapper.php	2008-12-30 08:24:56.000000000 -0800
++++ weathermap/random-bits/cacti-mapper.php	2012-03-12 10:40:59.000000000 -0700
+@@ -40,7 +40,7 @@
+ 
+ # figure out which template has interface traffic. This might be wrong for you.
+ $data_template = "Interface - Traffic";
+-$data_template_id = db_fetch_cell("select id from data_template where name='".mysql_real_escape_string($data_template)."'");
++$data_template_id = db_fetch_cell("select id from data_template where name=".wm_db_escape_literal($data_template));
+ 
+ $Interfaces_SQL = "select host.snmp_version,host.snmp_community,host.snmp_username,host.snmp_password,host.snmp_auth_protocol,host.snmp_priv_passphrase,host.snmp_priv_protocol,host.snmp_context,host.snmp_port,host.snmp_timeout,host.description, host.hostname, host.disabled, host_snmp_cache.* from host_snmp_cache,host where host_snmp_cache.host_id=host.id and (field_name='ifDescr' or field_name='ifName' or field_name='ifIP' or field_name='ifAlias') and host.disabled<>'on' and field_value<>'127.0.0.1' and field_value<>'0.0.0.0' and host.status=3 and host.snmp_version>0;";
+ $queryrows = db_fetch_assoc($Interfaces_SQL);
+diff -Nur weathermap.gw/setup.php weathermap/setup.php
+--- weathermap.gw/setup.php	2010-10-06 13:54:05.000000000 -0700
++++ weathermap/setup.php	2012-03-13 19:22:15.000000000 -0700
+@@ -10,6 +10,8 @@
+ 
+ *******************************************************************************/
+ 
++include_once(dirname(__FILE__)."/database_extension.php");
++
+ // who knows why this changed... not me.
+ function disabled_plugin_weathermap_version()
+ {
+@@ -112,14 +114,14 @@
+ 
+ // Begin REQUEST_URI fix
+ if (!isset($_SERVER['REQUEST_URI']))
+-        {
+-        $_SERVER['REQUEST_URI'] = substr($_SERVER['PHP_SELF'],0 );
++	{
++	$_SERVER['REQUEST_URI'] = substr($_SERVER['PHP_SELF'],0 );
+ 
+-        if (isset($_SERVER['QUERY_STRING']) AND $_SERVER['QUERY_STRING'] != "")
+-                {
+-                $_SERVER['REQUEST_URI'] .= '?'.$_SERVER['QUERY_STRING'];
+-                }
+-        }
++	if (isset($_SERVER['QUERY_STRING']) AND $_SERVER['QUERY_STRING'] != "")
++		{
++		$_SERVER['REQUEST_URI'] .= '?'.$_SERVER['QUERY_STRING'];
++		}
++	}
+ // End REQUEST_URI fix
+ 
+ 	if(preg_match('/plugins\/weathermap\//',$_SERVER['REQUEST_URI'] ,$matches))
+@@ -133,14 +135,14 @@
+ 
+ // Begin REQUEST_URI fix
+ if (!isset($_SERVER['REQUEST_URI']))
+-        {
+-        $_SERVER['REQUEST_URI'] = substr($_SERVER['PHP_SELF'],0 );
++	{
++	$_SERVER['REQUEST_URI'] = substr($_SERVER['PHP_SELF'],0 );
+ 
+-        if (isset($_SERVER['QUERY_STRING']) AND $_SERVER['QUERY_STRING'] != "")
+-                {
+-                $_SERVER['REQUEST_URI'] .= '?'.$_SERVER['QUERY_STRING'];
+-                }
+-        }
++	if (isset($_SERVER['QUERY_STRING']) AND $_SERVER['QUERY_STRING'] != "")
++		{
++		$_SERVER['REQUEST_URI'] .= '?'.$_SERVER['QUERY_STRING'];
++		}
++	}
+ // End REQUEST_URI fix
+ 
+         if(preg_match('/plugins\/weathermap\//',$_SERVER['REQUEST_URI'] ,$matches))
+@@ -156,7 +158,7 @@
+ 						}
+ 						else
+ 						{
+-							$title = db_fetch_cell("SELECT titlecache from weathermap_maps where filehash='".mysql_real_escape_string($mapid)."'");
++							$title = db_fetch_cell("SELECT titlecache from weathermap_maps where filehash=".wm_db_escape_literal($mapid));
+ 						}
+                         if(isset($title)) $t .= " - $title";
+                 }
+@@ -269,7 +271,7 @@
+ 
+ 
+ function weathermap_setup_table () {
+-	global $config, $database_default;
++	global $config, $database_default, $database_type, $database_username;
+ 	global $WEATHERMAP_VERSION;
+ 	include_once($config["library_path"] . DIRECTORY_SEPARATOR . "database.php");
+ 
+@@ -283,8 +285,10 @@
+ 	if( ($dbversion=="") || (preg_match("/dev$/",$myversion)) || ($dbversion != $myversion) )
+ 	{
+ 		# cacti_log("Doing setup_table() \n",true,"WEATHERMAP");
+-		$sql = "show tables";
+-		$result = db_fetch_assoc($sql) or die (mysql_error());
++		$sql = ($database_type === "mysql")
++		    ? ("show tables from `" . $database_default . "`")
++		    : ('select table_name from information_schema.tables where table_catalog = current_catalog and table_schema = current_schema');
++		$result = db_fetch_assoc($sql) or die (wm_db_message());
+ 
+ 		$tables = array();
+ 		$sql = array();
+@@ -298,35 +302,72 @@
+ 		$sql[] = "update weathermap_maps set sortorder=id where sortorder is null;";
+ 		
+ 		if (!in_array('weathermap_maps', $tables)) {
+-			$sql[] = "CREATE TABLE weathermap_maps (
+-				id int(11) NOT NULL auto_increment,
+-				sortorder int(11) NOT NULL default 0,
+-				group_id int(11) NOT NULL default 1,
+-				active set('on','off') NOT NULL default 'on',
+-				configfile text NOT NULL,
+-				imagefile text NOT NULL,
+-				htmlfile text NOT NULL,
+-				titlecache text NOT NULL,
+-				filehash varchar (40) NOT NULL default '',
+-				warncount int(11) NOT NULL default 0,
+-				config text NOT NULL default '',
+-				thumb_width int(11) NOT NULL default 0,
+-				thumb_height int(11) NOT NULL default 0,
+-				schedule varchar(32) NOT NULL default '*',
+-				archiving set('on','off') NOT NULL default 'off',
+-				PRIMARY KEY  (id)
+-			) TYPE=MyISAM;";
++			$sql[] = ($database_type === "mysql")
++
++				# MySQL version:
++				? "CREATE TABLE weathermap_maps (
++					id int(11) NOT NULL auto_increment,
++					sortorder int(11) NOT NULL default 0,
++					group_id int(11) NOT NULL default 1,
++					active set('on','off') NOT NULL default 'on',
++					configfile text NOT NULL,
++					imagefile text NOT NULL,
++					htmlfile text NOT NULL,
++					titlecache text NOT NULL,
++					filehash varchar (40) NOT NULL default '',
++					warncount int(11) NOT NULL default 0,
++					config text NOT NULL default '',
++					thumb_width int(11) NOT NULL default 0,
++					thumb_height int(11) NOT NULL default 0,
++					schedule varchar(32) NOT NULL default '*',
++					archiving set('on','off') NOT NULL default 'off',
++					PRIMARY KEY  (id)
++				) TYPE=MyISAM;"
++
++				# PostgreSQL version:
++				: "CREATE TABLE weathermap_maps (
++					id integer NOT NULL,
++					sortorder integer DEFAULT 0 NOT NULL,
++					group_id integer DEFAULT 1 NOT NULL,
++					active character varying(255) DEFAULT 'on'::character varying NOT NULL,
++					configfile text NOT NULL,
++					imagefile text NOT NULL,
++					htmlfile text NOT NULL,
++					titlecache text NOT NULL,
++					filehash character varying(40) NOT NULL,
++					warncount integer DEFAULT 0 NOT NULL,
++					config text NOT NULL,
++					thumb_width integer DEFAULT 0 NOT NULL,
++					thumb_height integer DEFAULT 0 NOT NULL,
++					schedule character varying(32) DEFAULT '*'::character varying NOT NULL,
++					archiving character varying(255) DEFAULT 'off'::character varying NOT NULL
++				);
++				ALTER TABLE public.weathermap_maps OWNER TO $database_username;
++				CREATE SEQUENCE weathermap_maps_id_seq
++					START WITH 1
++					INCREMENT BY 1
++					NO MINVALUE
++					NO MAXVALUE
++					CACHE 1;
++				ALTER TABLE public.weathermap_maps_id_seq OWNER TO $database_username;
++				ALTER SEQUENCE weathermap_maps_id_seq OWNED BY weathermap_maps.id;
++				ALTER TABLE weathermap_maps ALTER COLUMN id SET DEFAULT nextval('weathermap_maps_id_seq'::regclass);
++				ALTER TABLE ONLY weathermap_maps ADD CONSTRAINT weathermap_maps_pkey PRIMARY KEY (id);";
+ 		}
+ 		else
+ 		{
+-			$colsql = "show columns from weathermap_maps from " . $database_default;
+-			$result = mysql_query($colsql) or die (mysql_error());
++			if ($database_type === "mysql") {
++				$colsql = 'show columns from weathermap_maps from ' . $database_default;
++			} else {
++				$colsql = "select column_name as \"Field\" from information_schema.columns where table_catalog = current_catalog and table_schema = current_schema and table_name='weathermap_maps'";
++			}
++			$result = db_fetch_assoc($colsql) or die (wm_db_message());
+ 			$found_so = false;	$found_fh = false;
+ 			$found_wc = false;	$found_cf = false;
+ 			$found_96changes = false;
+ 			$found_96bchanges = false;
+-			
+-			while ($row = mysql_fetch_array($result, MYSQL_ASSOC)) {
++
++			foreach ($result as $row) {
+ 				if ($row['Field'] == 'sortorder') $found_so = true;
+ 				if ($row['Field'] == 'filehash') $found_fh = true;
+ 				if ($row['Field'] == 'warncount') $found_wc = true;
+@@ -335,75 +376,213 @@
+ 				if ($row['Field'] == 'thumb_width') $found_96changes = true;
+ 				if ($row['Field'] == 'group_id') $found_96bchanges = true;
+ 			}
+-			if (!$found_so) $sql[] = "alter table weathermap_maps add sortorder int(11) NOT NULL default 0 after id";
+-			if (!$found_fh) $sql[] = "alter table weathermap_maps add filehash varchar(40) NOT NULL default '' after titlecache";		
+-			if (!$found_wc) $sql[] = "alter table weathermap_maps add warncount int(11) NOT NULL default 0 after filehash";		
+-			if (!$found_cf) $sql[] = "alter table weathermap_maps add config text NOT NULL  default '' after warncount";
++			# We port these extensions to old versions to the PostgreSQL version not
++			# because we expect the PostgreSQL code to ever be exercised (since v0.97a
++			# is the starting point for the PostgreSQL port), but because we want to
++			# provide a model for any similar future extensions.  Note that PostgreSQL
++			# doesn't support the "after" keyword when adding a new column, so you can
++			# only add columns at the end of an existing table in non-MySQL databases.
++			# That will affect the future evolution of all tables that need extension.
++			#
++			# Note that PHP got the associativity of ?: completely wrong, in contrast
++			# to every other language that implements this conditional operator, so if
++			# you want to cascade such clauses to support additional types of databases,
++			# you will need to be extraordinarily careful about adding parentheses, to
++			# get the expressions to evaluate as you expect.
++			if (!$found_so) $sql[] = ($database_type === "mysql")
++				? "alter table weathermap_maps add sortorder int(11) NOT NULL default 0 after id"
++				: "alter table weathermap_maps add sortorder integer NOT NULL default 0";
++			if (!$found_fh) $sql[] = ($database_type === "mysql")
++				? "alter table weathermap_maps add filehash varchar(40) NOT NULL default '' after titlecache"
++				: "alter table weathermap_maps add filehash character varying(40) NOT NULL default ''";
++			if (!$found_wc) $sql[] = ($database_type === "mysql")
++				? "alter table weathermap_maps add warncount int(11) NOT NULL default 0 after filehash"
++				: "alter table weathermap_maps add warncount integer NOT NULL default 0";
++			if (!$found_cf) $sql[] = ($database_type === "mysql")
++				? "alter table weathermap_maps add config text NOT NULL default '' after warncount"
++				: "alter table weathermap_maps add config text NOT NULL default ''";
+ 			if (!$found_96changes)
+ 			{
+-				$sql[] = "alter table weathermap_maps add thumb_width int(11) NOT NULL default 0 after config";
+-				$sql[] = "alter table weathermap_maps add thumb_height int(11) NOT NULL default 0 after thumb_width";
+-				$sql[] = "alter table weathermap_maps add schedule varchar(32) NOT NULL default '*' after thumb_height";
+-				$sql[] = "alter table weathermap_maps add archiving set('on','off') NOT NULL default 'off' after schedule";
++				$sql[] = ($database_type === "mysql")
++					? "alter table weathermap_maps add thumb_width int(11) NOT NULL default 0 after config"
++					: "alter table weathermap_maps add thumb_width integer NOT NULL default 0";
++				$sql[] = ($database_type === "mysql")
++					? "alter table weathermap_maps add thumb_height int(11) NOT NULL default 0 after thumb_width"
++					: "alter table weathermap_maps add thumb_height integer NOT NULL default 0";
++				$sql[] = ($database_type === "mysql")
++					? "alter table weathermap_maps add schedule varchar(32) NOT NULL default '*' after thumb_height"
++					: "alter table weathermap_maps add schedule character varying(32) NOT NULL default '*'::character varying";
++				$sql[] = ($database_type === "mysql")
++					? "alter table weathermap_maps add archiving set('on','off') NOT NULL default 'off' after schedule"
++					: "alter table weathermap_maps add archiving character varying(255) NOT NULL default 'off'::character varying";
+ 			}
+ 			if (!$found_96bchanges)
+ 			{
+-				$sql[] = "alter table weathermap_maps add group_id int(11) NOT NULL default 1 after sortorder";
+-				$sql[] = "ALTER TABLE `weathermap_settings` ADD `groupid` INT NOT NULL DEFAULT '0' AFTER `mapid`";
++				$sql[] = ($database_type === "mysql")
++					? "alter table weathermap_maps add group_id int(11) NOT NULL default 1 after sortorder"
++					: "alter table weathermap_maps add group_id integer NOT NULL default 1";
++				$sql[] = ($database_type === "mysql")
++					? "alter table weathermap_settings add groupid int NOT NULL default 0 after mapid"
++					: "alter table weathermap_settings add groupid integer NOT NULL default 0";
+ 			}
+ 		}
+ 
+-		$sql[] = "update weathermap_maps set filehash=LEFT(MD5(concat(id,configfile,rand())),20) where filehash = '';";
+-		
++		$random = ($database_type === "mysql") ? 'rand' : 'random';
++		$sql[] = "update weathermap_maps set filehash=LEFT(MD5(concat(id,configfile,$random())),20) where filehash = '';";
++
+ 		if (!in_array('weathermap_auth', $tables)) {
+-			$sql[] = "CREATE TABLE weathermap_auth (
+-				userid mediumint(9) NOT NULL default '0',
+-				mapid int(11) NOT NULL default '0'
+-			) TYPE=MyISAM;";
++			$sql[] = ($database_type === "mysql")
++
++				# MySQL version:
++				? "CREATE TABLE weathermap_auth (
++					userid mediumint(9) NOT NULL default '0',
++					mapid int(11) NOT NULL default '0'
++				) TYPE=MyISAM;"
++
++				# PostgreSQL version:
++				: "CREATE TABLE weathermap_auth (
++					userid integer DEFAULT 0 NOT NULL,
++					mapid integer DEFAULT 0 NOT NULL
++				);
++				ALTER TABLE public.weathermap_auth OWNER TO $database_username;";
+ 		}
+ 
+ 		
+ 		if (!in_array('weathermap_groups', $tables)) {
+-			$sql[] = "CREATE TABLE  weathermap_groups (
+-				`id` INT(11) NOT NULL auto_increment,
+-				`name` VARCHAR( 128 ) NOT NULL default '',
+-				`sortorder` INT(11) NOT NULL default 0,
+-				PRIMARY KEY (id)
+-				) TYPE=MyISAM;";
++			$sql[] = ($database_type === "mysql")
++
++				# MySQL version:
++				? "CREATE TABLE weathermap_groups (
++					`id` INT(11) NOT NULL auto_increment,
++					`name` VARCHAR( 128 ) NOT NULL default '',
++					`sortorder` INT(11) NOT NULL default 0,
++					PRIMARY KEY (id)
++				) TYPE=MyISAM;"
++
++				# PostgreSQL version:
++				: "CREATE TABLE weathermap_groups (
++					id integer NOT NULL,
++					name character varying(128) NOT NULL,
++					sortorder integer DEFAULT 0 NOT NULL
++				);
++				ALTER TABLE public.weathermap_groups OWNER TO $database_username;
++				CREATE SEQUENCE weathermap_groups_id_seq
++					START WITH 1
++					INCREMENT BY 1
++					NO MINVALUE
++					NO MAXVALUE
++					CACHE 1;
++				ALTER TABLE public.weathermap_groups_id_seq OWNER TO $database_username;
++				ALTER SEQUENCE weathermap_groups_id_seq OWNED BY weathermap_groups.id;
++				ALTER TABLE weathermap_groups ALTER COLUMN id SET DEFAULT nextval('weathermap_groups_id_seq'::regclass);
++				ALTER TABLE ONLY weathermap_groups ADD CONSTRAINT weathermap_groups_pkey PRIMARY KEY (id);";
++
+ 			$sql[] = "INSERT INTO weathermap_groups (id,name,sortorder) VALUES (1,'Weathermaps',1)";
+ 		}
+ 		
+ 		if (!in_array('weathermap_settings', $tables)) {
+-			$sql[] = "CREATE TABLE weathermap_settings (
+-				id int(11) NOT NULL auto_increment,
+-				mapid int(11) NOT NULL default '0',
+-				groupid int(11) NOT NULL default '0',
+-				optname varchar(128) NOT NULL default '',
+-				optvalue varchar(128) NOT NULL default '',
+-				PRIMARY KEY  (id)
+-			) TYPE=MyISAM;";
++			$sql[] = ($database_type === "mysql")
++
++				# MySQL version:
++				? "CREATE TABLE weathermap_settings (
++					id int(11) NOT NULL auto_increment,
++					mapid int(11) NOT NULL default '0',
++					groupid int(11) NOT NULL default '0',
++					optname varchar(128) NOT NULL default '',
++					optvalue varchar(128) NOT NULL default '',
++					PRIMARY KEY  (id)
++				) TYPE=MyISAM;"
++
++				# PostgreSQL version:
++				: "CREATE TABLE weathermap_settings (
++					id integer NOT NULL,
++					mapid integer DEFAULT 0 NOT NULL,
++					groupid integer DEFAULT 0 NOT NULL,
++					optname character varying(128) NOT NULL,
++					optvalue character varying(128) NOT NULL
++				);
++				ALTER TABLE public.weathermap_settings OWNER TO $database_username;
++				CREATE SEQUENCE weathermap_settings_id_seq
++					START WITH 1
++					INCREMENT BY 1
++					NO MINVALUE
++					NO MAXVALUE
++					CACHE 1;
++				ALTER TABLE public.weathermap_settings_id_seq OWNER TO $database_username;
++				ALTER SEQUENCE weathermap_settings_id_seq OWNED BY weathermap_settings.id;
++				ALTER TABLE weathermap_settings ALTER COLUMN id SET DEFAULT nextval('weathermap_settings_id_seq'::regclass);
++				ALTER TABLE ONLY weathermap_settings ADD CONSTRAINT weathermap_settings_pkey PRIMARY KEY (id);";
+ 		}
+ 		
+ 		if (!in_array('weathermap_data', $tables)) {
+-			$sql[] = "CREATE TABLE IF NOT EXISTS weathermap_data (id int(11) NOT NULL auto_increment,
+-				rrdfile varchar(255) NOT NULL,data_source_name varchar(19) NOT NULL,
+-				  last_time int(11) NOT NULL,last_value varchar(255) NOT NULL,
+-				last_calc varchar(255) NOT NULL, sequence int(11) NOT NULL, local_data_id int(11) NOT NULL DEFAULT 0, PRIMARY KEY  (id), KEY rrdfile (rrdfile),
+-				  KEY local_data_id (local_data_id), KEY data_source_name (data_source_name) ) TYPE=MyISAM";
++			$sql[] = ($database_type === "mysql")
++
++				# MySQL version:
++				? "CREATE TABLE IF NOT EXISTS weathermap_data (
++					id int(11) NOT NULL auto_increment,
++					rrdfile varchar(255) NOT NULL,
++					data_source_name varchar(19) NOT NULL,
++					last_time int(11) NOT NULL,
++					last_value varchar(255) NOT NULL,
++					last_calc varchar(255) NOT NULL,
++					sequence int(11) NOT NULL,
++					local_data_id int(11) NOT NULL DEFAULT 0,
++					PRIMARY KEY  (id),
++					KEY rrdfile (rrdfile),
++					KEY local_data_id (local_data_id),
++					KEY data_source_name (data_source_name)
++				) TYPE=MyISAM;"
++
++				# PostgreSQL version:
++				: "CREATE TABLE weathermap_data (
++					id integer NOT NULL,
++					rrdfile character varying(255) NOT NULL,
++					data_source_name character varying(19) NOT NULL,
++					last_time integer NOT NULL,
++					last_value character varying(255) NOT NULL,
++					last_calc character varying(255) NOT NULL,
++					sequence integer NOT NULL,
++					local_data_id integer DEFAULT 0 NOT NULL
++				);
++				ALTER TABLE public.weathermap_data OWNER TO $database_username;
++				CREATE SEQUENCE weathermap_data_id_seq
++					START WITH 1
++					INCREMENT BY 1
++					NO MINVALUE
++					NO MAXVALUE
++					CACHE 1;
++				ALTER TABLE public.weathermap_data_id_seq OWNER TO $database_username;
++				ALTER SEQUENCE weathermap_data_id_seq OWNED BY weathermap_data.id;
++				ALTER TABLE weathermap_data ALTER COLUMN id SET DEFAULT nextval('weathermap_data_id_seq'::regclass);
++				ALTER TABLE ONLY weathermap_data ADD CONSTRAINT weathermap_data_pkey PRIMARY KEY (id);
++				CREATE INDEX weathermap_data_data_source_name ON weathermap_data USING btree (data_source_name);
++				CREATE INDEX weathermap_data_local_data_id ON weathermap_data USING btree (local_data_id);
++				CREATE INDEX weathermap_data_rrdfile ON weathermap_data USING btree (rrdfile);";
+ 		}
+ 		else
+ 		{
+-			$colsql = "show columns from weathermap_data from " . $database_default;
+-			$result = mysql_query($colsql) or die (mysql_error());
++			if ($database_type === "mysql") {
++				$colsql = "show columns from weathermap_data from " . $database_default;
++			} else {
++				$colsql = "select column_name as \"Field\" from information_schema.columns where table_catalog = current_catalog and table_schema = current_schema and table_name='weathermap_data'";
++			}
++			$result = db_fetch_assoc($colsql) or die (wm_db_message());
+ 			$found_ldi = false;
+-			
+-			while ($row = mysql_fetch_array($result, MYSQL_ASSOC)) {
++
++			foreach ($result as $row) {
+ 				if ($row['Field'] == 'local_data_id') $found_ldi = true;
+ 			}
+ 			if (!$found_ldi) 
+ 			{
+-				$sql[] = "alter table weathermap_data add local_data_id int(11) NOT NULL default 0 after sequence";
+-				$sql[] = "alter table weathermap_data add index ( `local_data_id` )";
++				# Note that PostgreSQL doesn't support the "after" keyword when adding a new column,
++				# so you can only add columns at the end of an existing table in non-MySQL databases.
++				# That will affect the future evolution of all tables that need extension.
++				$sql[] = ($database_type === "mysql")
++					? "alter table weathermap_data add local_data_id int(11) NOT NULL default 0 after sequence"
++					: "alter table weathermap_data add local_data_id integer NOT NULL default 0";
++				$sql[] = ($database_type === "mysql")
++					? "alter table weathermap_data add index ( `local_data_id` )"
++					: "CREATE INDEX weathermap_data_local_data_id ON weathermap_data USING btree (local_data_id)";
+ 				# if there is existing data without a local_data_id, ditch it
+ 				$sql[] = "delete from weathermap_data";
+ 			}
+@@ -414,59 +593,59 @@
+ 		$pagestyle = read_config_option("weathermap_pagestyle");
+ 		if($pagestyle == '' or $pagestyle < 0 or $pagestyle >2)
+ 		{
+-			$sql[] = "replace into settings values('weathermap_pagestyle',0)";
++			db_replace('settings', array('name' => "'weathermap_pagestyle'", 'value' => 0), 'name');
+ 		}
+ 
+ 		$cycledelay = read_config_option("weathermap_cycle_refresh");  
+ 		if($cycledelay == '' or intval($cycledelay < 0) )
+ 		{
+-			$sql[] = "replace into settings values('weathermap_cycle_refresh',0)";
++			db_replace('settings', array('name' => "'weathermap_cycle_refresh'", 'value' => 0), 'name');
+ 		}
+ 
+ 		$renderperiod = read_config_option("weathermap_render_period");  
+ 		if($renderperiod == '' or intval($renderperiod < -1) )
+ 		{
+-			$sql[] = "replace into settings values('weathermap_render_period',0)";
++			db_replace('settings', array('name' => "'weathermap_render_period'", 'value' => 0), 'name');
+ 		}
+ 		
+ 		$quietlogging = read_config_option("weathermap_quiet_logging");  
+ 		if($quietlogging == '' or intval($quietlogging < -1) )
+ 		{
+-			$sql[] = "replace into settings values('weathermap_quiet_logging',0)";
++			db_replace('settings', array('name' => "'weathermap_quiet_logging'", 'value' => 0), 'name');
+ 		}
+ 
+ 		$rendercounter = read_config_option("weathermap_render_counter");  
+ 		if($rendercounter == '' or intval($rendercounter < 0) )
+ 		{
+-			$sql[] = "replace into settings values('weathermap_render_counter',0)";
++			db_replace('settings', array('name' => "'weathermap_render_counter'", 'value' => 0), 'name');
+ 		}
+ 
+ 		$outputformat = read_config_option("weathermap_output_format");  
+ 		if($outputformat == '' )
+ 		{
+-			$sql[] = "replace into settings values('weathermap_output_format','png')";
++			db_replace('settings', array('name' => "'weathermap_output_format'", 'value' => "'png'"), 'name');
+ 		}
+ 
+ 		$tsize = read_config_option("weathermap_thumbsize");
+ 		if($tsize == '' or $tsize < 1)
+ 		{
+-			$sql[] = "replace into settings values('weathermap_thumbsize',250)";
++			db_replace('settings', array('name' => "'weathermap_thumbsize'", 'value' => 250), 'name');
+ 		}
+ 
+ 		$ms = read_config_option("weathermap_map_selector");
+ 		if($ms == '' or intval($ms) < 0 or intval($ms) > 1)
+ 		{
+-			$sql[] = "replace into settings values('weathermap_map_selector',1)";
++			db_replace('settings', array('name' => "'weathermap_map_selector'", 'value' => 1), 'name');
+ 		}
+ 
+ 		$at = read_config_option("weathermap_all_tab");
+ 		if($at == '' or intval($at) < 0 or intval($at) > 1)
+ 		{
+-			$sql[] = "replace into settings values('weathermap_all_tab',0)";
++			db_replace('settings', array('name' => "'weathermap_all_tab'", 'value' => 0), 'name');
+ 		}
+ 
+ 		// update the version, so we can skip this next time
+-		$sql[] = "replace into settings values('weathermap_db_version','$myversion')";
++		db_replace('settings', array('name' => "'weathermap_db_version'", 'value' => wm_db_escape_literal($myversion)), 'name');
+ 		
+ 		// patch up the sortorder for any maps that don't have one.
+ 		$sql[] = "update weathermap_maps set sortorder=id where sortorder is null or sortorder=0;";
+@@ -474,7 +653,9 @@
+ 		if (!empty($sql)) {
+ 			for ($a = 0; $a < count($sql); $a++) {
+ 				# cacti_log("Executing SQL: ".$sql[$a]."\n",true,"WEATHERMAP");
+-				$result = db_execute($sql[$a]);
++				if (!db_execute($sql[$a])) {
++					print "<h3>".wm_db_message()."</h3>";
++				}
+ 			}
+ 		}
+ 	}
+@@ -507,6 +688,7 @@
+ 					"edit" => "weathermap_tree_item_edit");
+ 	}
+ 
++	# FIX MINOR:  weathermap-cacti-plugin-mgmt-groups.php doesn't seem to exist anywhere; it's commented out above; so why is it referenced here?
+ 	$wm_menu = array(
+ 		'plugins/weathermap/weathermap-cacti-plugin-mgmt.php' => "Weathermaps",
+ 		'plugins/weathermap/weathermap-cacti-plugin-mgmt-groups.php' => "Groups"
+@@ -611,14 +793,14 @@
+ 		// if we're ON a weathermap page, print '_red'
+ // Begin REQUEST_URI fix
+ if (!isset($_SERVER['REQUEST_URI']))
+-        {
+-        $_SERVER['REQUEST_URI'] = substr($_SERVER['PHP_SELF'],0 );
++	{
++	$_SERVER['REQUEST_URI'] = substr($_SERVER['PHP_SELF'],0 );
+ 
+-        if (isset($_SERVER['QUERY_STRING']) AND $_SERVER['QUERY_STRING'] != "")
+-                {
+-                $_SERVER['REQUEST_URI'] .= '?'.$_SERVER['QUERY_STRING'];
+-                }
+-        }
++	if (isset($_SERVER['QUERY_STRING']) AND $_SERVER['QUERY_STRING'] != "")
++		{
++		$_SERVER['REQUEST_URI'] .= '?'.$_SERVER['QUERY_STRING'];
++		}
++	}
+ // End REQUEST_URI fix
+ 
+ 		if(preg_match('/plugins\/weathermap\/weathermap-cacti-plugin.php/',$_SERVER['REQUEST_URI'] ,$matches))
+@@ -845,7 +1027,7 @@
+ 		# cacti_log("Weathermap counter is $rendercounter. period is $renderperiod.", true, "WEATHERMAP");
+ 		// increment the counter
+ 		$newcount = ($rendercounter+1)%1000;
+-		db_execute("replace into settings values('weathermap_render_counter',".$newcount.")");
++		db_replace('settings', array('name' => "'weathermap_render_counter'", 'value' => wm_db_escape_literal($newcount)), 'name');
+ 	}
+ }
+ 
+diff -Nur weathermap.gw/weathermap-cacti-plugin-mgmt.php weathermap/weathermap-cacti-plugin-mgmt.php
+--- weathermap.gw/weathermap-cacti-plugin-mgmt.php	2010-03-07 01:40:31.000000000 -0800
++++ weathermap/weathermap-cacti-plugin-mgmt.php	2012-03-14 10:45:09.000000000 -0700
+@@ -121,17 +121,28 @@
+ 	if( isset($_REQUEST['name']) && $_REQUEST['name'])  { $name = $_REQUEST['name']; }
+ 	if( isset($_REQUEST['value']) && $_REQUEST['value'])  { $value = $_REQUEST['value']; }
+ 	
+-	if(! is_null($mapid) && $settingid==0 )
+-	{
+-		// create setting
+-		weathermap_setting_save($mapid,$name,$value);
++	if (!empty($name)) {
++		# FIX MINOR:  By itself, this won't protect against interior spaces or other inappropriate punctuation.
++		$name = trim($name);
++	}
++	if (empty($name)) {
++		# FIX MINOR:  How do we get this message out to the screen, and also stay
++		# on the same screen so the user can correct the mistake right there?
++		print "<p>A variable name must be non-blank.</p>";
++	}
++	else {
++		if(! is_null($mapid) && $settingid==0 )
++		{
++			// create setting
++			weathermap_setting_save($mapid,$name,$value);
++		}
++		elseif(! is_null($mapid) && ! is_null($settingid) )
++		{
++			// update setting
++			weathermap_setting_update($mapid,$settingid,$name,$value);
++		}	
++		header("Location: weathermap-cacti-plugin-mgmt.php?action=map_settings&id=".$mapid);
+ 	}
+-	elseif(! is_null($mapid) && ! is_null($settingid) )
+-	{
+-		// update setting
+-		weathermap_setting_update($mapid,$settingid,$name,$value);
+-	}	
+-	header("Location: weathermap-cacti-plugin-mgmt.php?action=map_settings&id=".$mapid);
+ 	break;
+ 
+ case 'map_settings_form':
+@@ -454,7 +465,10 @@
+ 
+ 	$i = 0;
+ 	$queryrows = db_fetch_assoc("select weathermap_maps.*, weathermap_groups.name as groupname from weathermap_maps, weathermap_groups where weathermap_maps.group_id=weathermap_groups.id order by weathermap_groups.sortorder,sortorder");
+-	// or die (mysql_error("Could not connect to database") )
++	if (!isset($queryrows)) {
++		# This message gets printed against a very dark background, so we set the color to make it visible.
++		print("<p><span style='color: #00FFFF'>Database access failed: ".wm_db_message()."</span></p>");
++	}
+ 
+ 	$previous_id = -2;
+ 	$had_warnings = 0;
+@@ -682,7 +696,7 @@
+ 
+ 			if( ($i == 0) && $skipped>0)
+ 			{
+-				print "<tr><td>($skipped files weren't shown because they are already in the database</td></tr>";
++				print "<tr><td>($skipped files weren't shown because they are already in the database)</td></tr>";
+ 			}
+ 		}
+ 		else
+@@ -751,6 +765,7 @@
+ {
+ 	global $weathermap_confdir;
+ 	global $colors;
++	global $database_type;
+ 
+ 	chdir($weathermap_confdir);
+ 
+@@ -768,21 +783,32 @@
+ 		$realfile = $weathermap_confdir.DIRECTORY_SEPARATOR.$file;
+ 		$title = wmap_get_title($realfile);
+ 
+-		$file = mysql_real_escape_string($file);
+-		$title = mysql_real_escape_string($title);
+-		$SQL = "insert into weathermap_maps (configfile,titlecache,active,imagefile,htmlfile,filehash,config) VALUES ('$file','$title','on','','','','')";
+-		db_execute($SQL);
+-
+-		// add auth for 'admin'
+-		$last_id = mysql_insert_id();
+-		// $myuid = (int)$_SESSION["sess_user_id"];
+-		$myuid = (isset($_SESSION["sess_user_id"]) ? intval($_SESSION["sess_user_id"]) : 1);
+-		$SQL = "insert into weathermap_auth (mapid,userid) VALUES ($last_id,$myuid)";
+-		db_execute($SQL);
+-		
+-		db_execute("update weathermap_maps set filehash=LEFT(MD5(concat(id,configfile,rand())),20) where id=$last_id");
+-
+-		map_resort();
++		$file  = wm_db_escape_literal($file);
++		$title = wm_db_escape_literal($title);
++		$SQL = "insert into weathermap_maps (configfile,titlecache,active,imagefile,htmlfile,filehash,config) VALUES ($file,$title,'on','','','','')";
++		if (!db_execute($SQL)) {
++			# We need this error checking, because if the insert failed,
++			# the subsequent call to db_fetch_insert_id() will be invalid.
++			print "<h3>Error: Cannot insert into weathermap_maps: ".wm_db_message()."</h3>";
++		}
++		else {
++			// add auth for 'admin'
++			$last_id = db_fetch_insert_id();
++			// $myuid = (int)$_SESSION["sess_user_id"];
++			$myuid = (isset($_SESSION["sess_user_id"]) ? intval($_SESSION["sess_user_id"]) : 1);
++			$random = ($database_type === "mysql") ? 'rand' : 'random';
++			$SQL = "insert into weathermap_auth (mapid,userid) VALUES ($last_id,$myuid)";
++			if (!db_execute($SQL)) {
++				# Since this is a new row, we shouldn't see duplicate-key errors, so any failure is probably serious.
++				print "<h3>Error: Cannot associate user with Weathermap map: ".wm_db_message()."</h3>";
++			}
++			elseif (!db_execute("update weathermap_maps set filehash=LEFT(MD5(concat(id,configfile,$random())),20) where id=$last_id")) {
++				print "<h3>Error: Cannot update weathermap_maps: ".wm_db_message()."</h3>";
++			}
++			else {
++				map_resort();
++			}
++		}
+ 	}
+ }
+ 
+@@ -942,7 +968,7 @@
+ 	{
+ 		$group_id = -intval($id);
+ 		$groupname = db_fetch_cell("select name from weathermap_groups where id=".$group_id);		
+-		$title = "Edit per-map settings for Group ". $group_id . ": " . $groupname;
++		$title = "Edit per-group settings for Group ". $group_id . ": " . $groupname;
+ 		$nonemsg = "There are no per-group settings for this group yet. You can add some by clicking Add up in the top-right.";
+ 		$type="group";
+ 		$settingrows = db_fetch_assoc("select * from weathermap_settings where groupid=".$group_id);
+@@ -993,7 +1019,7 @@
+ 				print '<td><a href="?action=map_settings_form&mapid='.$id.'&id='.intval($setting['id']).'"><img src="../../images/graph_properties.gif" width="16" height="16" border="0" alt="Edit this definition">Edit</a></td>';
+ 				print "<td>".htmlspecialchars($setting['optname'])."</td>";
+ 				print "<td>".htmlspecialchars($setting['optvalue'])."</td>";
+-				print '<td><a href="?action=map_settings_delete&mapid='.$id.'&id='.intval($setting['id']).'"><img src="../../images/delete_icon_large.gif" width="12" height="12" border="0" alt="Remove this definition from this map"></a></td>';
++				print '<td><a href="?action=map_settings_delete&mapid='.$id.'&id='.intval($setting['id']).'"><img src="../../images/delete_icon_large.gif" width="12" height="12" border="0" alt="Remove this definition"></a></td>';
+ 				print "</tr>";
+ 				$n++;
+ 			}
+@@ -1117,25 +1143,37 @@
+ {
+ 	if($mapid >0)
+ 	{
+-		db_execute("insert into weathermap_settings (mapid, optname, optvalue) values ($mapid,'".mysql_real_escape_string($name)."','".mysql_real_escape_string($value)."')");
++		db_execute("insert into weathermap_settings (mapid, optname, optvalue) values ($mapid,".wm_db_escape_literal($name).",".wm_db_escape_literal($value).")")
++			or print "<h3>Error: Cannot insert map setting into weathermap_settings: ".wm_db_message()."</h3>";
+ 	}
+ 	elseif($mapid <0)
+ 	{
+-		db_execute("insert into weathermap_settings (mapid, groupid, optname, optvalue) values (0, -$mapid,'".mysql_real_escape_string($name)."','".mysql_real_escape_string($value)."')");
++		$groupid = -$mapid;
++		db_execute("insert into weathermap_settings (mapid, groupid, optname, optvalue) values (0, $groupid,".wm_db_escape_literal($name).",".wm_db_escape_literal($value).")")
++			or print "<h3>Error: Cannot insert group setting into weathermap_settings: ".wm_db_message()."</h3>";
+ 	}
+ 	else
+ 	{
+-		db_execute("insert into weathermap_settings (mapid, groupid, optname, optvalue) values (0, 0,'".mysql_real_escape_string($name)."','".mysql_real_escape_string($value)."')");
++		db_execute("insert into weathermap_settings (mapid, groupid, optname, optvalue) values (0, 0,".wm_db_escape_literal($name).",".wm_db_escape_literal($value).")")
++			or print "<h3>Error: Cannot insert global setting into weathermap_settings: ".wm_db_message()."</h3>";
+ 	}
+ } 
+ function weathermap_setting_update($mapid,$settingid,$name,$value) 
+ {	
+-	db_execute("update weathermap_settings set optname='".mysql_real_escape_string($name)."', optvalue='".mysql_real_escape_string($value)."' where id=".intval($settingid));
++	db_execute("update weathermap_settings set optname=".wm_db_escape_literal($name).", optvalue=".wm_db_escape_literal($value)." where id=".intval($settingid));
+ } 
+ 
+ function weathermap_setting_delete($mapid,$settingid) 
+ {
+-	db_execute("delete from weathermap_settings where id=".intval($settingid)." and mapid=".intval($mapid));
++	if($mapid >= 0)
++	{
++		db_execute("delete from weathermap_settings where id=".intval($settingid)." and mapid=".intval($mapid));
++	}
++	else
++	{
++		$groupid = -$mapid;
++		db_execute("delete from weathermap_settings where id=".intval($settingid)." and groupid=".intval($groupid));
++	}
+ } 
+ 
+ function weathermap_chgroup($id)
+@@ -1283,15 +1321,14 @@
+ function weathermap_group_create($newname)
+ {
+ 	$sortorder = db_fetch_cell("select max(sortorder)+1 from weathermap_groups");
+-	$SQL = sprintf("insert into weathermap_groups (name, sortorder) values ('%s',%d)", mysql_escape_string($newname), $sortorder);
++	$SQL = sprintf("insert into weathermap_groups (name, sortorder) values (%s,%d)", wm_db_escape_literal($newname), $sortorder);
+ #	print $SQL;
+ 	db_execute($SQL);
+ }
+ 
+ function weathermap_group_update($id, $newname)
+ {
+-	
+-	$SQL = sprintf("update weathermap_groups set name='%s' where id=%d", mysql_escape_string($newname), $id);
++	$SQL = sprintf("update weathermap_groups set name=%s where id=%d", wm_db_escape_literal($newname), $id);
+ #	print $SQL;
+ 	db_execute($SQL);
+ }
+diff -Nur weathermap.gw/weathermap-cacti-plugin.php weathermap/weathermap-cacti-plugin.php
+--- weathermap.gw/weathermap-cacti-plugin.php	2010-02-11 13:28:45.000000000 -0800
++++ weathermap/weathermap-cacti-plugin.php	2012-03-13 19:05:52.000000000 -0700
+@@ -347,8 +347,7 @@
+ 			}
+ 			
+ 			$userid = (isset($_SESSION["sess_user_id"]) ? intval($_SESSION["sess_user_id"]) : 1);
+-			if ((db_fetch_assoc("select user_auth_realm.realm_id from user_auth_realm where user_auth_realm.us
+-				er_id='" . $userid . "' and user_auth_realm.realm_id='$realm_id2'")) || (empty($realm_id2))) {
++			if ((db_fetch_assoc("select user_auth_realm.realm_id from user_auth_realm where user_auth_realm.user_id='" . $userid . "' and user_auth_realm.realm_id='$realm_id2'")) || (empty($realm_id2))) {
+ 
+ 					print " (If this message stays here for more than one poller cycle, then check your cacti.log file for errors!)";
+ 
+@@ -672,7 +671,7 @@
+ 
+ function weathermap_translate_id($idname)
+ {
+-	$SQL = "select id from weathermap_maps where configfile='".mysql_real_escape_string($idname)."' or filehash='".mysql_real_escape_string($idname)."'";
++	$SQL = "select id from weathermap_maps where configfile=".wm_db_escape_literal($idname)." or filehash=".wm_db_escape_literal($idname);
+ 	$map = db_fetch_assoc($SQL);
+ 
+ 	return($map[0]['id']);	
+@@ -820,10 +819,11 @@
+ 	$userid = (isset($_SESSION["sess_user_id"]) ? intval($_SESSION["sess_user_id"]) : 1);
+ 	$maps = db_fetch_assoc("select weathermap_maps.*, weathermap_groups.name as group_name from weathermap_auth,weathermap_maps, weathermap_groups where weathermap_groups.id=weathermap_maps.group_id and weathermap_maps.id=weathermap_auth.mapid and active='on' and (userid=".$userid." or userid=0) order by weathermap_groups.sortorder");
+ 
+-
+-	foreach ($maps as $map)
+-	{
+-		$tabs[$map['group_id']] = $map['group_name'];
++	if (isset($maps)){
++		foreach ($maps as $map)
++		{
++			$tabs[$map['group_id']] = $map['group_name'];
++		}
+ 	}
+ 
+ 	return($tabs);

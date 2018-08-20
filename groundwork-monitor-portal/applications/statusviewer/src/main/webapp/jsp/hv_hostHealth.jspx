@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<!-- host Health -->
+		<ice:inputHidden id="hostHelathHiddenField"
+			value="#{healthPortletsHandler.healthHiddenField}" />
+
+		<!--  error / info message -->
+		<ice:panelGroup rendered="#{healthPortletsHandler.message}"
+			id="panelsGroupError">
+			<ice:column id="columnError"
+				rendered="#{healthPortletsHandler.error}">
+				<ui:include src="/jsp/error.jspx">
+					<ui:param name="errorMessage"
+						value="#{healthPortletsHandler.errorMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:column id="columninfo" rendered="#{healthPortletsHandler.info}">
+				<ui:include src="/jsp/info.jspx">
+					<ui:param name="infoMessage"
+						value="#{healthPortletsHandler.infoMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:commandButton id="cmdRetryNow"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{healthPortletsHandler.reloadPage}">
+			</ice:commandButton>
+		</ice:panelGroup>
+		<!--  error message -->
+
+		<ice:panelGroup id="panelGridHostHealthInfo" rendered="#{!healthPortletsHandler.message}">
+			<table width="100%">
+				<tr>
+					<td width="50%">
+						<!-- host State Icon-->
+						<ice:graphicImage
+							url="#{healthPortletsHandler.hostHealthBean.status.iconPath}"
+							style="padding-right: 4px;"
+							id="imgHostState" />
+						
+						<!-- host name -->
+						<ice:outputText id="txthostName" style="font-weight: bold; font-size: 15px;"
+							value="#{healthPortletsHandler.hostHealthBean.hostNameLabel}"
+							title="#{healthPortletsHandler.hostHealthBean.hostName}" />
+					</td>
+					<td>
+						<ice:graphicImage
+							url="/images/move_up_active.gif"
+							rendered="#{healthPortletsHandler.hostHealthBean.parentsCount gt '0'}"
+							style="padding-right: 2px;"
+							id="imgHostParentActive" />
+						<ice:commandLink id="linkParentPoup"
+							rendered="#{healthPortletsHandler.hostHealthBean.parentsCount gt '0'}"
+							action="#{healthPortletsHandler.openParentDependentPopup}"
+							actionListener="#{healthPortletsHandler.showParentsForHost}"
+							disabled="#{!healthPortletsHandler.hostHealthBean.userInAdminOrOperatorRole}"
+							value="#{message['com_groundwork_portal_statusviewer_outputtext_parentsForThisHost']}(#{healthPortletsHandler.hostHealthBean.parentsCount})">
+						</ice:commandLink>
+						<ice:graphicImage
+							rendered="#{healthPortletsHandler.hostHealthBean.parentsCount eq '0'}"
+							url="/images/move_up_inactive.gif"							
+							style="padding-right: 2px;"
+							id="imgHostParentInactive" />
+						<ice:outputText style="color:grey;"
+							rendered="#{healthPortletsHandler.hostHealthBean.parentsCount eq '0'}"
+							id="txtParents"
+							value="#{message['com_groundwork_portal_statusviewer_outputtext_parentsForThisHost']}(#{healthPortletsHandler.hostHealthBean.parentsCount})">
+						</ice:outputText>
+					</td>
+				</tr>
+				
+				<tr>
+					<td style="width:300px; max-width:350px; overflow:hidden;">
+						<!-- Host Alias -->
+						<ice:outputText id="txthostAlias" style="font-weight: normal;" value="#{healthPortletsHandler.hostHealthBean.alias}" />
+					</td>
+					<td>
+						<!-- method to get link is in host health bean. -->
+						<!-- Show command link if contents size > 0. if its 0, show text only. -->
+						<ice:graphicImage
+							url="/images/move_left_active.gif"
+							rendered="#{healthPortletsHandler.hostHealthBean.hostGroupsCount gt '0'}"
+							style="padding-right: 2px;"
+							id="imgGroupsForHostActive" />
+						<ice:commandLink id="linkGroupPoup"
+							rendered="#{healthPortletsHandler.hostHealthBean.hostGroupsCount gt '0'}"
+							action="#{healthPortletsHandler.openGroupPopup}"
+							actionListener="#{healthPortletsHandler.showGroupsForHost}"
+							disabled="#{!healthPortletsHandler.hostHealthBean.userInAdminOrOperatorRole}"
+							value="#{message['com_groundwork_portal_statusviewer_outputtext_groupsForThisHosts']}(#{healthPortletsHandler.hostHealthBean.hostGroupsCount})">					
+						</ice:commandLink>
+						
+						<ice:graphicImage
+							url="/images/move_left_inactive.gif"
+							rendered="#{healthPortletsHandler.hostHealthBean.hostGroupsCount eq '0'}"
+							style="padding-right: 2px;"
+							id="imgGroupsForHostInactive" />
+						<ice:outputText id="txtGroups"
+							rendered="#{healthPortletsHandler.hostHealthBean.hostGroupsCount eq '0'}"
+							style="color:grey;"
+							value="#{message['com_groundwork_portal_statusviewer_outputtext_groupsForThisHosts']}(#{healthPortletsHandler.hostHealthBean.hostGroupsCount})">
+						</ice:outputText>
+					
+					</td> 
+				</tr>
+				
+				<tr>
+					<td>
+						<div style="width: 220px; height: 25px; overflow: auto; padding: 5px;">
+							<!-- Host Notes -->
+							<ice:outputText id="txtHostNotes"
+								style="font-weight: normal;"
+								value="#{healthPortletsHandler.hostHealthBean.hostNotes}"
+								escape="false" />
+						</div>
+					</td>
+				
+					<td>
+						<!-- Host State. E.g. UP, PENDING etc. -->
+						<ice:outputText id="txtHostState" style="font-weight:bold;"
+							value="#{healthPortletsHandler.hostHealthBean.status.status}">
+						</ice:outputText>
+						<ice:outputText id="txtHostStateSince"
+							style="font-weight: normal;"
+							value=" since #{healthPortletsHandler.hostHealthBean.lastStateChangeDate}">
+						</ice:outputText>
+					
+						<!-- Host state uptime E.g. 1 day, 2 hours, 5 mins -->
+						<br/>
+						<ice:outputText id="txtHostStateTime" styleClass="txtbold"
+							value="(#{healthPortletsHandler.hostHealthBean.hostStateDuration})">
+						</ice:outputText>
+					</td>
+				</tr>
+			</table>		
+		</ice:panelGroup>
+
+		<!-- Popup: Groups for this host -->
+		<ice:panelPopup id="panelPopupForHost" autoPosition="manual"
+			styleClass="icePnlPopTbl" modal="true"
+			visible="#{healthPortletsHandler.popupVisible}"
+			style="z-index:999; left: 400px; height: 200px; position:fixed; background: #FFFFFF;">
+			<f:facet name="header">
+				<ice:panelGrid id="panelgridhostPopup" columns="2" width="100%"
+					columnClasses="txtleft" style="min-width:400px;">
+					<ice:column id="columnHostDetail">
+						<ice:outputText id="searchTreePortlet_txtTitle"
+							style="font-weight:bold; padding-top: 5px; padding-left: 5px; float:left; width:auto;"
+							value="#{message['com_groundwork_portal_statusviewer_healthPortlet_groupsFor']}"
+							rendered="#{healthPortletsHandler.groupPopupVisible}">
+						</ice:outputText>
+						<ice:outputText id="searchTreePortlet_txtTitle"
+							style="font-weight:bold; padding-top: 5px; padding-left: 5px;"
+							value="#{message['com_groundwork_portal_statusviewer_healthPortlet_parentsFor']}"
+							rendered="#{healthPortletsHandler.parentDependentPopupVisible}">
+						</ice:outputText>
+						<ice:outputText id="searchTreePortlet_txtTitle"
+							style="font-weight:bold; padding-top: 5px; width:300px"
+							value="#{healthPortletsHandler.hostHealthBean.hostNameLabel}">
+						</ice:outputText>
+					</ice:column>
+					<ice:column id="columnCloseImage">
+						<!--<ice:commandLink id="LnkClose" action="#{healthPortletsHandler.closePopup}">
+											<div class="cust_poupmodes"><span title="Close Window">
+											<ice:graphicImage 
+												id="ImgCloseBtn" styleClass="cust_poup_modeBtn_close">
+											</ice:graphicImage>
+											</span></div>
+										</ice:commandLink>-->
+						<div class="cust_poupmodes"><span title="Close Window">
+						<ice:commandButton id="LnkClose" type="button"
+							image="/css/css-images/popup_modeBtn_close.gif"
+							action="#{healthPortletsHandler.closePopup}"
+							title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+							alt="Close" /> </span></div>
+
+					</ice:column>
+				</ice:panelGrid>
+			</f:facet>
+			<f:facet name="body">
+				<ice:panelGroup id="panelgroupPopupHost">
+
+					<!-- Group Popup window -->
+					<ice:panelGrid id="panelgridGroupPopup" width="100%"
+						cellpadding="0" cellspacing="0"
+						rendered="#{healthPortletsHandler.groupPopupVisible}">
+						<br />
+						<ice:panelGroup id="groupPopHeader" style="padding-left: 5px;">
+							<ice:outputText id="txtGroupPopupTitle"
+								style="font-weight: bold;"
+								value="#{message['com_groundwork_statusviewer_total']}= #{healthPortletsHandler.hostHealthBean.hostGroupsCount}"></ice:outputText>
+						</ice:panelGroup>
+						<ice:dataTable id="tblDependentParentPop" var="group"
+							value="#{healthPortletsHandler.hostHealthBean.groupList}"
+							cellspacing="0" style="width: 100%" styleClass="iceDatTbl_typB"
+							rowClasses="iceDatTblRow1_typB,iceDatTblRow2_typB table-alternate"
+							columnClasses="iceDatTblCol1_typB"
+							headerClass="iceDatTblColHdr1_typB"
+							rows="#{healthPortletsHandler.pageSize}"
+							sortColumn="#{healthPortletsHandler.hostHealthBean.sortGroupColumn}">
+							<ice:column id="columnGroupPopMember" style="width: 40%">
+								<f:facet name="header">
+									<table border="0" cellspacing="0" cellpadding="0"
+										align="center">
+										<tr>
+											<td><ice:commandSortHeader columnName="name"
+												arrow="true" id="CmdSrtHdrMembr"
+												actionListener="#{healthPortletsHandler.hostHealthBean.sortGroupList}">
+												<ice:outputText id="txtGroupColumnMember"
+													style="font-size:10px;" styleClass="cust_popupHeader_font"
+													value="#{message['com_groundwork_portal_statusviewer_healthPortlet_MemberOf']}"></ice:outputText>
+											</ice:commandSortHeader></td>
+											<td><ice:graphicImage id="imgsortarrow"
+												value="/images/sort_arrow_up.gif"
+												rendered="#{healthPortletsHandler.hostHealthBean.sortGroupColumn == null}"></ice:graphicImage></td>
+										</tr>
+									</table>
+								</f:facet>
+
+								<ice:outputLink id="lnkGroup" value="#{group.url}"
+									onclick="blockNavigation();" rendered="#{!empty group.url}">
+									<ice:outputText id="txtMember"
+										style="color: #5078AA;font-weight:normal;padding-bottom: 11px;"
+										value=" #{group.name}" />
+								</ice:outputLink>
+								<ice:outputText id="txtMember" style="font-weight:normal;"
+									value=" #{group.name}" rendered="#{empty group.url}" />
+							</ice:column>
+							<ice:column styleClass="borderLeft" id="columnGroupPopAlias"
+								style="width: 30%">
+								<f:facet name="header">
+									<ice:outputText id="txtGroupColumnAlias"
+										style="font-size:10px;" styleClass="cust_popupHeader_font"
+										value="#{message['com_groundwork_portal_statusviewer_healthPortlet_alias']}">
+									</ice:outputText>
+								</f:facet>
+
+								<ice:outputText id="txtAlias" value="#{group.alias}" />
+							</ice:column>
+							<ice:column styleClass="borderLeft allcenter"
+								id="columnGroupPopStatus" style="width: 30%">
+								<f:facet name="header">
+									<ice:outputText id="txtGroupPopStatus" style="font-size:10px;"
+										styleClass="cust_popupHeader_font"
+										value="#{message['com_groundwork_portal_statusviewer_healthPortlet_status']}">
+									</ice:outputText>
+								</f:facet>
+								<ice:graphicImage id="imgGroupPopStatusIcon"
+									value="#{group.status.iconPath}" />
+							</ice:column>
+						</ice:dataTable>
+						<ice:dataPaginator id="paginatorDependentPop"
+							for="tblDependentParentPop" paginator="true" fastStep="3"
+							paginatorMaxPages="4" renderFacetsIfSinglePage="false">
+							<f:facet name="first">
+								<ice:graphicImage id="imgFirst" url="/images/arrow-first.gif"
+									style="border:none;" title="First Page" />
+							</f:facet>
+							<f:facet name="previous">
+								<ice:graphicImage id="imgPrevious"
+									url="/images/arrow-previous.gif" style="border:none;"
+									title="Previous Page" />
+							</f:facet>
+							<f:facet name="next">
+								<ice:graphicImage id="imgNext" url="/images/arrow-next.gif"
+									style="border:none;" title="Next Page" />
+							</f:facet>
+							<f:facet name="last">
+								<ice:graphicImage id="imgLast" url="/images/arrow-last.gif"
+									style="border:none;" title="Last Page" />
+							</f:facet>
+						</ice:dataPaginator>
+
+						<br />
+						<div class="gen_div_right"><ice:commandButton
+							action="#{healthPortletsHandler.closePopup}"
+							title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+							id="btnGroupPopClose"
+							value="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}">
+						</ice:commandButton></div>
+					</ice:panelGrid>
+
+					<!-- Parents Popup -->
+					<ice:panelGrid id="panelgridDependentParentPopup" width="100%"
+						cellpadding="0" cellspacing="0"
+						rendered="#{healthPortletsHandler.parentDependentPopupVisible}">
+						<br />
+						<ice:panelGroup id="dependentParentPopHeader"
+							style="padding-left: 5px">
+							<ice:outputText id="txtGroupPopupTitle"
+								style="font-weight: bold;"
+								value="#{message['com_groundwork_statusviewer_total']}= #{healthPortletsHandler.hostHealthBean.parentsCount}"></ice:outputText>
+						</ice:panelGroup>
+						<ice:dataTable id="tblGroupPop" var="group"
+							value="#{healthPortletsHandler.hostHealthBean.parentList}"
+							cellspacing="0" style="width: 100%"
+							rowClasses="iceDatTblRow1_typB,iceDatTblRow2_typB table-alternate"
+							columnClasses="iceDatTblCol1_typB"
+							headerClass="iceDatTblColHdr1_typB" styleClass="iceDatTbl_typB"
+							rows="#{healthPortletsHandler.pageSize}"
+							sortAscending="#{healthPortletsHandler.hostHealthBean.ascendingForParent}"
+							sortColumn="#{healthPortletsHandler.hostHealthBean.sortParentColumn}">
+							<ice:column id="columnDependentParentPopName" style="width: 70%">
+								<f:facet name="header">
+									<ice:commandSortHeader columnName="name" arrow="true">
+										<ice:outputText id="txtGroupColumnName"
+											value="#{message['com_groundwork_portal_statusviewer_healthPortlet_name']}"></ice:outputText>
+									</ice:commandSortHeader>
+								</f:facet>
+								<ice:outputLink id="lnkParent" value="#{group.url}"
+									rendered="#{!empty group.url}">
+									<ice:outputText id="txtGroupName"
+										style="color: #5078AA;font-weight:normal;padding-bottom: 11px;"
+										value=" #{group.name}" />
+								</ice:outputLink>
+								<ice:outputText id="txtGroupName" style="font-weight:normal;"
+									value=" #{group.name}" rendered="#{empty group.url}" />
+							</ice:column>
+							<ice:column id="columnDependentParentPopStatus"
+								style="width: 30%">
+								<f:facet name="header">
+									<ice:outputText id="txtDependentParentPopStatus"
+										value="#{message['com_groundwork_portal_statusviewer_healthPortlet_status']}"></ice:outputText>
+								</f:facet>
+								<ice:graphicImage id="imgDependentParentPopStatusIcon"
+									value="#{group.status.iconPath}" />
+							</ice:column>
+						</ice:dataTable>
+						<ice:dataPaginator id="paginatorGroupPop" for="tblGroupPop"
+							paginator="true" fastStep="3" paginatorMaxPages="4"
+							renderFacetsIfSinglePage="false">
+							<f:facet name="first">
+								<ice:graphicImage id="imgFirst" url="/images/arrow-first.gif"
+									style="border:none;" title="First Page" />
+							</f:facet>
+							<f:facet name="previous">
+								<ice:graphicImage id="imgPrevious"
+									url="/images/arrow-previous.gif" style="border:none;"
+									title="Previous Page" />
+							</f:facet>
+							<f:facet name="next">
+								<ice:graphicImage id="imgNext" url="/images/arrow-next.gif"
+									style="border:none;" title="Next Page" />
+							</f:facet>
+							<f:facet name="last">
+								<ice:graphicImage id="imgLast" url="/images/arrow-last.gif"
+									style="border:none;" title="Last Page" />
+							</f:facet>
+						</ice:dataPaginator>
+						<br />
+						<div class="gen_div_right"><ice:commandButton
+							id="btnDependentParentPopClose"
+							action="#{healthPortletsHandler.closePopup}"
+							title="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}"
+							value="#{message['com_groundwork_portal_statusviewer_commandButton_closeWindow']}">
+						</ice:commandButton></div>
+					</ice:panelGrid>
+				</ice:panelGroup>
+			</f:facet>
+		</ice:panelPopup>
+	</ui:define>
+</ui:composition>

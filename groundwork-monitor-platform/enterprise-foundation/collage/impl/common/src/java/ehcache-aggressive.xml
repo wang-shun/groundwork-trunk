@@ -1,0 +1,96 @@
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+-->
+<ehcache>
+  <!--
+    Sets the path to the directory where cache .data files are created.
+    If the path is a Java System Property it is replaced by its value in the running VM.
+
+    The following properties are translated:
+    - user.home - User's home directory
+    - user.dir - User's current working directory
+    - java.io.tmpdir - Default temp file path
+  -->
+  <diskStore path="java.io.tmpdir"/>
+
+  <!--
+    Default Cache configuration. These will applied to caches programmatically created through
+    the CacheManager.
+
+    The following attributes are required for defaultCache:
+
+    maxElementsInMemory - Sets the maximum number of objects that will be created in memory, once 
+                          exceeded, the oldest element is removed from the MemoryStore and moved to
+                          DiskStore (if enabled) DiskStore if enabled. The oldest element is
+                          determined using a 'Least Recently Used' algorythm.
+
+    eternal             - Sets whether elements are eternal. If eternal,  timeouts are ignored and the element
+                          is never expired.
+
+    timeToIdleSeconds   - Sets the time to idle for an element before it expires. Is only used
+                          if the element is not eternal. Idle time is now - last accessed time
+                          optional, 0 by default, that is, idle forever
+
+    timeToLiveSeconds   - Sets the time to live for an element before it expires. Is only used
+                          if the element is not eternal. TTL is now - creation time
+                          optional, 0 by default, that is, live forever
+
+    overflowToDisk      - Sets whether elements can overflow to disk when the in-memory cache
+                          has reached the maxInMemory limit.
+  -->
+
+  <!-- 
+    used for all caches for which a cache has not been explicitly defined
+  -->
+  <defaultCache
+    maxElementsInMemory="10000"
+    eternal="false"
+    timeToLiveSeconds="300"
+    overflowToDisk="false"
+  />
+
+  <!-- 
+    Immutable Enumerations - and until such time as a 'cacheReload' feature is
+    implemented, the application must be restarted in order to reload these tables
+   -->
+  <cache name="com.groundwork.collage.model.impl.CheckType"       maxElementsInMemory="50" eternal="true"/>
+  <cache name="com.groundwork.collage.model.impl.MonitorStatus"   maxElementsInMemory="50" eternal="true"/>
+  <cache name="com.groundwork.collage.model.impl.OperationStatus" maxElementsInMemory="50" eternal="true"/>
+  <cache name="com.groundwork.collage.model.impl.Priority"        maxElementsInMemory="50" eternal="true"/>
+  <cache name="com.groundwork.collage.model.impl.Severity"        maxElementsInMemory="50" eternal="true"/>
+  <cache name="com.groundwork.collage.model.impl.StateType"       maxElementsInMemory="50" eternal="true"/>
+  <cache name="com.groundwork.collage.model.impl.TypeRule"        maxElementsInMemory="50" eternal="true"/>
+
+  <cache name="com.groundwork.collage.model.impl.Host"            maxElementsInMemory="3500" eternal="true" />
+  <cache name="com.groundwork.collage.model.impl.HostStatus"      maxElementsInMemory="3500" eternal="true" />
+  <cache name="com.groundwork.collage.model.impl.HostStatusPropertyValue"  maxElementsInMemory="20000" eternal="true"/>
+  <cache name="com.groundwork.collage.model.impl.ServiceStatus"   maxElementsInMemory="20000" eternal="true"/>
+  <cache name="com.groundwork.collage.model.impl.ServiceStatusPropertyValue"   maxElementsInMemory="20000" eternal="true"/>
+  <cache name="com.groundwork.collage.model.impl.HostGroup"       maxElementsInMemory="1000" eternal="true"/>
+  <!--<cache name="com.groundwork.collage.model.impl.HostGroup.hosts" maxElementsInMemory="11000" eternal="true"/>-->
+  <!--<cache name="com.groundwork.collage.model.impl.Host.hostGroups" maxElementsInMemory="11000" eternal="true"/>-->
+
+	<!--
+  <cache name="com.groundwork.collage.model.impl.ApplicationType" maxElementsInMemory= "10" eternal="true"/>
+  <cache name="com.groundwork.collage.model.impl.EntityType"      maxElementsInMemory= "10" eternal="true"/>
+  <cache name="com.groundwork.collage.model.impl.PropertyType"    maxElementsInMemory="200" eternal="true"/>
+  <cache name="com.groundwork.collage.model.impl.ApplicationEntityProperty" maxElementsInMemory="1000" eternal="true"/>
+	-->
+
+
+</ehcache>

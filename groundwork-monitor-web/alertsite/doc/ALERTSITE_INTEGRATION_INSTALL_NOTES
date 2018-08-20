@@ -1,0 +1,589 @@
+================================================================
+Installation Notes for the AlertSite Integration
+================================================================
+
+(1) The AlertSite Integration is supplied as an RPM file that is to be
+    installed or upgraded in the usual manner, with an "rpm" command.
+    However, the installation process will create a new "alertsite"
+    database, and to set it up properly the RPM package will need
+    temporary access to the MySQL root account on the relevant MySQL
+    server.  Since for security reasons, we don't permanently store
+    the root account credentials anywhere within the GroundWork Monitor
+    software, it will need to be provided to the RPM package by means
+    of environment variables.  Thus you will need a command similar to
+    this (continued across multiple lines here for ease of presentation,
+    but representing a single command line):
+
+	env MYSQL_HOST="mydbserver" MYSQL_PASS="myrootpass" \
+	    rpm -Uvh groundwork-alertsite-integration-1.0.0-18113.el5.x86_64.rpm
+
+    Specifying MYSQL_HOST is optional, while specifying MYSQL_PASS is
+    mandatory.  Here mydbserver is the host on which your MySQL database
+    runs (defaulting to localhost, if you don't supply a definition for
+    MYSQL_HOST), and myrootpass is the MySQL root password on that host.
+
+    The install action will force a bounce of gwservices to pick up
+    changes, so you will only want to take this step when your monitoring
+    can tolerate a brief outage.
+
+    The package can be uninstalled with a command like:
+
+	rpm -e groundwork-alertsite-integration
+
+(2) After the RPM is installed, and before you modify the configuration
+    file and enable the daemons in the following step, you must take
+    some manual steps to import and create certain configuration objects.
+
+    (a) Under Configuration -> Profiles -> Profile importer, select the
+	following items:
+
+	    host-profile-alertsite-resource.xml
+	    service-profile-alertsite-daemons.xml
+	    service-profile-alertsite-probes.xml
+
+	and then scroll down and click "Import" at the bottom of the page.
+	This step will create the following objects within Monarch:
+
+	    command:
+		check_alertsite_daemon_fresh
+		check_alertsite_resource_fresh
+		check_alertsite_location_fresh
+
+	    host profile:
+		host-profile-alertsite-resource
+
+	    host template:
+		alertsite-resource
+
+	    service:
+		AlertSite_Status
+		AlertSite_Metrics
+		AlertSite_Location
+
+	    service profile:
+		alertsite-daemons
+		alertsite-probes
+
+	    service template:
+		alertsite-status
+		alertsite-metrics
+		alertsite-location
+
+	The "AlertSite_Location" service and the "alertsite-probes" service
+	profile are just dummy carriers used to import other objects.
+	They are not used any further, and they may be deleted if desired.
+
+    (b) The "alertsite-resource" host template is imported without any Contact
+	Groups assigned, and you must fix that.  Go into Configuration ->
+	Hosts -> Host templates -> Modify -> alertsite-resource, and establish
+	the Contact Groups you wish to use for all AlertSite-monitored hosts.
+	Then scroll down to the bottom of the page and Save.
+
+    (c) One adjustment should be made to the "host-profile-alertsite-resource"
+	host profile:  namely, associating it with a hostgroup to which
+	all customer resources monitored by AlertSite will be assigned.
+	To do this:
+
+	(*) Go into Configuration -> Hosts -> Host groups -> New, and create
+	    such a hostgroup with no member hosts.  This hostgroup will
+	    typically be named "AlertSite Resources", with Alias "Customer
+	    resources monitored by AlertSite".	Scroll down and click Add.
+
+	(*) Go into the Configuration -> Profiles -> Host profiles -> Modify
+	    -> host-profile-alertsite-resource -> Hostgroups tab, add the
+	    "AlertSite Resources" hostgroup, and Save.
+
+	(*) Similarly, go into the parallel Assign Hostgroups tab, add the
+	    "AlertSite Resources" hostgroup, and Save.
+
+    (d) Finally, you must manually create the two passive services that
+	will be used to track the operation of the AlertSite monitoring
+	daemons.  Go into Configuration -> Hosts -> Hosts -> Linux Servers ->
+	localhost -> Detail -> Service Profiles, add the "alertsite-daemons"
+	service profile, scroll down and select "Merge with existing service
+	profiles and services.", then click "Assign and Apply" at the bottom
+	of the page.
+
+(3) Once the package is installed, the following configuration file in
+    the /usr/local/groundwork/alertsite/config/ directory will need to be
+    modified by the customer to reflect local preferences.  Documentation
+    on the file content format is included directly in the file.
+
+    query_alertsite.conf
+	This file contains a variety of parameters.  You should look at
+	and perhaps modify at least the following setup:
+
+	(a) the enable_processing flag
+	    The shipped file has the enable_processing flag at the top
+	    of the file turned off so the software does not start until
+	    the rest of the settings are localized as needed.
+
+	(b) possibly, the debug_level setting
+	    GroundWork generally recommends that the debug_level be set to
+	    4 (NOTICE) or perhaps just 3 (WARNING) in ordinary production.
+	    These settings provide a reasonable compromise between utility
+	    and detail of the logged messages.	An initial deployment may
+	    wish to bump this up to 6 (INFO) until the software is seen to
+	    be working, at which point it should be set back down to avoid
+	    the i/o overhead of the extra logging.  The value can always be
+	    bumped up again (and the AlertSite daemons bounced to pick up
+	    the change, as described below) to help in diagnosing problems.
+
+	(c) possibly, the expected metrics latency within AlertSite
+	    We don't have good visibility into the internal workings of the
+	    AlertSite monitoring, but we presume there will be some amount of
+	    latency between when the timestamp for a given device/location
+	    metrics probe is captured, and the moment that data is available
+	    for retrieval via the AlertSite Report API.  In particular, if
+	    the reported timestamp is taken at the start of each probe, we
+	    must allow for the longest monitoring timeout configured within
+	    AlertSite, plus a bit of time to allow the data to appear in their
+	    database.  The distributed configuration file makes a guess as to
+	    the total latency we should allow for, but you may wish to compare
+	    this with the maximum of all the monitoring timeouts configured
+	    within AlertSite for all your monitored devices, and set the
+	    latency configured here to just a bit higher to allow time for
+	    insertion into their database.
+
+	(d) possibly, the alertsite database access credentials
+	    The AlertSite Integration package ships with database access
+	    credentials set here which mirror those which are established
+	    by the RPM when it creates the "alertsite" database.  A second
+	    copy of these credentials is placed in the GroundWork-standard
+	    /usr/local/groundwork/config/db.properties file.  Should you
+	    wish to modify the access credentials for this database,
+	    both of these two files should be changed (along with the
+	    actual credentials, in the mysql database).
+
+	(e) the AlertSite server web-access credentials
+	    Adjust as needed for your installation.
+
+	(f) possibly, the master timezone
+	    This value is set defined AlertSite for each of their customers;
+	    consult with them for the correct value for your setup.
+
+	(g) possibly, the host and service maps
+	    You probably won't need to adjust these maps from their
+	    initial disabled states in the configuration file.
+
+	The status_cycle_time is set to 5 minutes as the initial value
+	in the distributed configuration file.	This should be adequate
+	for normal use, given that most AlertSite probes are typically set
+	to run every 10 minutes, with some set to run on a 5-minute cycle.
+	Requesting status information from AlertSite is a very fast operation,
+	taking only a few seconds total for a full accounting of all devices.
+
+	The metrics_cycle_time is set to 25 minutes as the initial value in
+	the distributed configuration file.  This is set based on a nominal
+	configuration of perhaps 120 AlertSite devices, and the observation
+	from development testing that each request for probe metrics for a
+	single device takes between 10 and 15 seconds in the normal case.
+	(We have seen a single request take up to 55 seconds.)	In each
+	cycle, the metrics-collection daemon will serially collect recent
+	metric data from each of the configured devices, so the total cycle
+	time can be significant.  If a given cycle takes longer than the
+	configured metrics_cycle_time period, the daemon will suspend itself
+	for minimum_wait_between_cycles seconds and then begin the next cycle.
+	Otherwise, it will wait until metrics_cycle_time seconds from the
+	start of the just-ended cycle, and then begin the next cycle.
+
+	Given the slowness of querying AlertSite for metric data and the
+	consequent disparate cycle times for status and metric data, the RRD
+	graphs generated in Status Viewer for a given AlertSite device will
+	typically be a few data points behind the current time.  This only
+	affects the data reflected in those RRD graphs; the status information
+	will remain current.  Historical trends, which are the most critical
+	reason for the graphs, will still be displayed in a useful form.
+
+(4) After the package is configured and enabled, a cron job will start the
+    AlertSite_Status and AlertSite_Metrics daemon services within 5 minutes.
+    Allow the daemons to run for 10 minutes, during which time new hosts and
+    services will be added to Monarch.  Then log in to GroundWork Monitor, go
+    into Configuration, look at the new hosts and services, and run a Commit.
+    Nagios will then be able to accept data from the AlertSite monitoring.
+
+(5) During the initial period when all the new hosts and services are first
+    added to the system, the Event Console will be flooded with new messages
+    announcing the status of each host/service combination.  This is normal,
+    and will not persist.  Thereafter, host/service state changes will
+    generate new messages as usual.
+
+(6) On the next cycle of the AlertSite_Status daemon service after the Commit
+    operation, it will automatically recognize that a Commit has occurred,
+    and kill itself to force a re-initialization and a full set of RRD
+    graph commands to be sent to Foundation once again.  The cron job will
+    restart the daemon 5 minutes later.  At this point, now that the Commit
+    has occurred and Foundation knows about all the new hosts and services,
+    Foundation will be prepared to accept the RRD graph commands configured
+    by this daemon for each of the AlertSite-monitored customer resources.
+    (The graph commands will also have been sent prior to the Commit, but they
+    will have been dropped on the floor by Foundation, which did not yet have
+    the corresponding hosts and services defined.)  The Status Viewer will
+    then be able to create and display metric-data graphs for these services.
+
+================================================================
+Theory of Operation
+================================================================
+
+The AlertSite integration is designed to operate with very little manual
+intervention.  It performs the following actions:
+
+(*) Periodically collect customer-resource (AlertSite device) status and
+    metric data from AlertSite.
+(*) Update Monarch as needed to reflect new resources and the locations
+    from which they are being monitored by AlertSite.
+(*) Generate service-check results for the monitoring from AlertSite
+    locations which probe the monitored customer resources.
+(*) Generate host-check results for the monitored resources, by rolling
+    up the service-check results for the AlertSite locations from which
+    the resources are monitored.
+(*) Update RRD files with monitoring metric data from AlertSite.
+(*) Populate Foundation with graphing commands for the RRD files managed
+    by this integration software.
+
+----------------------------------------------------------------
+Customer Resource State and Notification Model
+----------------------------------------------------------------
+
+The AlertSite Integration generates both service checks and host checks which
+are sent to Nagios.  However, it is only the host checks that are especially
+interesting, because they correspond to the customer resources that are the
+target of this monitoring.  Thus it makes little sense to generate Nagios
+notifications simply because a particular AlertSite location is sensing
+trouble; if we did that, we could get multiple notifications (corresponding
+to multiple AlertSite locations) at the same time.  What want instead is to
+know whether the collection of results from all the configured AlertSite
+locations for a given customer resource produces a consolidated result
+that says the customer resource is in trouble, and when that happens,
+to generate a single notification regarding that resource.
+
+To properly model the useful intent, we construct the host-check result by
+rolling up the available service-check results in each processing cycle.
+The host-check result for a customer resource is essentially taken to be the
+worst-case service-check result for all the related AlertSite locations,
+so monitoring failures are never masked.  This means that it would be
+pointless to generate notifications from the services; such notifications
+would be duplicative and annoying.
+
+Therefore, we have notifications disabled in the "alertsite-location"
+service template which is applied to all the host services reflecting
+AlertSite monitoring locations.  Conversely, we have notifications enabled
+in the "alertsite-resource" host template which is applied to all the
+hosts reflecting customer resources.
+
+----------------------------------------------------------------
+Monitoring Metric Data
+----------------------------------------------------------------
+
+The RRD data can be viewed in Status Viewer for each monitored customer
+resource and AlertSite location from which the monitoring occurs.  A single
+graph displays all the state and metric data in a compact form.  The y-scale
+has been configured to be logarithmic to make visible the several different
+metrics, which have a variety of normal ranges.  In this type of monitoring,
+the absolute values of such metrics are generally less important than their
+variation over time, and the logarithmic scale is good for highlighting
+such variation when many of the values are small.
+
+With regard to particular values graphed:
+
+(*) The Response Length from each AlertSite probe is normalized in the graph
+    to show the variation in values over time, without trying to accurately
+    represent the absolute value of this metric.  This variation will show up
+    as a black line at the top of the graph.  If no blank line appears, the
+    Response Length returned by the AlertSite monitoring is consistently zero.
+
+(*) If Critical or Warning states are sensed from the AlertSite monitoring,
+    these conditions are marked as tall vertical lines in the graph (areas,
+    if they persist), above the metric data.
+
+(*) The AlertSite probe timing statistics are stacked in the RRD graph over top
+    of the Total Time area, so the individual components are all individually
+    visible rather than having some complex, hard-to-see, intertwined lines.
+    Normally, nothing will show for the Total Time statistic, because it will
+    correspond to the sum of the other components and be completely overlaid.
+    Generally, the only time the Total Time color will be visible is when
+    slight arithmetic rounding error comes into play in the summation of
+    the other values.
+
+The combination of all this data in a single picture gives a rapid
+comprehension of the behavior of the monitoring over time.
+
+Each RRD graph is titled with the customer resource and the AlertSite
+location from which the monitoring occurred.  In addition, the timestamps of
+both the start and end points of the graph are spelled out in a comment in
+the bottom legend.  Along with the dense representation of monitoring data
+in the graph, these features make each image a completely self-contained
+picture of that portion of the monitoring.  It then becomes easy to copy
+and paste such graphs from a browser, attach them to other documents,
+and so forth, without needing to manually type in extra metadata.
+
+----------------------------------------------------------------
+Internal Operations
+----------------------------------------------------------------
+
+The AlertSite integration works by running a couple of daemon processes
+to fetch data from AlertSite and inject it into GroundWork Monitor.
+The two daemon processes are actually just instances of the same script,
+with different command-line arguments.  One instance fetches status data,
+potentially updates Monarch to add new hosts and services, and submits
+service-check results to Nagios.  The other instance fetches metric data,
+keeps track of the endpoint of the last time interval it has used to fetch
+metric data for each separate AlertSite device (to avoid overlapping or
+missing intervals), creates RRD files as necessary, and updates those RRD
+files with current metric data.
+
+Once started, the two daemons normally stay running forever.  The daemons
+are started via this command, run as either root or nagios:
+
+    /usr/local/groundwork/alertsite/bin/control_alertsite_integration start
+
+A cron job installed by the AlertSite Integration RPM executes that command
+every 5 minutes.  If the daemons are already running, the command has no
+effect.  If either of the daemons is down, the cron job will start it.
+
+This control script can also be run manually to start or stop the daemons,
+or to check their current status:
+
+    /usr/local/groundwork/alertsite/bin/control_alertsite_integration start
+    /usr/local/groundwork/alertsite/bin/control_alertsite_integration stop
+    /usr/local/groundwork/alertsite/bin/control_alertsite_integration status
+
+For most of their execution, the daemons shut down in a regulated manner,
+meaning they internally record the fact that a shutdown signal has been
+received, but they wait until a safe time to actually quit.  This allows
+sensitive operations (e.g., database or RRD file updates) to complete without
+interruption.  However, if a daemon is in the middle of a long-running
+operation (in particular, a request for metric data from AlertSite), this
+protection is removed so the daemon will shut down immediately.  Otherwise,
+it could take some time (perhaps a minute) for the daemon to finally exit.
+These controls, along with the implementation of a complicated file-locking
+protocol, are needed to synchronize the actions of this data feeder with
+possible asynchronous Nagios/Monarch pre-flight and commit operations.
+
+Stopping the daemons will work briefly, but the next execution of the cron
+job will start them up again.  If you really need to disable the daemons
+for a long period, set "enable_processing = no" in the query_alertsite.conf
+configuration file, then stop the daemons using the control script.
+
+The daemons run continuously, even when the rest of GroundWork Monitor
+is down.  RRD files will continue to be updated during this period, as
+long as the "alertsite" database is available so the end-of-last-interval
+timestamps can be recorded and used for the next cycle of data collection.
+
+In general, the daemons attempt to cope with failure and continue running.
+In the current release, any alarm conditions sensed by AlertSite will
+be dropped if Nagios is down when the Status copy of the daemon runs.
+However, if the condition persists, the next service check sent to Nagios
+when it is back up will reflect the alarm condition.
+
+Operational status of each of the daemons is sent to Nagios on each processing
+cycle, as a service check for the "AlertSite_Status" or "AlertSite_Metrics"
+service on localhost.
+
+----------------------------------------------------------------
+Configuration Changes
+----------------------------------------------------------------
+
+New hosts and services are added to Monarch when customer resources are
+discovered in the AlertSite status results as being actively monitored from
+certain AlertSite locations.  Each AlertSite device (action on a customer
+resource, i.e., a simple ping, login page, synthetic transaction, etc.) is
+mapped to a unique host in Monarch, named after the AlertSite device.
+Each AlertSite location from which an AlertSite probe action is executed on
+that customer resource is mapped to a service on that host, named after the
+city from which the AlertSite probe originates.  All hosts created in this
+way have the "host-profile-alertsite-resource" host profile applied when the
+host is added to Monarch, and in turn that profile is set up to assign such
+hosts to the "AlertSite Resources" hostgroup, as noted above.  All services
+created in this way have the "alertsite-location" service template applied
+when the service is added to Monarch.
+
+These modifications to Monarch do not affect the operation of Nagios until
+the next Commit operation within Monarch.  A message will appear in the Event
+Console when hosts and services are added by the AlertSite_Status service
+daemon, so the operators know when a manual Commit is needed to pick up
+changes to the configuration.
+
+----------------------------------------------------------------
+Logging
+----------------------------------------------------------------
+
+Each of the daemons has its own log file to provide detailed messages on
+the internal operation of the program:
+
+    /usr/local/groundwork/alertsite/logs/query_alertsite_status.log
+    /usr/local/groundwork/alertsite/logs/query_alertsite_metrics.log
+
+These files are where you might need to look to diagnose a non-OK status
+on the aforementioned "AlertSite_Status" or "AlertSite_Metrics" services.
+
+================================================================
+Troubleshooting
+================================================================
+
+(*) We have seen a number of issues with the graphing in Status Viewer.
+    If you find large empty spaces in graphs, or even completely empty graphs,
+    look at the following:
+
+    (+) Is the AlertSite device still configured within AlertSite to be
+	monitored at all?  If not, you might perhaps want to delete this
+	host from Monarch.
+
+    (+) Is the AlertSite device still configured within AlertSite to be
+	monitored from this location?  If not, you might perhaps want to
+	delete this host service from Monarch.
+
+    (+) Look for messages of the following forms in the
+	query_alertsite_metrics.log file:
+
+	Message:
+
+	    NOTICE:  Metric data interval (1803 seconds) is significantly longer than
+		     the AlertSite-configured monitoring interval of 600 seconds.
+
+	Meaning:
+
+	    The device+location is configured within AlertSite to be monitored
+	    every 10 minutes, but actual monitoring is apparently taking
+	    place at a slower rate.  A half-hour period was found between
+	    successive data points.  The interval at which actual probes occur
+	    seems to be variable, and to avoid flooding the log file with such
+	    messages, not every incidence of this kind of delay will be logged.
+
+	Message:
+
+	    NOTICE:  No metric data is available for significantly longer (2971 seconds)
+		     than the AlertSite-configured monitoring interval of 600 seconds.
+
+	Meaning:
+
+	    The device+location is configured within AlertSite to be monitored
+	    every 10 minutes, but actual monitoring is apparently not taking
+	    place.  The 50-minute window referred to happens to be a time
+	    range that our AlertSite_Metrics service queried, looking for
+	    any metric data since the last time it successfully requested
+	    and received a result from AlertSite for this device+location.
+
+	In these sorts of cases, the quality of service of web-device
+	monitoring will need to be taken up with AlertSite.
+
+	If the real-world frequency of monitoring a particular customer
+	resource from a specific AlertSite location results in missing data,
+	you can easily end up with a completely empty graph, even though
+	there are still some infrequent probes taking place.  For instance,
+	if the resource is configured for monitoring every 10 minutes, but
+	in practice a particular location is only probing that resource
+	every 20 or 30 minutes, then the data that does come in may be
+	turned into UNKNOWN values in the RRD file, because its frequency
+	is so much smaller than expected when the RRD file was created.
+	We could have relaxed the RRD setup to the point where what little
+	data does come in would continue to be stored, but this would mask
+	a serious problem with the monitoring, so we have chosen not to do so.
+
+(*) Most messages in the log files are simple but generally
+    self-explanatory.  An exception is the following message, which may
+    occasionally show up:
+
+	NOTICE:  Caught SIGABRT signal!
+
+    That message is a notice that a long-running operation has been forcibly
+    timed out, to prevent the daemon from stalling indefinitely.  Details of
+    what operation has failed in this manner will be listed in an immediately
+    following message.  The time allowed for such operations is controlled
+    by the network_server_timeout parameter in the configuration file.
+
+(*) A precautionary capability has been implemented in this package,
+    in case we ever run across a corrupted and poisonous RRD file in the
+    field that causes the AlertSite_Metrics service daemon to suddenly
+    die without any fanfare.  This capability logs a debug message in the
+    query_alertsite_metrics.log file, stating the RRD file that is just about
+    to be updated, before every RRD update.  This message is enabled (along
+    with a tremendous amount of other output) by setting the debug_level in
+    the query_alertsite.conf file to 7 (the DEBUG level of logging).  If the
+    RRD update fails and the script dies, we can at least see which RRD file
+    was being processed immediately before the next "Starting up" message.
+
+================================================================
+Maintenance Instructions
+================================================================
+
+The daemon scripting will internally rotate its log files when they grow
+too large, so no manual intercession is ever needed to prevent infinite
+use of disk space.
+
+Should an actively monitored AlertSite device be configured within AlertSite
+to stop monitoring, or should a particular AlertSite location be dropped
+with regard to monitoring a particular device, that device or location will
+thereafter be ignored by the daemon scripts.  However, no attempt will be
+made to automatically delete the corresponding host or service from Monarch,
+so Nagios will begin to execute its freshness checks and corresponding alarms
+will be generated.  Because Nagios, when analyzing the state of a service in
+this state, won't be able to tell the difference between the daemons being
+down (not functioning correctly) and the daemons intentionally not reporting
+status for the service, the freshness-check message in this situation will
+suggest the daemons are down, when in fact the problem is that the device or
+probe location is no longer being monitored by AlertSite.  It will be up to the
+system operators to disable or remove such objects from Monarch, and Commit a
+modified configuration, as needed.
+
+================================================================
+Implementation Limitations
+================================================================
+
+This version of the AlertSite Integration has the following limitations.
+
+(*) Metric data for AlertSite-monitored customer resources is stored by
+    this software in corresponding RRD files.  One characteristic of this
+    data store is that the time resolution at which data will be stored and
+    accepted is defined up front, at the time the RRD file is first created.
+    This integration uses the monitoring interval declared by the AlertSite
+    configuration for each separate device/location to define the time step
+    size with the RRD file for the corresponding RRD file.  If the monitoring
+    interval is ever changed within AlertSite, that modification will not
+    be reflected in the definition of the RRD file, and that discrepancy may
+    result in problems with graphing the resultant stored data.  Currently,
+    the only solution is to remove the existing RRD file and allow the
+    software to create a new RRD file according reflecting the new AlertSite
+    monitoring schedule.
+
+(*) This version does not support running the AlertSite Integration on a
+    child server, posting of Remote RRD Graph specifications to Foundation
+    on other (parent) servers, and thus handling of Remote RRD Graph requests
+    for pictures of AlertSite monitoring data.  This means that the AlertSite
+    Integration must be run on the parent server, and that support for a
+    standby server is not currently implemented.
+
+(*) This version does not support posting of AlertSite monitoring data to
+    Foundation, for storage in the GWCollageDB.LogPerformanceData table.
+    This means that EPR reports will not contain this data.
+
+(*) Generation of host-check data for customer resources depends in turn on
+    generation of service-check data for the respective AlertSite locations.
+    And that depends in turn on the AlertSite_Status service being up and
+    running regularly while Nagios is running.  Normally this will not be
+    an issue, because the script implementing this service is restarted by
+    a cron job should it ever fail.
+
+    If this service did fail to generate data for Nagios, all the services
+    and thereby all the hosts would soon go into an alarm state, with a
+    corresponding flood of host notifications.  We would like to prevent
+    that from happening, by imposing an appropriate set of dependencies.
+    We would want to have the proper dependencies on the AlertSite Status
+    daemon automatically established when new services and hosts are added
+    by the AlertSite status daemon, so the system is self-maintaining.
+    In effect, we would need to have all the related hosts depend on the
+    AlertSite_Status service.  However, Nagios seems to provide only hosts
+    depending on hosts, and services depending on services.  So until we
+    can work out some clever way to implement the dependency model we need,
+    this issue will remain unresolved.
+
+(*) Currently, the from-now and to-then timestamps we submit to AlertSite
+    in the device metrics retrieval URL must be expressed in the configured
+    master timezone, not in UTC.  This will likely cause brief disruptions
+    and incorrect operation around Daylight Savings Time transitions.
+
+    AlertSite has a fix that is already in the works and should be available
+    in their Dashboard Phase III release coming around Q3 - 2011.  However,
+    given that we have no detail on the exact nature of changes to their API,
+    the current code has no support for this future capability.
+

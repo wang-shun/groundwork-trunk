@@ -1,0 +1,52 @@
+*** noma_2.0.3/notifier/Makefile.in.orig	Mon Nov 21 03:25:24 2011
+--- noma_2.0.3/notifier/Makefile.in	Wed Aug 29 16:44:05 2012
+***************
+*** 1,6 ****
+--- 1,8 ----
+  SUBST = @abs_top_builddir@/subst.sh
+  INSTALL=@INSTALL@
+  INSTALLOPTS=@INSTALLOPTS@
++ PUBLIC_MODE = -m 644
++ PUBLIC_EXECUTABLE_MODE = -m 755
+  datarootdir = @datarootdir@
+  sysconfdir = @prefix@/etc
+  prefix = @prefix@
+***************
+*** 9,15 ****
+  
+  all: noma
+  
+! FILES := $(patsubst %.in,%,$(filter-out Makefile.in,$(wildcard *.in)))
+  RELDIR := $(prefix)/$(subst @abs_top_builddir@/,,$(CURDIR))
+  
+  noma: $(FILES)
+--- 11,18 ----
+  
+  all: noma
+  
+! PUBLIC_EXECUTABLE_FILES := $(patsubst %.in,%,$(filter-out Makefile.in,$(wildcard *.in)))
+! FILES := $(PUBLIC_EXECUTABLE_FILES)
+  RELDIR := $(prefix)/$(subst @abs_top_builddir@/,,$(CURDIR))
+  
+  noma: $(FILES)
+***************
+*** 23,31 ****
+  
+  install: noma
+  	$(INSTALL) $(INSTALLOPTS) -d $(RELDIR)
+! 	$(INSTALL) $(INSTALLOPTS) -t $(RELDIR) $(FILES)
+  	$(INSTALL) $(INSTALLOPTS) -d $(RELDIR)/lib
+! 	$(INSTALL) $(INSTALLOPTS) -t $(RELDIR)/lib lib/*
+  	@echo
+  	@echo
+  	@echo
+--- 26,34 ----
+  
+  install: noma
+  	$(INSTALL) $(INSTALLOPTS) -d $(RELDIR)
+! 	$(INSTALL) $(INSTALLOPTS) $(PUBLIC_EXECUTABLE_MODE) -t $(RELDIR) $(PUBLIC_EXECUTABLE_FILES)
+  	$(INSTALL) $(INSTALLOPTS) -d $(RELDIR)/lib
+! 	$(INSTALL) $(INSTALLOPTS) $(PUBLIC_MODE) -t $(RELDIR)/lib lib/*
+  	@echo
+  	@echo
+  	@echo

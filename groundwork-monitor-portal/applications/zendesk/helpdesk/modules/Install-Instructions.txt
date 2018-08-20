@@ -1,0 +1,45 @@
+Instructions for installing the Perl modules to enable Remedy Integration into GroundWork.
+
+Step 1: Untar the Remedy Perl modules located in the cpan directory to a temporary directory.
+
+		- ARSperl-1.91.tgz
+		- Remedy-ARSTools-1.tar.gz
+
+Step 2: Build and install
+
+	*  The modules must be built in the following order:
+
+		1. ARSperl-1.91 
+
+		   ****************************************************************** 
+		      This presumes that the AR C API header and library files
+		      are already installed in /usr/ar/api on the target machine.
+
+		      Be sure to install these before continuing further.
+		   ******************************************************************
+
+		2. Remedy-ARSTools-1
+
+
+	*  Builds should be performed as root.
+
+	*  Each module can be built by issuing the following: 
+
+		-  /usr/local/groundwork/helpdesk/perl/bin/perl Makefile.PL
+
+	   	- Edit the Makefile (necessary for 64bit architectures):
+
+		    Change 'CC = cc' to 'CC = gcc -m32'
+		    Change 'LD = cc' to 'LD = gcc -m32'
+
+	   	  This forces gcc to build and link against 32 bit object files on 64 bit architectures.
+
+		- make
+
+		- make install
+
+Step 3: Set up correct ownership
+
+	* chown -R nagios:nagios /usr/local/groundwork/helpdesk/perl
+
+

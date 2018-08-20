@@ -1,0 +1,11 @@
+--- CGI/Ajax.pm.orig	2008-10-08 11:13:34.000000000 -0700
++++ CGI/Ajax.pm	2016-09-28 16:01:32.344698518 -0700
+@@ -482,7 +482,7 @@
+ sub getparam {
+     my ( $self, $name ) = @_;
+     my $cgi = $self->cgi();
+-    my @v   = $cgi->param($name);
++    my @v   = $cgi->can('multi_param') ? $cgi->multi_param($name) : $cgi->param($name);
+     if ( @v == 1 and !defined $v[0] ) {
+         my $query = $cgi->isa('CGI::Application');
+         @v = $cgi->query()->param($name) if defined $query;

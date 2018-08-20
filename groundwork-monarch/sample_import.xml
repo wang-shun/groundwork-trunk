@@ -1,0 +1,89 @@
+<?xml version="1.0" ?>
+<input>
+<!-- Host Definition
+	Required: host name, alias and address
+	Optional: Overwrite - if host exists replace it and all of its services and associations
+	Optional: Delete - as <host delete="1"> remove the host completely 
+	Optional: Host profile - assign and apply a host profile
+	Optional: Configuration group for generating nagios files - it is usually preferred to use host groups for this
+	Optional: Host parent - set host parent/child 
+	Optional: Service profiles - assign and apply service profiles
+	Optional: Contact groups, host groups, escalation trees, and host externals
+	Optional: Services - see below for service requirements and options
+-->
+ <host overwrite="1">
+  <prop name="host_name"><![CDATA[test1]]></prop>
+  <prop name="host_alias"><![CDATA[test1.test.com]]></prop>
+  <prop name="host_address"><![CDATA[10.10.10.10]]></prop>
+  <prop name="host_profile"><![CDATA[default_host]]></prop>
+  <prop name="group"><![CDATA[group]]></prop>
+  <prop name="service_profile"><![CDATA[service_profile_1]]></prop>
+  <prop name="service_profile"><![CDATA[service_profile_2]]></prop>
+  <prop name="contact_group"><![CDATA[contact_group_1]]></prop>
+  <prop name="contact_group"><![CDATA[contact_group_2]]></prop>
+  <prop name="host_group"><![CDATA[host_group_1]]></prop>
+  <prop name="host_group"><![CDATA[host_group_2]]></prop>
+  <prop name="host_parent"><![CDATA[parent to this host]]></prop>
+  <prop name="host_escalation"><![CDATA[host_escalation]]></prop>
+  <prop name="service_escalation"><![CDATA[service_escalation]]></prop>
+  <host_external name="external_1"><![CDATA[external_value_1]]></host_external>
+  <host_external name="external_2"><![CDATA[external_value_2]]></host_external>
+<!-- Add/replace/delete a service on a host
+	Required: service name
+	Optional: Overwrite - if the service is assigned to the host replace it
+	Optional: Delete - as <service delete="1"> remove the service from the host completely 
+	Optional: contact groups, service groups, escalation tree and externals
+-->
+  <service overwrite="1">
+   <prop name="service_name"><![CDATA[service_1]]></prop>
+   <prop name="check_command"><![CDATA[command_line]]></prop>
+   <prop name="contact_group"><![CDATA[contact_group_1]]></prop>
+   <prop name="contact_group"><![CDATA[contact_group_2]]></prop>
+   <prop name="service_group"><![CDATA[service_group_1]]></prop>
+   <prop name="service_group"><![CDATA[service_group_2]]></prop>
+   <prop name="service_escalation"><![CDATA[service_escalation]]></prop>
+   <service_external name="external_1"><![CDATA[external_value_1]]></service_external>
+   <service_external name="external_2"><![CDATA[external_value_2]]></service_external>
+  </service>
+  <service overwrite="1">
+   <prop name="service_name"><![CDATA[service_2]]></prop>
+   <prop name="check_command"><![CDATA[command_line]]></prop>
+   <prop name="contact_group"><![CDATA[contact_group_1]]></prop>
+   <prop name="service_group"><![CDATA[service_group_2]]></prop>
+   <service_external name="external_1"><![CDATA[external_value_1]]></service_external>
+   <service_external name="external_2"><![CDATA[external_value_2]]></service_external>
+  </service>
+ </host>
+<!-- New service group definition 
+	Required: service group name and alias 
+	Optional: escalation tree
+-->
+ <service_group>
+  <prop name="service_group_name"><![CDATA[service_group_name]]></prop>
+  <prop name="service_group_alias"><![CDATA[service_group_alias]]></prop>
+  <prop name="service_escalation"><![CDATA[service_escalation]]></prop>
+ </service_group>
+<!-- New host group definition 
+	Required: host group name and alias 
+	Optional: configuration group for generating nagios files 
+	Optional: host profile and escalation trees
+-->
+ <host_group>
+  <prop name="host_group_name"><![CDATA[host_group_name]]></prop>
+  <prop name="host_group_alias"><![CDATA[host_group_alias]]></prop>
+  <prop name="group"><![CDATA[name]]></prop>
+  <prop name="host_profile"><![CDATA[host_profile]]></prop>
+  <prop name="host_escalation"><![CDATA[host_escalation]]></prop>
+  <prop name="service_escalation"><![CDATA[service_escalation]]></prop>
+ </host_group>
+<!-- New contact group definition
+	Required: contact group name and alias 
+-->
+ <contact_group>
+  <prop name="contact_group_name"><![CDATA[contact_group_name]]></prop>
+  <prop name="contact_group_alias"><![CDATA[contact_group_alias]]></prop>
+ </contact_group>
+</input>
+
+
+

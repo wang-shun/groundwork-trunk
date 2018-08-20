@@ -1,0 +1,105 @@
+--- nagios-3.2.0/cgi/extinfo.c.orig	2009-07-03 08:59:23.000000000 -0700
++++ nagios-3.2.0/cgi/extinfo.c	2010-01-06 14:32:54.000000000 -0800
+@@ -584,7 +584,7 @@
+ 
+ 	printf("Cache-Control: no-store\r\n");
+ 	printf("Pragma: no-cache\r\n");
+-	printf("Refresh: %d\r\n",refresh_rate);
++	// printf("Refresh: %d\r\n",refresh_rate);
+ 
+ 	time(&current_time);
+ 	get_time_string(&current_time,date_time,(int)sizeof(date_time),HTTP_DATE_TIME);
+@@ -612,7 +612,8 @@
+ 	        }
+ 	printf("</head>\n");
+ 
+-	printf("<body CLASS='extinfo'>\n");
++	printf("<body CLASS='extinfo'"
++	    " onload='setTimeout(\"location=self.location;\",%d)'>\n", (refresh_rate ? refresh_rate : 1000000) * 1000);
+ 
+ 	/* include user SSI header */
+ 	include_ssi_files(EXTINFO_CGI,SSI_HEADER);
+--- nagios-3.2.0/cgi/outages.c.orig	2008-11-30 09:22:58.000000000 -0800
++++ nagios-3.2.0/cgi/outages.c	2010-01-06 14:33:06.000000000 -0800
+@@ -205,7 +205,7 @@
+ 
+ 	printf("Cache-Control: no-store\r\n");
+ 	printf("Pragma: no-cache\r\n");
+-	printf("Refresh: %d\r\n",refresh_rate);
++	// printf("Refresh: %d\r\n",refresh_rate);
+ 
+ 	time(&current_time);
+ 	get_time_string(&current_time,date_time,(int)sizeof(date_time),HTTP_DATE_TIME);
+@@ -234,7 +234,8 @@
+ 
+ 	printf("</head>\n");
+ 
+-	printf("<body CLASS='outages'>\n");
++	printf("<body CLASS='outages'"
++	    " onload='setTimeout(\"location=self.location;\",%d)'>\n", (refresh_rate ? refresh_rate : 1000000) * 1000);
+ 
+ 	/* include user SSI header */
+ 	include_ssi_files(OUTAGES_CGI,SSI_HEADER);
+--- nagios-3.2.0/cgi/status.c.orig	2009-07-03 08:59:23.000000000 -0700
++++ nagios-3.2.0/cgi/status.c	2010-01-06 14:33:14.000000000 -0800
+@@ -514,7 +514,7 @@
+ 
+ 	printf("Cache-Control: no-store\r\n");
+ 	printf("Pragma: no-cache\r\n");
+-	printf("Refresh: %d\r\n",refresh_rate);
++	// printf("Refresh: %d\r\n",refresh_rate);
+ 
+ 	get_time_string(&current_time,date_time,(int)sizeof(date_time),HTTP_DATE_TIME);
+ 	printf("Last-Modified: %s\r\n",date_time);
+@@ -542,7 +542,8 @@
+ 
+ 	printf("</head>\n");
+ 
+-	printf("<body CLASS='status'>\n");
++	printf("<body CLASS='status'"
++	    " onload='setTimeout(\"location=self.location;\",%d)'>\n", (refresh_rate ? refresh_rate : 1000000) * 1000);
+ 
+ 	/* include user SSI header */
+ 	include_ssi_files(STATUS_CGI,SSI_HEADER);
+--- nagios-3.2.0/cgi/statusmap.c.orig	2009-07-07 15:19:45.000000000 -0700
++++ nagios-3.2.0/cgi/statusmap.c	2010-01-06 14:33:34.000000000 -0800
+@@ -314,7 +314,7 @@
+ 	if(create_type==CREATE_HTML){
+ 		printf("Cache-Control: no-store\r\n");
+ 		printf("Pragma: no-cache\r\n");
+-		printf("Refresh: %d\r\n",refresh_rate);
++		// printf("Refresh: %d\r\n",refresh_rate);
+ 
+ 		time(&current_time);
+ 		get_time_string(&current_time,date_time,sizeof(date_time),HTTP_DATE_TIME);
+@@ -346,7 +346,8 @@
+ 
+ 		printf("</head>\n");
+ 		
+-		printf("<body CLASS='statusmap' name='mappage' id='mappage'>\n");
++		printf("<body CLASS='statusmap' name='mappage' id='mappage'"
++		    " onload='setTimeout(\"location=self.location;\",%d)'>\n", (refresh_rate ? refresh_rate : 1000000) * 1000);
+ 
+ 		/* include user SSI header */
+ 		include_ssi_files(STATUSMAP_CGI,SSI_HEADER);
+--- nagios-3.2.0/cgi/tac.c.orig	2008-11-30 09:44:20.000000000 -0800
++++ nagios-3.2.0/cgi/tac.c	2010-01-06 14:32:14.000000000 -0800
+@@ -371,7 +371,7 @@
+ 
+ 	printf("Cache-Control: no-store\r\n");
+ 	printf("Pragma: no-cache\r\n");
+-	printf("Refresh: %d\r\n",refresh_rate);
++	// printf("Refresh: %d\r\n",refresh_rate);
+ 
+ 	time(&current_time);
+ 	get_time_string(&current_time,date_time,(int)sizeof(date_time),HTTP_DATE_TIME);
+@@ -399,7 +399,8 @@
+ 	        }
+ 
+ 	printf("</HEAD>\n");
+-	printf("<BODY CLASS='tac' marginwidth=2 marginheight=2 topmargin=0 leftmargin=0 rightmargin=0>\n");
++	printf("<BODY CLASS='tac' marginwidth=2 marginheight=2 topmargin=0 leftmargin=0 rightmargin=0"
++	    " onload='setTimeout(\"location=self.location;\",%d)'>\n", (refresh_rate ? refresh_rate : 1000000) * 1000);
+ 
+ 	/* include user SSI header */
+ 	include_ssi_files(TAC_CGI,SSI_HEADER);

@@ -1,0 +1,87 @@
+#!/bin/sh -x
+#
+# Copyright (C) 2008 GroundWork Open Source, Inc. ("GroundWork")
+# All rights reserved. This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public License version 2
+# as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for 
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+# Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+
+# Check distro
+if [ -f /etc/redhat-release ] ; then
+        distro='rhel4'
+	builddir=redhat
+elif [ -f /etc/SuSE-release ] ; then
+        distro='sles10'
+	builddir=packages
+elif [ -f /etc/mandrake-release ] ; then
+        distro='Mandrake'
+	builddir=
+echo "Plese set build directory in buildRPM.sh file..."
+	exit 1
+fi
+
+date=$(date -I|awk '{ print $1; }'|sed -e 's/2006.//' -e 's/-/./'g)
+
+export release=@RELEASE_NUMBER@ 
+export prefix=@PREFIX@
+export name=@PACKAGE_NAME@ 
+export version=@PACKAGE_VERSION@
+export filelist=@PREFIX@/../@EXPORT_FILELIST@ 
+export specfile=@SPEC_FILE_NAME@
+export rpmroot=@RPM_ROOT@
+
+export _tmppath=/var/tmp
+export ROOT_DIR=/
+
+#Clean up
+rm -rf /$name-$version
+rm -rf /usr/src/$builddir/BUILD/$name-$version
+rm -rf /usr/src/$builddir/SOURCES/$name-$version-$release.tar.gz
+rm -rf /usr/src/$builddir/SPECS/$specfile
+rm -rf $prefix/filelist
+
+cp $specfile /usr/src/$builddir/SPECS/
+
+cd $ROOT_DIR
+tar -czpf $name-$version-$release.tar.gz $prefix$rpmroot
+mkdir -p $name-$version
+
+mv $name-$version-$release.tar.gz $name-$version/
+cd $name-$version
+
+if [ `pwd` = "/" ] ; then
+  echo "name and version are not set in buildRPM.sh:"
+  echo "    name    = $name"
+  echo "    version = $version"
+  echo "exiting..."
+  exit 1
+fi
+
+echo "    name    = $name"
+echo "    version = $version"
+rm -rf usr
+tar -xzpf $name-$version-$release.tar.gz
+rm -rf $name-$version-$release.tar.gz
+
+cd ..
+tar -czpf $name-$version-$release.tar.gz $name-$version
+rm -rf /usr/src/$builddir/SOURCES/$name-$version-$release.tar.gz
+mv $name-$version-$release.tar.gz /usr/src/$builddir/SOURCES/
+
+rm -rf $_tmppath/$name
+mkdir -p $_tmppath/$name/
+mkdir -p $_tmppath/$name/etc
+mkdir -p $_tmppath/$name/usr
+mkdir -p $_tmppath/$name/usr/local
+mkdir -p $_tmppath/$name/usr/local/groundwork
+
+rpmbuild --sign -ba /usr/src/$builddir/SPECS/$specfile

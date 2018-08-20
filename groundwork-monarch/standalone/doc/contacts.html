@@ -1,0 +1,241 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="en">
+  <head>
+<title>Defining Contacts</title>
+<link rel="stylesheet" type="text/css" href="/monarch/groundwork.css"/>
+  </head>
+  <body>
+<!-- Start Main table-->
+<table class="main" border="0" cellpadding="1" cellspacing="0">
+  <tbody>
+  <tr>
+    <td valign="top"><h1 class="chapter"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> Defining Contacts</h1>
+    <h4>Copyright 2006 GroundWork Open Source, Inc. ("GroundWork").<br />
+    All rights reserved. Use is subject to GroundWork commercial license.</h4>
+<!-- Start Main Contents -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+  <tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader">Contents</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- TOC -->
+    <ul class="level01">
+        <li><a href="#s5chapter7a">How Do I Define a New Contact?</a></li>
+        <li><a href="#s5chapter7b">How Do I Define a New Contact Group?</a></li>
+        <li><a href="#s5chapter7c">How Do I Create Contact Templates?</a></li>
+    </ul>
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Section 1 -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+<tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader"><a name="section1"></a>Defining Contacts</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- How Do I Define a New Contact -->
+    <a name="s5chapter7a"></a><h1 class="chapter"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> How Do I Define a New Contact?</h1>
+<hr />
+    <h2 class="smMargin">Step 1 - Contact Properties</h2>
+    <ol>
+      <li>Select <b>Contacts</b> from the Configuration menu options.</li>
+      <li>Expand the <b>Contacts</b> drop-down menu.</li>
+      <li>Select <b>New</b>.</li>
+      <li>In the <b>Contact Properties</b> screen, enter the properties (see <b>Table 5.7.1a.</b> below).</li>
+      <li>Select <b>Add</b>.</li>
+      <li>You will be prompted that the contact has been added. Select <b>Continue</b>.<br /><br />
+      <b>Note</b>: To copy an existing Contact select <b>Copy</b> from the Configuration menu options. This will let you name and edit the copied properties for a new Contact. To modify or delete a Contact select <b>Modify</b>. You will then be able to edit and <b>Save</b> a modified Contact. Select <b>Delete</b> to remove a selected Contact, <b>Rename</b> to change the name, or <b>Cancel</b> to exit out without any changes.
+    <h4>Figure 5.7.1a. Contact Properties</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter7_1a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      <h4>Table 5.7.1a. Contact Properties</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>[Required] Name of Contact.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Alias</b></td>
+    <td>[Required] This directive is used to define a longer name or description for the contact. Under the rights circumstances, the $CONTACTALIAS$ macro will contain this value.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Email</b></td>
+    <td>[Optional] This directive is used to define an email address for the contact. Depending on how you configure your Notification commands, it can be used to send out an alert email to the contact. Under the right circumstances, the $CONTACTEMAIL$ macro will contain this value.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Pager</b></td>
+    <td>[Optional] This directive is used to define a pager number for the contact. It can also be an email address to a pager gateway (i.e. pagejoe@pagenet.com). Depending on how you configure your Notification commands, it can be used to send out an alert page to the contact. Under the right circumstances, the $CONTACTPAGER$ macro will contain this value.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Contact Template</b></td>
+    <td>[Required] Select the contact template most suitable for this contact. <b>Note</b>: inheritance (left check box) on directives below. To override the template value, uncheck the left check box.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Set Inheritance</b></td>
+    <td><b>Selecting</b> this button sets all directives to inherit values from the selected template. Uncheck left checkbox on directives below to override template values.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Host Notification Period</b></td>
+    <td>[Required] This directive is used to specify the short name of the time period during which the contact can be notified about Host problems or recoveries. You can think of this as an 'on call' time for Host Notifications for the contact. Read the documentation on time periods for more information on how this works and potential problems that may result from improper use.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Host Notification Options</b></td>
+    <td>[Required] This directive is used to define the Host states for which Notifications can be sent out to this contact. Valid options are a combination of one or more of the following:  <b>Down checked</b> notify on DOWN Host states, <b>Unreachable checked</b> notify on UNREACHABLE Host states, and <b>Recovery checked</b> notify on Host recoveries (UP states). If you specify None as an option, the contact will not receive any type of Host Notifications.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Host Notification Commands</b></td>
+    <td>[Optional] This directive is used to define a list of the short names of the commands used to notify the contact of a Host problem or recovery. All Notification commands are executed when the contact needs to be notified. The maximum amount of time that a Notification command can run is controlled by the notification_timeout option.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Service Notification Period</b></td>
+    <td>[Required] This directive is used to specify the short name of the time period during which the contact can be notified about service problems or recoveries. You can think of this as an 'on call' time for Service Notifications for the contact. Read the documentation on time periods for more information on how this works and potential problems that may result from improper use.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Service Notification Options</b></td>
+    <td>[Required] This directive is used to define the Service states for which Notifications can be sent out to this contact. Valid options are a combination of one or more of the following:  <b>Warning checked</b> notify on WARNING Service states, <b>Unknown checked</b> notify on UNKNOWN Service states, <b>Critical checked</b> notify on CRITICAL Service states, and <b>Recovery checked</b> notify on Service recoveries (OK states). Nagios&#174; 2.x users may also specify Notifications on flapping starts and stops for Hosts and Services. If you specify None as an option, the contact will not receive any type of Service Notifications.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Service Notification Commands</b></td>
+    <td>[Optional] This directive is used to define a list of the short names of the commands used to notify the contact of a Service problem or recovery. All Notification commands are executed when the contact needs to be notified. The maximum amount of time that a Notification command can run is controlled by the notification_timeout option.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Contact Groups</b></td>
+    <td>[Optional] Define which Contact Groups are used for the purpose of sending out alert/recovery Notifications.</td>
+  </tr>
+</tbody>
+</table>
+      </li>
+    </ol>
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Section 2 -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+<tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader"><a name="section1"></a>Defining Contacts</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- How Do I Define a New Contact Group -->
+    <a name="s5chapter7b"></a><h1 class="chapter"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> How Do I Define a New Contact Group?</h1>
+    <h2 class="smMargin">Step 1 - Contact Group Properties</h2>
+    <ol>
+      <li>Select <b>Contacts</b> from the Configuration menu options.</li>
+      <li>Expand the <b>Contactgroups</b> drop-down menu.</li>
+      <li>Select <b>New</b>.</li>
+      <li>In the <b>Contactgroup Properties</b> screen, enter the properties (see <b>Table 5.7.2a.</b> below).</li>
+      <li>Select <b>Add</b>.</li>
+      <li>You will be prompted that the Contact Group has been added. Select <b>Continue</b>.<br /><br />
+      <b>Note</b>: To copy an existing Contact Group select <b>Copy</b> from the Configuration menu options. This will let you name and edit the copied properties for a new Contact Group. To modify or delete a Contact Group select <b>Modify</b>. You will then be able to edit and <b>Save</b> a modified Contact Group. Select <b>Delete</b> to remove a selected Contact Group, <b>Rename</b> to change the name, or <b>Cancel</b> to exit out without any changes.
+    <h4>Figure 5.7.2a. Contact Group Properties</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter7_2a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      <h4>Table 5.7.2a. Contact Group Properties</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>[Required] Name of Contact Group. <b>Note</b>: Use a unique Contact Group name and do not label Contact Groups and Host Groups the same name.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Alias</b></td>
+    <td>[Required] This directive is used to define a longer name or description used to identify the Contact Group.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Contacts</b></td>
+    <td>[Required] Assign pre-defined Contacts to the Contact Group.</td>
+  </tr>
+</tbody>
+</table>
+      </li>
+    </ol>
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Section 3 -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+<tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader"><a name="section1"></a>Defining Contacts</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- How Do I Create Contact Templates -->
+    <a name="s5chapter7c"></a><h1 class="chapter"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> How Do I Create Contact Templates?</h1>
+<hr />
+    <h2 class="smMargin">Step 1 - Contact Template Properties</h2>
+    <ol>
+      <li>Select <b>Contacts</b> from the Configuration menu options.</li>
+      <li>Expand the <b>Contact Templates</b> drop-down menu.</li>
+      <li>Select <b>New</b>.</li>
+      <li>In the <b>Contact Properties</b> screen, enter the properties (see <b>Table 5.7.3a.</b> below).</li>
+      <li>Select <b>Add</b> to add and save the new Contact Template.</li>
+      <li>You will be prompted that the Contact Template has been added. Select <b>Continue</b>.<br /><br />
+      <b>Note</b>: To copy an existing Contact Template select <b>Copy</b> from the Configuration menu options. This will let you name and edit the copied properties for a new Contact Template. To modify or delete a Contact Template select <b>Modify</b>. You will then be able to edit and <b>Save</b> a modified Contact Template. Select <b>Delete</b> to remove a selected Contact Template, <b>Rename</b> to change the name, or <b>Cancel</b> to exit out without any changes.
+    <h4>Figure 5.7.3a. Contact Template Properties</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter7_3a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      <h4>Table 5.7.3a. Contact Template Properties</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>[Required] Name of Contact Template.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Host Notification Period</b></td>
+    <td>[Required] This directive is used to specify the short name of the time period during which the contact can be notified about Host problems or recoveries. You can think of this as an 'on call' time for Host Notifications for the contact. Read the documentation on time periods for more information on how this works and potential problems that may result from improper use.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Service Notification Period</b></td>
+    <td>[Required] This directive is used to specify the short name of the time period during which the contact can be notified about Service problems or recoveries. You can think of this as an 'on call' time for Service Notifications for the contact. Read the documentation on time periods for more information on how this works and potential problems that may result from improper use.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Host Notification Options</b></td>
+    <td>[Required] This directive is used to define the Host states for which Notifications can be sent out to this contact. Valid options are a combination of one or more of the following:  <b>Down checked</b> notify on DOWN Host states, <b>Unreachable checked</b> notify on UNREACHABLE Host states, and <b>Recovery checked</b> notify on Host recoveries (UP states). If you specify None as an option, the contact will not receive any type of Host Notifications.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Service Notification Options</b></td>
+    <td>[Required] This directive is used to define the Service states for which Notifications can be sent out to this contact. Valid options are a combination of one or more of the following:  <b>Warning checked</b> notify on WARNING Service states, <b>Unknown checked</b> notify on UNKNOWN Service states, <b>Critical checked</b> notify on CRITICAL Service states, and <b>Recovery checked</b> notify on Service recoveries (OK states). Nagios&#174; 2.x users may also specify Notifications on flapping starts and stops for Hosts and Services. If you specify <b>None</b> as an option, the contact will not receive any type of Service Notifications.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Host Notification Commands</b></td>
+    <td>[Optional] This directive is used to define a list of the short names of the commands used to notify the contact of a Host problem or recovery. All Notification commands are executed when the contact needs to be notified. The maximum amount of time that a Notification command can run is controlled by the notification_timeout option.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Service Notification Commands</b></td>
+    <td>[Optional] This directive is used to define a list of the short names of the commands used to notify the contact of a Service problem or recovery. All Notification commands are executed when the contact needs to be notified. The maximum amount of time that a Notification command can run is controlled by the notification_timeout option.</td>
+  </tr>
+</tbody>
+</table>
+      </li>
+    </ol>
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+<!-- End -->
+</tbody>
+</table>
+  </body>
+</html>

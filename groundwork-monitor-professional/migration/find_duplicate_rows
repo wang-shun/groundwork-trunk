@@ -1,0 +1,988 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+# MonArch - Groundwork Monitor Architect
+# find_duplicate_rows
+#
+############################################################################
+# Release 4.0
+# December 2011
+############################################################################
+#
+# Copyright 2011 GroundWork Open Source, Inc. (GroundWork)
+# All rights reserved. This program is free software; you can redistribute
+# it and/or modify it under the terms of the GNU General Public License
+# version 2 as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+
+# To Do:
+# * enter a bug for Data::ShowTable in that there is no escape mechanism for cell formatting to
+#   substitute a secondary value for an undefined value, for string values, and for numeric values
+# * enter a bug for Data::ShowTable in that a user-suplied \&fmt_sub is apparently never being called
+#   (apparently due to confusion between fmt_sub and fmtsub in the code, e.g., in ShowBoxTable())
+# * enter a bug for Data::ShowTable in "Simple" produces "Box" output from ShowTable()
+# * enter a bug for Data::ShowTable in "List" produces bad output from ShowTable()
+# * enter a bug for Data::ShowTable in that the minimum column widths (if the column widths are
+#   defaulted or set to 0) should include enough character positions to fit the entire column
+#   headings, so the headings never get misaligned with respect to the data if the width of the
+#   entire table is limited; or provide explicit user control for "minimum width" of each column,
+#   whether or not the "maximum width" of the column is explicitly set
+# * enter a bug for Data::ShowTable documentation, in that the Data::ShowTable::List_Wrap_Margin
+#   value affects the output in Box mode as well; a better explanation of that setting in that
+#   context is in order, as well
+# * enter a feature request for Data::ShowTable, so that embedded newlines in the data to display
+#   create corresponding line breaks within the cell, without breaking the cell boundaries
+
+# use diagnostics;
+use strict;
+
+use Getopt::Long qw(:config no_ignore_case auto_version);
+use DBI;
+use Data::ShowTable;
+
+# We use "our" instead of "my" so Getopt::Long auto_version processing can access this value.
+our $VERSION = '1.0.0';
+
+#	use Term::ReadKey;
+#	# Find the terminal width, to limit the width of displayed tables.
+#	# We cut it down slightly to avoid problems with piping the output of this script through more(1).
+#	my $terminal_width = (GetTerminalSize())[0];
+#	$terminal_width -= 8;
+
+sub print_usage {
+print
+"usage:  find_duplicate_rows [-s] [-o] [-g] [-c] [-m] [-d] [-e] [-n] [-i]
+   or:  find_duplicate_rows -a
+   or:  find_duplicate_rows -h
+where:  no options means just print summary listings of
+	    duplicate services and service instances
+	-a means show all available information about
+	    duplicate services and service instances
+	-s means show host services details
+	-o means show host services service template overrides
+	-g means show host services and associated contact groups
+	-c means show host services and associated contacts
+	-m means show host services and associated service group membership
+	-d means show host services and associated service dependencies
+	-e means show host services and associated service externals
+	-n means show host services and associated service instances
+	-i means show host service instances details
+	-h means show this help message
+";
+}
+
+my $all_is_done  = 0;
+my $monarch_home = '';
+my $sqlstmt      = '';
+my $sth          = undef;
+
+my $show_help                                = 0;
+my $show_all_information                     = 0;
+my $show_services_details                    = 0;
+my $show_services_service_template_overrides = 0;
+my $show_services_contact_groups             = 0;
+my $show_services_contacts                   = 0;
+my $show_services_service_group_membership   = 0;
+my $show_services_service_dependencies       = 0;
+my $show_services_service_externals          = 0;
+my $show_services_service_instances          = 0;
+my $show_services_instances_details          = 0;
+my $using_multiple_show_services_options     = 0;
+
+# Note that passing a password on the command line is, in general, strongly discouraged,
+# as it can be seen by anyone running a "ps" command.  We only tolerate this design here
+# because this program will only be used on a transient basis during upgrades.
+eval {
+    my $result = GetOptions (
+        'h' => \$show_help,
+        'a' => \$show_all_information,
+        's' => \$show_services_details,
+        'o' => \$show_services_service_template_overrides,
+        'g' => \$show_services_contact_groups,
+        'c' => \$show_services_contacts,
+        'm' => \$show_services_service_group_membership,
+        'd' => \$show_services_service_dependencies,
+        'e' => \$show_services_service_externals,
+        'n' => \$show_services_service_instances,
+        'i' => \$show_services_instances_details
+    );
+    if (!$result) {
+        print_usage();
+        exit 1;
+    }
+};
+if ($@) {
+    chomp $@;
+    print "FATAL:  Internal error:  $@\n";
+    exit 1;
+}
+
+my $args = scalar @ARGV;
+if ($args || $show_help) {
+    print_usage();
+    exit 1;
+}
+
+if ($show_all_information) {
+    $show_services_details                    = 1;
+    $show_services_service_template_overrides = 1;
+    $show_services_contact_groups             = 1;
+    $show_services_contacts                   = 1;
+    $show_services_service_group_membership   = 1;
+    $show_services_service_dependencies       = 1;
+    $show_services_service_externals          = 1;
+    $show_services_service_instances          = 1;
+    $show_services_instances_details          = 1;
+}
+
+$using_multiple_show_services_options =
+    ( $show_services_details
+    + $show_services_service_template_overrides
+    + $show_services_contact_groups
+    + $show_services_contacts
+    + $show_services_service_group_membership
+    + $show_services_service_dependencies
+    + $show_services_service_externals
+    + $show_services_service_instances) > 1;
+
+my ( $dbhost, $database, $user, $passwd ) = undef;
+if ( -e "/usr/local/groundwork/config/db.properties" ) {
+    open( FILE, '<', '/usr/local/groundwork/config/db.properties' )
+      or die "\nCannot open the db.properties file ($!); aborting!\n";
+    while ( my $line = <FILE> ) {
+	if ( $line =~ /\s*monarch\.dbhost\s*=\s*(\S+)/ )   { $dbhost   = $1 }
+	if ( $line =~ /\s*monarch\.database\s*=\s*(\S+)/ ) { $database = $1 }
+	if ( $line =~ /\s*monarch\.username\s*=\s*(\S+)/ ) { $user     = $1 }
+	if ( $line =~ /\s*monarch\.password\s*=\s*(\S+)/ ) { $passwd   = $1 }
+    }
+    close(FILE);
+    $monarch_home = '/usr/local/groundwork/core/monarch';
+}
+else {
+    print "\nMonarch Duplicate-Row Detection";
+    print "\n=============================================================\n";
+    print "\nReading configuration file ...\n";
+
+    until ($monarch_home) {
+	if ( -e "/usr/local/groundwork/core/monarch/lib/MonarchConf.pm" ) {
+	    $monarch_home = "/usr/local/groundwork/core/monarch";
+	    print "\nPlease enter the Monarch installation path [ $monarch_home ] : ";
+	    my $input = <STDIN>;
+	    chomp $input;
+	    if ($input) { $monarch_home = $input }
+	    my $monarch_test = $monarch_home . '/lib/MonarchConf.pm';
+	    unless ( -e $monarch_test ) {
+		print "\nError: Cannot locate MonarchConf.pm in path $monarch_home [/lib] ...\n";
+		$monarch_home = '';
+	    }
+	}
+	else {
+	    print "\nPlease enter the Monarch installation path : ";
+	    my $input = <STDIN>;
+	    chomp $input;
+	    if ($input) { $monarch_home = $input }
+	    my $monarch_test = $monarch_home . '/lib/MonarchConf.pm';
+	    unless ( -e $monarch_test ) {
+		print "\nError: Cannot locate MonarchConf.pm in path $monarch_home [/lib] ...\n";
+		$monarch_home = '';
+	    }
+	}
+    }
+    open( FILE, '<', "$monarch_home/lib/MonarchConf.pm" );
+    while ( my $line = <FILE> ) {
+	$line =~ s/\'|\"|;//g;
+	if ( $line =~ /\s*\$dbhost\s*=\s*(\S+)/ )   { $dbhost   = $1 }
+	if ( $line =~ /\s*\$database\s*=\s*(\S+)/ ) { $database = $1 }
+	if ( $line =~ /\s*\$dbuser\s*=\s*(\S+)/ )   { $user     = $1 }
+	if ( $line =~ /\s*\$dbpass\s*=\s*(\S+)/ )   { $passwd   = $1 }
+    }
+    close(FILE);
+}
+
+##############################################################################
+# Connect to DB
+##############################################################################
+
+print "\nConnecting to $database database with user $user ...\n";
+
+my $dsn = "DBI:mysql:database=$database;host=$dbhost";
+my $dbh = undef;
+
+# We turn AutoCommit off because we want to make changes roll back automatically as much as
+# possible if we don't get successfully through the entire script.  This is not perfect (i.e.,
+# we don't necessarily have all the changes made in a single huge transaction) because some of
+# the transformations may implicitly commit previous changes, and there is nothing we can do
+# about that.  Still, we do the best we can.
+#
+# We turn PrintError off because RaiseError is on and we don't want duplicate messages printed.
+
+eval { $dbh = DBI->connect( $dsn, $user, $passwd, { 'AutoCommit' => 0, 'RaiseError' => 1, 'PrintError' => 0 } ) };
+if ($@) {
+    print "\nError: connect failed ($@)\n";
+    die;
+}
+$dbh->do( "set session transaction isolation level serializable" );
+
+##############################################################################
+# Support Routines
+##############################################################################
+
+# First, provide fixes for the Data::ShowTable package we have installed.
+
+package Data::ShowTable;
+
+# The Data::ShowTable package doesn't seem to have an implicit mechanism for handling NULL
+# values in numeric fields without generating a lot of warning messages (and presenting the
+# result as 0 instead of some distinguished string like 'NULL').  We could either suppress
+# the warning messages that show up in that case, or (as we do here in this script) provide
+# a fixed version of ShowTableValue() that checks for NULL (undefined) values and outputs
+# our preferred displayable representation for such values.
+
+sub MyShowTableValue {
+    my $value = $_[0];
+    return 'NULL' if not defined $value;
+    return OriginalShowTableValue(@_);
+}
+
+do {
+    ## We don't need to hear about this redefinition when we know it's on purpose.
+    local $SIG{__WARN__} = sub {
+        my $msg = shift;
+	print $msg unless $msg =~ /^Subroutine Data::ShowTable::ShowTableValue redefined /;
+    };
+    *OriginalShowTableValue = \&ShowTableValue;
+    *ShowTableValue = \&MyShowTableValue;
+};
+
+package main;
+
+# Now, back to our regularly scheduled program.
+
+# Encourage sensible wrapping of decoded data values, by overriding a
+# particular parameter that controls the wrapping of long lines in a cell.
+$Data::ShowTable::List_Wrap_Margin = 1000;
+
+sub decode {
+    my $value = shift;
+    return undef if not defined $value;
+    my %data = $value =~ /name="([^"]+)"><!\[CDATA\[([^]]+)\]\]/g;
+    foreach my $key (keys %data) {
+        $data{$key} = 0 if $data{$key} eq '-zero-';
+    }
+    return %data ? join(' ', (map "$_=$data{$_}", sort keys %data)) : '(none)';
+}
+
+sub show_table {
+    my $query  = shift;
+    my $titles = shift;
+    my $types  = shift;
+    my $widths = shift || [];
+    my $decode = shift || [];
+
+    my @rows = ();
+    my $row  = 0;
+
+    my $sth = $dbh->prepare($query);
+    $sth->execute();
+    while ( my @values = $sth->fetchrow_array() ) {
+        ## We could make an adjustment here to recode undefined values to the 'NULL' string,
+        ## but that only works for string types, not for numeric types (since the conversion
+        ## of numeric types to strings won't be able to make sense of such a value).  So
+        ## instead, we depend on a local replacement for the ShowTableValue() routine that
+	## formats undefined values as we desire.  We should push this extension upstream.
+	if (@$decode) {
+	    foreach my $i (0..$#values) {
+		$values[$i] = decode($values[$i]) if $decode->[$i];
+	    }
+	}
+        push @rows, \@values;
+    }
+    $sth->finish;
+
+    my $row_sub = sub {
+        my $mode = shift;
+	if ($mode) {
+	    $row = 0;
+	    return 1;
+	}
+	else {
+	    return $rows[$row] ? @{ $rows[$row++] } : ();
+	}
+    };
+
+    # We thought that we would limit the table width to the size of the terminal, but that can cause
+    # headings to get misaligned with the data.  Better to just let the table wrap when it must.
+    # ShowTable $titles, $types, [], $row_sub, undef, $terminal_width, 'Box';
+    ShowTable $titles, $types, $widths, $row_sub, undef, 0, 'Box';
+}
+
+##############################################################################
+# Validation
+##############################################################################
+
+#-----------------------------------------------------------------------------
+# Make sure the existing data is clean.
+#-----------------------------------------------------------------------------
+
+# If we get duplicate host services, that will prevent our applying a unique {host_id, servicename_id}
+# index on the 'services' table.  (Historically, there have been some holes in the code that mistakenly
+# allowed such duplicates to be created.)
+
+my $got_duplicates = 0;
+
+$sqlstmt =
+    '
+    select distinct h.name as hostname, sn.name as servicename, count(*) as num, s.host_id, s.servicename_id,
+	group_concat(s.service_id order by s.service_id separator ", ") as "service_id values"
+    from hosts h, service_names sn, services s
+    where h.host_id = s.host_id
+    and sn.servicename_id = s.servicename_id
+    group by s.host_id, s.servicename_id
+    having num > 1
+    ';
+$sth = $dbh->prepare($sqlstmt);
+$sth->execute();
+my %duplicates  = ();
+my %service_ids = ();
+while ( my @values = $sth->fetchrow_array() ) {
+    $duplicates { $values[0] }{ $values[1] } = $values[2];
+    $service_ids{ $values[0] }{ $values[1] } = $values[5];
+}
+$sth->finish;
+
+if (%duplicates) {
+    my $max_host_length    = 4;
+    my $max_service_length = 7;
+    my $max_count_length   = 5;
+    my $host_length;
+    my $service_length;
+    my $count_length;
+    foreach my $host (keys %duplicates) {
+	$host_length = length $host;
+	if ($max_host_length < $host_length) {
+	    $max_host_length = $host_length;
+	}
+	foreach my $service ( keys %{ $duplicates{$host} } ) {
+	    $service_length = length $service;
+	    if ($max_service_length < $service_length) {
+		$max_service_length = $service_length;
+	    }
+	    $count_length = length "$duplicates{$host}{$service}";
+	    if ($max_count_length < $count_length) {
+		$max_count_length = $count_length;
+	    }
+	}
+    }
+    print "\nWARNING:  The following duplicate host services\n";
+    print "          exist in your \"monarch\" database:\n";
+    printf "%s-%s-%s----------------------------\n", '-' x $max_host_length, '-' x $max_service_length, '-' x $max_count_length;
+    printf "%-${max_host_length}s %-${max_service_length}s %${max_count_length}s  services.service_id values\n", 'Host', 'Service', 'Count';
+    printf "%s-%s-%s----------------------------\n", '-' x $max_host_length, '-' x $max_service_length, '-' x $max_count_length;
+    foreach my $host (sort keys %duplicates) {
+	foreach my $service ( sort keys %{ $duplicates{$host} } ) {
+	    printf "%-${max_host_length}s %-${max_service_length}s %${max_count_length}d  %s\n",
+	      $host, $service, $duplicates{$host}{$service}, $service_ids{$host}{$service};
+	}
+    }
+    printf "%s-%s-%s----------------------------\n", '-' x $max_host_length, '-' x $max_service_length, '-' x $max_count_length;
+
+    if (   $show_services_details
+	|| $show_services_service_template_overrides
+	|| $show_services_contact_groups
+	|| $show_services_contacts
+	|| $show_services_service_group_membership
+	|| $show_services_service_dependencies
+	|| $show_services_service_externals
+	|| $show_services_service_instances) {
+	my $service_details_query                   = undef;
+	my $service_service_template_override_query = undef;
+	my $service_contact_groups_query            = undef;
+	my $service_contacts_query                  = undef;
+	my $service_service_group_membership_query  = undef;
+	my $service_service_dependencies_query      = undef;
+	my $service_service_externals_query         = undef;
+	my $service_service_instances_query         = undef;
+	print "\n";
+	print "==========================\n";
+	print "Duplicate Service Details:\n";
+	print "==========================\n";
+	print "\n";
+	if (!$using_multiple_show_services_options) {
+	    print "Service Details:\n"            if $show_services_details;
+	    print "Service Template Overrides:\n" if $show_services_service_template_overrides;
+	    print "Service Contact Groups:\n"     if $show_services_contact_groups;
+	    print "Service Contacts:\n"           if $show_services_contacts;
+	    print "Service Group Membership:\n"   if $show_services_service_group_membership;
+	    print "Service Dependencies:\n"       if $show_services_service_dependencies;
+	    print "Service Externals:\n"          if $show_services_service_externals;
+	    print "Service Instances:\n"          if $show_services_service_instances;
+	    print "\n";
+	}
+
+	foreach my $host (sort keys %duplicates) {
+	    foreach my $service ( sort keys %{ $duplicates{$host} } ) {
+		print "\n" if $using_multiple_show_services_options;
+		print "===== host: $host ==== service: $service ====\n\n";
+		if ($show_services_details) {
+		    # Display all details associated with a given host service, including in particular
+		    # the uniquely identifying service_id, but also including the interpreted values
+		    # of other fields directly tied to the host service.
+		    $service_details_query = "
+		    select
+			s.service_id,
+			h.name as \"host\",
+			sn.name as \"service\",
+			st.name as \"service template\",
+			esit.name as \"extended service info template\",
+			et.name as \"escalation tree\",
+			s.status,
+			c.name as \"command\",
+			s.command_line,
+			replace(s.notes,'<br>',' ') as \"notes\"
+		    from
+			(hosts h
+			inner join services s on s.host_id=h.host_id
+			inner join service_names sn on sn.servicename_id=s.servicename_id)
+			left join service_templates st on st.servicetemplate_id=s.servicetemplate_id
+			left join extended_service_info_templates esit on esit.serviceextinfo_id=s.serviceextinfo_id
+			left join escalation_trees as et on et.tree_id=s.escalation_id
+			left join commands c on c.command_id=s.check_command
+		    where
+			h.name='$host' and sn.name='$service'
+		    order by
+			s.service_id
+		    ";
+		    print "Service Details:\n" if $using_multiple_show_services_options;
+		    show_table($service_details_query, [
+		        'service_id',
+		        'host',
+		        'service',
+		        'service template',
+		        'extended service info template',
+		        'escalation tree',
+		        'status',
+		        'command',
+		        'command_line',
+		        'notes'
+		    ], [
+		        'int',
+		        'string',
+		        'string',
+		        'string',
+		        'string',
+		        'string',
+		        'int',
+		        'string',
+		        'string',
+		        'string'
+		    ], [
+		        0,
+		        0,
+		        0,
+		        0,
+		        0,
+		        0,
+		        0,
+		        0,
+		        0,
+		        40
+		    ]);
+		}
+		if ($show_services_service_template_overrides) {
+		    $service_service_template_override_query = "
+		    select
+			s.service_id,
+			h.name as \"host\",
+			sn.name as \"service\",
+			tpc.name as \"check period\",
+			tpn.name as \"notification period\",
+			c.name as \"event handler\",
+			st.name as \"service template\",
+			replace(so.data,'\n',' ') as \"service template override data\"
+		    from
+			(hosts h
+			inner join services s on s.host_id=h.host_id
+			inner join service_names sn on sn.servicename_id=s.servicename_id)
+			left join service_templates st on st.servicetemplate_id=s.servicetemplate_id
+			left join service_overrides so on so.service_id=s.service_id
+			left join time_periods tpc on tpc.timeperiod_id=so.check_period
+			left join time_periods tpn on tpn.timeperiod_id=so.notification_period
+			left join commands c on c.command_id=so.event_handler
+		    where
+			h.name='$host' and sn.name='$service'
+		    order by
+			s.service_id
+		    ";
+		    print "Service Template Overrides:\n" if $using_multiple_show_services_options;
+		    show_table($service_service_template_override_query, [
+		        'service_id',
+		        'host',
+		        'service',
+		        'check period',
+		        'notification period',
+		        'event handler',
+		        'service template',
+		        'service template override data'
+		    ], [
+		        'int',
+		        'string',
+		        'string',
+		        'string',
+		        'string',
+		        'string',
+		        'string',
+		        'string'
+		    ], [
+		        0,
+		        0,
+		        0,
+		        0,
+		        0,
+		        0,
+		        0,
+		        35
+		    ], [
+		        0,
+		        0,
+		        0,
+		        0,
+		        0,
+		        0,
+		        0,
+		        1
+		    ]);
+		}
+		if ($show_services_contact_groups) {
+		    # Display all contact groups associated with a given host service.
+		    $service_contact_groups_query = "
+		    select
+			s.service_id,
+			h.name as \"host\",
+			sn.name as \"service\",
+			cg.name as \"contact group\"
+		    from
+			(hosts h
+			inner join services s on s.host_id=h.host_id
+			inner join service_names sn on sn.servicename_id=s.servicename_id)
+			left join contactgroup_service cgs on cgs.service_id=s.service_id
+			left join contactgroups cg on cg.contactgroup_id=cgs.contactgroup_id
+		    where
+			h.name='$host' and sn.name='$service'
+		    order by
+			s.service_id,
+			cg.name;
+		    ";
+		    print "Service Contact Groups:\n" if $using_multiple_show_services_options;
+		    show_table($service_contact_groups_query, [
+		        'service_id',
+		        'host',
+		        'service',
+		        'contact group'
+		    ], [
+		        'int',
+		        'string',
+		        'string',
+		        'string'
+		    ]);
+		}
+		if ($show_services_contacts) {
+		    # Display all contacts associated with a given host service.
+		    $service_contacts_query = "
+		    select
+			s.service_id,
+			h.name as \"host\",
+			sn.name as \"service\",
+			c.name as \"contact\"
+		    from
+			(hosts h
+			inner join services s on s.host_id=h.host_id
+			inner join service_names sn on sn.servicename_id=s.servicename_id)
+			left join contact_service cs on cs.service_id=s.service_id
+			left join contacts c on c.contact_id=cs.contact_id
+		    where
+			h.name='$host' and sn.name='$service'
+		    order by
+			s.service_id,
+			c.name;
+		    ";
+		    print "Service Contacts:\n" if $using_multiple_show_services_options;
+		    show_table($service_contacts_query, [
+			'service_id',
+			'host',
+			'service',
+			'contact'
+		    ], [
+			'int',
+			'string',
+			'string',
+			'string'
+		    ]);
+		}
+		if ($show_services_service_group_membership) {
+		    # Display all service-group membership associated with a given host service.
+		    $service_service_group_membership_query = "
+		    select
+			s.service_id,
+			h.name as \"host\",
+			sn.name as \"service\",
+			sg.name as \"service group\"
+		    from
+			(hosts h
+			inner join services s on s.host_id=h.host_id
+			inner join service_names sn on sn.servicename_id=s.servicename_id)
+			left join servicegroup_service sgs on sgs.host_id=h.host_id and sgs.service_id=s.service_id
+			left join servicegroups sg on sg.servicegroup_id=sgs.servicegroup_id
+		    where
+			h.name='$host' and sn.name='$service'
+		    order by
+			s.service_id,
+			sg.name;
+		    ";
+		    print "Service Group Membership:\n" if $using_multiple_show_services_options;
+		    show_table($service_service_group_membership_query, [
+			'service_id',
+			'host',
+			'service',
+			'service group'
+		    ], [
+			'int',
+			'string',
+			'string',
+			'string'
+		    ]);
+		}
+		if ($show_services_service_dependencies) {
+		    # Display all service dependencies  associated with a given host service.
+		    $service_service_dependencies_query = "
+		    select
+			s.service_id,
+			h.name as \"host\",
+			sn.name as \"service\",
+			sdt.name as \"dependency template\",
+			dh.name as \"master service host\",
+			msn.name as \"master service\"
+		    from
+			(hosts h
+			inner join services s on s.host_id=h.host_id
+			inner join service_names sn on sn.servicename_id=s.servicename_id)
+			left join service_dependency sd on sd.host_id=h.host_id and sd.service_id=s.service_id
+			left join hosts dh on dh.host_id=sd.depend_on_host_id
+			left join service_dependency_templates sdt on sdt.id=sd.template
+			left join service_names msn on msn.servicename_id=sdt.servicename_id
+		    where
+			h.name='$host' and sn.name='$service'
+		    order by
+			s.service_id,
+			sdt.name,
+			dh.name,
+			msn.name;
+		    ";
+		    print "Service Dependencies:\n" if $using_multiple_show_services_options;
+		    show_table($service_service_dependencies_query, [
+			'service_id',
+			'host',
+			'service',
+			'dependency template',
+			'master service host',
+			'master service'
+		    ], [
+			'int',
+			'string',
+			'string',
+			'string',
+			'string',
+			'string'
+		    ]);
+		}
+		if ($show_services_service_externals) {
+		    # Display all service externals associated with a given host service.
+		    $service_service_externals_query = "
+		    select
+			s.service_id,
+			h.name as \"host\",
+			sn.name as \"service\",
+			e.external_id,
+			e.name as \"service external\",
+			replace(replace(es.data,'\r','\\\\r'),'\n','\\\\n ') as \"external data\",
+			es.modified
+		    from
+			(hosts h
+			inner join services s on s.host_id=h.host_id
+			inner join service_names sn on sn.servicename_id=s.servicename_id)
+			left join external_service es on es.host_id=h.host_id and es.service_id=s.service_id
+			left join externals e on e.external_id=es.external_id
+		    where
+			h.name='$host' and sn.name='$service'
+		    order by
+			s.service_id,
+			es.external_id;
+		    ";
+		    print "Service Externals:\n" if $using_multiple_show_services_options;
+		    show_table($service_service_externals_query, [
+			'service_id',
+			'host',
+			'service',
+			'external_id',
+			'service external',
+			'external data',
+			'modified'
+		    ], [
+			'int',
+			'string',
+			'string',
+			'int',
+			'string',
+			'string',
+			'int'
+		    ], [
+		        0,
+		        0,
+		        0,
+		        0,
+		        0,
+		        70,
+			0
+		    ]);
+		}
+		if ($show_services_service_instances) {
+		    # Display all host service instances associated with a given host service,
+		    # including in particular the uniquely identifying instance_id.
+		    $service_service_instances_query = "
+		    select
+			s.service_id,
+			h.name as \"host\",
+			sn.name as \"service\",
+			si.instance_id,
+			si.name as \"instance name suffix\",
+			case when si.status = 1 then 'active' when si.status is null then 'inactive' else si.status end,
+			si.arguments
+		    from
+			(hosts h
+			inner join services s on s.host_id=h.host_id
+			inner join service_names sn on sn.servicename_id=s.servicename_id)
+			left join service_instance si on si.service_id=s.service_id
+		    where
+			h.name='$host' and sn.name='$service'
+		    order by
+			s.service_id,
+			si.instance_id;
+		    ";
+		    print "Service Instances:\n" if $using_multiple_show_services_options;
+		    show_table($service_service_instances_query, [
+			'service_id',
+			'host',
+			'service',
+			'instance_id',
+			'instance name suffix',
+			'status',
+			'service instance arguments'
+		    ], [
+			'int',
+			'string',
+			'string',
+			'int',
+			'string',
+			'string',
+			'string'
+		    ], [
+		        0,
+		        0,
+		        0,
+		        0,
+		        0,
+		        0,
+		        100
+		    ]);
+		}
+	    }
+	}
+    }
+
+    $got_duplicates = 1;
+}
+
+# If we get duplicate host service instances, that will prevent our applying a unique {service_id, name}
+# index on the 'service_instance' table.  (Historically, the Monarch code has prohibited such duplicates
+# from being created at the application level, but some customer extensions have bypassed Monarch's own
+# checks, so we need to validate this constraint anyway.)
+
+$sqlstmt =
+    '
+    select distinct h.name as hostname, sn.name as servicename, si.name as instancename,
+	count(*) as num, s.host_id, s.servicename_id, si.service_id,
+	group_concat(si.instance_id order by si.instance_id separator ", ") as "instance_id values"
+    from hosts h, service_names sn, services s, service_instance si
+    where s.service_id = si.service_id
+    and h.host_id = s.host_id
+    and sn.servicename_id = s.servicename_id
+    group by s.host_id, s.servicename_id, si.name
+    having num > 1
+    ';
+$sth = $dbh->prepare($sqlstmt);
+$sth->execute();
+%duplicates = ();
+my %instance_ids = ();
+while ( my @values = $sth->fetchrow_array() ) {
+    $duplicates  { $values[0] }{ $values[1] }{ $values[2] } = $values[3];
+    $instance_ids{ $values[0] }{ $values[1] }{ $values[2] } = $values[7];
+}
+$sth->finish;
+
+if (%duplicates) {
+    my $max_host_length     = 4;
+    my $max_service_length  = 7;
+    my $max_instance_length = 8;
+    my $max_count_length    = 5;
+    my $host_length;
+    my $service_length;
+    my $instance_length;
+    my $count_length;
+    foreach my $host (keys %duplicates) {
+	$host_length = length $host;
+	if ($max_host_length < $host_length) {
+	    $max_host_length = $host_length;
+	}
+	foreach my $service ( keys %{ $duplicates{$host} } ) {
+	    $service_length = length $service;
+	    if ($max_service_length < $service_length) {
+		$max_service_length = $service_length;
+	    }
+	    foreach my $instance ( keys %{ $duplicates{$host}{$service} } ) {
+		$instance_length = length $instance;
+		if ($max_instance_length < $instance_length) {
+		    $max_instance_length = $instance_length;
+		}
+		$count_length = length "$duplicates{$host}{$service}{$instance}";
+		if ($max_count_length < $count_length) {
+		    $max_count_length = $count_length;
+		}
+	    }
+	}
+    }
+    print "\nWARNING:  The following duplicate host service instances\n";
+    print "          exist in your \"monarch\" database:\n";
+    printf "%s-%s-%s-%s-------------------------------------\n", '-' x $max_host_length, '-' x $max_service_length, '-' x $max_instance_length, '-' x $max_count_length;
+    printf "%-${max_host_length}s %-${max_service_length}s %-${max_instance_length}s %${max_count_length}s  service_instance.instance_id values\n",
+	'Host', 'Service', 'Instance', 'Count';
+    printf "%s-%s-%s-%s-------------------------------------\n", '-' x $max_host_length, '-' x $max_service_length, '-' x $max_instance_length, '-' x $max_count_length;
+    foreach my $host (sort keys %duplicates) {
+	foreach my $service ( sort keys %{ $duplicates{$host} } ) {
+	    foreach my $instance ( sort keys %{ $duplicates{$host}{$service} } ) {
+		printf "%-${max_host_length}s %-${max_service_length}s %-${max_instance_length}s %${max_count_length}d  %s\n",
+		  $host, $service, $instance, $duplicates{$host}{$service}{$instance}, $instance_ids{$host}{$service}{$instance};
+	    }
+	}
+    }
+    printf "%s-%s-%s-%s-------------------------------------\n", '-' x $max_host_length, '-' x $max_service_length, '-' x $max_instance_length, '-' x $max_count_length;
+
+    if ($show_services_instances_details) {
+	my $service_instance_details_query = undef;
+	print "\n";
+	print "===================================\n";
+	print "Duplicate Service Instance Details:\n";
+	print "===================================\n";
+	print "\n";
+	foreach my $host (sort keys %duplicates) {
+	    foreach my $service ( sort keys %{ $duplicates{$host} } ) {
+		foreach my $instance ( sort keys %{ $duplicates{$host}{$service} } ) {
+		    # Display all details associated with a given host service instance, including the
+		    # interpreted values of other fields directly tied to the host service instance.
+		    $service_instance_details_query = "
+		    select
+			s.service_id,
+			h.name as \"host\",
+			sn.name as \"service\",
+			si.instance_id,
+			si.name as \"instance name suffix\",
+			case when si.status = 1 then 'active' when si.status is null then 'inactive' else si.status end,
+			si.arguments
+		    from
+			(hosts h
+			inner join services s on s.host_id=h.host_id
+			inner join service_names sn on sn.servicename_id=s.servicename_id)
+			left join service_instance si on si.service_id=s.service_id
+		    where
+			h.name='$host' and sn.name='$service' and si.name='$instance'
+		    order by
+			s.service_id,
+			si.instance_id;
+		    ";
+		    show_table($service_instance_details_query, [
+			'service_id',
+			'host',
+			'service',
+			'instance_id',
+			'instance name suffix',
+			'status',
+			'service instance arguments'
+		    ], [
+			'int',
+			'string',
+			'string',
+			'int',
+			'string',
+			'string',
+			'string'
+		    ], [
+		        0,
+		        0,
+		        0,
+		        0,
+		        0,
+		        0,
+		        100
+		    ]);
+		}
+	    }
+	}
+    }
+
+    $got_duplicates = 1;
+}
+
+if ($got_duplicates) {
+    print "\nWARNING:  The duplicates shown above must be resolved within\n";
+    print "          MySQL before you can migrate to a PostgreSQL-based\n";
+    print "          version of GroundWork Monitor.\n";
+}
+
+##############################################################################
+# Done.
+##############################################################################
+
+$all_is_done = 1;
+
+END {
+    if ($dbh) {
+	# Roll back any uncommitted transaction.
+	eval {
+	    my $rc = $dbh->rollback();
+	};
+	if ($@) {
+	    print "\nError:  rollback failed: ", $dbh->errstr, "\n";
+	}
+	$dbh->disconnect();
+    }
+    if (!$show_help && !$all_is_done) {
+	print "\n";
+	print "====================================================================\n";
+	print "    WARNING:  monarch database validation did not fully complete!\n";
+	print "====================================================================\n";
+	print "\n";
+	exit 1;
+    }
+}
+
+print "\nDuplicate-row analysis complete.\n\n";
+
+exit ($got_duplicates);
+
+__END__
+

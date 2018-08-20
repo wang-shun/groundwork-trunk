@@ -1,0 +1,63 @@
+Subject:  upgrade to Nagios 4.3.4
+
+We have recently found that the upstream Nagios distribution was
+updated to the 4.3.3 release and then soon again to the 4.3.4 release.
+So we have brought that last version into view, applied and modified
+our patches, and made it ready for BitRock to fold into GWMEE 7.2.0.
+We are tracking this on our side in JIRA GWMON-13140.
+
+The procedure for the build of Nagios 4.3.4 is nearly identical to the
+procedure for building Nagios 4.3.2.  Similar patches now apply; they have
+been renamed (with updated version numbers) and reworked as necessary to
+correspond to the newer Nagios release.  There is one old patch that we
+no longer apply, as we had already included in our Nagios 4.3.2 patches a
+fix that had been made upstream after the 4.3.2 release was cut upstream,
+and now that patch is no longer needed.  And there is one new patch to
+apply, to address a difference between the standard upstream website
+context and how GroundWork makes Nagios CGI pages accessible.  As before,
+all the build steps are encapsulated in the GroundWork-supplied Makefile.
+
+To make it easier to understand what steps to take when building, all
+the build files, including the revised patches, are being kept distinct
+from the patch set used for Nagios 4.3.2.  You will find everything you
+need, including the upstream Nagios 4.3.4 tarball, under this directory
+in GroundWork's Subversion repository:
+
+    http://geneva/groundwork-professional/trunk/patch-scripts/BitRock/nagios-4.3.4/
+
+The structure is completely parallel to what we provided for the Nagios
+4.3.2 release.
+
+As before, the README file in that directory contains all the notes
+we took while developing the patches for the Nagios 4.3.4 release.
+This includes details of the order in which the 4.3.4 patches must
+be applied.  There is still also a cgi/statuswml2.c file under that
+directory, to be added to the Nagios 4.3.4 release before building it.
+As before, that action is encapsulated in the Makefile that we supply.
+
+I have looked through all the upstream code changes between the Nagios
+4.3.2 and 4.3.4 releases.  I don't see anything that might affect the
+build itself.  There are a couple of things that I will check in the
+operation of Nagios once we have the new version in our builds.
+
+None of the upstream code changes between Nagios 4.3.2 and 4.3.4 look
+like they would impact Bronx in any way.  Also, nothing has changed in the
+Bronx code or its Makefile since we folded Nagios 4.3.2 into our builds.
+But a new build of Bronx will tag it internally as being compatible
+with Nagios 4.3.4 so we have an easy way to identify particular build
+versions, as seen for Nagios 4.3.2 in our current GWMEE 7.2.0 builds:
+
+% ident /usr/local/groundwork/common/lib/libbronx.so 
+/usr/local/groundwork/common/lib/libbronx.so:
+     $BronxCompileTime: 18:40:19 on Aug 22 2017 (bronx_utils.c) for Nagios 4.3.2, with NEB API version 4 $
+
+So you may as well go ahead and re-build Bronx after building Nagios
+4.3.4, just for that purpose.
+
+    http://geneva/groundwork-professional/trunk/monitor-core/bronx/
+
+Please fold this Nagios/Bronx upgrade into your planning for improvements
+to the GWMEE 7.2.0 release.
+
+Glenn
+

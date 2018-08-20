@@ -1,0 +1,241 @@
+#!/usr/bin/perl -w
+#
+# ccc.pl
+# cisco contract checker v0.3
+# get a Cisco Support Contract into nedi.cisco_contracts Table
+#
+# (c)2008 Andreas Wassatsch
+# released under GPLv2
+# Overhauled by GroundWork Open Source, Inc. (2012)
+#
+# This software is provided as-is, without any express or implied
+# warranty. In no event will the author be held liable for any mental
+# or physical damages arising from the use of this script.
+#
+# Howto:
+# - check requirements: needs wget and Perl Modules DBD, DBI::mysql
+# - adjust the credentials for Cisco CCO Access and your NeDi Database
+#   (MySQL only, sorry)
+# - run this script from cron on a weekly/monthly basis
+#
+# Changed vs v0.1:
+# - we retrieve the full contract information now instead of
+#   checking each serial number seperately for contract coverage
+# - table cisco_contracts has been redesigned - do a drop table if you
+#   upgrade from v0.1
+# - eleminated previously required packages: w3m and Perl Module Date::Calc
+# - since we fetch end_date, checking once a month should be enough
+#
+# Changed for v0.3:
+# - Ported to provide support for a PostgreSQL database.
+# - Cleaned up database error handling.
+# - Cleaned up Perl warnings.
+
+use strict;
+
+my $DEBUG = 0;
+
+# Modules
+#--------
+use DBI;
+# Explicit mention of the particular driver is not necessary here.
+# You just need to have the one you need installed.  The particular
+# $dbtype you configure below will select the appropriate driver at
+# run time when the database connection is attempted, so we need not
+# tie the source code here to having both drivers installed.
+# use DBD::mysql;
+# use DBD::Pg;
+
+# Credentials for Cisco CCO and for Nedi DB
+#------------------------------------------
+my $cco_user    = "your_cco_username";
+my $cco_pass    = "your_cco_password";
+
+# FIX MINOR:  This data should be drawn from nedi.conf instead of being hardcoded here.
+# DB params.  $dbtype can be either "mysql" or "postgresql".
+my $dbtype = "mysql";
+my $dbname = "nedi";
+my $dbuser = "nedi";
+my $dbpass = "dbpa55";
+my $dbhost = "localhost";
+
+# list your Cisco contracts here
+#----------------------------------------------------------
+my @contract = ();
+$contract[1] = "1234567";	# your Cisco contract number
+# $contract[2] = "";		# optional - 2nd Contract
+# $contract[3] = "";		# optional - 3rd Contract
+
+
+# Open DB connection
+#-------------------
+my $dsn = '';
+if ( defined($dbtype) && $dbtype eq 'postgresql' ) {
+	$dsn = "DBI:Pg:dbname=$dbname;host=$dbhost";
+}
+else {
+	$dsn = "DBI:mysql:database=$dbname;host=$dbhost";
+}
+my $dbh = undef;
+eval {
+	$dbh = DBI->connect( $dsn, $dbuser, $dbpass, { RaiseError => 1, PrintError => 0, 'AutoCommit' => 1 } );
+};
+if ($@) {
+	chomp $@;
+	die "ERROR:  Cannot connect to database $dbname:\n$@\n";
+}
+
+# create contract table if not exists
+#------------------------------------
+my @table = ();
+if ( defined($dbtype) && $dbtype eq 'postgresql' ) {
+	@table = (
+	    "CREATE TABLE IF NOT EXISTS cisco_contracts (
+		contract_number character varying(16) NOT NULL,
+		service_level character varying(40) NOT NULL,
+		contract_label character varying(32),
+		bill_to_name character varying(32),
+		address character varying(40),
+		city character varying(32),
+		state character varying(16),
+		zip_code character varying(16),
+		country character varying(16),
+		bill_to_contact character varying(32),
+		phone character varying(16),
+		email character varying(40),
+		site_id character varying(15),
+		site_name character varying(15),
+		site_address character varying(40),
+		address_line2 character varying(40),
+		address_line3 character varying(40),
+		site_city character varying(40),
+		site_state character varying(16),
+		site_zip character varying(16),
+		site_country character varying(16),
+		site_notes character varying(40),
+		site_label character varying(40),
+		site_contact character varying(40),
+		site_phone character varying(16),
+		site_email character varying(40),
+		product_number character varying(32) NOT NULL,
+		serial_number character varying(40) NOT NULL,
+		name_ip_address character varying(32),
+		description character varying(64),
+		product_type character varying(32),
+		begin_date character varying(16),
+		end_date character varying(16),
+		po_number character varying(16),
+		so_number character varying(16),
+		CONSTRAINT cisco_contracts_pkey PRIMARY KEY (serial_number)
+	    )",
+	    "ALTER TABLE public.cisco_contracts OWNER TO $dbuser"
+	);
+}
+else {
+	@table = (
+	    "CREATE TABLE IF NOT EXISTS `cisco_contracts` (
+		`contract_number` varchar(16) NOT NULL,
+		`service_level` varchar(40) NOT NULL,
+		`contract_label` varchar(32) default NULL,
+		`bill_to_name` varchar(32) default NULL,
+		`address` varchar(40) default NULL,
+		`city` varchar(32) default NULL,
+		`state` varchar(16) default NULL,
+		`zip_code` varchar(16) default NULL,
+		`country` varchar(16) default NULL,
+		`bill_to_contact` varchar(32) default NULL,
+		`phone` varchar(16) default NULL,
+		`email` varchar(40) default NULL,
+		`site_id` varchar(15) default NULL,
+		`site_name` varchar(15) default NULL,
+		`site_address` varchar(40) default NULL,
+		`address_line2` varchar(40) default NULL,
+		`address_line3` varchar(40) default NULL,
+		`site_city` varchar(40) default NULL,
+		`site_state` varchar(16) default NULL,
+		`site_zip` varchar(16) default NULL,
+		`site_country` varchar(16) default NULL,
+		`site_notes` varchar(40) default NULL,
+		`site_label` varchar(40) default NULL,
+		`site_contact` varchar(40) default NULL,
+		`site_phone` varchar(16) default NULL,
+		`site_email` varchar(40) default NULL,
+		`product_number` varchar(32) NOT NULL,
+		`serial_number` varchar(40) NOT NULL,
+		`name_ip_address` varchar(32) default NULL,
+		`description` varchar(64) default NULL,
+		`product_type` varchar(32) default NULL,
+		`begin_date` varchar(16) default NULL,
+		`end_date` varchar(16) default NULL,
+		`po_number` varchar(16) default NULL,
+		`so_number` varchar(16) default NULL,
+		PRIMARY KEY  (`serial_number`)
+	    ) ENGINE=MyISAM DEFAULT CHARSET=latin1"
+	);
+}
+my $query = '';
+eval {
+	foreach my $stmt (@table) {
+		$query = $stmt;  # Unaliased copy, so an error message below will work as intended.
+		$dbh->do($query);
+	}
+};
+if ($@) {
+	chomp $@;
+	die "ERROR:  Cannot create the cisco_contracts table:\n$query\n$@\n";
+}
+
+# try to get contracts from Cisco Web Site
+#-----------------------------------------
+for (my $i=1; $i<($#contract+1) ; $i++) {
+
+	print "\nContract=$contract[$i]\n";
+
+	my $post = "AppName=ContractAgent&Form=ConManager&Function=DownloadContract&UserId=$cco_user&Auth=null&ConNum=$contract[$i]&ContractOrSite=Contract&Type=Summary&Download=Screen&Submit=Download";
+
+	my @cisco = ();
+	if (open(CISCO, "wget -q --keep-session-cookies --user=$cco_user --password=$cco_pass http://www.cisco.com/cgi-bin/front.x/scccibdispatch --post-data \'$post\' -O - |")) {
+		@cisco = grep(!/^Contract Number/, <CISCO>);
+		close(CISCO);
+	}
+	else {
+		die "Sorry, could not connect to Cisco to access contract $contract[$i].\n"; 
+	}
+
+	if (@cisco == 0 || grep(/\<html\>/, @cisco)) {
+		print "Sorry, couldn't download contract $contract[$i] -- check your CCO access rights.\n"; 
+	} else {
+
+		my $query = '';
+		eval {
+			foreach my $line (@cisco) {
+				(my @val) = split(/\t/, $line);
+
+				print "\t$val[26]\t$val[27]\t$val[1]\t$val[32]\n";
+
+				$query = "DELETE FROM cisco_contracts WHERE serial_number='$val[27]'";
+				my $sth = $dbh->prepare($query);
+				$sth->execute();
+		
+				$query = "INSERT INTO cisco_contracts VALUES ('$val[0]'";
+				for(my $j=1; $j<($#val+1); $j++) {
+					$query .= ", '$val[$j]'";
+				}
+				$query .= ")";
+				
+				if ($DEBUG) {
+					print "$query\n";
+				}
+		
+				$sth = $dbh->prepare($query);
+				$sth->execute();
+			}
+		};
+		if ($@) {
+			chomp $@;
+			die "ERROR:  Cannot populate the cisco_contracts table:\n$query\n$@\n";
+		}
+	}
+}
+
+exit 0;

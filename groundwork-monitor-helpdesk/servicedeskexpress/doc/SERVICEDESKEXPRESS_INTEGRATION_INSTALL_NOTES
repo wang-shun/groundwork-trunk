@@ -1,0 +1,62 @@
+In the 2.0.0 release, the ActionProperty row added to the database
+has had a path changed from what it was in the original MySQL version;
+this will need to be dealt with in any migration from the older release.
+The paths are:
+
+old:  /usr/local/groundwork/helpdesk/bin/oneway_helpdesk.pl
+new:  /usr/local/groundwork/servicedeskexpress/bin/oneway_helpdesk.pl
+
+in the code, effectively (not exactly as shown here)
+
+old: helpdesk_actions_seed_file.sql:
+     INSERT INTO ActionProperty (ActionID, Name, Value) VALUES(
+	  (SELECT ActionID FROM Action WHERE Name = "Create a HelpDesk Ticket"),
+	  "Script", "/usr/local/groundwork/helpdesk/bin/oneway_helpdesk.pl");
+
+new: helpdesk_actions_seed_file.sql:
+     INSERT INTO ActionProperty (ActionID, Name, Value) VALUES(
+          (SELECT ActionID FROM Action WHERE Name = ActionMenuString),
+	  'Script', '/usr/local/groundwork/servicedeskexpress/bin/oneway_helpdesk.pl');
+
+FIX LATER:  Provide a migration script to make this change, containing
+the SQL statement just below.  Similarly, some pathnames have changed
+in several config files.  Again, we should have a migration script to
+make these changes, if there is any concern about using the old copies
+instead of the new copies that already have good pathnames in them,
+and to move files around.
+
+    \c gwcollagedb
+    update actionproperty
+      set value = '/usr/local/groundwork/servicedeskexpress/bin/oneway_helpdesk.pl'
+    where value = '/usr/local/groundwork/helpdesk/bin/oneway_helpdesk.pl';
+
+oneway_helpdesk.conf:BridgeDBCredentials = /usr/local/groundwork/helpdesk/conf/bridge_db.conf
+oneway_helpdesk.conf:BridgeDBCredentials = /usr/local/groundwork/servicedeskexpress/config/bridge_db.conf
+
+oneway_helpdesk.conf:AuthUsersFilterFile = /usr/local/groundwork/helpdesk/conf/authorized_users.conf
+oneway_helpdesk.conf:AuthUsersFilterFile = /usr/local/groundwork/servicedeskexpress/config/authorized_users.conf
+
+oneway_helpdesk.conf:HelpDeskModuleConfFile = /usr/local/groundwork/helpdesk/conf/helpdesk_module.conf
+oneway_helpdesk.conf:HelpDeskModuleConfFile = /usr/local/groundwork/servicedeskexpress/config/servicedeskexpress_module.conf
+
+twoway_helpdesk.conf:BridgeDBCredentials = /usr/local/groundwork/helpdesk/conf/bridge_db.conf
+twoway_helpdesk.conf:BridgeDBCredentials = /usr/local/groundwork/servicedeskexpress/config/bridge_db.conf
+
+twoway_helpdesk.conf:HelpDeskModuleConfFile = /usr/local/groundwork/helpdesk/conf/helpdesk_module.conf
+twoway_helpdesk.conf:HelpDeskModuleConfFile = /usr/local/groundwork/servicedeskexpress/config/servicedeskexpress_module.conf
+
+twoway_helpdesk.conf:ProcessMatch = /usr/local/groundwork/helpdesk/perl/bin/perl -w /usr/local/groundwork/helpdesk/bin/twoway_helpdesk.pl
+twoway_helpdesk.conf:ProcessMatch = "/usr/local/groundwork/perl/bin/.perl.bin (-I[^ ]+ )*-w -- /*([^ ]+/)*twoway_helpdesk.pl"
+
+twoway_helpdesk.conf:PSArgs  = aux
+twoway_helpdesk.conf:PSArgs  = "-C .perl.bin -o pid,args --no-headers"
+
+twoway_helpdesk.conf:GrepApp = /bin/grep
+twoway_helpdesk.conf:GrepApp = /bin/egrep
+
+oneway_helpdesk.conf:HelpDeskLogFile = /usr/local/groundwork/helpdesk/logs/oneway.log
+oneway_helpdesk.conf:HelpDeskLogFile = /usr/local/groundwork/servicedeskexpress/logs/oneway.log
+
+twoway_helpdesk.conf:HelpDeskLogFile = /usr/local/groundwork/helpdesk/logs/twoway.log
+twoway_helpdesk.conf:HelpDeskLogFile = /usr/local/groundwork/servicedeskexpress/logs/twoway.log
+

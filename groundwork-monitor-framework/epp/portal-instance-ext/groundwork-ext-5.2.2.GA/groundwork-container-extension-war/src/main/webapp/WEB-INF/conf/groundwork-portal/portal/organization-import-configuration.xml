@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!--
+
+    Groundwork Portal
+    kmcanoy@redhat.com
+
+-->
+
+<configuration
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://www.exoplaform.org/xml/ns/kernel_1_2.xsd http://www.exoplaform.org/xml/ns/kernel_1_2.xsd"
+   xmlns="http://www.exoplaform.org/xml/ns/kernel_1_2.xsd">
+   
+   <component>
+       <key>com.groundwork.portal.organization.OrganizationImportService</key>
+       <type>com.groundwork.portal.organization.OrganizationImportServiceImpl</type>
+       <init-params>
+           <value-param>
+               <name>portalContainerName</name>
+               <value>groundwork-portal</value><!-- needs to match portal container name -->
+           </value-param>
+           <!-- Trigger to import users and roles -->
+           <value-param>
+               <name>testUserName</name>
+               <value></value>
+           </value-param>
+           <value-param>
+               <name>importFileLocation</name>
+               <value>/usr/local/groundwork/config</value><!-- this name + users.xml - should be parameterized. Possibly replaced at install along with pages.xml and navigation.xml -->
+           </value-param>
+           <value-param>
+               <name>skipList</name>
+               <value>user.name.given, user.name.family, user.business-info.online.email</value><!-- the properties go to the User object instead -->
+           </value-param>
+       </init-params>
+   </component>
+   
+   
+   
+</configuration>

@@ -1,0 +1,144 @@
+#!/bin/bash
+set -e -o pipefail
+
+# Copyright (c) 2017 GroundWork, Inc. (www.gwos.com).  All rights reserved.
+# Use of this software is subject to commercial license terms.
+
+errhandler() {
+    echo >&2
+    echo "Uninstallation encountered error on line $1.  Aborting." >&2
+    echo "Please contact Groundwork Support for assistance." >&2
+    echo >&2
+}
+
+trap 'errhandler $LINENO' ERR
+
+# Official base-release version for which this patch was developed.
+PATCH_GWVERSION="7.1.1"
+
+# Official patch name/number.
+PATCH="TB$PATCH_GWVERSION-9"
+
+# Full list of base-release versions supported by this patch, as an array.
+BASE_GWVERSIONS=( 7.1.1 )
+
+GWDIR="/usr/local/groundwork"
+OUTDIR="$GWDIR/common/var/patches"
+LOGFILE="$OUTDIR/$PATCH.log"
+OUTFILE="$OUTDIR/$PATCH.installed"
+
+echo "===== Groundwork Patch $PATCH uninstaller ====="
+echo
+echo "This script will back out previous fixes to NoMa."
+echo
+echo "This script will also revert back the various portions of your"
+echo "Groundwork installation that were modified to support the fixes"
+echo "for NoMa."
+echo
+echo "Please note that this reversion requires NoMa to be stopped before you"
+echo "run this script, and Foundation (gwservices) to be restarted after"
+echo "you run this script, which will result in a few minutes of downtime."
+echo
+echo -n "Ok to proceed? [y/N] "
+read -r proceed
+echo
+case "$proceed" in
+    [yY][eE][sS]|[yY])
+        ;;
+    *)
+        echo "Installation aborted."
+        exit 0
+        ;;
+esac
+
+if [[ $EUID -ne 0 ]]; then
+    echo "ERROR: This script must be run as root." >&2
+    exit 1
+fi
+
+if [ ! -f $OUTFILE ]; then
+    echo "ERROR: Patch $PATCH is not installed." >&2
+    echo "Please contact Groundwork Support for assistance." >&2
+    exit 1
+fi
+
+OLD_IFS="$IFS"
+IFS='|'
+VERSION_PATTERN="${BASE_GWVERSIONS[*]}"
+IFS="$OLD_IFS"
+if ! grep -Exq "version= (${VERSION_PATTERN//./\.})" $GWDIR/Info.txt; then
+    echo "ERROR: GroundWork version ${VERSION_PATTERN//|/ or } required" >&2
+    exit 1
+fi
+
+#
+# Additional checks go here
+#
+
+exec &> >(tee -a "$LOGFILE")
+
+echo "=================================================="
+echo "PATCH: $PATCH"
+echo "USER: $USER"
+echo "HOST: `hostname -f`"
+echo "UNINSTALL START: `date`"
+echo "--------------------------------------------------"
+
+# Script to uninstall fixes for NoMa in GWMEE 7.1.1.
+
+GROUNDWORK_BASE=/usr/local/groundwork
+BACKUP_DIRECTORY=$GROUNDWORK_BASE/gw-backup
+BACKUP_TARBALL=$BACKUP_DIRECTORY/groundwork-$PATCH-noma-backup-files.tar.gz
+
+# We might have used:
+#     if [ "`/bin/ps -w -w --no-headers -o args -C .perl.bin | fgrep noma_daemon.pl | wc -l`" != 0 ]; then ...
+# for this next test, but a "ps" command only sees currently existing processes.  It is
+# possible that the NoMa service has been started but the noma_daemon.pl process is not
+# yet running, due to the intentional 30-second startup delay in its run script.  So we
+# instead ask the NoMa supervisory process whether it believes that the NoMa service is
+# running.  A tricky part is that "fgrep -c" will inappropriately set the exit code to a
+# non-zero value if it finds no matches.  Fortunately, since we are executing this command
+# within a conditional context, we don't need to append "|| true" to the command to ensure
+# that it exits with a zero exit code to sidestep the bash -e option we set above.
+#
+if [ "`$GROUNDWORK_BASE/common/bin/svstat $GROUNDWORK_BASE/core/services/notification-noma | fgrep -c up`" != 0 ]; then
+    echo "ERROR:  You cannot uninstall this patch while NoMa is running."
+    echo "        Try this first:"
+    echo "        service groundwork stop noma"
+    exit 1
+fi
+
+if [ ! -f $BACKUP_TARBALL ]; then
+    echo "ERROR:  The backup tarball is not present here:"
+    echo "        $BACKUP_TARBALL"
+    echo "        It must be present before you can restore from it."
+    exit 1
+fi
+
+# Note that when we directly restore the foundation.properties file from the backup tarball,
+# we will lose any changes unrelated to this patch that have been made to this file since the
+# patch was installed.  That's the price for such a simplistic backup/restore procedure.
+
+# Restore the old files.
+echo "NOTICE:  Restoring the old files that were modified and patched, from:"
+echo "         $BACKUP_TARBALL"
+echo ""
+if ! tar xvfz $BACKUP_TARBALL -C $GROUNDWORK_BASE; then
+    echo "ERROR:  Cannot restore old files from the backup tarball."
+    exit 1
+fi
+echo ""
+
+echo "NoMa patch $PATCH uninstall is complete."
+
+echo "--------------------------------------------------"
+echo "UNINSTALL COMPLETE: `date`"
+
+rm $OUTFILE
+
+echo ""
+echo "You may now restart Foundation and NoMa:"
+echo ""
+echo "    service groundwork restart gwservices"
+echo "    service groundwork restart noma"
+echo ""

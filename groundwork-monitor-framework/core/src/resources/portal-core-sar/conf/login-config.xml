@@ -1,0 +1,77 @@
+<?xml version='1.0'?>
+	<!--
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		~ JBoss, a division of Red Hat ~ ~ Copyright 2006, Red Hat Middleware,
+		LLC, and individual ~ ~ contributors as indicated by the @authors tag.
+		See the ~ ~ copyright.txt in the distribution for a full listing of ~
+		~ individual contributors. ~ ~ ~ ~ This is free software; you can
+		redistribute it and/or modify it ~ ~ under the terms of the GNU Lesser
+		General Public License as ~ ~ published by the Free Software
+		Foundation; either version 2.1 of ~ ~ the License, or (at your option)
+		any later version. ~ ~ ~ ~ This software is distributed in the hope
+		that it will be useful, ~ ~ but WITHOUT ANY WARRANTY; without even the
+		implied warranty of ~ ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR
+		PURPOSE. See the GNU ~ ~ Lesser General Public License for more
+		details. ~ ~ ~ ~ You should have received a copy of the GNU Lesser
+		General Public ~ ~ License along with this software; if not, write to
+		the Free ~ ~ Software Foundation, Inc., 51 Franklin St, Fifth Floor,
+		Boston, MA ~ ~ 02110-1301 USA, or see the FSF site:
+		http://www.fsf.org. ~
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	-->
+
+<!DOCTYPE policy PUBLIC
+   "-//JBoss//DTD JBOSS Security Config 3.0//EN"
+   "http://www.jboss.org/j2ee/dtd/security_config.dtd">
+<policy>
+	<!-- For the JCR CMS -->
+	<application-policy name="cms">
+		<authentication>
+			<login-module code="org.apache.jackrabbit.core.security.SimpleLoginModule"
+				flag="required" />
+		</authentication>
+	</application-policy>
+
+	<application-policy name="josso">
+		<authentication>
+			<login-module code="org.jboss.portal.identity.sso.josso.JOSSOLoginModule"
+				flag="required">
+				<module-option name="debug">true</module-option>
+				<!--
+					Uncomment this section for LDAP/AD configuration. For more info
+					refer documentation.
+				-->
+				<!--
+					<module-option name="synchronizeIdentity">true</module-option>
+					<module-option name="synchronizeRoles">true</module-option>
+					<module-option name="preserveRoles">true</module-option>
+					<module-option name="additionalRole">Authenticated</module-option>
+					<module-option name="defaultAssignedRole">GWUser</module-option>
+					<module-option
+					name="userModuleJNDIName">java:/portal/UserModule</module-option>
+					<module-option
+					name="roleModuleJNDIName">java:/portal/RoleModule</module-option>
+					<module-option
+					name="membershipModuleJNDIName">java:/portal/MembershipModule</module-option>
+					<module-option
+					name="userProfileModuleJNDIName">java:/portal/UserProfileModule</module-option>
+				-->
+			</login-module>
+		</authentication>
+	</application-policy>
+
+	<application-policy name="portal">
+		<authentication>
+			<login-module code="org.jboss.portal.identity.auth.IdentityLoginModule"
+				flag="required">
+				<module-option name="unauthenticatedIdentity">guest</module-option>
+				<module-option name="userModuleJNDIName">java:/portal/UserModule</module-option>
+				<module-option name="roleModuleJNDIName">java:/portal/RoleModule</module-option>
+				<module-option name="userProfileModuleJNDIName">java:/portal/UserProfileModule</module-option>
+				<module-option name="membershipModuleJNDIName">java:/portal/MembershipModule</module-option>
+				<module-option name="validateUserNameCase">true</module-option>
+				<module-option name="additionalRole">Authenticated</module-option>
+			</login-module>
+		</authentication>
+	</application-policy>
+</policy>

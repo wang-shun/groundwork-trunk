@@ -1,0 +1,114 @@
+#!/bin/sh
+# The above line is useful only if this script is run outside of a
+# native-package context.  In that case, this script should be made
+# executable, and that line would come into play.  However, within a
+# native-package context, it is already known that /bin/sh will be
+# used to run this script, so no shebang line is actually needed.
+
+# Since this script will be run in native-package context without any
+# arguments, the presence of an argument can be taken to mean that it
+# is being run outside of that context.  In that case, we will assume
+# that perhaps a key package might not be in the picture, so we will
+# need to create the gdma home directory ourselves.
+
+print_usage() {
+    echo "usage:  $0 -d"
+    echo "where:  -d means create the gdma home directory"
+}
+
+external_context=0
+homedir_option=
+if [ $# -gt 0 ]; then
+    if [ "$1" = "-d" ]; then
+	external_context=1
+	homedir_option=-m
+    else
+        print_usage
+	exit 1
+    fi
+fi
+
+if [ "`/usr/xpg4/bin/id -u`" != 0 ]; then
+    echo "ERROR:  You must be root to run this script."
+    exit 1
+fi
+
+# GWOSgdma preinstall script
+
+# FIX LATER:
+# In the future, perhaps implement a request script that will ask the
+# adminstrator what UID and GID values to use for the created account,
+# if it does not already exist.  Also note the difference between what
+# is available in a client machine's environment and what is available
+# on the machine from which this patch is being applied, which could
+# be a server which manages a diskless client's files.  That applies
+# to both the gdma UID/GID values and the password locking option.
+
+# If we use the "useradd -m" option to create the gdma user's home
+# directory, then we also need to ensure that useradd can create that
+# directory, by ensuring that all its parent directories already exist.
+if [ $external_context -gt 0 -a ! -d /opt/groundwork/home ]; then
+    mkdir -p /opt/groundwork/home
+fi
+
+# Create the gdma user and group if they do not already exist.
+if /usr/bin/id gdma 1>/dev/null 2>&1; then
+    # The gdma user already exists.  For now, we'll assume
+    # the same is true for the gdma group, without checking.
+    : # do nothing
+else
+    # The gdma user does not exist.  Build it up, in stages.  Use the
+    # home directory expected by our package, and a disabled password.
+    #
+    if /usr/sbin/groupmod gdma 1>/dev/null 2>&1; then
+	: # this group already exists, so we do nothing special here
+    else
+	# Create the gdma group ...
+	echo 'Adding the "gdma" group ...'
+	if /usr/sbin/groupadd gdma; then
+	    : # it worked, so we do nothing special here
+	else
+	    echo 'Cannot create the "gdma" group; aborting!'
+	    # Kill the install right now, before we do some damage
+	    # that we cannot automatically back out later.
+	    exit 1
+	fi
+    fi
+    echo 'Adding the "gdma" user ...'
+    # Then add the user ...
+    if /usr/sbin/useradd -c "GroundWork Agent" -d /opt/groundwork/gdma $homedir_option -e "" -f 0 -g gdma -s /bin/sh gdma; then
+	: # It worked, so we do nothing special at this point, not even create the
+	: # home directory nor set its permissions, as those tasks will be done by
+	: # the key package.  Because of that, and because of the dependency of the
+	: # key package on the base package where the parent directories will also be
+	: # created, we don't use the useradd -m option to create the home directory
+	: # here under Solaris, which is unlike the setup in our Linux GDMA RPM.
+    else
+	echo 'Cannot create the "gdma" user; aborting!'
+	# Kill the install right now, before we do some damage
+	# that we cannot automatically back out later.
+	exit 1
+    fi
+    #
+    echo 'Disabling the "gdma" user'"'"'s password ...'
+    # Then disable the user's password ...
+    case `uname -r` in
+	5.6|5.8|5.9)	passwdlockoption=-l;;
+	5.10|5.11)	passwdlockoption=-N;;
+	*)  echo "========================================================================";
+	    echo "ERROR:  This package has only been ported so far to Solaris 5.6,";
+	    echo "        Solaris 8 through Solaris 10, and OpenSolaris.  Aborting\!";
+	    echo "========================================================================";
+	    exit 1;;
+    esac
+    if /usr/bin/passwd $passwdlockoption gdma; then
+	: # it worked, so we do nothing special here
+    else
+	echo 'Cannot set the "gdma" user password; aborting!'
+	# Kill the install right now, before we do some damage
+	# that we cannot automatically back out later.
+	exit 1
+    fi
+fi
+
+exit 0

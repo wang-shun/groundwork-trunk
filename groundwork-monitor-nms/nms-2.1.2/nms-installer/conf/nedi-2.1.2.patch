@@ -1,0 +1,19 @@
+*** index.php.orig	2009-10-23 16:08:28.000000000 -0700
+--- index.php	2009-10-23 16:09:43.000000000 -0700
+***************
+*** 42,48 ****
+  $_POST = sanitize($_POST);
+  
+  /* GWM: Check user and add if not exist */
+! $remote_user = $_SERVER['REMOTE_USER'];
+  $link   = @DbConnect($dbhost,$dbuser,$dbpass,$dbname); # moved for sso from below
+  if (empty($_POST['user']) && $remote_user) {
+          $passwd = md5( $remote_user );
+--- 42,48 ----
+  $_POST = sanitize($_POST);
+  
+  /* GWM: Check user and add if not exist */
+! $remote_user = substr($_SERVER['QUERY_STRING'],strpos($_SERVER['QUERY_STRING'],"gwuid=")+6, 20);
+  $link   = @DbConnect($dbhost,$dbuser,$dbpass,$dbname); # moved for sso from below
+  if (empty($_POST['user']) && $remote_user) {
+          $passwd = md5( $remote_user );

@@ -1,0 +1,50 @@
+*** noma_2.0.3/etc/Makefile.in.orig	Mon Nov 21 03:25:24 2011
+--- noma_2.0.3/etc/Makefile.in	Wed Aug 29 16:11:46 2012
+***************
+*** 1,6 ****
+--- 1,8 ----
+  SUBST = @abs_top_builddir@/subst.sh
+  INSTALL=@INSTALL@
+  INSTALLOPTS=@INSTALLOPTS@
++ PUBLIC_MODE  = -m 644
++ PRIVATE_MODE = -m 600
+  datarootdir = @datarootdir@
+  sysconfdir = @prefix@/etc
+  prefix = @prefix@
+***************
+*** 8,14 ****
+  
+  all: noma
+  
+! FILES := $(patsubst %.in,%,$(filter-out Makefile.in,$(wildcard *.in)))
+  RELDIR := $(prefix)/$(subst @abs_top_builddir@/,,$(CURDIR))
+  
+  noma: $(FILES)
+--- 10,18 ----
+  
+  all: noma
+  
+! PUBLIC_FILES  := $(patsubst %.in,%,$(wildcard *conf.in))
+! PRIVATE_FILES := $(patsubst %.in,%,$(wildcard *yaml.in))
+! FILES := $(PUBLIC_FILES) $(PRIVATE_FILES)
+  RELDIR := $(prefix)/$(subst @abs_top_builddir@/,,$(CURDIR))
+  
+  noma: $(FILES)
+***************
+*** 21,27 ****
+  
+  install: noma
+  	$(INSTALL) $(INSTALLOPTS) -d $(RELDIR)
+! 	$(INSTALL) $(INSTALLOPTS) -t $(RELDIR) $(FILES)
+  
+  .PHONY: install
+  
+--- 25,32 ----
+  
+  install: noma
+  	$(INSTALL) $(INSTALLOPTS) -d $(RELDIR)
+! 	$(INSTALL) $(INSTALLOPTS) $(PUBLIC_MODE)  -t $(RELDIR) $(PUBLIC_FILES)
+! 	$(INSTALL) $(INSTALLOPTS) $(PRIVATE_MODE) -t $(RELDIR) $(PRIVATE_FILES)
+  
+  .PHONY: install
+  

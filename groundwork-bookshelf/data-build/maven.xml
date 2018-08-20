@@ -1,0 +1,99 @@
+<!--
+$Id$
+GroundWork Monitor - The ultimate data integration framework.
+Copyright (C) 2004-2008 GroundWork Open Source Solutions info@itgroundwork.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+-->
+
+<!--  Main entry point for bookshelf Build
+-->
+
+<project default="allBuild"
+		 xmlns:j="jelly:core"
+		 xmlns:maven="jelly:maven"
+		 xmlns:ant="jelly:ant">
+
+	<goal name='allBuild'>
+		<attainGoal name="prepare" />
+		description="Build the master project and all subprojects">
+		<attainGoal name='data-build.build' />
+	</goal>
+
+	<goal name="allDeploy"
+		description="Deploy the master project and all subprojects">
+		<attainGoal name='data-build.deploy' />
+	</goal>
+
+	<goal name="allClean"
+		description="Clean the master project and all subprojects">
+		<attainGoal name='data-build.clean' />
+	</goal>
+
+	<goal name="data-build.build" description="Builds all components of bookshelf">
+	</goal>
+
+	<goal name="data-build.deploy" description="Deploys all components of bookshelf">
+
+		<mkdir dir="${org.groundwork.deploy.prefix}/docs" />
+		<mkdir dir="${org.groundwork.deploy.prefix}/docs/bookshelf-data" />
+
+		<copy todir="${org.groundwork.deploy.prefix}/docs/bookshelf-data">
+			<fileset dir="${basedir}/../bookshelf-data" includes="**/**"/>
+		</copy>
+	</goal>
+
+	<!-- prepare srcipts and spec file with settings -->
+	<goal name="prepare"
+		description="Generates spec file for Bookshelf">
+
+		<!-- RPM build script -->
+		<copy file="${basedir}/../resources/buildRPM.sh"   todir="../spec" overwrite="true">
+			<filterset begintoken="@" endtoken="@">
+			<filter token="DEPENDENCY"     value="${org.groundwork.rpm.dependencies}"/>
+			<filter token="RELEASE_NUMBER"   value="${org.groundwork.rpm.release.number}"/>
+			<filter token="PREFIX"   value="${org.groundwork.deploy.prefix}"/>
+			<filter token="PACKAGE_NAME" value="${org.groundwork.rpm.package.name}" />
+			<filter token="PACKAGE_VERSION"   value="${org.groundwork.rpm.package.version}"/>
+			<filter token="EXPORT_FILELIST"   value="${org.groundwork.rpm.filelist}"/>
+			<filter token="SPEC_FILE_NAME" value="${org.groundwork.rpm.specfile}" />
+			<filter token="RPM_ROOT" value="${org.groundwork.rpm.root}" />
+			</filterset>
+		</copy>
+
+		<!-- Spec file -->
+		<copy file="${basedir}/../resources/${org.groundwork.rpm.specfile}"   todir="../spec" overwrite="true">
+			<filterset begintoken="@" endtoken="@">
+			<filter token="DEPENDENCY"     value="${org.groundwork.rpm.dependencies}"/>
+			<filter token="RELEASE_NUMBER"   value="${org.groundwork.rpm.release.number}"/>
+			<filter token="PREFIX"   value="${org.groundwork.deploy.prefix}"/>
+			<filter token="PACKAGE_NAME" value="${org.groundwork.rpm.package.name}" />
+			<filter token="PACKAGE_VERSION"   value="${org.groundwork.rpm.package.version}"/>
+			<filter token="EXPORT_FILELIST"   value="${org.groundwork.rpm.filelist}"/>
+			<filter token="SPEC_FILE_NAME" value="${org.groundwork.rpm.specfile}" />
+			</filterset>
+		</copy>
+		
+		<!-- php file -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/migration" />
+		<copy file="${basedir}/../resources/gw-bookshelf-install.php"   
+				todir="${org.groundwork.deploy.prefix}/migration">
+		</copy>
+	</goal>
+
+	<goal name="data-build.clean" 
+		description="Cleans the build and the deployment section of bookshelf">
+		<delete dir="${org.groundwork.deploy.prefix}/docs"/>
+	</goal>
+</project>

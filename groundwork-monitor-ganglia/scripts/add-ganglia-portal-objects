@@ -1,0 +1,234 @@
+#!/bin/bash -e
+
+# add-ganglia-portal-objects
+
+# Copyright (c) 2017 GroundWork, Inc.  All rights reserved.
+
+# Insert elements into the GroundWork Monitor portal navigation structure,
+# to make available new screens for the Ganglia Integration Module.  This
+# script should be run only on GroundWork 7.X.X systems.  It requires the
+# GroundWork server to be up and running.
+
+# ============================================================================
+# This script use GW root user privileges to change portal components.  Make
+# sure the root-account credentials are already validated before calling this
+# script (say, by attempting a UI login using those credentials).  This script
+# does not validate them.  The credentials must be handed to this script in
+# unencrypted form.
+# ============================================================================
+
+print_usage() {
+    echo "usage:  $0 {GW-portal-root-user} {GW-portal-root-password}"
+    echo "where:  GW-portal-root-user      is the user-interface root-account username for"
+    echo "                                 access to the GroundWork portal."
+    echo "        GW-portal-root-password  is the password for that same portal-domain user."
+    echo "                                 If the password contains punctuation characters,"
+    echo "                                 it should be quoted on the command line to block"
+    echo "                                 any unexpected interpretation by the shell."
+}
+
+if [ $# -ne 2 ]; then 
+    print_usage
+    exit 1  
+fi
+
+# The following credentials must be already validated by the caller.
+root_user="$1"
+root_password="$2"
+
+# Figure out the correct protocol to use for the curl calls below.
+if [ "`egrep '^[[:space:]]*secure.access.enabled' /usr/local/groundwork/config/status-viewer.properties | cut -f 2 -d=`" == 'true' ]; then 
+    protocol="https"
+else
+    protocol="http"
+fi
+
+# Create convenient abbreviations for long pathnames, to shorten the later code.
+# Some paths later on we don't shorten, mainly because that makes it easier to
+# copy/paste those commands to execute them outside of this script during testing
+# and development.
+                   gwpath=/usr/local/groundwork
+modify_navigation_objects=$gwpath/core/migration/modify_navigation_objects
+                   tmpdir=$gwpath/tmp
+              gangliapath=$gwpath/ganglia
+      navigation_xml_path=$gangliapath/portal/navigation.xml
+           pages_xml_path=$gangliapath/portal/pages.xml
+      thresholds_xml_path=$gangliapath/portal/navigation-ganglia-thresholds.xml
+     web_servers_xml_path=$gangliapath/portal/navigation-ganglia-web-servers.xml
+
+# Here's how to find out what kinds of operations are allowed, on what URLs,
+# at a given level of the REST call path hierarchy, adjusting the navigation
+# path as desired to probe various parts of the navigation menu hierarchy.
+if false; then
+    /usr/local/groundwork/common/bin/curl --insecure --user "$root_user:$root_password" \
+	$protocol://localhost/rest/private/managed-components/mop/portalsites/classic/navigation/config \
+	| /usr/local/groundwork/common/bin/xmllint --format - > /tmp/config_operations.xml
+fi
+
+# Note:  There are supposedly some command-line MOP tools like "export" and "import" that
+# would allow us to extract and put back JBoss portal site data directly, without going
+# through curl.  But I don't see any such tools provided in our builds.  Perhaps they are
+# only provided in some later release of the JBoss portal stuff.  See
+# https://developer.jboss.org/en/gatein/blog/2012/02/14/gatein-management--cli
+# for more details.
+#
+# There is also the possibility of using an "scp -P 2000" command to do similar work (though
+# that may require earlier deployment of the CLI tooling [gatein-management-cli.war]).  See
+# https://access.redhat.com/documentation/en-US/Red_Hat_JBoss_Portal/6.2/html/Administration_and_Configuration_Guide/chap-Model_Object_for_Portal_MOP_Management_Extension.html#Using_Secure_Copy_Command
+# and
+# https://docs.jboss.org/author/display/GTNPORTAL39/GateIn+Management#GateInManagement-CommandLineInterface
+# for more details.  I have not investigated this in depth.  However, note that the latter
+# document describes some "add-resource" and "remove-resource" operations which might have
+# allowed us to bypass a lot of the work done in our own scripting, had we known about it
+# earlier.  It's not clear, though, whether or how such operations allow fine control over
+# the placement of new nodes in the navigration tree, as we have implemented.
+
+# It's possible to pull just portions of the navigation.xml configuration, as shown below.
+# But the JBoss portal won't accept a file by the name of "config.xml" or "advanced.xml"
+# upon import; it doesn't know what to do with such a file because it doesn't match
+# an expected filename.  So for our purposes, since we're making multiple changes in
+# different parts of the menu structure, it's easiest to just pull out the entire
+# navigation tree and make all of the changes we need to that one file, successively.
+#
+# /usr/local/groundwork/common/bin/curl --insecure --user "$root_user:$root_password" \
+#     $protocol://localhost/rest/private/managed-components/mop/portalsites/classic/navigation/config.xml > /tmp/config.xml
+#
+# /usr/local/groundwork/common/bin/curl --insecure --user "$root_user:$root_password" \
+#     $protocol://localhost/rest/private/managed-components/mop/portalsites/classic/navigation/advanced.xml > /tmp/advanced.xml
+
+echo "Fetching the full JBoss portal site navigation configuration ..."
+/usr/local/groundwork/common/bin/curl --insecure --user "$root_user:$root_password" \
+    $protocol://localhost/rest/private/managed-components/mop/portalsites/classic/navigation.xml > $navigation_xml_path
+
+# Prepare the stuff we will import back into the JBoss portal.  Note that we are careful
+# to first clean up any debris that may have been left behind by previous attempts, so as
+# not to confuse ourselves.
+rm -rf   $tmpdir/portal/*
+mkdir -p $tmpdir/portal/classic
+
+# When we still thought we would be able to make and import independent parts of the
+# navigation tree, we used these commands to plop the output files exactly where they
+# needed to be to be picked up in the zipfile.
+# $modify_navigation_objects /tmp/config.xml     config/END $thresholds_xml_path  $tmpdir/portal/classic/config.xml
+# $modify_navigation_objects /tmp/advanced.xml advanced/END $web_servers_xml_path $tmpdir/portal/classic/advanced.xml
+
+# Save the original navigation tree for comparison purposes, so we can easily see what changes get made.
+if false; then
+    cp -p $navigation_xml_path $navigation_xml_path.orig
+fi
+
+# Make the desired menu changes, while carefully allowing for idempotent operation.
+# The appended "&& true" puts the command in conditional context, thereby unconditionally
+# escaping the effect of the "bash -e" option we run under, while still allowing the exit
+# status of the $modify_navigation_objects script to shine through and be subsequently
+# tested, it being the last foreground command executed if it fails.
+
+echo ""
+echo "Adding navigation-ganglia-thresholds.xml settings to the configuration ..."
+$modify_navigation_objects $navigation_xml_path config/END $thresholds_xml_path $navigation_xml_path && true
+if [ $? -ge 2 ]; then
+    echo "FATAL:  Cannot modify navigation.xml to include navigation-ganglia-thresholds.xml settings."
+    exit 1
+fi
+echo ""
+echo "Adding navigation-ganglia-web-servers.xml settings to the configuration ..."
+$modify_navigation_objects $navigation_xml_path advanced/END $web_servers_xml_path $navigation_xml_path && true
+if [ $? -ge 2 ]; then
+    echo "FATAL:  Cannot modify navigation.xml to include navigation-ganglia-web-servers.xml settings."
+    exit 1
+fi
+
+# Stuff our updated navigation-menu and new-page data into a file tree that the JBoss
+# portal will recognize once we zip it up and send it in for importing.  We don't
+# currently have a modify_page_objects script to add new page objects to a full-site
+# pages.xml file, so we're just adding in a predefined pages.xml file that contains
+# only the new pages we want to add.  That works fine for an import merge operation,
+# as we will use below by default.  If we were deleting any navigation nodes or
+# pages, we would need to have extracted the complete set of existing pages, made our
+# deletions and additions, and put back the complete edited pages.xml file here.
+cp -p $navigation_xml_path $tmpdir/portal/classic/
+cp -p $pages_xml_path      $tmpdir/portal/classic/
+
+# The JBoss portal does not understand a portal/classic/portlet.xml file, so there's
+# no point in trying to stuff it in.  It is, however, already understood in its present
+# location as part of the exploded war-file, so there is no need, either.
+## cp -p ${gangliapath}/WEB-INF/portlet.xml $tmpdir/portal/classic/
+
+# Name the zip-file that we will pass to the JBoss portal.
+portal_objects_file=$tmpdir/ganglia-integration-7.0.0.zip
+
+# Before we go creating the zip-file, we must remove any previous copy.
+# That's because the zip command will alter an existing file instead of
+# creating an entirely new file containing only the files you specify
+# during this run.  Leftovers from some previous run could therefore
+# considerably confuse the situation in this run.
+rm -f $portal_objects_file
+
+# Create the zipfile packaging that JBoss accepts.
+echo ""
+echo "Creating a zipfile of updated setup for uploading to the JBoss portal ..."
+(cd $tmpdir; zip -r $portal_objects_file portal)
+
+# Send the updated portal setup data to the JBoss portal.  This might take a
+# minute or more, so we emit a message saying what's going on.
+#
+# NOTES
+# (1) We use --insecure to avoid cert issues.
+# (2) We could use --noproxy '*' to avoid proxy issues, but it has been claimed that it doesn't
+#     work on SLES 11.  We will need a tech note to deal with proxies.
+# (3) Validation of the --user creds should have been done earlier by the user before running
+#     this script, to ensure that we won't have a failure here.
+# (4) If we need to delete nodes in the navigation tree, not just add them, we would need to
+#     add the "?importMode=overwrite" parameter to the .../mop URL.  Keep in mind that this
+#     would probably wipe out all pages, so you would need to have grabbed all the existing
+#     data and edited in the deletions and additions you want to make, instead of dealing only
+#     with the new data to be added for this add-on integration.  Also, you would want to make
+#     sure you keep around a complete backup of the previously existing portal setup, in case
+#     anything goes wrong during the replacement processing -- and have the reversion process
+#     already worked out and tested.
+#
+echo ""
+echo "Updating the JBoss portal ..."
+curl_output=`/usr/local/groundwork/common/bin/curl --insecure --user "$root_user:$root_password" \
+    -H 'Content-Type: application/zip' --upload-file $portal_objects_file \
+    "$protocol://localhost/rest/private/managed-components/mop"`
+
+# This is unlikely to detect an actual failure, because the return value from the curl
+# command essentially tells whether or not it interacted with the remote side, not whether
+# the remote side experienced a problem with the uploaded data.
+#
+if [ $? -ne 0 ]; then
+    echo "ERROR:  Could not update the JBoss portal site configuration:"
+    echo "        $curl_output"
+    exit 1
+fi
+
+# Here are possible error outputs we have seen in testing, from that last curl command.
+# These are shown here to indicate why we are scanning for the word "failure" below to
+# see if there was some problem.  Logically, we could decode this JSON and look at the
+# one field, but our simple string matching is adequate for now.
+#
+#     {"operationName":"import-resource","failure":"Exception reading data for import."}
+#     {"operationName":"import-resource","failure":"Error during import. Tasks successfully rolled back. Portal should be back to consistent state."}
+#
+# If you do get a failure, look in the foundation/container/jpp/standalone/log/framework.log
+# file to find details.  In particular, look for the related "Caused by" line, which
+# provides the necessary extra detail.
+#
+if [[ $curl_output =~ 'failure' ]]; then
+    echo "ERROR:  Could not update the JBoss portal site configuration:"
+    echo "        $curl_output"
+    # This filtering might catch some other system error that just happened to come along
+    # as we were performing our work, not the one we're looking for.  But it's worth trying,
+    # anyway, as a debugging convenience.
+    fgrep 'Caused by' /usr/local/groundwork/foundation/container/jpp/standalone/log/framework.log | tail -1
+    exit 1
+else
+    # Here we dump out the curl output to make it visible regardless of whether we were
+    # able to detect that an actual error occurred.  We do this because our simplistic
+    # error analysis above might not be comprehensive, and we don't want any completely
+    # silent failures.
+    echo "NOTICE:  Output when updating the JBoss portal site configuration:"
+    echo "         $curl_output"
+fi
+

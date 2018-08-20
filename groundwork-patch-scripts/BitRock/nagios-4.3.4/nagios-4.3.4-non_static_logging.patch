@@ -1,0 +1,31 @@
+--- nagios-4.3.1/base/logging.c.orig	2017-02-23 12:00:40.000000000 -0800
++++ nagios-4.3.1/base/logging.c	2017-03-07 10:51:51.251718780 -0800
+@@ -32,6 +32,9 @@
+ static FILE *debug_file_fp;
+ static FILE *log_fp;
+ 
++/* Establish that this patch is in place. */
++char logging_patch_ident[] = "$LoggingPatchCompileTime: " __TIME__ " on " __DATE__ " (" __FILE__ ") $";
++
+ /******************************************************************/
+ /************************ LOGGING FUNCTIONS ***********************/
+ /******************************************************************/
+@@ -45,7 +48,7 @@
+ 
+ 
+ /* write something to the log file, syslog, and possibly the console */
+-static void write_to_logs_and_console(char *buffer, unsigned long data_type, int display) {
++void write_to_logs_and_console(char *buffer, unsigned long data_type, int display) {
+ 	register int len = 0;
+ 	register int x = 0;
+ 
+--- nagios-4.3.1/include/logging.h.orig	2017-02-23 12:00:40.000000000 -0800
++++ nagios-4.3.1/include/logging.h	2017-03-07 10:51:51.251718780 -0800
+@@ -69,6 +69,7 @@
+ __attribute__((__format__(__printf__, 3, 4)));
+ int log_debug_info(int, int, const char *, ...)
+ __attribute__((__format__(__printf__, 3, 4)));
++void write_to_logs_and_console(char *,unsigned long,int);	/* writes a string to screen and logs */
+ 
+ #ifndef NSCGI
+ int write_to_all_logs(char *, unsigned long);           /* writes a string to main log file and syslog facility */

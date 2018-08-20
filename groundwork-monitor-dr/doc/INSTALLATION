@@ -1,0 +1,314 @@
+This document describes only how to get the Disaster Recovery software
+initially up and running.  It does not cover steps that should be taken
+during either scheduled maintenance or true Disaster Recovery events.
+For that, see the OPERATION document.
+
+----------------------------------------------------------------
+Steps to install the Disaster Recovery software:
+----------------------------------------------------------------
+
+(*) The instructions here assume you have already installed GroundWork Monitor
+    and overlaid it with the GroundWork NMS package, on both your Primary and
+    DR servers.
+
+(*) Make sure that the system time on the Primary and DR systems is continually
+    synchronized.  Typically, this is done using NTP to synchronize to standard
+    Internet time.  Special care must be taken if either side is a VM guest
+    host; see the hypervisor manufacturer's instructions in this regard.
+
+(*) First, fix a bug in the way that one of the NMS tools is started.  On
+    both the Primary and DR servers, in the /etc/init.d/nms-ntop script,
+    change this line:
+
+	$APPEXECUTABLE $APPARGS >/tmp/nms-ntop-internal.out
+
+    to:
+
+	$APPEXECUTABLE $APPARGS >/tmp/nms-ntop-internal.out 2>&1
+
+(*) As a simple security measure, change the ownership of certain scripts that
+    start and stop certain GroundWork applications, on both the Primary and
+    DR systems:
+
+	chown root /usr/local/groundwork/common/scripts/ctl-snmptrapd.sh
+	chown root /usr/local/groundwork/common/scripts/ctl-syslog-ng.sh
+	chown root /usr/local/groundwork/core/services/gwservices
+
+    You should end up with write access only to the root user:
+
+	# ls -l /usr/local/groundwork/common/scripts/ctl-snmptrapd.sh
+	-rwxr-xr-x 1 root nagios 2161 Sep 11  2009 /usr/local/groundwork/common/scripts/ctl-snmptrapd.sh
+	# ls -l /usr/local/groundwork/common/scripts/ctl-syslog-ng.sh
+	-rwxr-xr-x 1 root nagios 1966 Sep 11  2009 /usr/local/groundwork/common/scripts/ctl-syslog-ng.sh
+	# ls -l /usr/local/groundwork/core/services/gwservices
+	-rwxr-xr-x 1 root nagios 8788 Feb 26 09:44 /usr/local/groundwork/core/services/gwservices
+
+    (The /etc/init.d/nms-ntop script, also run under "sudo" as noted in the
+    next step, should already have writable-to-root-only permissions.)
+
+(*) Use visudo to add the following lines to the end of the /etc/sudoers
+    file on both the Primary and DR systems, substituting the respective
+    hostname for "MYSERVERNAME":
+
+	## Allow the nagios user to start and stop its own processes,
+	## and to do so from scripts.
+	Defaults:nagios !requiretty, listpw=always, verifypw=always
+	nagios MYSERVERNAME=(root) NOPASSWD: \
+	    /usr/local/groundwork/common/scripts/ctl-snmptrapd.sh start, \
+	    /usr/local/groundwork/common/scripts/ctl-snmptrapd.sh stop, \
+	    /usr/local/groundwork/common/scripts/ctl-syslog-ng.sh start, \
+	    /usr/local/groundwork/common/scripts/ctl-syslog-ng.sh stop, \
+	    /usr/local/groundwork/core/services/gwservices start, \
+	    /usr/local/groundwork/core/services/gwservices stop, \
+	    /etc/init.d/nms-ntop start, \
+	    /etc/init.d/nms-ntop stop
+
+    Note:  If you copy/paste those lines from this document, double-check
+    the content afterward.  Linux copy/paste is broken in that it sometimes
+    adds extra spaces at the ends of pasted lines, and the lines above that
+    end with a backslash must, well, end with a backslash.
+
+(*) The GroundWork copy of MySQL must be up and running on a given machine
+    before installing the RPM on that machine, because the RPM install
+    scripting makes a simple adjustment to the GWCollageDB database.
+
+(*) If you are running a GroundWork 6.0 or 6.0.1 system, make the following
+    change to /usr/local/groundwork/core/monarch/lib/MonarchLocks.pm on both
+    Primary and DR servers:
+
+	27c27
+	< use warnings;
+	---
+	> #use warnings;
+
+    This will suppress certain Perl warnings which are not significant.
+
+(*) On each system (both Primary and DR server), install the provided RPM,
+    using a command similar to this:
+
+	rpm -Uvh groundwork-disaster-recovery-0.1.0-16018.el5.x86_64.rpm
+
+(*) After the RPM is installed, bounce gwservices on each server to make sure
+    it picks up a change the RPM makes to the GWCollageDB.ApplicationType
+    table:
+
+        /sbin/service groundwork restart gwservices
+
+(*) Edit the replication configuration file:
+
+	/usr/local/groundwork/replication/config/replication.conf
+
+    and make adjustments as needed.  The following values, in particular,
+    will need to be customized for your site:
+
+	primary-server
+	secondary-server
+
+    Review the sync-period, sync-phase, cleanup-period, and cleanup-phase
+    settings for all the configured applications and databases which will be
+    replicated, to make sure they reflect the frequency and times at which
+    synchronization and cleanup is desired.  Note that the times specified
+    for such scheduling will be interpreted in local time on each machine.
+    Thus if the Primary and DR systems are in different time zones, "03:00"
+    on each machine will actually occur at different times.  Take that into
+    account as you review the scheduling of replication actions.
+
+    After all the other changes are made to this file, go back up to the
+    top and change the enable-processing setting from no to yes.
+
+(*) Make sure the port numbers selected in the replication.conf config file:
+
+	primary-command-port
+	secondary-command-port
+	primary-heartbeat-port
+	secondary-heartbeat-port
+
+    are correctly configured in your firewalls.  The command ports should be
+    open only to incoming connections from the same machine (i.e., localhost),
+    not from an outside machine.  The heartbeat ports should be open only to
+    incoming connections from the opposing Primary or DR server.
+
+    Also in your firewall setup, open the standard ssh port between the
+    Primary and DR servers.
+
+(*) On each system (both Primary and DR server), set up ssh keys for the
+    nagios user to allow passwordless logins for this account between
+    these two systems.  This setup will be used for both replication and
+    cross-monitoring.  To complete the setup, manually ssh as nagios from
+    each machine to the other, and also from each machine to itself (using
+    its hostname, not "localhost", as the remote machine name).  In that
+    regard, you should also use the fully qualified hostname, as otherwise
+    ssh might just turn the unqualified hostname into a reference to
+    localhost and not actually perform the setup you are expecting.
+
+(*) The Replication Engine will copy the Nagios configuration verbatim
+    between the Master and Slave systems.  So even though the meaning of
+    "localhost" would be very different on the Primary and DR systems, the
+    Replication Engine will not transform a {localhost, DR} set of hosts
+    in the configuration on the Primary system to a {Primary, localhost}
+    set of hosts on the DR system.
+
+    To construct a workable Nagios configuration which is completely
+    portable between the two systems, we must dispense with monitoring
+    "localhost" services locally, drop the "localhost" host entirely from
+    the configuration, and instead use the {Primary, DR} set of hosts.
+    All services on both of these machines must be monitored via ssh instead
+    of locally.  This way, exactly the same configuration bits will work on
+    either side.
+
+    Services for monitoring a GroundWork Monitor server in this way are
+    available in the service-profile-ssh-groundwork-server.xml service profile.
+    Import this service profile in the Configuration -> Profiles -> Profile
+    Importer screen, and follow the Bookshelf instructions under:
+
+	GROUNDWORK PROFILES > SSH Profiles > SSH GroundWork Server
+
+    for additional steps that must be taken to make this work.  (On each of
+    the Primary and DR servers, create a symlink to the libexec directory,
+    rather than copying the whole thing.)  Then, in the configuration on
+    the Primary system, create both of the Primary and DR hosts.  Assign and
+    apply this service profile to both of the Primary and DR hosts.  Finally,
+    delete the "localhost" host.
+
+(*) A service-profile-disaster-recovery.xml service profile was installed
+    by the RPM.  Import it from the Configuration -> Profiles -> Profile
+    importer screen, on the Primary system.  It will create a "replication"
+    service, which runs a "check_replication" command via ssh.  In the
+    configuration on the Primary system, create an instance of the
+    "replication" service on each of the Primary and DR hosts.
+
+(*) Perform a Commit operation on the Primary, so the revised configuration
+    is established and running.  This will be what gets replicated to the
+    DR system.
+
+(*) A cron job was installed by the RPM that will attempt to start the
+    replication engine every 5 minutes if it is found to be down.  Wait
+    the requisite time and then look at the log file to make sure it is
+    running smoothly.
+
+	/usr/local/groundwork/replication/logs/replication_state_engine.log
+
+(*) As the nagios user, run the "recover" program to set up the Primary
+    and DR systems with their respective initial Master and Slave
+    configurations.  This program is your central point of interaction
+    with the replication engine, providing visibility into its internal
+    states and allowing control over its dynamic actions.
+
+	/usr/local/groundwork/replication/bin/recover
+
+    "help", and "help" followed by a command name, are the ways to find out
+    how to operate this interface.  In particular, the following commands
+    are useful during initial setup:
+
+    status heartbeat
+	Shows whether communication is taking place between the Primary
+	and DR replication engines.
+
+    status config
+	Shows which system has Master Configuration Authority.
+
+    status notify
+	Shows which system has Notification Authority, and how it is
+	currently being controlled.
+
+    config release
+	Run this on the DR system so it does not start life thinking it
+	is in charge of configuration changes.  Verify with "status config",
+	which should show "no" in the Authority column for the DR system.
+
+    config grab
+	Run this on the Primary system so it knows it is initially in
+	charge of configuration changes.  Verify with "status config", which
+	should show "yes" in the Authority column for the Primary system.
+
+    notify dynamic
+	Run this on both Primary and DR systems.  Having both sides under
+	dynamic Notification Authority Control is the standard mode of
+	operation, which generally reduces the need to manually grab or
+	release Notification Authority Control thereafter.  Verify with
+	"status notify", which should show "dynamic" in the Control column
+	for both systems.
+
+    To stop this interface, use either the "quit" or "exit" command, or
+    your defined EOF control character (typically Ctrl-D).
+
+    Note that a single command can be given on the "recover" command line,
+    or a series of newline-delimited commands can be fed into its standard
+    input stream, in case interactive use is not desired for a quick result
+    or for scripting purposes.  For example:
+
+	recover status notify
+
+(*) At this point, we recommend running a forced synchronization operation,
+    to verify that it will work and to resolve any issues that appear.
+    Per the detailed instructions in the OPERATION guide, run these commands
+    on the DR system:
+
+	nagios@secondary % recover
+	Command: sync all app 
+	Command: status all local  # repeat until syncs are done
+	Command: sync db monarch cacti nedi
+	Command: status all local  # repeat until syncs are done
+	Command: sync db GWCollageDB
+	Command: status all local  # repeat until syncs are done
+	Command: sync db jbossportal
+	Command: status all local  # repeat until syncs are done
+	Command: quit
+
+(*) Look at the Event Console to verify that you are receiving messages
+    there from the replication engine.
+
+(*) The Nagios configuration in GroundWork Monitor should be set to have
+    notifications enabled on the Primary system and disabled on the DR system.
+    These represent default states that may be temporarily established
+    immediately after Nagios is bounced after a Commit operation (though
+    typically the setting in the Nagios state retention file will rule then
+    instead).  The Disaster Recovery Replication Engine will re-assert its
+    control shortly thereafter, enabling or disabling notifications on each
+    side as calculated by the regular heartbeat analysis.
+
+(*) After a suitable period for the system to settle in, verify that the
+    "replication" service on localhost is producing an OK status.
+
+(*) SNMP trap processing will occur independently on the Primary and DR
+    servers.  So insofar as possible, your SNMP devices which create such
+    traps should be configured to forward them to both servers.  If that
+    is not possible (i.e., a device only supports one target address), a
+    virtual IP address should be used, pointing to some kind of load
+    balancer that can forward copies of the SNMP traps to both servers.
+
+----------------------------------------------------------------
+Replication Tuning
+----------------------------------------------------------------
+
+FIX THIS:  a future version of these instructions will include some advice
+about adjusting replication action timeouts, depending on the size of the
+customer configuration, the machine resources available, and the transmission
+bandwidth allocated between the Primary and DR systems
+
+----------------------------------------------------------------
+Special notes for system upgrades:
+----------------------------------------------------------------
+
+(*) Once the Disaster Recovery software is in place, special care must be
+    taken when upgrading the version of GroundWork Monitor, because the
+    database schemas might change between releases.  Taking a snapshot of
+    a database on one side and deploying it on the other might result in
+    a non-working system if the changes are not transparently supported in
+    a differing version of GroundWork Monitor.  Therefore, to upgrade the
+    GW Monitor release, the following procedure is recommended, to upgrade
+    both sides in tandem:
+
+    (+) Shut down replication on both sides.
+    (+) Save the /usr/local/groundwork/replication/config/replication.conf
+	file on each side, in some location outside the /usr/local/groundwork/
+	tree so there is no danger of loss during the upgrade.
+    (+) Uninstall the DR RPM on each side:
+	    rpm -e groundwork-disaster-recovery
+    (+) Upgrade the GW Monitor release on both sides, following
+	whatever upgrade instructions come with the new release.
+    (+) Re-install the DR RPM on each side, following the full
+	instructions above.
+    (+) Compare the replication.conf file you previously saved with the
+        one installed by the DR RPM, and make adjustments as needed.
+

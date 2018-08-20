@@ -1,0 +1,81 @@
+--- nagios-plugins-1.4.13/configure	2008-09-25 01:33:24.000000000 -0700
++++ nagios-plugins-1.4.13_mod/configure	2009-06-03 01:51:13.000000000 -0700
+@@ -916,6 +916,7 @@
+ PATH_TO_PING6
+ PATH_TO_NSLOOKUP
+ PATH_TO_UPTIME
++PATH_TO_NTPDATE
+ PATH_TO_RPCINFO
+ PATH_TO_LMSTAT
+ PATH_TO_SMBCLIENT
+@@ -26579,6 +26580,55 @@
+ #define PATH_TO_RPCINFO "$PATH_TO_RPCINFO"
+ _ACEOF
+ 
++# Extract the first word of "ntpdate", so it can be a program name with args.
++set dummy ntpdate; ac_word=$2
++echo "$as_me:$LINENO: checking for $ac_word" >&5
++echo $ECHO_N "checking for $ac_word... $ECHO_C" >&6
++if test "${ac_cv_path_PATH_TO_NTPDATE+set}" = set; then
++  echo $ECHO_N "(cached) $ECHO_C" >&6
++else
++  case $PATH_TO_NTPDATE in
++  [\\/]* | ?:[\\/]*)
++  ac_cv_path_PATH_TO_NTPDATE="$PATH_TO_NTPDATE" # Let the user override the test with a path.
++  ;;
++  *)
++  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
++for as_dir in $PATH
++do
++  IFS=$as_save_IFS
++  test -z "$as_dir" && as_dir=.
++  for ac_exec_ext in '' $ac_executable_extensions; do
++  if $as_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
++    ac_cv_path_PATH_TO_NTPDATE="$as_dir/$ac_word$ac_exec_ext"
++    echo "$as_me:$LINENO: found $as_dir/$ac_word$ac_exec_ext" >&5
++    break 2
++  fi
++done
++done
++ 
++  ;;
++esac
++fi
++PATH_TO_NTPDATE=$ac_cv_path_PATH_TO_NTPDATE
++ 
++if test -n "$PATH_TO_NTPDATE"; then
++  echo "$as_me:$LINENO: result: $PATH_TO_NTPDATE" >&5
++echo "${ECHO_T}$PATH_TO_NTPDATE" >&6
++else
++  echo "$as_me:$LINENO: result: no" >&5
++echo "${ECHO_T}no" >&6
++fi
++
++# Check whether --with-ntpdate_command was given.
++if test "${with_ntpdate_command+set}" = set; then
++  withval=$with_ntpdate_command; PATH_TO_NTPDATE=$withval
++fi
++ 
++cat >>confdefs.h <<_ACEOF
++#define PATH_TO_NTPDATE "$PATH_TO_NTPDATE"
++_ACEOF
+ 
+ # Extract the first word of "lmstat", so it can be a program name with args.
+ set dummy lmstat; ac_word=$2
+@@ -47996,6 +48046,7 @@
+ PATH_TO_PING6!$PATH_TO_PING6$ac_delim
+ PATH_TO_NSLOOKUP!$PATH_TO_NSLOOKUP$ac_delim
+ PATH_TO_UPTIME!$PATH_TO_UPTIME$ac_delim
++PATH_TO_NTPDATE!$PATH_TO_NTPDATE$ac_delim
+ PATH_TO_RPCINFO!$PATH_TO_RPCINFO$ac_delim
+ PATH_TO_LMSTAT!$PATH_TO_LMSTAT$ac_delim
+ PATH_TO_SMBCLIENT!$PATH_TO_SMBCLIENT$ac_delim
+@@ -48048,7 +48099,7 @@
+ GNULIB_FLOORF!$GNULIB_FLOORF$ac_delim
+ _ACEOF
+ 
+-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 97; then
++  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 98; then
+     break
+   elif $ac_last_try; then
+     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5

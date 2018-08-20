@@ -1,0 +1,19 @@
+#!/bin/sh
+#
+# Copyright 2016 GroundWork Open Source, Inc. ("GroundWork")
+# All rights reserved.
+#
+# Script for Supervise : NeDi Feeder
+
+# Sleep for 30 seconds before startup.  This helps prevent a tight loop
+# if the startup should fail repeatedly, say because the configuration
+# file is not yet set up for localized operation.
+sleep 30
+
+# Use this command if you wish to suppress accumulation of
+# log data in the core/services/feeder-nedi/log/main/log file.
+# exec /usr/local/groundwork/common/bin/setuidgid nagios /usr/local/groundwork/foundation/feeder/nedi_feeder.pl >> /dev/null 2>&1
+#
+# This command can be useful if this feeder produces some log output not
+# otherwise captured in a known named logfile specific to this one daemon.
+exec /usr/local/groundwork/common/bin/setuidgid nagios /usr/local/groundwork/foundation/feeder/nedi_feeder.pl

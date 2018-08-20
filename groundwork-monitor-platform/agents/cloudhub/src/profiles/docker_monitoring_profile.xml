@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vema-monitoring>
+    <profileType>docker</profileType>
+    <hypervisor>
+        <metric name="memory.usage"    description="Memory usage in bytes" monitored="false"  graphed="false" warningThreshold="104857600" criticalThreshold="524288000" />
+        <metric name="cpu.usage.total" description="CPU usage percentage for Docker engine" monitored="true" graphed="true" warningThreshold="75" criticalThreshold="90" />
+        <metric name="syn.memory.usage"
+                description="Memory usage in mega bytes"
+                monitored="true"  graphed="true"
+                warningThreshold="4096" criticalThreshold="8192"
+                computeType="synthetic"
+                expression="GW:MB2(memory.usage)"
+                format="%.0f"
+        />
+    </hypervisor>
+    <vm>
+        <metric name="cpu.usage.total"                description="CPU usage percentage per container"           monitored="true" graphed="true" warningThreshold="75" criticalThreshold="90" />
+        <metric name="memory.usage"                  description="Memory usage in bytes"       monitored="false"  graphed="false"  warningThreshold="2048000" criticalThreshold="4092000" />
+        <metric name="memory.working_set"            description="Hot memory usage"            monitored="false"  graphed="false"  warningThreshold="2048000" criticalThreshold="4092000" />
+        <metric name="network.rx_packets"            description="Network received packets"    monitored="true"  graphed="true"  warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="network.rx_errors"             description="Network receiving errors"    monitored="false" graphed="false" warningThreshold="50" criticalThreshold="100" />
+        <metric name="network.rx_dropped"              description="Network receiving drops"     monitored="false" graphed="false" warningThreshold="50" criticalThreshold="100" />
+        <metric name="network.tx_packets"            description="Network transmitted package" monitored="true"  graphed="true"  warningThreshold="-1" criticalThreshold="-1" />
+        <metric name="network.tx_errors"             description="Network transmission errors" monitored="false" graphed="false" warningThreshold="50" criticalThreshold="100" />
+        <metric name="network.tx_dropped"              description="Network transmission drops"  monitored="false" graphed="false" warningThreshold="50" criticalThreshold="100" />
+
+        <metric name="syn.memory.usage"
+                description="Memory usage in mega bytes"
+                monitored="true"  graphed="true"
+                warningThreshold="2048" criticalThreshold="4096"
+                computeType="synthetic"
+                expression="GW:MB2(memory.usage)"
+                format="%.0f"
+        />
+        <metric name="syn.memory.working_set"
+                description="Hot memory usage Mb"
+                monitored="true"  graphed="true"
+                warningThreshold="2048" criticalThreshold="4096"
+                computeType="synthetic"
+                expression="GW:MB2(memory.working_set)"
+                format="%.0f"
+        />
+    </vm>
+    <excludes>
+        <exclude>cpu.load</exclude>
+    </excludes>
+</vema-monitoring>

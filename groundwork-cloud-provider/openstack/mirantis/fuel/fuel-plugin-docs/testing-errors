@@ -1,0 +1,92 @@
+While creating an environment, got an ERROR (non-discovered) node (d7:8e);
+have no idea how to figure out what failed, and how to clear it.  It did
+seem to get cleared when I assigned it some role and deployed the changes.
+
+For a new environment, configure at least:
+
+1 Controller node
+1 Storage - Cinder node
+1 Telemetry - MongoDB node
+1 Compute node
+
+
+Initial parallel deploy of 5 nodes starts about 12:03.
+12:21 ubuntu is installed on 5 nodes
+installing openstack on telemetry node first, then on controller.
+groundwork finished installing at 13:16
+
+deploy of new cluster starts at 13:56.
+14:13 ubuntu is installed on all machines,
+14:13 fuel plugin is copied to groundwork machine,
+openstack starts on telemetry machine;
+14:16 openstack done on telemetry, starting on groundwork;
+14:17 openstack done on groundwork ("READY" even though the gw
+    plugin is not installed on the node), starting on controller;
+15:10 groundwork fully deployed
+
+17:14 pending deletion of gw node
+
+new environment, without gw node:
+17:31 begin cluster deployment
+18:29 done installing openstack on controller; running on compute and storage nodes
+18:33 storage openstack done; still installing openstack on compute node
+18:41 install of openstack on the compute node failed, resulting in ERROR status in the node listing
+BAD NEWS:  a plugin developer needs to know exactly what logs or other evidence to capture when this sort of failure happens,
+to track it down and get it fixed; it would not be acceptable to suffer random failures like this in a production system
+
+Here's one sample message, among many:
+2016-07-12 01:41:11 ERR (/Stage[main]/Ceilometer::Client/Package[python-ceilometerclient]/ensure)
+    Could not resolve 'mirror.fuel-infra.org'
+
+19:00 compute node re-deployed, completely
+
+first attempt to enable the fuel plugin in an already-deployed environment failed; second attempt succeeded
+
+looking at Fuel Master ERROR messages for RPC Consumer shows lots of problems; this is typical, and does not inspire confidence, but is probably not related to the fuel plugin enablement failure, due to an out-of-date timestamp
+
+2016-07-11 19:02:47	ERROR	[7fa4feffd740] (receiverd) Traceback (most recent call last):
+  File "/usr/lib/python2.7/site-packages/nailgun/rpc/receiverd.py", line 57, in consume_msg
+    callback(**body["args"])
+  File "/usr/lib/python2.7/site-packages/nailgun/rpc/receiver.py", line 1178, in check_repositories_resp
+    failed_urls.update(n['out'].get('failed_urls', []))
+AttributeError: 'unicode' object has no attribute 'get'
+
+19:10 deploy begins of fresh GW node added to an existing deployed environment
+19:13 ubuntu is installed; then within a minute, installing openstack on both gw and telemetry nodes
+19:15 openstack done on gw and telemetry, both marked READY (though plugin not yet installed on gw;
+    installing openstack on fuel master
+19:17 openstack done on controller, running on compute and storage nodes (why???)
+19:18 all nodes marked READY; gw plugin install begins (as seen by the gw installer scripting
+    running on the node itself), but gw node still displays as READY even while this is ongoing,
+    and Deploying progress bar is shown as 100%, so both forms of status are highly misleading
+19:27 gw install completes
+
+need nuclear-launch-code protections against gw node deletion
+
+Test "Attempt plugin install with corrupted GroundWork installer":
+
+    Running transaction
+      Installing : fuel-plugin-groundwork-monitor-7.1-7.1.0-1.noarch                                                1/1 
+    NOTICE:  installer is /tmp/groundworkenterprise-7.1.0-br391-gw2842-linux-64-installer.run
+    ERROR:  The GroundWork installer fails sha256 checksum verification.
+    warning: %post(fuel-plugin-groundwork-monitor-7.1-7.1.0-1.noarch) scriptlet failed, exit status 1
+    Non-fatal POSTIN scriptlet failure in rpm package fuel-plugin-groundwork-monitor-7.1-7.1.0-1.noarch
+      Verifying  : fuel-plugin-groundwork-monitor-7.1-7.1.0-1.noarch                                                1/1 
+
+    Installed:
+      fuel-plugin-groundwork-monitor-7.1.noarch 0:7.1.0-1                                                                                   
+
+    Complete!
+    Plugin /tmp/fuel-plugin-groundwork-monitor-7.1-7.1.0-1.noarch.rpm was successfully installed.
+
+Yet in spite of this, the fuel plugin REMAINS INSTALLED; the
+post-install failure is NOT being flagged by the Fuel Plugin
+processing as denoting a failure, so it claims a success, and does
+not back out the installed RPM.  To see why:
+
+    [root@fuel tmp]# rpm -V fuel-plugin-groundwork-monitor-7.1-7.1.0-1.noarch
+    WARNING:  The GroundWork Monitor BitRock installer is not present.
+    [root@fuel tmp]# echo $?
+    0
+
+So somehow we need to turn the non-fatal post-install failure into a fatal failure.

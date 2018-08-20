@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<ice:inputHidden id="event_Portlet__IpHddn"
+			value="#{eventListBean.dataTableBean.eventHiddenField}"></ice:inputHidden>
+
+		<!-- panel group render when message is set true -->
+		<ice:panelGroup rendered="#{eventListBean.dataTableBean.message}"
+			id="event_Portlet_panelsgrpError">
+			<ice:column id="event_Portlet_columnError"
+				rendered="#{eventListBean.dataTableBean.error}">
+				<ui:include src="/jsp/error.jspx">
+					<ui:param name="errorMessage"
+						value="#{eventListBean.dataTableBean.errorMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:column id="event_Portlet_columninfo"
+				rendered="#{eventListBean.dataTableBean.info}">
+				<ui:include src="/jsp/info.jspx">
+					<ui:param name="infoMessage"
+						value="#{eventListBean.dataTableBean.infoMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:commandButton id="event_Portlet_cmdRetryNow"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{eventListBean.reloadPage}">
+			</ice:commandButton>
+		</ice:panelGroup>
+		<ice:panelGroup rendered="#{!eventListBean.dataTableBean.message}"
+			id="event_Portlet_panelsgrpError1">
+			<div id="diveventPortlet" class="portlet_margin">
+			<table id="tbl_outer_eventPortlet" width="100%" border="0"
+				cellspacing="0" cellpadding="0">
+				<tr>
+					<td class="pad2952">
+					<table id="tbl_inner_eventPortlet" width="100%" border="0"
+						cellspacing="0" cellpadding="0">
+						<tr>
+							<td class="padbottom4">
+
+							<div class="gen_div_left">
+							<table border="0" cellspacing="0" cellpadding="0px">
+								<tr>
+									<td>
+									<div class="gen_div"><ice:commandButton
+										actionListener="#{eventMessageSelectBean.toggleAllSelected}"
+										id="cmdSelectAll"
+										value="#{eventMessageSelectBean.selectAllButtonText}"
+										style="height:20px; font-weight:bold;" rendered="#{userRoleBean.userInAdminOrOperatorRole}">
+									</ice:commandButton></div>
+									</td>
+									<td class="#{userRoleBean.userInAdminOrOperatorRole == true ? 'events_actionBtn' : '' }"><ice:menuBar id="menu"
+										orientation="horizontal" displayOnClick="true" rendered="#{userRoleBean.userInAdminOrOperatorRole}">
+										<ice:menuItems value="#{eventMenuActionBean.menuModel}"/>
+									</ice:menuBar></td>
+									<td>
+									<div class="gen_div" style="padding-left: 9px;"><ice:commandButton
+										id="cmdPauseIncomingEvents"
+										value="#{eventFreezeBean.freezeButtonText}"
+										actionListener="#{eventFreezeBean.toggleButton}"
+										style="height:20px; font-weight:bold;">
+									</ice:commandButton></div>
+									</td>
+								</tr>
+							</table>
+
+							</div>
+							</td>
+						</tr>
+						<tr>
+							<td>
+							<div class="gen_div" id="divTotalEventID"><ice:dataPaginator
+								id="sgtotalcountinfo" for="servicegrouptableID"
+								rowsCountVar="rowsCount"
+								displayedRowsCountVar="displayedRowsCountVar"
+								firstRowIndexVar="firstRowIndex" lastRowIndexVar="lastRowIndex"
+								pageCountVar="pageCount" pageIndexVar="pageIndex">
+								<ice:outputFormat styleClass="iceOutTxt"
+									value="#{message['com_groundwork_portal_statusviewer_Event_total_txt']} = {0}">
+									<f:param value="#{rowsCount}" />
+									<f:param value="#{displayedRowsCountVar}" />
+								</ice:outputFormat>
+
+							</ice:dataPaginator></div>
+							</td>
+						</tr>
+						<tr>
+							<td class="padbottom10"><ice:panelGroup
+								id="pnl_horizontal_Scroll_bar"
+								styleClass="#{eventListBean.dataTableBean.styleClass}">
+
+								<ice:dataTable id="servicegrouptableID" styleClass="iceDatTbl_typB"
+									rowClasses="iceDatTblRow1_typB,iceDatTblRow2_typB"
+									value="#{eventListBean.currentDataTableBean}"
+									binding="#{eventListBean.dataTableBean.sgEventDataTable}"
+									var="event" headerClass="iceDatTblColHdr1_typB"
+									columnClasses="iceDatTblCol1_typB"
+									sortColumn="#{eventListBean.dataTableBean.sortColumnName}"
+									sortAscending="#{eventListBean.dataTableBean.ascending}"
+									style="width:100%">
+								</ice:dataTable>
+
+							</ice:panelGroup></td>
+						</tr>
+						<tr>
+							<td colspan="2" class="txtcenter">
+							<div align="center"><ice:dataPaginator
+								id="servicegrouppaginator" for="servicegrouptableID" fastStep="5"
+								pageCountVar="pageCount" pageIndexVar="pageIndex"
+								paginator="true" paginatorMaxPages="20" rowsCountVar="rowsCount"
+								displayedRowsCountVar="displayedRowsCountVar"
+								renderFacetsIfSinglePage="false"
+								binding="#{eventListBean.dataTableBean.sgDataPaginator}"
+								actionListener="#{eventMenuActionBean.paginatorClicked}">
+								<ice:outputFormat id="event_Portlet_outputFrmtRowCnt"
+									value="{1} of {0}">
+									<f:param value="#{rowsCount}" />
+									<f:param value="#{displayedRowsCountVar}" />
+								</ice:outputFormat>
+								<f:facet name="first">
+									<ice:graphicImage id="event_Portlet_imgFirstPg"
+										url="/images/arrow-first.gif" style="border:none;"
+										title="First Page" />
+								</f:facet>
+								<f:facet name="last">
+									<ice:graphicImage id="event_Portlet_imgLastPg"
+										url="/images/arrow-last.gif" style="border:none;"
+										title="Last Page" />
+								</f:facet>
+								<f:facet name="previous">
+									<ice:graphicImage id="event_Portlet_imgPrevPg"
+										url="/images/arrow-previous.gif" style="border:none;"
+										title="Previous Page" />
+								</f:facet>
+								<f:facet name="next">
+									<ice:graphicImage id="event_Portlet_imgNxtPg"
+										url="/images/arrow-next.gif" style="border:none;"
+										title="Next Page" />
+								</f:facet>
+								<f:facet name="fastforward">
+									<ice:graphicImage id="event_Portlet_imgFastFrwd"
+										url="/images/arrow-ff.gif" style="border:none;"
+										title="Fast Forward" />
+								</f:facet>
+								<f:facet name="fastrewind">
+									<ice:graphicImage id="event_Portlet_imgFastBckwrds"
+										url="/images/arrow-fr.gif" style="border:none;"
+										title="Fast Backwards" />
+								</f:facet>
+
+							</ice:dataPaginator></div>
+							</td>
+						</tr>
+					</table>
+					</td>
+				</tr>
+			</table>
+			</div>
+		</ice:panelGroup>
+	</ui:define>
+</ui:composition>

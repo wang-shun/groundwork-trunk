@@ -1,0 +1,88 @@
+These instructions refer to the groundwork-nsca-bulk package, version 2.0.1.
+
+Here's how to install and use the bulk_nsca_submit.pl script, to aggregate
+child-server service results to be sent to the parent monitoring server:
+
+1.  The script gets installed on each child server where you wish to have the
+    bulk-submit capability available.
+
+    If you install from a tarball, place bulk_nsca_submit.pl into
+    /usr/local/groundwork/nagios/eventhandlers/ on the child server.  Then:
+
+	chown nagios:nagios /usr/local/groundwork/nagios/eventhandlers/bulk_nsca_submit.pl
+	chmod 0755          /usr/local/groundwork/nagios/eventhandlers/bulk_nsca_submit.pl
+
+    If you install from an RPM instead (the preferred method), this will be
+    done for you.
+
+2.  Within GroundWork Monitor, under Configuration -> Commands -> New,
+    create a Nagios command to invoke the bulk-submit script:
+
+        Click the "user2" check-box (next to "/usr/local/groundwork/nagios/eventhandlers").
+	Press "Next >>" at the bottom of the screen.
+	Fill in the form:
+
+	    Name:          bulk_nsca_submit
+	    Type:          other
+	    Command line:  $USER2$/bulk_nsca_submit.pl w.x.y.z 5667 10
+
+		(where:
+		    w.x.y.z is the IP address of the parent GroundWork server
+		    5667 is the NSCA port on the parent server
+		    10 (seconds) is the send_nsca timeout
+		)
+
+	Click "Add".
+
+3.  Set up the child GroundWork server configuration as follows.  Navigate
+    to Configuration -> Groups -> Groups -> {select a group} -> 'Nagios cfg',
+    for your chosen child server's group.  Click 'Save and Next >>' at the
+    bottom of the page twice, which takes you to a frame titled
+    '{groupname} Nagios Configuration Page 3'.
+
+        Uncheck 'Obsess over services'.
+	Uncheck 'Obsess over hosts'.
+	Check 'Process performance data'.
+	Set 'Host perfdata command' to NULL (blank).
+	Set 'Service perfdata command' to NULL (blank).
+	Set 'Host performance data file' to NULL (empty).
+	Set 'Service performance data file' to
+	    '/usr/local/groundwork/nagios/eventhandlers/check_data.log'
+	Set 'Host performance data file template' to NULL (empty).
+	Set 'Service performance data file template' to
+	    '$HOSTNAME$\t$SERVICEDESC$\t$SERVICESTATEID$\t$SERVICEOUTPUT$|$SERVICEPERFDATA$'.
+	Set 'Host performance data file mode' to 'a'.
+	Set 'Service performance data file mode' to 'a'.
+	Set 'Host performance data file processing interval' to '0'.
+	Set 'Service performance data file processing interval' to '30'.
+	Set 'Host performance data file processing command' to NULL (blank).
+	Set 'Service performance data file processing command to 'bulk_nsca_submit'.
+
+    Click 'Save and Next >>'.
+
+4.  When using the stock NSCA 2.4 that comes with GW 5.1.3 or earlier, update
+    /usr/local/groundwork/etc/nsca.cfg on the parent GroundWork server to allow
+    connections from the child (the "allowed_hosts" option).  When using NSCA
+    2.7.2, either supplied as a special replacement for use with GW 5.1.3 or in
+    a later GW release, you must instead modify the system files to allow the
+    "nsca" service to be accessed from each child server:
+
+	In /etc/services, literally as shown:
+	    nsca            5667/tcp        # Nagios NSCA
+
+	In /etc/hosts.allow (subtitute your local IP address(es)):
+	    nsca : child1_ip_address child2_ip_address
+
+	In /etc/hosts.deny, literally as shown:
+	    nsca : ALL
+
+5.  Commit the config changes to the child GroundWork server.
+
+6.  Look at /usr/local/groundwork/nagios/var/log/bulk_nsca_submit.log
+    for debug output by editing the script and setting debug=1 (for simple
+    log output) for debug=2 (for full, voluminous log output).  Turn this
+    off after verifying operation and that messages are making it to the
+    parent.
+
+7.  Possibly, tune the number of messages to be submitted with each
+    invocation of send_nsca.  Initially, it's coded in the script as 200.

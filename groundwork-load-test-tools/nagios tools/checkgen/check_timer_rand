@@ -1,0 +1,32 @@
+#!/bin/bash
+number=0   
+while [ "$number" -le 0 ]
+do
+  number=$RANDOM
+  let "number %= 5"  
+done
+let "stat=$number-1"
+number=0
+while [ "$number" -le 0 ]
+do
+  number=$RANDOM
+  let "number %= 11"
+done
+let "time=$number-1"
+sleep $time
+
+state="OK"
+case "$stat" in 
+ "0" ) state="OK"
+;;
+ "1" ) state="Warning"
+;;
+ "2" ) state="Critical"
+;;
+ * ) state="Unknown"
+;;
+esac
+
+
+echo "$state $1 | time=$time"
+exit $stat

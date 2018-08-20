@@ -1,0 +1,83 @@
+#!/bin/bash -e
+
+# monarch.capture
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+# Here we try to disable monarch scripts.  Unfortunately, some components (such as
+# monarch_discover.cgi) are run repeatedly in an Ajaxified loop that will go wild
+# if the script suddenly has execute permissions stripped while a discovery is
+# underway in someone's browser.  This makes it much more difficult to disable
+# them.  For the time being, we won't even try.
+
+block_monarch_scripts() {
+    /bin/chmod 644 /usr/local/groundwork/core/monarch/cgi-bin/monarch/monarch.cgi
+    /bin/chmod 644 /usr/local/groundwork/core/monarch/cgi-bin/monarch/monarch_auto.cgi
+    # /bin/chmod 644 /usr/local/groundwork/core/monarch/cgi-bin/monarch/monarch_discover.cgi
+}
+
+unblock_monarch_scripts() {
+    /bin/chmod 755 /usr/local/groundwork/core/monarch/cgi-bin/monarch/monarch.cgi
+    /bin/chmod 755 /usr/local/groundwork/core/monarch/cgi-bin/monarch/monarch_auto.cgi
+    # /bin/chmod 755 /usr/local/groundwork/core/monarch/cgi-bin/monarch/monarch_discover.cgi
+}
+
+# Blocking future scripts is not enough.  We also need to quiesce any existing running
+# copies of those programs.  That includes scripts that they may have internally called,
+# as it is not enough to kill the controlling parent script if the child stays running.
+#
+# Unfortunately, killing unparented, asynchronously-run jobs like this is inherently dangerous.
+# We might detect that the job is running, and then it might disappear immediately and its
+# PID could get get re-used right away by some other job, before we get a chance to send the
+# intended process a signal.  The signal would then be received by the wrong process.  For
+# the moment we will live with this danger, but we need to find some other way to implement
+# process interlocking that doesn't involve such race conditions.
+
+kill_monarch_scripts() {
+    # It's probably not worth trying to kill the monarch scripts.  They typically
+    # run from the UI for just a short while, so by the time we construct the
+    # command to kill a given instance, it should be gone anyway.  And sending a
+    # signal to a transient job is probably more dangerous than letting it run to
+    # completion, since the signal might find some other target.
+    :
+}
+
+# {staged_path} {replica_machine} {replica_user} {replica_path} {working_path} {copy_pattern} ...
+
+if [ $# -lt 6 ]; then
+    program=`basename $0`
+    echo "usage:  $program {staged_path} {replica_machine} {replica_user} {replica_path} {working_path} {copy_pattern} ..."
+    exit 1
+fi
+
+staged_path="$1"
+replica_machine="$2"
+replica_user="$3"
+replica_path="$4"
+working_path="$5"
+shift 5
+copy_patterns="$*"
+
+script_directory=`dirname $0`
+scripts_path="$script_directory/../../../scripts"
+
+# Stop any application program that might alter the content of the application files.  That
+# includes any daemons, any cron jobs, and any other periodically-run programs.  Each must
+# either be brought down completely, or at least have its contents flushed and be prevented
+# from making further alterations for the time being, or be blocked from starting.  If it is
+# a program that is run periodically that might now be in progress, it must either be stopped
+# or we must wait for its current cycle to complete (with some timeout before killing it anyway).
+trap "unblock_monarch_scripts" EXIT
+block_monarch_scripts
+kill_monarch_scripts
+
+# FIX THIS:  make sure multiple copy patterns make it through this intact
+$scripts_path/make_staged_app "$working_path" "$staged_path" $copy_patterns
+
+# Start or unblock the application programs stopped or blocked above.  Reverse the actions we
+# took above to stop the application, so that daemons will begin anew or pick up again from
+# where they were paused, cron jobs get unblocked, and any other related programs may run again.
+unblock_monarch_scripts
+
+$scripts_path/make_replica_app "$staged_path" "$replica_machine" "$replica_user" "$replica_path"

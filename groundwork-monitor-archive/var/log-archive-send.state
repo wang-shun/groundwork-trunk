@@ -1,0 +1,29 @@
+# This file contains the persistent-state information that must be carried
+# across invocations of the log-archive-send.pl script, to efficiently
+# determine the time periods to use for the next run.
+
+# Each value listed here represents one of the most recent successful runs
+# of the archiving scripts.  The value must be of the form:
+#
+#     "run_start_timestamp => data_start_timestamp .. data_end_timestamp"
+#
+# where each timestamp must be expressed in the local timezone of the
+# source script machine, in the form "YYYY-mm-DD hh:mm:ss".
+#
+# By convention, the rows are sorted by increasing run_start_timestamp,
+# to make it easier to read this file, but that is not strictly necessary.
+#
+# The specific values listed in those lines are:
+#
+# run_start_timestamp:
+#     A timestamp captured when this cycle of the send script began operation.
+#
+# data_start_timestamp, data_end_timestamp:
+#     The data-capture limits used during this archiving run.  By convention,
+#     the start and end time-of-day is always 00:00:00 (midnight), but the
+#     stored format allows for more-general timestamp specification.  The
+#     selected data archived in this run obeys the mathematical relationship:
+#
+#         data_start_timestamp <= data_timestamp < data_end_timestamp
+#
+successful_archiving_run = "2000-01-02 00:30:00 => 2000-01-01 00:00:00 .. 2000-01-02 00:00:00"

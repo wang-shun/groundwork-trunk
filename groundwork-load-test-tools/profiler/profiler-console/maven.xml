@@ -1,0 +1,73 @@
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2008  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+-->
+
+<project default="java:jar"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+	
+	<goal name="allClean" >
+			<attainGoal name="clean" />
+		    <attainGoal name="profiler.library.clean" />
+		
+			<delete file="/usr/local/groundwork/foundation/container/webapps/groundwork-profiler.war" />
+							
+		</goal>
+	
+	<goal name="build">
+		<!-- Build libraary -->
+		<attainGoal name="profiler.library" />
+		
+		<!-- Build war file -->
+		<attainGoal name="war" />
+		
+	</goal>
+	
+	<goal name="deploy">
+		<!-- Copy war -->
+		<copy todir="/usr/local/groundwork/foundation/container/webapps" overwrite="true" >
+			<fileset dir="${basedir}/target/" includes="*.war" excludes="*svn" />	
+		</copy>
+		
+		<!-- Context descriptors -->
+		<copy file="${basedir}/resources/groundwork-profiler.xml" 
+			tofile="/usr/local/groundwork/foundation/container/contexts/groundwork-profiler.xml" overwrite="true" />
+	</goal>
+	
+	<goal name='profiler.library' >
+		<!-- Build Profiler Library -->
+		<maven:reactor
+		  	       basedir="${basedir}/.."
+		  	       includes="project.xml"
+		  	       goals="build"
+		  	       banner="Building Profiler libraries"
+		  	       ignoreFailures="false" />
+
+	</goal>
+	
+	<goal name='profiler.library.clean' >
+		<maven:reactor
+				  	       basedir="${basedir}/.."
+				  	       includes="project.xml"
+				  	       goals="allClean"
+				  	       banner="Cleaning Profiler libraries"
+				  	       ignoreFailures="true" />
+	</goal>
+
+</project>

@@ -1,0 +1,53 @@
+#!/bin/bash -e
+
+# make_ready_obj
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+PATH=/bin:/usr/bin
+
+print_usage() {
+    echo "usage:  make_ready_obj {replica_path} {ready_path} {erase_path}"
+}
+
+if [ $# -ne 3 ]; then
+    print_usage
+    exit 1
+fi
+
+replica_path="$1"
+ready_path="$2"
+erase_path="$3"
+
+if [[ ! ("$replica_path" =~ '/replica$') ]]; then
+    echo 'ERROR:  replica_path must end in "/replica"'
+    exit 1
+fi
+
+if [[ ! ("$ready_path" =~ '/ready$') ]]; then
+    echo 'ERROR:  ready_path must end in "/ready"'
+    exit 1
+fi
+
+if [[ ! ("$erase_path" =~ '/erase$') ]]; then
+    echo 'ERROR:  erase_path must end in "/erase"'
+    exit 1
+fi
+
+if [ -d $ready_path ]; then
+    mkdir -p $erase_path
+
+    # I wish there was a do...while construct in the shell.
+    datetime=`/bin/date +%F.%H_%M_%S`
+    # Avoid unexpected but maybe possible collisions.
+    while [ -d $erase_path/$datetime ]
+    do
+	sleep 2
+	datetime=`/bin/date +%F.%H_%M_%S`
+    done
+
+    mv $ready_path $erase_path/$datetime
+fi
+mv $replica_path $ready_path
+mkdir $replica_path

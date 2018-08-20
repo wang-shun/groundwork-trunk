@@ -1,0 +1,143 @@
+Here is a list of errors we have seen in testing.
+
+not ok 6 - check empty new servicegroup addition preconditions
+#   Failed test 'check empty new servicegroup addition preconditions'
+#   at CommitTests.pm line 451.
+Bail out!  Test failed.  BAIL OUT!.
+
+    Check for that last line.
+
+# Loading gwcollagedb (this may take awhile) ...
+not ok 4 - load the gwcollagedb database
+#   Failed test 'load the gwcollagedb database'
+#   at CommitTests.pm line 436.
+# ERROR:  Error(s) occurred during processing; see below.
+# Loading the "gwcollagedb" database on montana.groundwork.groundworkopensource.com ...
+# commit-pre-test-gwcollagedb.sql:266: ERROR:  must be owner of relation hibernate_sequence
+# commit-pre-test-gwcollagedb.sql:299: ERROR:  must be owner of function public.substring_index
+# commit-pre-test-gwcollagedb.sql:346: ERROR:  function "substring_index" already exists with same argument types
+# commit-pre-test-gwcollagedb.sql:910: ERROR:  relation "hibernate_sequence" already exists
+# commit-pre-test-gwcollagedb.sql:2618: ERROR:  permission denied for sequence hibernate_sequence
+Bail out!  Test failed.  BAIL OUT!.
+
+    Check for that last line.
+
+not ok 15 - check hostgroup deletion preconditions
+#   Failed test 'check hostgroup deletion preconditions'
+#   at CommitTests.pm line 451.
+Bail out!  Test failed.  BAIL OUT!.
+
+    Check for that last line.
+
+not ok 29 - check servicegroup membership deletion with empty result preconditions
+#   Failed test 'check servicegroup membership deletion with empty result preconditions'
+#   at CommitTests.pm line 451.
+Bail out!  Test failed.  BAIL OUT!.
+
+    Check for that last line.
+
+# Loading gwcollagedb (this may take awhile) ...
+not ok 4 - load the gwcollagedb database
+#   Failed test 'load the gwcollagedb database'
+#   at CommitTests.pm line 436.
+# ERROR:  Error(s) occurred during processing; see below.
+# Loading the "gwcollagedb" database on montana.groundwork.groundworkopensource.com ...
+# commit-pre-test-gwcollagedb.sql:13: ERROR:  constraint "servicestatusproperty_ibfk_2" of relation "servicestatusproperty" does not exist
+# commit-pre-test-gwcollagedb.sql:14: ERROR:  constraint "servicestatusproperty_ibfk_1" of relation "servicestatusproperty" does not exist
+# commit-pre-test-gwcollagedb.sql:15: ERROR:  constraint "servicestatus_ibfk_6" of relation "servicestatus" does not exist
+# commit-pre-test-gwcollagedb.sql:16: ERROR:  constraint "servicestatus_ibfk_5" of relation "servicestatus" does not exist
+# commit-pre-test-gwcollagedb.sql:17: ERROR:  constraint "servicestatus_ibfk_4" of relation "servicestatus" does not exist
+# commit-pre-test-gwcollagedb.sql:18: ERROR:  constraint "servicestatus_ibfk_3" of relation "servicestatus" does not exist
+# commit-pre-test-gwcollagedb.sql:19: ERROR:  constraint "servicestatus_ibfk_2" of relation "servicestatus" does not exist
+# commit-pre-test-gwcollagedb.sql:20: ERROR:  constraint "servicestatus_ibfk_1" of relation "servicestatus" does not exist
+# commit-pre-test-gwcollagedb.sql:21: ERROR:  constraint "plugin_ibfk_1" of relation "plugin" does not exist
+# commit-pre-test-gwcollagedb.sql:22: ERROR:  constraint "monitorlist_ibfk_2" of relation "monitorlist" does not exist
+Bail out!  Test failed.  BAIL OUT!.
+
+    This resulted from a previously interrupted load of gwcollagedb, which left
+    the database partially constructed.  The next load tries to drop stuff and
+    we get these "ERROR" messages, which by default we don't treat any differently
+    than serious errors.  The solution is to simply re-try the verification,
+    without any other changes.
+
+not ok 58 - check servicegroup membership deletion with non empty result analysis
+#   Failed test 'check servicegroup membership deletion with non empty result analysis'
+#   at CommitTests.pm line 472.
+#   (in CommitTests->run_commit_operation)
+Bail out!  Auditing analysis failed, so no Commit operation is being attempted.
+
+    This occurred after several different analysis errors, not just this last one.
+    But the last one itself is bad enough, so that's all we need to report.
+
+(lots of preceding stuff ...)
+  'statistics' => {
+    'cascade_deleted_hostgroup_members' => 18,
+    'cascade_deleted_servicegroup_members' => 7,
+    'cascade_deleted_services' => 16,
+    'cleared_hostgroup_members' => 20,
+    'cleared_servicegroup_members' => 2
+  }
+};
+Bail out!  Auditing analysis failed, so no Commit operation is being attempted.
+
+    This gets ugly, now that we have a dump enabled for analysis failures (this generates
+    excessive output if you mainly want to just find out the last test that failed).
+    Probably we should make that an option instead.
+
+not ok 4 - load the gwcollagedb database
+#   Failed test 'load the gwcollagedb database'
+#   at CommitTests.pm line 451.
+# ERROR:  Error(s) occurred during processing; see below.
+# Loading the "gwcollagedb" database on montana.groundwork.groundworkopensource.com ...
+# commit-pre-test-gwcollagedb.sql:58: ERROR:  deadlock detected
+# DETAIL:  Process 19139 waits for AccessExclusiveLock on relation 140846 of database 21604; blocked by process 18144.
+# Process 18144 waits for AccessShareLock on relation 140854 of database 21604; blocked by process 19139.
+# HINT:  See server log for query details.
+# commit-pre-test-gwcollagedb.sql:170: ERROR:  cannot drop constraint category_pkey on table category because other objects depend on it
+# DETAIL:  constraint categoryentity_ibfk_1 on table categoryentity depends on index category_pkey
+# HINT:  Use DROP ... CASCADE to drop the dependent objects too.
+Bail out!  Test failed.  BAIL OUT!.
+
+    Most likely, gwservices was running when the testing tried to load gwcollagedb.
+    To fix, make sure the test harness is configured to start and stop gwservices,
+    or stop gwservices manually before running the test.
+
+Error: select * from time_periods (execute on disconnected handle at /usr/local/groundwork/core/monarch/lib/MonarchStorProc.pm line 973.
+) called from /usr/local/groundwork/core/monarch/lib/MonarchFile.pm line 273.
+not ok 63 - run_commit_operation died (Can't use string ("Error: execute on disconnected h") as an ARRAY ref while "strict refs" in use at /usr/local/groundwork/core/monarch/lib/MonarchFile.pm line 275.)
+#   Failed test 'run_commit_operation died (Can't use string ("Error: execute on disconnected h") as an ARRAY ref while "strict refs" in use at /usr/local/groundwork/core/monarch/lib/MonarchFile.pm line 275.)'
+#   at verify line 55.
+#   (in CommitTests->run_commit_operation)
+ok 64 # skip run_commit_operation died
+ok 65 # skip run_commit_operation died
+ok 66 # skip run_commit_operation died
+ok 67 # skip run_commit_operation died
+ok 68 # skip run_commit_operation died
+ok 69 # skip run_commit_operation died
+ok 70 # skip run_commit_operation died
+ok 71 # skip run_commit_operation died
+ok 72 # skip run_commit_operation died
+ok 73 # skip run_commit_operation died
+ok 74 # skip run_commit_operation died
+ok 75 # skip run_commit_operation died
+ok 76 # skip run_commit_operation died
+ok 77 # skip run_commit_operation died
+ok 78 # skip run_commit_operation died
+ok 79 # skip run_commit_operation died
+ok 80 # skip run_commit_operation died
+ok 81 # skip run_commit_operation died
+ok 82 # skip run_commit_operation died
+ok 83 # skip run_commit_operation died
+ok 84 # skip run_commit_operation died
+ok 85 # skip run_commit_operation died
+ok 86 # skip run_commit_operation died
+ok 87 # skip run_commit_operation died
+ok 88 # skip run_commit_operation died
+ok 89 # skip run_commit_operation died
+ok 90 # skip run_commit_operation died
+ok 91 - close connection to the monarch database
+ok 92 - close connection to the gwcollagedb database
+# Looks like you failed 1 test of 92.
+
+    Commit failed.  But notice the long list of trailing tests that were skipped,
+    which are not really what we want to report out.

@@ -1,0 +1,22 @@
+# logrotate configuration for GroundWork JIRA integration files
+
+# JIRA integration log output
+#
+# /usr/local/groundwork/jira/logs/oneway.log
+# /usr/local/groundwork/jira/logs/twoway.log
+# are configured in:
+# /usr/local/groundwork/jira/config/oneway_helpdesk.conf
+# /usr/local/groundwork/jira/config/twoway_helpdesk.conf
+# respectively.  Both the oneway_helpdesk.pl and twoway_helpdesk.pl scripts
+# open and close their logfile in append mode around every message written
+# to their respective logfile, so there is no issue with synchronizing log
+# rotation actions here with the operations of the scripts.
+#
+/usr/local/groundwork/jira/logs/*.log {
+    daily
+    missingok
+    notifempty
+    delaycompress
+    nocreate
+    rotate 1
+}

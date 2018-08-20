@@ -1,0 +1,145 @@
+
+README for show-similar-hosts.sql version 1.0 of 2016-10-17
+-----------------------------------------------------------
+
+The purpose of this script is to display hosts with similar hostnames,
+differing only in lettercase, and also any so-called "duplicate" services
+which are assigned to more than one host in a set of similar hostnames.
+These must all be cleaned up before an upgrade from GMMEE 7.0.2-SP02 or
+earlier to GWMEE 7.0.2-SP03, 7.1.0, or later releases.  The cleanup can be
+handled automatically by the companion merge-similar-hosts.sql script, or by
+manual work to delete and/or rename specific hosts outside of these scripts.
+
+If any of the issues found here are left unresolved before an upgrade that
+crosses the indicated release boundary, the processing of such similar 
+hosts would be handled differently than would be done by the companion
+merge-similar-hosts.sql script.  A different host may be chosen to retain, 
+and any remaining duplicate services on similar hosts will seriously
+interfere with the upgrade, silently leaving the system in a broken state.
+
+
+HOW TO RUN THIS SCRIPT
+----------------------
+
+This script probes the gwcollagedb database but makes no changes to it.  It
+is to be run from a terminal window while logged in as the nagios user, with
+the following command (assuming that a copy of this script has been placed
+into the /tmp directory):
+
+/usr/local/groundwork/postgresql/bin/psql -U collage -d gwcollagedb -f /tmp/show-similar-hosts.sql > /tmp/similar_hosts
+
+We recommend capturing the output in a file as shown, because the data
+displayed may be voluminuous.
+
+
+PRINCIPLES OF OPERATION
+-----------------------
+
+The processing both here and in the companion merge-similar-hosts.sql
+script is implemented to look for similar hostnames that differ only in
+lettercase.  The ultimate goal is to merge all the services on those
+hosts down to one set of services on just one of those hosts, and to
+discard the other hosts in the set of similar hosts.
+
+There are different possible criteria by which we could chose the
+hostname to retain in each set of similar hostnames.  We could choose:
+
+  * The host which was first added to the system.
+  * The host which was last added to the system.
+  * The host whose status was first checked and reported.
+  * The host whose status was most recently checked.
+  * The most lowercase-looking hostname.
+  * The most uppercase-looking hostname.
+
+There is no perfect rule.  So in practice, we choose to retain the host
+which was first added to the system (as indicated by a smaller hostid
+value), since that choice will tend to retain the most historical event
+data.  This rule is simple, it is immune to regular event-data deletion
+and race conditions in status-check times, and it breaks all possible
+ties.
+
+A similar decision (namely, what to keep and what to discard) must
+be made at the service level, if within a set of similar hosts, some
+services are duplicated on multiple hosts.  In such a situation, we must
+choose one of the duplicate host services to retain, and the rest will
+be discarded.  Then regardless of whether any duplicate services needed
+to be so discarded, all the remaining services on the similar hosts will
+be merged onto the one retained host.
+
+For duplicate services on multiple hosts in a set of similar hosts, we
+use the following rules to choose:
+
+  * If the duplicate service already resides on the retained host,
+    retain that copy of the service, and discard all the other copies.
+    This rule causes the least disruption overall in keeping synchrony
+    with the archive database and other adjustments.
+  * Otherwise, retain the service with the smaller servicestatusid
+    value, and discard all the other copies.  As with the similar-host
+    retention rule, this rule for services is simple, it is immune to
+    regular event-data deletion and race conditions in status-check
+    times, and it breaks all possible ties.
+
+The gwcollagedb-database upgrade scripting makes different choices if
+it encounters similar hostnames, and it does not correctly handle the
+situation of duplicate services within a set of similar hostnames.  The
+aim here is to resolve all of the similar hosts and duplicate services
+before the upgrade scripting is run, so its decisions and limitations
+are never encountered.
+
+The adjustments in this script only affect the gwcollagedb database.
+These changes can disrupt synchrony between the gwcollagedb database and
+the archive_gwcollagedb database, causing daily log archiving to fail.
+It is therefore necessary that after you run the merge-similar-hosts.sql
+script, you run the conflicting_archive_service_rows.pl script as well.
+That is done in two passes, to first show and then remove rows in the
+archive_gwcollagedb database that are now out of synchrony with the
+gwcollagedb database.
+
+If the rules we have outlined above do not suit your needs, you can
+instead make manual adjustments to the system to rename or delete
+hosts, and to delete certain duplicate services, before running the
+merge-similar-hosts.sql script.  You can use the output from the
+show-similar-hosts.sql script as a guide to the conflicts that must be
+addressed.  If you take that route, you must still run these scripts
+afterward, to guarantee that there are no residual host or service
+collisions, before running the upgrade.
+
+These scripts make direct adjustments to the databases.  As such, the
+merge-similar-hosts.sql and conflicting_archive_service_rows.pl scripts
+must only be run when the system is completely down (except for the
+PostgreSQL database), so various feeders cannot interfere with the
+cleanup actions performed by these scripts.  You can run an early pass
+of such cleanup well before the upgrade.  But you must still run the
+show-similar-hosts.sql script immediately before the upgrade, to prove
+that nothing in the system has subsequently created additional host or
+service collisions.
+
+
+USING THE OUTPUT FROM show-similar-hosts.sql
+--------------------------------------------
+
+The output of this script details the extent of similar-host and
+duplicate-service collisions in the present gwcollagedb database.
+To that end, we show two charts, the first chart just showing the
+sets of similar hosts, and the second chart detailing any duplicate
+services within the sets of similar hosts.  If you run the companion
+merge-gwcollagedb-duplicates.sql script to clean up similar hosts,
+that processing will delete the old_hostname hosts and retain the
+new_hostname hosts, as listed in the first chart.  If those are
+not your preferred choices of hostnames to retain, you will need
+to delete the undesired host(s) manually.  This will at the same
+time remove all current record of the services attached to the
+undesired hosts.  Depending on the situation, host renaming might be
+an alternative solution.  If the affected hosts are managed by Nagios,
+the Configuration screens will be involved in this work.  Otherwise,
+you must first use whatever tools are required to get GroundWork to
+stop monitoring those hosts by the undesired names, and then remove the
+historical data for those same hosts completely from the gwcollagedb
+database, using SQL statements like this:
+
+    DELETE FROM host WHERE hostname='undesired_hostname':
+
+However, that action alone will not preserve services attached to the
+undesired host by moving them to the desired host, as the merge script
+and the upgrade processing both do.
+

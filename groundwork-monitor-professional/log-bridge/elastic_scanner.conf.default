@@ -1,0 +1,183 @@
+# elastic_scanner.properties
+#
+# Copyright (c) 2014 GroundWork, Inc. (www.gwos.com).  All rights reserved.
+# Use of this software is subject to commercial license terms.
+
+######################################################################
+## GroundWork events to elasticsearch configuration values
+######################################################################
+# The values specified here are used to control the behavior of 
+# the elastic_scanner.pl script.
+
+# This option is turned off in the default configuration.
+# The app will work when this option is set to yes.
+enable_processing = no
+
+# Foundation application type under which to submit results
+# NOTE eventually this should be changed to something other than LOGSTASH, e.g., EVENTS_TO_ES
+app_type = LOGSTASH
+
+# How long between checks for new events ie Foundation logmessages
+system_indicator_check_frequency = 15
+
+# log how long each cycle is taking
+# [ yes | no ]
+cycle_timings = yes
+
+# for stats and health etc of the app
+health_hostname = elastic_scanner
+health_hostgroup = LogBridgeHealth
+
+# A list of feeder-specific statistical services to be created.
+# The feeder will automatically have <feeder_name>_health created,
+# and then will create these services.  Each service in here needs
+# actual feeder code to update it.
+<feeder_services>
+    # servicename = service description
+    cycle_elapsed_time = Time taken to process last cycle
+    events_retrieved_on_last_cycle = count of events retrieved on last cycle
+    events_sent_on_last_cycle = count of events sent on last cycle
+    events_retrieved_per_minute   = Events retrieved per minute
+    events_sent_per_minute   = Events sent per minute
+    test_events_service = For event generation events
+</feeder_services>
+
+# Foundation RAPID / REST API settings
+ws_client_config_file = "/usr/local/groundwork/config/ws_client.properties"
+api_timeout = 30
+RAPID_debug = no
+
+# Bundling options that determine how many to bundle up in one REST API call for CRUD ops
+host_bundle_size          = 30
+hostgroup_bundle_size     = 30
+service_bundle_size       = 50
+events_bundle_size        = 50
+notifications_bundle_size = 30
+
+# License checking options
+# Note : these go away in more recent versions of GW where the REST API supports license checking methods.
+# Note : license checking via add_check is currently not working in 702
+# Setting license_host = local will cause the connector check locally on this server for licensing
+# Setting license_host = remote will cause the connector check on monitoring_server using ssh
+monitoring_server = gw-parent # used for remote license checking
+license_check = remote
+# The Unix user that the feeder will used to ssh to monitor_server to perform a license check
+# ie to do the license check,  feeder will do : ssh <license_check_user>@<gwmaster> <license check command>
+license_check_user = nagios
+
+# Notification and event options
+# Enable/disable notifications for event host and service state changes.
+post_notifications = no # leave this set to no for logbridge child
+# Enable/disable creation of events in Foundation for event host and service state changes.
+# Leave this to yes unless instructed otherwise by GroundWork.
+post_events = yes
+
+# Feeder Unique Identifier options
+# Globally unique identifier for this feeder instance.
+# This is used for setting the value of AgentId which is field that is attached to host, hostgroup and service objects
+# in Foundation that are/were created by this feeder.
+# When the feeder runs, if the value of guid is set to 'undefined', then the feeder will
+# write a new value in this config file for this option.
+# Don't change this unless otherwise instructed by GroundWork.
+guid = undefined
+
+# Auditing options
+# The feeder can produce an audit trail of the following things :
+#  - creation of new hosts, new hostgroups, new services
+#  - deletion of hosts, hostgroups, services
+# On each feeder cycle, if any of the above things happens, Foundation audit events will be created.
+# There is a slight overhead in performance for auditing.
+auditing = yes
+
+# Set this to true if the feeder should send in host status updates, false if not.
+# Note that the feeder will always create a host with a status from the feeder regardless of this setting.
+update_hosts_statuses = yes
+
+
+# ----------------------------------------------------------------
+# Logger settings
+# ----------------------------------------------------------------
+
+# Where the log file is to be written.
+logfile = /usr/local/groundwork/logs/elastic_scanner.log
+
+# There are six predefined log levels within the Log4perl package:  FATAL,  
+# ERROR, WARN, INFO, DEBUG, and TRACE (in descending priority).  We define
+# two custom levels at the application level to form the full useful set:
+# FATAL, ERROR, WARN, NOTICE, STATS, INFO, DEBUG, and TRACE.  To see an
+# individual message appear, your configured logging level here has to at
+# least match the priority of that logging message in the code.
+#
+# WARNING:  Setting this value any higher than "INFO" will generate HUGELY
+# voluminous amounts of data, which will slow down your system and soon fill
+# your disk.  DO NOT DO SO in production for any significant length of time.
+GW_RAPID_log_level = "WARN"
+
+# The application-level logging level is set separately from the logging 
+# level used by the GW::RAPID package, to avoid drowning in low-level
+# detail from the GW::RAPID module. 
+#Elastic_Scanner_log_level = "INFO"
+Elastic_Scanner_log_level = "INFO"
+
+# Application-level logging configuration, for that portion of the logging
+# which is currently handled by the Log4perl package.
+#
+# As recommended in the Log4perl documentation, we DO NOT try to mirror Perl
+# package names here as logging category names.  A more sensible classification
+# of categories provides more intelligent control across applications.
+log4perl_config = <<EOF
+
+# Use this to send everything from FATAL through $GW_RAPID_log_level
+# (for messages from the GW::RAPID package) or $Elastic_Scanner_log_level
+# (for messages from the application level) to the logfile.
+log4perl.category.GW.RAPID.module = $GW_RAPID_log_level, Elastic_Scanner_Logfile
+log4perl.category.Elastic.Scanner = $Elastic_Scanner_log_level, Elastic_Scanner_Logfile
+#log4perl.category.Elastic.Scanner = $Elastic_Scanner_log_level, Elastic_Scanner_Logfile, Screen
+
+log4perl.appender.Elastic_Scanner_Logfile          = Log::Log4perl::Appender::File
+log4perl.appender.Elastic_Scanner_Logfile.filename = $logfile
+log4perl.appender.Elastic_Scanner_Logfile.utf8     = 0
+log4perl.appender.Elastic_Scanner_Logfile.layout   = Log::Log4perl::Layout::PatternLayout
+log4perl.appender.Elastic_Scanner_Logfile.layout.ConversionPattern = [%d{EEE MMM dd HH:mm:ss yyyy}] %m%n
+log4perl.appender.Screen         = Log::Log4perl::Appender::Screen
+log4perl.appender.Screen.stderr  = 0
+log4perl.appender.Screen.layout  = Log::Log4perl::Layout::PatternLayout
+log4perl.appender.Screen.layout.ConversionPattern = %m %n
+
+EOF
+
+# ----------------------------------------------------------------
+# Elasticsearch API settings (where results are going to be sent to etc)
+# ----------------------------------------------------------------
+
+# elasticsearch node - if you want to specify more than one, just add another line
+elasticsearch_nodes = localhost:9200 
+#elasticsearch_nodes = another.node.wow:9200
+
+# Include an origin property in the event doc which will be set to this value.
+# If this is empty, then hostname will be used.
+origin = ""
+
+# ----------------------------------------------------------------
+# Miscellaneous options
+# ----------------------------------------------------------------
+
+# for testing, number_of_test_events will be generated at the start of 
+# each cycle. Setting this to zero turns off test mode.
+number_of_test_events = 0
+
+# batch size is used for two things :
+# 1. the max number of events to read from logmessage table
+# 2. the max number of events to send to elasticseach in bulk
+# 'max' because if there are gaps in the sequence of log message ids,
+# then the batch size could be smaller than the batch_size setting
+batch_size = 25
+
+# A record is kept of what the id of the last processed event was.
+# This is kept in a service attached to the health hostname above.
+# The first time that service gets created, if this option true, then
+# all events in the logmessage table will be processed. If this option is false,
+# then the first cycle will simply set this record to be the last event of the table.
+# Another way of putting it is: initially process all records , or just from now on.
+initially_process_everything = no
+

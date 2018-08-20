@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+	Copyright (C) 2011 GroundWork Open Source, Inc. (GroundWork)
+	All rights reserved. This program is free software; you can
+	redistribute it and/or modify it under the terms of the GNU
+	General Public License version 2 as published by the Free
+	Software Foundation. This program is distributed in the hope
+	that it will be useful, but WITHOUT ANY WARRANTY; without even
+	the implied warranty of MERCHANTABILITY or FITNESS FOR A
+	PARTICULAR PURPOSE. See the GNU General Public License for more
+	details. You should have received a copy of the GNU General
+	Public License along with this program; if not, write to the
+	Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+	Boston, MA 02110-1301, USA.
+-->
+
+<deployments>
+    <deployment>
+	<parent-ref>groundwork-monitor</parent-ref>
+	<if-exists>keep</if-exists>
+	<page>
+	    <page-name>ganglia-integration</page-name>
+	    <if-exists>overwrite</if-exists>
+	    <display-name xml:lang="en">Ganglia</display-name>
+	    <properties>
+		<property>
+		    <name>order</name>
+		    <value>6</value>
+		</property>
+		<property>
+		    <name>layout.id</name>
+		    <value>1column</value>
+		</property>
+	    </properties>
+	    <window>
+		<window-name>GWGangliaViewsWindow</window-name>
+		<instance-ref>GWGangliaViewsInstance</instance-ref>
+		<region>center</region>
+		<height>0</height>
+	    </window>
+	    <security-constraint>
+		<policy-permission>
+		    <role-name>GWAdmin</role-name>
+		    <action-name>viewrecursive</action-name>
+		</policy-permission>
+	    </security-constraint>
+	    <page>
+		<page-name>ganglia-thresholds</page-name>
+		<display-name xml:lang="en">Ganglia Thresholds</display-name>
+		<properties>
+		    <property>
+			<name>order</name>
+			<value>100</value>
+		    </property>
+		    <property>
+			<name>layout.id</name>
+			<value>1column</value>
+		    </property>
+		</properties>
+	    </page>
+	    <page>
+		<page-name>ganglia-views</page-name>
+		<display-name xml:lang="en">Ganglia Views</display-name>
+		<properties>
+		    <property>
+			<name>order</name>
+			<value>200</value>
+		    </property>
+		    <property>
+			<name>layout.id</name>
+			<value>1column</value>
+		    </property>
+		</properties>
+	    </page>
+	</page>
+    </deployment>
+    <deployment>
+	<parent-ref>groundwork-monitor.ganglia-integration.ganglia-thresholds</parent-ref>
+	<if-exists>overwrite</if-exists>
+	<window>
+	    <window-name>GWGangliaThresholdsWindow</window-name>
+	    <instance-ref>GWGangliaThresholdsInstance</instance-ref>
+	    <region>center</region>
+	    <height>0</height>
+	</window>
+	<security-constraint>
+	    <policy-permission>
+		<role-name>GWAdmin</role-name>
+		<action-name>viewrecursive</action-name>
+	    </policy-permission>
+	</security-constraint>
+    </deployment>
+    <deployment>
+	<parent-ref>groundwork-monitor.ganglia-integration.ganglia-views</parent-ref>
+	<if-exists>overwrite</if-exists>
+	<window>
+	    <window-name>GWGangliaViewsWindow</window-name>
+	    <instance-ref>GWGangliaViewsInstance</instance-ref>
+	    <region>center</region>
+	    <height>0</height>
+	</window>
+	<security-constraint>
+	    <policy-permission>
+		<role-name>GWAdmin</role-name>
+		<action-name>viewrecursive</action-name>
+	    </policy-permission>
+	</security-constraint>
+    </deployment>
+</deployments>

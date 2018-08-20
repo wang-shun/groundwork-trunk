@@ -1,0 +1,24 @@
+This directory contains the following patch for the CGI::Ajax package:
+
+CGI_Ajax.pm.patch
+
+We are applying this patch to suppress the following message from the
+CGI 4.32 package, which now complains about certain calls in order to
+get developers to look carefully at their use of the CGI routines.  This
+message shows up in our framework.log file if the patch is not applied.
+
+    cgi: runCGI (stderr):CGI::param called in list context from
+	/usr/local/groundwork/perl/lib/vendor_perl/5.24.0/CGI/Ajax.pm line 485,
+	this can lead to vulnerabilities. See the warning in
+	"Fetching the value or values of a single named parameter"
+	at /usr/local/groundwork/perl/lib/vendor_perl/5.24.0/CGI.pm line 412.
+
+We have looked at the CGI::Ajax code, and it has no vulnerability at
+this location, so we simply fix it to call the multi_param() routine
+instead if it is available, so the message is not produced.
+
+Web references:
+
+http://blog.gerv.net/2014/10/new-class-of-vulnerability-in-perl-web-applications/
+http://search.cpan.org/~leejo/CGI-4.33/lib/CGI.pod#Fetching_the_value_or_values_of_a_single_named_parameter
+

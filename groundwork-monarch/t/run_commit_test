@@ -1,0 +1,72 @@
+#!/bin/bash -e
+# We intentionally use the bash -e option so if anything in most of this
+# test script fails, the entire test will be treated as having failed.
+
+# run_commit_test
+
+# This script is designed to run tests of Monarch Commit functionality, after this
+# script and all the related files have already been checked out from Subversion.
+
+# Copyright 2014 GroundWork Open Source, Inc. ("GroundWork")
+# All rights reserved.  Use is subject to GroundWork commercial license terms.
+
+# Revision History:
+#
+# 2014-07-10 GH 0.0.0	Original version.
+# 2014-07-14 GH 0.0.1	Print the full-results filename also upon success, not just upon failure.
+
+print_usage() {
+    echo "usage:  run_commit_test {hostname} {postgres_db_user_password} [{root_password}]"
+    echo "where:  hostname                   is the host on which to run the test"
+    echo "        postgres_db_user_password  is what it says, on hostname"
+    echo "        root_password              is what it says, on hostname"
+    echo ""
+    echo "        All the files associated with running this test must already be"
+    echo "        checked out locally from Subversion before running this script."
+    echo ""
+    echo "        The root_password is needed if you do not have ssh passwordless"
+    echo "        logins set up between your current user@machine and root@hostname."
+    echo ""
+}
+
+if [ $# -lt 2 -o $# -gt 3 ]; then
+    print_usage
+    exit 1
+fi
+
+# Protect against the worst of possible injection attacks.
+    host=$(echo "$1" | tr -d "\$\`\"\\'")
+  dbpass=$(echo "$2" | tr -d "\$\`\"\\'")
+rootpass=$(echo "$3" | tr -d "\$\`\"\\'")
+
+run_dir="/tmp/commit_test"
+
+# This filename should be specified as an absolute path, due to the manner
+# in which it is referenced in the end-of-script output messages.
+result_file="$PWD/,commit_test_output"
+
+# We insist on passwordless authentication because this script will generally be run
+# from automated scripts, wherein there will be no user present to type in a password.
+echo "Copying files to $host ..."
+./essh -P "$rootpass" root@"$host" "rm -rf $run_dir; mkdir -p $run_dir/GW"
+./escp -P "$rootpass" -p -q CommitTests.pm commit-pre-test-gwcollagedb.sql commit-pre-test-monarch.sql fake_nagios_reload verify root@${host}:$run_dir
+./escp -P "$rootpass" -p -q GW/Test.pm root@${host}:$run_dir/GW
+
+echo "Running Commit test on $host (this will take awhile) ..."
+# Failure of running this test doesn't cause this entire script to fail because of the
+# bash -e option, because this command is run as part of a conditional statement.
+if ./essh -P "$rootpass" root@"$host" "set -e; cd $run_dir; ./verify CommitTests postgres '$dbpass' 2>&1" > "$result_file" 2>&1 ; then
+    echo "Tests are all OK.  Full results can be found in:"
+    echo "    `hostname -s`:$result_file"
+    echo "Commit test passed."
+    exit 0
+else
+    echo "ERROR:  Commit test failed.  Full results can be found in:"
+    echo "    `hostname -s`:$result_file"
+    echo "Tail end of test results:"
+    # FIX MINOR:  We could improve this by going back in the output listing and just
+    # presenting the results of the last test, without any partial results of the
+    # test before that.  But it's not terribly important to be that elegant.
+    tail -30 "$result_file"
+    exit 1
+fi

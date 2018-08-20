@@ -1,0 +1,623 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+# find_cacti_graphs
+# Copyright (c) 2009-2014 GroundWork Open Source, Inc. (GroundWork)
+# All rights reserved.  Use is subject to GroundWork commercial license terms.
+
+# Graph labels and URLs for Cacti graphs are to be stored in a dynamic property
+# (CactiRRDCommand) in Foundation.  The consolidated property for all graphs for
+# a given host will be set by sending XML to port 4913 the same way the performance
+# graph daemon does for RRDs.
+
+# What this script does:
+# (*) Find the cacti database location and access credentials.
+# (*) Check which hosts are common to Foundation and Cacti.  Read the graph label from
+#     the cacti database and create the URL the same way it was done in svcactigraphs.
+# (*) For each of these Cacti hosts, create a list of RRD Graphs in the format shown
+#     below.
+# (*) Compare the existing Foundation setup with what we so derived from Cacti, and
+#     send the differences as XML updates to Foundation.
+
+# Format of XML data to send to Foundation:
+#
+#   <Adapter Session="$foundation_msg_count" AdapterType="SystemAdmin">
+#       <Command Action='$action' ApplicationType='NAGIOS'>
+#           <Host Host='$host'   CactiRRDCommand='{Label};;{URL}!!{Label};;{URL} ...'/>
+#           <Host Host='$host+1' CactiRRDCommand='{Label};;{URL}!!{Label};;{URL} ...'/>
+#           ...
+#       </Command>
+#   </Adapter>
+#   <SERVICE-MAINTENANCE command="close" />
+
+# FIX THIS:  Stuff to still address:
+# (*) Loop and run as a daemon on a periodic schedule, accepting SIGHUP or somesuch to
+#     re-read Cacti and Foundation in between cycles, and cleanly accepting and dealing
+#     with SIGTERM to die gracefully.
+# (*) Add the logfile from this script to a /etc/logrotate.d/groundwork-nms file.
+
+# Version 0.1.0 update information:
+#
+#   In normal configuration, this script runs on a parent server, probes one or more Cacti
+#   instances, and updates the parent Foundation database (a "pull" architecture).  Access
+#   to the Foundation database is defined in the db.properties file.  Access to the Cacti
+#   database(s) is defined in the cacti.properties file.  That cacti.properties file is now
+#   part of the base GroundWork Monitor installation, and it must be edited to refer to all
+#   of your Cacti instances.
+#
+#   An alternative configuration would run this script in a distributed fashion, with each
+#   copy probing some number of Cacti instances and forwarding that information to one or
+#   more parent Foundation databases (a "push" architecture).  But currently, there is no
+#   support for the equivalent of secondary db.properties file(s), or directives in the
+#   normal db.properties file, that would point to such parents.
+
+# Version 0.2.2 update information:
+#
+# This minor update detects when the assembled list of graph labels and URLs is longer
+# than 32K, and trims it to 32K or less.  This avoids having Foundation throw out the
+# update if there are too many Cacti graphs to process.
+
+# BE SURE TO KEEP THIS UP-TO-DATE!
+my $VERSION = '0.3.3 (November 4, 2014)';
+
+use strict;
+
+use DBI;
+use CollageQuery;
+use IO::Socket;
+
+####################################################################
+# Configuration Parameters
+####################################################################
+
+# Possible $debug values:
+# 0 = no info of any kind printed, except for startup/shutdown messages and major errors
+# 1 = also print error info and summary statistical data
+# 2 = also print basic debug info
+# 3 = also print detailed debug info
+
+my $debug    = 1;
+my $debuglog = '/usr/local/groundwork/foundation/container/logs/find_cacti_graphs.log';
+
+# Set to 0 to log Foundation messages as ISO-8859-1, to 1 to log as UTF-8.
+my $log_as_utf8 = 0;
+
+# Normal operation is to only send deltas with regard to the current Foundation setup, to
+# avoid pointless work in the back end.  If send_all_config is set, send info for all hosts.
+# You can set this dynamically via the -a option.
+my $send_all_config = 0;
+
+# For convenient interactive debugging during development.
+# You can set this dynamically via the -o option.
+my $reflect_log_to_tty = 0;
+my $stdout_is_a_tty    = (-t STDOUT);
+
+my $cacti_props      = '/usr/local/groundwork/config/cacti.properties';
+my $foundation_props = '/usr/local/groundwork/config/foundation.properties';
+
+my $remote_host           = 'localhost';
+my $remote_port           = 4913;
+my $max_bulk_send         = 200;
+my $socket_send_timeout   = 30;   # seconds; to address GWMON-7407; set to 0 to disable
+my $max_graph_list_length = 32768;   # max length is 32K (limited by HostStatusProperty.ValueString)
+
+# These values will perhaps go away in a future release, when we will depend instead
+# on values drawn from cacti.properties.
+my $default_cacti_protocol = 'http';
+my $default_cacti_urlpath  = 'nms-cacti';
+
+####################################################################
+# Global Variables
+####################################################################
+
+my $debug_minimal = ( $debug >= 1 );
+my $debug_basic   = ( $debug >= 2 );
+my $debug_maximal = ( $debug >= 3 );
+
+my $foundation_msg_count = 0;
+my $command_close = '<SERVICE-MAINTENANCE command="close" />';
+
+# These are standard values, but they will be overwritten by whatever we find in $foundation_props.
+my $label_url_separator = ';;';
+my $graph_separator     = '!!';
+
+my $socket = undef;
+
+my $logtime = '';
+
+our $shutdown_requested = 0;
+
+use constant ERROR_STATUS    => 0;
+use constant STOP_STATUS     => 1;
+use constant RESTART_STATUS  => 2;
+use constant CONTINUE_STATUS => 3;
+
+####################################################################
+# Main-Line Code
+####################################################################
+
+# Here is the entire substance of this script, in a one-liner:
+exit (main() == ERROR_STATUS) ? 1 : 0;
+
+sub freeze_logtime {
+    $logtime = '[' . ( scalar localtime ) . '] ';
+}
+
+sub log_message {
+    print LOG @_, "\n";
+    if ($reflect_log_to_tty && $stdout_is_a_tty) {
+	print @_, "\n";
+    }
+}
+
+sub log_timed_message {
+    freeze_logtime();
+    log_message $logtime, @_;
+}
+
+sub log_shutdown {
+    log_timed_message "=== Shutdown requested; terminating (process $$). ===";
+}
+
+sub print_usage {
+    print "Find Cacti Graphs script for GroundWork Monitor NMS.\n";
+    print "Copyright (c) 2009 Groundwork Open Source, Inc. All Rights Reserved.\n\n";
+    print "usage:  find_cacti_graphs -v|--version\n";
+    print "        find_cacti_graphs -h|--help\n";
+    print "        find_cacti_graphs [-a] [-o]\n\n";
+    print "where:  -a means send commands for all hosts, even if unchanged\n";
+    print "        -o means write log messages also to standard output\n\n";
+    print "(In normal operation, no arguments are specified.)\n";
+}
+
+sub main {
+    while ( scalar(@ARGV) >= 1 ) {
+	if ( $ARGV[0] eq '-v' || $ARGV[0] eq '--version' ) {
+	    print "Version:  $VERSION\n";
+	    return STOP_STATUS;
+	}
+	if ( $ARGV[0] eq '-h' || $ARGV[0] eq '--help' ) {
+	    print_usage();
+	    return STOP_STATUS;
+	}
+	if ( $ARGV[0] eq '-a' ) {
+	    $send_all_config = 1;
+	    shift @ARGV;
+	    next;
+	}
+	if ( $ARGV[0] eq '-o' ) {
+	    $reflect_log_to_tty = 1;
+	    shift @ARGV;
+	    next;
+	}
+	print_usage();
+	return ERROR_STATUS;
+    }
+
+    if ( !open( LOG, '>>', $debuglog ) ) {
+	print "Cannot open the debug file $debuglog ($!); aborting!\n";
+	return ERROR_STATUS;
+    }
+    LOG->autoflush(1);
+
+    log_timed_message "=== Starting up (process $$). ===";
+
+    # Set up to handle broken pipe errors, so this process does not abruptly die without logging
+    # anything as to the circumstances that caused its downfall.  (The default SIGPIPE action is to
+    # terminate the process.)  This has to be done in conjunction with later code that will cleanly
+    # process an EPIPE return code from a socket write.
+    #
+    # Ignoring SIGPIPE turns SIGPIPE signals generated when we write to sockets already closed by the
+    # server into EPIPE errors returned from the write operations.  Note that because of the manner in
+    # which sockets work (data transfer is mediated by the kernel, introducing asynchronicity into the
+    # transport), a closed socket typically will not be seen by the sending application as an error
+    # code until the *second* write following the closure of the socket by the receiving end.  The
+    # first write after the socket is closed on the reading side succeeds, because at that point the
+    # process just writes to the kernel, and that succeeds, and the write returns to the caller.  It
+    # is only then that the kernel tries to communicate with the other side, the transfer fails, and
+    # the socket is marked locally as being remotely closed.  A second write at that time then fails,
+    # because the socket closure is now immediately apparent when the application tries to transfer
+    # data to the kernel buffer.  This means that late-occurring closures on the reading side might
+    # not be seen on the writing side as a data-transfer failure, even in the close() return code when
+    # the socket is closed after the last write operation.  The only way to fully close the loop at
+    # the application level so the application can be assured that full data transfer did occur is
+    # for the receiving application to push an application-level acknowledgement back to the original
+    # sender.  And currently, our Foundation socket API does not do so.
+    $SIG{PIPE} = 'IGNORE';
+
+    my $status = forward_graph_info();
+
+    log_timed_message "=== Shutting down (process $$). ===";
+
+    close LOG;
+
+    return $status;
+}
+
+sub host_xml {
+    my $host       = shift;
+    my $graph_list = shift;
+
+    # Encode XML predefined entities which might happen to be included in the graph label and URL.
+    $graph_list =~ s/&/&amp;/g;
+    $graph_list =~ s/'/&apos;/g;
+    $graph_list =~ s/"/&quot;/g;
+    $graph_list =~ s/</&lt;/g;
+    $graph_list =~ s/>/&gt;/g;
+
+    return "<Host Host='$host' CactiRRDCommand='$graph_list' />";
+}
+
+sub read_config {
+    my $config_file = shift;
+
+    my %config = ();
+
+    if ( !open(CONFIG, '<', $config_file) ) {
+	log_message "ERROR:  Unable to open configuration file $config_file ($!)";
+	return undef;
+    }
+    while (my $line = <CONFIG>) {
+	chomp $line;
+	if ( $line =~ /^\s*([^#]\S*)\s*=\s*(\S+)\s*$/ ) {
+	    $config{$1} = $2;
+	}
+    }
+    close CONFIG;
+    return \%config;
+}
+
+# This routine allows indirection at each key component level.
+# Normally, application code does not call this with a subkey or recursion level;
+# that argument is only used for recursive calls.
+# FIX THIS:  Compare the ability to support indirection in configuration-key
+# components to what TypedConfig and Config::General can do in that respect, and
+# perhaps generalize the capabilities of TypedConfig to match what we have here.
+sub config_value {
+    my $config = shift;
+    my $key    = shift;
+    my $subkey = shift;
+    my $level  = shift || 0;
+
+    if (++$level > 100) {
+	my $fullkey = (defined $subkey) ? "$key.$subkey" : $key;
+	log_message 'ERROR:  Too many levels of indirection found in config file when searching for ', $fullkey;
+	exit 1;
+    }
+
+    if (!defined $subkey) {
+	if (exists $config->{$key}) {
+	    return $config->{$key};
+	}
+	if ($key =~ /(\S+)\.(\S+)/) {
+	    return config_value($config,$1,$2,$level);
+	}
+	return undef;
+    }
+    if (exists $config->{"$key.$subkey"}) {
+	return $config->{"$key.$subkey"};
+    }
+    if (exists $config->{$key}) {
+	my $keyvalue = $config->{$key};
+	if (defined($keyvalue) && $keyvalue =~ /^\$./) {
+	    $keyvalue =~ s/^\$//;
+	    return config_value($config,"$keyvalue.$subkey",undef,$level);
+	}
+	return undef;
+    }
+    if ($key =~ /(\S+)\.(\S+)/) {
+	return config_value($config,$1,"$2.$subkey",$level);
+    }
+    return undef;
+}
+
+sub find_cacti_graphs {
+    my %graphs = ();
+    my ( $dbhost, $dbport, $dbname, $dbuser, $dbpass, $dbtype );
+    my $host;
+    my $local_graph_id;
+    my $url;
+    my $config;
+
+    $config = read_config($cacti_props);
+    if (!defined $config) {
+	log_message "ERROR:  Cannot read the \"$cacti_props\" config file.";
+	return undef;
+    }
+
+    # Here we work out how many Cacti instances are defined in the cacti.properties file
+    # and then loop through each to identify all of the graphs.
+
+    my @instance_labels = ();
+    my %exclude_hosts   = ();
+    foreach my $parameter (keys %$config) {
+	if ($parameter =~ /^cacti\.(\w+)\.host$/) {
+	    push @instance_labels, $1;
+	}
+	if ( $parameter eq 'max.graph.list.length' ) {
+	    $max_graph_list_length = config_value( $config, $parameter );
+	}
+	if ( $parameter =~ /^exclude\.\w+\.host$/ ) {
+	    $exclude_hosts{ config_value( $config, $parameter ) } = 1;
+	}
+    }
+
+    foreach my $instance (@instance_labels) {
+	my $protocol  = config_value($config, "cacti.$instance.protocol");
+	my $domain    = config_value($config, "cacti.$instance.host");
+	my $port      = config_value($config, "cacti.$instance.port");
+	my $urlpath   = config_value($config, "cacti.$instance.urlpath");
+	my $webserver = (defined $port) ? "$domain:$port" : $domain;
+	$protocol = $default_cacti_protocol if not defined $protocol;
+	$urlpath  = $default_cacti_urlpath  if not defined $urlpath;
+	$urlpath =~ s{^/+}{};
+	my $cacti_base_url = "$protocol://$webserver/$urlpath";
+	$cacti_base_url =~ s{/+$}{};
+
+	$dbhost = config_value($config, "cacti.$instance.dbhost");
+	$dbport = config_value($config, "cacti.$instance.dbport");
+	$dbname = config_value($config, "cacti.$instance.dbname");
+	$dbuser = config_value($config, "cacti.$instance.dbuser");
+	$dbpass = config_value($config, "cacti.$instance.dbpass");
+	$dbtype = config_value($config, "cacti.$instance.dbtype");
+
+	if ( !defined($dbhost)
+	  || !defined($dbport)
+	  || !defined($dbname)
+	  || !defined($dbuser)
+	  || !defined($dbpass) ) {
+	    log_message "ERROR:  Cannot find Cacti database access parameters for instance \"$instance\".";
+	    return undef;
+	}
+
+	my $dbh   = undef;
+	my $sth   = undef;
+	my $query = undef;
+
+	# FIX THIS:  set RaiseError, PrintError properly; test against a db that cannot be accessed
+	my $dsn = '';
+	if ( defined($dbtype) && $dbtype eq 'postgresql' ) {
+	    $dsn = "DBI:Pg:dbname=$dbname;host=$dbhost;port=$dbport";
+	}
+	else {
+	    $dsn = "DBI:mysql:database=$dbname;host=$dbhost;port=$dbport";
+	}
+	$dbh = DBI->connect( $dsn, $dbuser, $dbpass, { 'AutoCommit' => 1 } );
+	if (!$dbh) {
+	    log_message "ERROR:  Cannot connect to database $dbname. Error: ", $DBI::errstr;
+	    return undef;
+	}
+
+	# FIX THIS:  implement proper exception handling for all pieces of the database accessing
+	$query = "
+	    select h.description, gtg.local_graph_id, gtg.title_cache from host h, graph_templates_graph gtg, graph_local gl
+	    where gtg.local_graph_id = gl.id and gl.host_id = h.id
+	";
+	$sth = $dbh->prepare($query);
+	if (!$sth->execute()) {
+	    log_message "ERROR:  ", $sth->errstr;
+	}
+	else {
+	    while (my $row = $sth->fetchrow_arrayref()) {
+		$host = $$row[0];
+		next if $exclude_hosts{$host};
+		$local_graph_id = $$row[1];
+		my $title = '';
+		if ($$row[2] =~ m/ - /) {
+		    $$row[2] =~ m/ - ([^#]+)/;
+		    $title = $1;
+		}
+		else {
+		    $title = $$row[2];
+		}
+		$title = "NO LABEL for Cacti Graph ID $local_graph_id" if $title !~ /\S/;
+
+		# Note:  Status Viewer will need to append to this URL when it gets used:
+		# "&graph_start=$starttime&graph_end=$endtime"
+		$url = "$cacti_base_url/graph_image.php?local_graph_id=$local_graph_id&rra_id=0&view_type=tree&gwuid=guest";
+
+		$graphs{$host}{$url} = $title;
+
+		log_message "DEBUG:  Cacti: host $host, title '$title', url '$url'" if $debug_basic;
+	    }
+	}
+	$sth->finish;
+
+	$dbh->disconnect();
+    }
+
+    return \%graphs;
+}
+
+# FIX MINOR:  improve the error handling here (e.g., to check for prepare() and fetchrow_arrayref() errors as well),
+# and return undef if an exception/error is encountered, to match the expectation of the caller's caller
+# FIX LATER:  fold this routine into the CollageQuery package instead of doing this query here
+sub getHostCactiRRDCommands {
+    my $self     = shift;
+    my %commands = ();
+    # Pull back the existing CactiRRDCommand property value along with all hostnames, where all
+    # hostnames will be returned, and the property value will be an empty string if it does not exist.
+    my $sql = "
+	select h.HostName, coalesce(hsp.ValueString,'') from
+	PropertyType pt join HostStatusProperty hsp on pt.Name = 'CactiRRDCommand' and hsp.PropertyTypeID = pt.PropertyTypeID
+	right join Host h on h.HostID = hsp.HostStatusID
+    ";
+    my $sth = $self->{dbh}->prepare($sql);
+    if (!$sth->execute()) {
+	# FIX LATER:  revise this error handling when we fold this into the CollageQuery package
+	log_message "ERROR:  ", $sth->errstr;
+    }
+    else {
+	while (my $row = $sth->fetchrow_arrayref()) {
+	    $commands{$$row[0]} = $$row[1];
+	}
+    }
+    $sth->finish;
+    return \%commands;
+}
+
+sub find_foundation_graphs {
+    my $foundation;
+    eval {
+	$foundation = CollageQuery->new();
+    };
+    if ($@) {
+	log_message "ERROR:  ", $@;
+	return undef;
+    }
+    my $f_commands = getHostCactiRRDCommands($foundation);
+    $foundation->destroy();
+    if ($debug_basic) {
+	foreach my $host (keys %$f_commands) {
+	    log_message "DEBUG:  Foundation:  host $host commands '$f_commands->{$host}'";
+	}
+    }
+    return $f_commands;
+}
+
+sub forward_graph_info {
+    my $host_count      = 0;
+    my $unaltered_hosts = 0;
+    my $altered_hosts   = 0;
+    my $sent_hosts      = 0;
+    my @xml_packet      = ();
+
+    my $config = read_config($foundation_props);
+    if (!defined $config) {
+	log_message "ERROR:  Cannot read the \"$foundation_props\" config file.";
+	return ERROR_STATUS;
+    }
+
+    $label_url_separator = config_value($config, 'cacti.interface.labelurl.delimiter');
+    $graph_separator     = config_value($config, 'cacti.interface.delimiter');
+    my $graph_sep_len = length($graph_separator);
+
+    if ( !defined($label_url_separator) || !defined($graph_separator) ) {
+	log_message 'ERROR:  Cannot find delimiters.';
+	return undef;
+    }
+
+    my $c_graphs = find_cacti_graphs();
+    if (!defined($c_graphs)) {
+	log_message 'ERROR:  Cannot access Cacti database; aborting!';
+	return ERROR_STATUS;
+    }
+
+    my $f_commands = find_foundation_graphs();
+    if (!defined($f_commands)) {
+	log_message 'ERROR:  Cannot access Foundation database; aborting!';
+	return ERROR_STATUS;
+    }
+
+    foreach my $host (keys %$f_commands) {
+	++$host_count;
+	my $graph_list     = '';
+	my $altered_graphs = 0;
+	if (exists $c_graphs->{$host}) {
+	    my @graphs = ();
+	    my $total_length = 0;
+	    foreach my $url (keys %{ $c_graphs->{$host} }) {
+		my $label_url = $c_graphs->{$host}{$url} . $label_url_separator . $url;
+		## For the sake of accuracy, we also take into account the separator
+		## we will add later in the join().
+		my $addlen = length($label_url) + $graph_sep_len;
+		$total_length += $addlen;
+		if ($total_length < $max_graph_list_length) {
+		    log_message "DEBUG:  Graph string length for host $host is $total_length, $addlen added ...\n" if $debug_basic;
+		    push @graphs, $label_url;
+		}
+		else {
+		    log_message "NOTICE:  Graph string for host $host has been truncated to stay within limit.\n" if $debug_minimal;
+		    last;
+		}
+	    }
+	    # We sort by {label, url} to establish a canonical ordering so we can easily
+	    # compare existing CactiRRDCommand property values with what we want to establish
+	    # now, and avoid shoving data at Foundation that won't change anything.
+	    $graph_list = join( $graph_separator, sort @graphs );
+	}
+	if ($graph_list eq $f_commands->{$host}) {
+	    ++$unaltered_hosts;
+	}
+	else {
+	    ++$altered_hosts;
+	    $altered_graphs = 1;
+	}
+	if ($altered_graphs || $send_all_config) {
+	    ++$sent_hosts;
+	    push @xml_packet, host_xml($host, $graph_list);
+	    if (@xml_packet >= $max_bulk_send) {
+		if (not write_command_xml( 'MODIFY', join("\n",@xml_packet) )) {
+		    log_timed_message "ERROR:  Cannot write graph lists to Foundation on host $remote_host; will skip for this cycle.";
+		}
+		@xml_packet = ();
+	    }
+	}
+    }
+
+    if (@xml_packet) {
+	if (not write_command_xml( 'MODIFY', join("\n",@xml_packet) )) {
+	    log_timed_message "ERROR:  Cannot write graph lists to Foundation on host $remote_host; will skip for this cycle.";
+	}
+	@xml_packet = ();
+    }
+
+    if ($debug_minimal) {
+	log_message $host_count, ($host_count == 1) ? ' host' : ' hosts', ' processed.';
+	log_message $unaltered_hosts, ($unaltered_hosts == 1) ? ' host' : ' hosts', ' had unaltered graph references.';
+	log_message $altered_hosts,   (  $altered_hosts == 1) ? ' host' : ' hosts', ' had altered graph references.';
+	log_message $sent_hosts,      (     $sent_hosts == 1) ? ' host' : ' hosts', ' had graph references updated.';
+    }
+
+    return STOP_STATUS;
+}
+
+sub write_command_xml {
+    my $action     = shift;
+    my $xml_string = shift;
+    if ( $xml_string eq '' ) {    # Nothing to do ...
+	return;
+    }
+    my $status = 1;
+
+    # Open connection to Foundation (or not).
+    my $max_connect_attempts = 3;
+    for ( my $i = 0 ; $i <= $max_connect_attempts ; ++$i ) {
+	if ( $i == $max_connect_attempts ) {
+	    log_message "ERROR:  Could not connect to $remote_host:$remote_port : $@" if $debug_minimal;
+	    return;               # no listener socket available, so skip feeding this round
+	}
+	else {
+	    $socket = IO::Socket::INET->new(
+		PeerAddr => $remote_host,
+		PeerPort => $remote_port,
+		Proto    => 'tcp',
+		Type     => SOCK_STREAM
+	    );
+	    if ($socket) {
+		log_message 'DEBUG:  Opened socket to $remote_host Foundation.' if $debug_maximal;
+		$socket->autoflush();
+		last if $socket->sockopt(SO_SNDTIMEO, pack('L!L!', $socket_send_timeout, 0));
+		log_message 'ERROR:  Could not set send timeout on socket to $remote_host Foundation.' if $debug_minimal;
+		close($socket);
+	    }
+	    sleep 1;
+	}
+    }
+    $foundation_msg_count++;
+    my $xml_out =
+qq(<Adapter Session="$foundation_msg_count" AdapterType="SystemAdmin">
+    <Command Action='$action' ApplicationType='NAGIOS'>
+	$xml_string
+    </Command>
+</Adapter>);
+    log_message   $xml_out if $debug_maximal && !$log_as_utf8;
+    utf8::encode($xml_out);
+    $status = 0 if not print $socket $xml_out;
+    log_message   $xml_out if $debug_maximal && $log_as_utf8;
+    $status = 0 if not print $socket $command_close;
+    log_message   $command_close if $debug_maximal;
+    $status = 0 if not close($socket);
+    return $status;
+}
+
+__END__

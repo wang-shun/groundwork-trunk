@@ -1,0 +1,661 @@
+<!--
+	GroundWork Monitor - The ultimate data integration framework.
+	Copyright (C) 2008 GroundWork Open Source Solutions
+	info@itgroundwork.com
+
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of version 2 of the GNU General Public License
+	as published by the Free Software Foundation.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+-->
+
+<project default="allBuild"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+
+
+	<goal name='allBuild'>
+		<attainGoal name='nsca' />
+		<attainGoal name='cgilib' />
+		<attainGoal name='libart' />
+		<attainGoal name='iputils' />
+		<attainGoal name='rrdtool' />
+		<attainGoal name='ntp' />
+		<attainGoal name='qstat' />
+		<attainGoal name='sendEmail' />
+		<attainGoal name='nagios' />
+		<attainGoal name='nagiosplugins' />
+		<attainGoal name='nrpe' />
+		<attainGoal name='performance' />
+		<attainGoal name='sqlite' />
+	</goal>
+
+	<goal name="allClean"
+        	description="Clean the master project and all subprojects">
+		<delete dir="${basedir}/${dir.groundwork.nagios.nsca}"/>
+		<delete dir="${basedir}/${com.groundwork.nagios.nrpe}"/>
+		<delete dir="${basedir}/${com.groundwork.nagios.nagios}"/>
+		<delete dir="${basedir}/${com.groundwork.nagios.nagiosplugins}"/>
+		<delete dir="${basedir}/${com.groundwork.nagios.cgilib}"/>
+		<delete dir="${basedir}/${com.groundwork.nagios.libart}"/>
+		<delete dir="${basedir}/${com.groundwork.nagios.iputils}"/>
+		<delete dir="${basedir}/${com.groundwork.nagios.rrdtool}"/>
+		<delete dir="${basedir}/${com.groundwork.nagios.sqlite}"/>
+		<delete dir="${basedir}/${com.groundwork.nagios.ntp}"/>
+		<delete dir="${basedir}/${com.groundwork.nagios.qstat}"/>
+		<delete dir="${basedir}/${com.groundwork.nagios.sendEmail}"/>
+	</goal>
+
+	<!-- 
+		Build individual components of NAGIOS
+		
+		Add a goal for any new component
+sed -e 's/332/2048/' nagios-2.4/include/objects.h > nagios-2.4/include/objects.h.tmp
+mv nagios-2.4/include/objects.h.tmp nagios-2.4/include/objects.h
+
+ -->
+	<!-- START BUILDING NAGIOS -->
+	<goal name="nagios" description="Build NAGIOS and install it into /usr/local/groundwork/nagios">
+
+		<!-- UNZIP/UNTAR -->
+		<untar compression="gzip" src="${org.groundwork.build.share}/nagios/${com.groundwork.nagios.nagios}.tar.gz" 
+	dest="${basedir}"/>
+			
+		<!-- Run the Patch to increase the buffer size 
+		<exec dir="${basedir}/${com.groundwork.nagios.nagios}" executable="cp" >
+					<arg line="${basedir}/objects.h  ${basedir}/${com.groundwork.nagios.nagios}/include/objects.h"/>
+		</exec>
+		
+		<exec dir="${basedir}/${com.groundwork.nagios.nagios}" executable="patch" >
+		  	<arg line="-p1 -i ${basedir}/nagios-memlimit.patch"/>
+		</exec>
+		-->
+		
+		<!-- MAKE -->
+		<exec dir="${basedir}/${com.groundwork.nagios.nagios}" executable="chmod" >
+			<arg line="-R +x ./"/>
+		</exec>
+
+		<!-- RUN CONFIGURE -->
+		<exec dir="${basedir}/${com.groundwork.nagios.nagios}" executable="sh" >
+			<arg line="./configure    --prefix=${org.groundwork.deploy.prefix}/nagios
+					  --sbindir=${org.groundwork.deploy.prefix}/apache2/cgi-bin/nagios
+                		        LDFLAGS=-L${org.groundwork.deploy.prefix}/${libdir}
+                                  	CPPFLAGS=-I${org.groundwork.deploy.prefix}/include
+					  --with-gd-lib=${org.groundwork.deploy.prefix}/${libdir}
+                                      	  --with-gd-inc=${org.groundwork.deploy.prefix}/include
+                                          --with-nagios-user=nagios
+                                          --with-nagios-group=nagios
+                                          --with-command-user=nagios
+                                          --with-command-group=nagios
+					  --enable-event-broker
+                                				"/>
+		</exec>
+
+		<!-- MAKE -->
+		<exec dir="${basedir}/${com.groundwork.nagios.nagios}" executable="make" >
+			<arg line="all"/>
+		</exec>
+		<!-- INSTALL -->
+		<exec dir="${basedir}/${com.groundwork.nagios.nagios}" executable="make" >
+			<arg line="install"/>
+		</exec>
+		<!-- INSTALL -->
+		<exec dir="${basedir}/${com.groundwork.nagios.nagios}" executable="make" >
+			<arg line="install-commandmode"/>
+		</exec>
+
+		<!-- MAKE -->
+		<exec dir="${basedir}/${com.groundwork.nagios.nagios}/contrib" executable="make" >
+			<arg line="all"/>
+		</exec>
+
+		<exec dir="${basedir}/${com.groundwork.nagios.nagios}/contrib" executable="make" >
+			<arg line="install"/>
+		</exec>
+
+		<!-- MAKE NAGIOS DIR -->
+		<exec dir="${org.groundwork.deploy.prefix}/nagios" executable="mkdir" >
+			<arg line="-p libexec"/>
+		</exec>
+
+		<exec dir="${org.groundwork.deploy.prefix}/nagios/var" executable="mkdir" >
+			<arg line="-p log"/>
+		</exec>
+		<exec dir="${org.groundwork.deploy.prefix}/nagios/var" executable="mkdir" >
+			<arg line="-p spool"/>
+		</exec>
+
+		<!-- Configuration Files -->
+		<exec dir="${org.groundwork.deploy.prefix}/nagios" executable="mkdir" >
+			<arg line="-p etc"/>
+		</exec>
+
+		<copy todir="${org.groundwork.deploy.prefix}/nagios/etc" overwrite="true">
+			<fileset dir="${basedir}/etc">
+				<include name="*.*" />
+				<exclude name="**/.svn/*"/>
+			</fileset>
+		</copy>
+
+		<copy todir="${org.groundwork.deploy.prefix}/nagios/etc/private" overwrite="true">
+			<fileset dir="${basedir}/etc/private">
+				<include name="*.*" />
+				<exclude name="**/.svn/"/>
+			</fileset>
+		</copy>
+
+		<mkdir dir="${org.groundwork.deploy.prefix}/include/nagios" />
+
+		<copy todir="${org.groundwork.deploy.prefix}/include/nagios" overwrite="true">
+			<fileset dir="${basedir}/${com.groundwork.nagios.nagios}/include">
+				<include name="*.h" />
+				<exclude name="**/.svn/"/>
+			</fileset>
+		</copy>
+
+		<exec dir="${org.groundwork.deploy.prefix}/include/nagios" executable="chmod" >
+			<arg line="-R +r ./"/>
+		</exec>
+
+		<!-- UNZIP/UNTAR SHARE FILES-->
+		<untar compression="gzip" src="${org.groundwork.build.share}/nagios/${com.groundwork.nagios.share}.tar.gz" 
+	dest="${org.groundwork.deploy.prefix}/nagios"/>
+
+		<!-- copy boot script into Nagios. File will be picked up by RPM spec -->
+		<copy file="${basedir}/nagios.initd" todir="${org.groundwork.deploy.prefix}/nagios/etc" overwrite="true" />
+		<copy file="${basedir}/.htaccess" todir="${org.groundwork.deploy.prefix}/apache2/cgi-bin" overwrite="true"/>
+
+		<!-- GroundWork Logos copy -->
+		<delete dir="${org.groundwork.deploy.prefix}/nagios/share/images/logos" />
+		<mkdir dir="${org.groundwork.deploy.prefix}/nagios/share/images/logos" />
+		<copy todir="${org.groundwork.deploy.prefix}/nagios/share/images/logos" overwrite="true">
+			<fileset file="${basedir}/share/images/logos/*">
+				<include name="*" />
+				<exclude name="**/.svn"/>
+			</fileset>
+		</copy>
+		
+		<copy file="${basedir}/${com.groundwork.nagios.nagios}/html/images/logos/unknown.gif" 
+			todir="${org.groundwork.deploy.prefix}/nagios/share/images/logos" overwrite="true"/>
+		
+		<delete file="${org.groundwork.deploy.prefix}/nagios/share/images/notes.gif"/>
+		<copy todir="${org.groundwork.deploy.prefix}/nagios/share/images" overwrite="true">
+			<fileset dir="${basedir}/share/images/">
+				<include name="notes.gif" />
+			</fileset>
+		</copy>
+
+		<mkdir dir="${org.groundwork.deploy.prefix}/nagios/modules" />
+	</goal>
+	<!-- STOP BUILDING NAGIOS -->
+
+    <!-- START BUILDING BRONX -->
+    <goal name="bronx" description="Build the Groundwork Nagios Event Broker Module and install it into /usr/local/groundwork/nagios/modules">
+
+            <!-- MAKE -->
+            <exec dir="${basedir}/../../bronx" executable="make">
+                    <arg line="-f Makefile clean all" />
+            </exec>
+
+            <copy todir="${org.groundwork.deploy.prefix}/nagios/modules" file="${basedir}/../../bronx/dist/Release/GNU-Linux-x86/libbronx.so" overwrite="true" />
+            <copy todir="${org.groundwork.deploy.prefix}/etc" file="${basedir}/../../bronx/conf/bronx.cfg" overwrite="true" />
+    </goal>
+
+    <!-- STOP BUILDING BRONX -->
+
+	<!-- START BUILDING NAGIOS-PLUGINS -->
+	<goal name="nagiosplugins" description="Build nagiosplugins and install it into /usr/local/groundwork/nagios">
+
+		<!-- UNZIP/UNTAR -->
+		<untar compression="gzip" src="${org.groundwork.build.share}/nagios/${com.groundwork.nagios.nagiosplugins}.tar.gz" 
+		dest="${basedir}"/>
+
+		<!-- COPY CHECK_SNMP.C -->
+		<exec dir="${basedir}" executable="cp" >
+			<arg line="-p check_snmp.c ${basedir}/${com.groundwork.nagios.nagiosplugins}/plugins"/>
+		</exec>
+		
+		<!-- RUN CONFIGURE -->
+		<exec dir="${basedir}/${com.groundwork.nagios.nagiosplugins}" executable="sh" >
+			<arg line="./configure  --prefix=${org.groundwork.deploy.prefix}/nagios 
+--with-trusted-path=${org.groundwork.deploy.prefix}/bin:${org.groundwork.deploy.prefix}/bins:/bin:/sbin:/usr/bin:/usr/sbin
+					--with-cgiurl=${org.groundwork.deploy.prefix}/apache2/cgi-bin/nagios
+  					--with-perl=${org.groundwork.deploy.prefix}/bin/perl 
+  					--with-openssl=${org.groundwork.deploy.prefix}
+  					--with-mysql=/usr
+				    --with-fping-command=${org.groundwork.deploy.prefix}/sbin/fping
+									"/>
+		</exec>
+
+		<!-- MAKE-->
+		<exec dir="${basedir}/${com.groundwork.nagios.nagiosplugins}" executable="make" >
+			<arg line="all"/>
+		</exec>
+
+		<!-- MAKE-->
+		<exec dir="${basedir}/${com.groundwork.nagios.nagiosplugins}" executable="make" >
+			<arg line="install"/>
+		</exec>
+
+		<copy todir="${org.groundwork.deploy.prefix}/nagios/libexec" overwrite="true">
+			<fileset dir="${basedir}/plugins-gwcustom">
+				<include name="**/**"/>
+			</fileset>
+		</copy>
+		
+		<!-- Cleanup tasks for unwnated plugins -->
+		
+		<!-- Remove Oracle/Db2 plugins -->
+		<delete>
+			<fileset dir="${org.groundwork.deploy.prefix}/nagios/libexec">
+				<include name="*oracle*,*db2*" />
+			</fileset>
+		</delete>
+
+
+	</goal>
+	<!-- STOP BUILDING NAGIOS-PLUGINS -->
+
+	<!-- START BUILDING NTP -->
+	<goal name="ntp" description="Build NTP and install it into /usr/local/groundwork/nagios">
+
+		<!-- UNZIP/UNTAR -->
+		<untar compression="gzip" src="${org.groundwork.build.share}/nagios/${com.groundwork.nagios.ntp}.tar.gz" 
+		dest="${basedir}"/>
+		<!-- RUN CONFIGURE -->
+		<exec dir="${basedir}/${com.groundwork.nagios.ntp}" executable="sh" >
+			<arg line="./configure  --prefix=${org.groundwork.deploy.prefix} 
+					--without-sntp
+					--enable-linuxcaps
+					--with-openssl-libdir=${org.groundwork.deploy.prefix}/${libdir}
+					--with-openssl-incdir=${org.groundwork.deploy.prefix}/include
+					--with-crypto=openssl
+									"/>
+		</exec>
+
+		<!-- MAKE-->
+		<exec dir="${basedir}/${com.groundwork.nagios.ntp}" executable="make" >
+			<arg line="all"/>
+		</exec>
+		<!-- MAKE-->
+		<exec dir="${basedir}/${com.groundwork.nagios.ntp}" executable="make" >
+			<arg line="install"/>
+		</exec>
+	</goal>
+	<!-- STOP BUILDING NTP-->
+
+	<!-- START BUILDING NSCA -->
+	<goal name="nsca" description="Build Nagios Service Check Acceptor and install it into /usr/local/groundwork/nagios">
+
+		<!-- UNZIP/UNTAR -->
+		<untar compression="gzip" src="${org.groundwork.build.share}/nagios/${com.groundwork.nagios.nsca}.tar.gz" 
+		dest="${basedir}"/>
+		<!-- MAKE -->
+		<exec dir="${basedir}/${dir.groundwork.nagios.nsca}" executable="chmod" >
+			<arg line="-R +x ./"/>
+		</exec>
+		<!-- RUN CONFIGURE -->
+		<exec dir="${basedir}/${dir.groundwork.nagios.nsca}" executable="sh" >
+			<arg line="configure --prefix=${org.groundwork.deploy.prefix}
+				     --exec_prefix=${org.groundwork.deploy.prefix}
+				     --with-mcrypt-lib=${org.groundwork.deploy.prefix}/${libdir}
+				     --with-mcrypt-inc=${org.groundwork.deploy.prefix}/include 
+											"/>
+		</exec>
+
+		<!-- MAKE-->
+		<exec dir="${basedir}/${dir.groundwork.nagios.nsca}" executable="make" >
+			<arg line="all"/>
+		</exec>
+
+		<!-- COPY BINARY -->
+		<exec dir="${basedir}/${dir.groundwork.nagios.nsca}/src" executable="cp" >
+			<arg line="nsca ${org.groundwork.deploy.prefix}/bin"/>
+		</exec>
+
+		<!-- COPY BINARY -->
+		<exec dir="${basedir}/${dir.groundwork.nagios.nsca}/src" executable="cp" >
+			<arg line="send_nsca ${org.groundwork.deploy.prefix}/bin"/>
+		</exec>
+
+		<!-- COPY CONFIG FILES -->
+		<copy file="${basedir}/nsca.init" todir="${org.groundwork.deploy.prefix}/etc" overwrite="true" />
+
+		<copy file="${basedir}/${dir.groundwork.nagios.nsca}/../nsca.cfg" todir="${org.groundwork.deploy.prefix}/etc" overwrite="true" />
+
+		<copy file="${basedir}/${dir.groundwork.nagios.nsca}/sample-config/nsca.xinetd" todir="${org.groundwork.deploy.prefix}/etc" overwrite="true" />
+
+		<copy file="${basedir}/${dir.groundwork.nagios.nsca}/sample-config/send_nsca.cfg" todir="${org.groundwork.deploy.prefix}/etc" overwrite="true" />
+		
+		<copy file="${basedir}/pwgen.pl" todir="${org.groundwork.deploy.prefix}/bin" overwrite="true" />
+		
+	</goal>
+
+	<!-- STOP BUILDING NSCA-->
+
+	<!-- START BUILDING NRPE -->
+	<goal name="nrpe" description="Build  NRPE daemon and client and install it into /usr/local/groundwork/nagios">
+
+		<!-- UNZIP/UNTAR -->
+		<untar compression="gzip" src="${org.groundwork.build.share}/nagios/${com.groundwork.nagios.nrpe}.tar.gz" 
+		dest="${basedir}"/>
+		<!-- MAKE -->
+		<exec dir="${basedir}/${com.groundwork.nagios.nrpe}" executable="chmod" >
+			<arg line="-R +x ./"/>
+		</exec>
+		<!-- RUN CONFIGURE -->
+		<exec dir="${basedir}/${com.groundwork.nagios.nrpe}" executable="sh" >
+			<arg line="./configure --prefix=${org.groundwork.deploy.prefix} 
+					LDFLAGS=-L${org.groundwork.deploy.prefix}/${libdir}
+					CPPFLAGS=-I${org.groundwork.deploy.prefix}/include
+					--with-ssl-lib=${org.groundwork.deploy.prefix} 
+					--with-ssl-inc=${org.groundwork.deploy.prefix}
+					--with-nrpe-user=nagios 
+					--with-nrpe-group=nagios
+											"/>
+		</exec>
+
+		<!-- MAKE-->
+		<exec dir="${basedir}/${com.groundwork.nagios.nrpe}" executable="make" >
+			<arg line="all"/>
+		</exec>
+
+		<!-- COPY PLUGIN -->
+		<exec dir="${basedir}/${com.groundwork.nagios.nrpe}/src" executable="cp" >
+			<arg line="check_nrpe ${org.groundwork.deploy.prefix}/nagios/libexec"/>
+		</exec>
+
+		<!-- COPY BINARY -->
+		<exec dir="${basedir}/${com.groundwork.nagios.nrpe}/src" executable="cp" >
+			<arg line="nrpe ${org.groundwork.deploy.prefix}/bin"/>
+		</exec>
+
+	</goal>
+
+	<!-- STOP BUILDING NRPE-->
+
+	<!-- START BUILDING QSTAT -->
+	<goal name="qstat" description="Build QSTAT and install it into /usr/local/groundwork">
+
+		<!-- UNZIP/UNTAR -->
+		<untar compression="gzip" src="${org.groundwork.build.share}/nagios/${com.groundwork.nagios.qstat}.tar.gz" 
+		dest="${basedir}"/>
+
+		<!-- MAKE-->
+		<exec dir="${basedir}/${com.groundwork.nagios.qstat}" executable="make" >
+			<arg line=""/>
+		</exec>
+
+		<!-- COPY BINARY -->
+		<exec dir="${basedir}/${com.groundwork.nagios.qstat}" executable="cp" >
+			<arg line="qstat ${org.groundwork.deploy.prefix}/bin"/>
+		</exec>
+		<!-- COPY HEADER FILES-->
+		<exec dir="${basedir}/${com.groundwork.nagios.qstat}" executable="cp" >
+			<arg line="qstat.h ${org.groundwork.deploy.prefix}/include"/>
+		</exec>
+	</goal>
+	<!-- STOP BUILDING QSTAT-->
+
+	<!-- START BUILDING CGILIB -->
+	<goal name="cgilib" description="Build CGILIB and install it into /usr/local/groundwork">
+
+		<!-- UNZIP/UNTAR -->
+		<untar compression="gzip" src="${org.groundwork.build.share}/nagios/${com.groundwork.nagios.cgilib}.tar.gz" 
+		dest="${basedir}"/>
+		<!-- MAKE -->
+		<exec dir="${basedir}/${com.groundwork.nagios.cgilib}" executable="chmod" >
+			<arg line="-R +x ./"/>
+		</exec>
+
+		<!-- MAKE-->
+		<exec dir="${basedir}/${com.groundwork.nagios.cgilib}" executable="make" >
+			<arg line=""/>
+		</exec>
+
+		<!-- COPY LIBS -->
+		<exec dir="${basedir}/${com.groundwork.nagios.cgilib}" executable="cp" >
+			<arg line="libcgi.a ${org.groundwork.deploy.prefix}/${libdir}"/>
+		</exec>
+		<!-- COPY HEADER FILES-->
+		<exec dir="${basedir}/${com.groundwork.nagios.cgilib}" executable="cp" >
+			<arg line="cgi.h ${org.groundwork.deploy.prefix}/include"/>
+		</exec>
+		<!-- COPY CGILIB.PC into /usr/local/groundwork/${libdir}/pkgconfig -->
+		<exec dir="${basedir}/${com.groundwork.nagios.cgilib}" executable="cp" >
+			<arg line="../cgilib.pc ${org.groundwork.deploy.prefix}/${libdir}/pkgconfig/cgilib.pc"/>
+		</exec>
+	</goal>
+	<!-- STOP BUILDING CGILIB-->
+
+	<!-- START BUILDING LIBART -->
+	<goal name="libart" description="Build LIBART and install it into /usr/local/groundwork">
+
+		<!-- UNZIP/UNTAR -->
+		<untar compression="gzip" src="${org.groundwork.build.share}/nagios/${com.groundwork.nagios.libart}.tar.gz"
+                dest="${basedir}"/>
+
+		<!-- RUN CONFIGURE -->
+		<exec dir="${basedir}/${com.groundwork.nagios.libart}" executable="sh" >
+			<arg line="configure --prefix=${org.groundwork.deploy.prefix}
+				      --libdir=${org.groundwork.deploy.prefix}/${libdir}
+				      --includedir=${org.groundwork.deploy.prefix}/include		
+                                				"/>
+		</exec>
+
+		<!-- MAKE-->
+		<exec dir="${basedir}/${com.groundwork.nagios.libart}" executable="make" >
+			<arg line="all"/>
+		</exec>
+
+		<!-- MAKE-->
+		<exec dir="${basedir}/${com.groundwork.nagios.libart}" executable="make" >
+			<arg line="install"/>
+		</exec>
+
+
+		<!-- MAKE-->
+		<exec dir="${basedir}/${com.groundwork.nagios.libart}" executable="mv" >
+			<arg line="${org.groundwork.deploy.prefix}/include/libart-2.0/libart_lgpl ${org.groundwork.deploy.prefix}/include/libart_lgpl"/>
+		</exec>
+
+	</goal>
+	<!-- STOP BUILDING LIBART -->
+
+	<!-- START BUILDING IPUTILS -->
+	<goal name="iputils" description="Build IPUTILS and install it into /usr/local/groundwork">
+
+		<!-- UNZIP/UNTAR -->
+		<untar compression="gzip" src="${org.groundwork.build.share}/nagios/${com.groundwork.nagios.iputils}.tar.gz"
+                dest="${basedir}"/>
+
+		<!-- COPY NESSESARY FILES FROM subdir -->
+		<exec dir="${basedir}/${com.groundwork.nagios.iputils}" executable="cp" >
+			<arg line="argh/COPYING COPYING"/>
+		</exec>
+		<exec dir="${basedir}/${com.groundwork.nagios.iputils}" executable="cp" >
+			<arg line="argh/depfun.mak depfun.mak "/>
+		</exec>
+		<exec dir="${basedir}/${com.groundwork.nagios.iputils}" executable="cp" >
+			<arg line="argh/Makefile.sets Makefile.sets "/>
+		</exec>
+		<!-- MAKE-->
+		<exec dir="${basedir}/${com.groundwork.nagios.iputils}" executable="make" >
+			<arg line="all"/>
+		</exec>
+		<!-- COPY BINNARY  to /usr/local/groundwork/bin -->
+		<exec dir="${basedir}/${com.groundwork.nagios.iputils}" executable="cp" >
+			<arg line="iputils ${org.groundwork.deploy.prefix}/bin/iputils "/>
+		</exec>
+		<!-- COPY STATIC LIBRARY to /usr/local/groundwork/lib -->
+		<exec dir="${basedir}/${com.groundwork.nagios.iputils}" executable="cp" >
+			<arg line="argh/libargh.a ${org.groundwork.deploy.prefix}/${libdir}/libargh.a "/>
+		</exec>
+		<!-- COPY SHARED LIBRARY to /usr/local/groundwork/lib -->
+		<exec dir="${basedir}/${com.groundwork.nagios.iputils}" executable="cp" >
+			<arg line="argh/libargh.so ${org.groundwork.deploy.prefix}/${libdir}/libargh.so "/>
+		</exec>
+	</goal>
+	<!-- STOP BUILDING IPUTILS -->
+
+	<!-- START BUILDING RRDTOOL -->
+	<goal name="rrdtool" description="Build Round Robin Database and install it into /usr/local/groundwork">
+
+		<!-- UNZIP/UNTAR -->
+		<untar compression="gzip" src="${org.groundwork.build.share}/nagios/${com.groundwork.nagios.rrdtool}.tar.gz"
+                dest="${basedir}"/>
+
+		<exec dir="${basedir}/${com.groundwork.nagios.rrdtool}" executable="cp" >
+			<arg line="../rrdtool_bindings_tcl_tclrrd.c bindings/tcl/tclrrd.c "/>
+		</exec>
+
+		<!-- RUN CONFIGURE -->
+		<exec dir="${basedir}/${com.groundwork.nagios.rrdtool}" executable="sh" >
+			<arg line="./configure --prefix=${org.groundwork.deploy.prefix}
+				  LDFLAGS=-L${org.groundwork.deploy.prefix}/${libdir}
+				  CPPFLAGS=-I${org.groundwork.deploy.prefix}/include 
+				  --libdir=${org.groundwork.deploy.prefix}/${libdir}
+				  --with-gnu-ld
+				  --enable-perl-site-install
+                                				"/>
+		</exec>
+
+		<!-- MAKE-->
+		<exec dir="${basedir}/${com.groundwork.nagios.rrdtool}" executable="make" >
+			<arg line="all"/>
+		</exec>
+
+		<!-- MAKE-->
+		<exec dir="${basedir}/${com.groundwork.nagios.rrdtool}" executable="make" >
+			<arg line="install"/>
+		</exec>
+
+		<!-- MAKE-->
+		<exec dir="${basedir}/${com.groundwork.nagios.rrdtool}/bindings/perl-shared" executable="perl" >
+			<arg line="Makefile.PL"/>
+		</exec>
+
+		<!-- MAKE-->
+		<exec dir="${basedir}/${com.groundwork.nagios.rrdtool}/bindings/perl-shared" executable="make" >
+			<arg line=""/>
+		</exec>
+
+		<!-- MAKE-->
+		<exec dir="${basedir}/${com.groundwork.nagios.rrdtool}/bindings/perl-shared" executable="make" >
+			<arg line="install"/>
+		</exec>
+
+	</goal>
+	<!-- STOP BUILDING RRDTOOL -->
+
+        <!-- START BUILDING sqlite -->
+        <goal name="sqlite" description="Build sqlite Database and install it into /usr/local/groundwork">
+
+                <!-- UNZIP/UNTAR -->
+                <untar compression="gzip" src="${org.groundwork.build.share}/nagios/${com.groundwork.nagios.sqlite}.tar.gz"
+            dest="${basedir}"/>
+
+                <!-- File copy -->
+		<copy file="${basedir}/${com.groundwork.nagios}/Makefile.sqlite.RH4-32" tofile="${basedir}/${com.groundwork.nagios.sqlite}/Makefile.in" overwrite="true" />
+
+                <!-- MAKE NAGIOS DIR -->
+                <exec dir="${basedir}/${com.groundwork.nagios}" executable="mkdir" >
+                        <arg line="-p sqlite-linux"/>
+                </exec>
+
+                <!-- RUN CONFIGURE -->
+                <exec dir="${basedir}/${com.groundwork.nagios}/sqlite-linux" executable="sh" >
+                        <arg line="${basedir}/${com.groundwork.nagios.sqlite}/configure --prefix=${org.groundwork.deploy.prefix}
+                        	--libdir=${org.groundwork.deploy.prefix}/${libdir}"/>
+                </exec>
+
+                <!-- MAKE -->
+                <exec dir="${basedir}/${com.groundwork.nagios}/sqlite-linux" executable="make" >
+                        <arg line=""/>
+                </exec>
+
+                <!-- MAKE INSTALL -->
+                <exec dir="${basedir}/${com.groundwork.nagios}/sqlite-linux" executable="make" >
+                        <arg line="install"/>
+                </exec>
+
+        </goal>
+        <!-- STOP BUILDING sqlite -->
+	
+	<!-- START BUILDING sendEmail -->
+	<goal name="sendEmail" description="Build sendEmail Database and install it into /usr/local/groundwork">
+
+		<!-- UNZIP/UNTAR -->
+		<untar compression="gzip" src="${org.groundwork.build.share}/nagios/${com.groundwork.nagios.sendEmail}.tar.gz"
+                dest="${basedir}"/>
+
+		<!-- MAKE -->
+		<exec dir="${basedir}/${dir.groundwork.nagios.sendEmail}" executable="chmod" >
+			<arg line="-R +x ./"/>
+		</exec>
+
+		<!-- COPY BINARY -->
+		<exec dir="${basedir}/${dir.groundwork.nagios.sendEmail}" executable="cp" >
+			<arg line="sendEmail ${org.groundwork.deploy.prefix}/bin"/>
+		</exec>
+
+
+	</goal>
+	<!-- STOP BUILDING sendEmail -->
+
+	<!-- Build Performance component -->
+	<goal name="performance" description="Copy performance files into distribution">
+		<!-- Make sure directories exists -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/nagios/eventhandlers" />
+		<mkdir dir="${org.groundwork.deploy.prefix}/nagios/share/images/logos" />
+		<mkdir dir="${org.groundwork.deploy.prefix}/nagios/etc/private" />
+		<mkdir dir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/graphs" />
+
+		<!-- File copy -->
+		<copy todir="${org.groundwork.deploy.prefix}/nagios/eventhandlers" overwrite="true">
+			<fileset dir="${basedir}/performance/eventhandlers">
+				<exclude name="**/.svn"/>
+			</fileset>
+		</copy>
+
+		<copy todir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/graphs" overwrite="true">
+			<fileset dir="${basedir}/performance/cgi">
+				<exclude name="**/.svn"/>
+			</fileset>
+		</copy>
+
+		<copy todir="${org.groundwork.deploy.prefix}/nagios/etc/private" overwrite="true">
+			<fileset file="${basedir}/performance/libexec/resource.cfg">
+				<exclude name="**/.svn"/>
+			</fileset>
+		</copy>
+
+		<copy todir="${org.groundwork.deploy.prefix}/nagios/etc" overwrite="true">
+			<fileset file="${basedir}/performance/libexec/cgi.cfg">
+				<exclude name="**/.svn"/>
+			</fileset>
+		</copy>
+
+		<copy todir="${org.groundwork.deploy.prefix}/nagios/share/images/logos" overwrite="true">
+			<fileset file="${basedir}/performance/libexec/graph.png">
+				<exclude name="**/.svn"/>
+			</fileset>
+		</copy>
+
+		<chmod dir="${org.groundwork.deploy.prefix}/nagios/libexec" perm="ugo+rx" includes="**/*.*"/>
+
+		<!-- Permissions -->
+		<chmod dir="${org.groundwork.deploy.prefix}/nagios/eventhandlers" perm="ugo+rx" includes="**/*.pl"/>
+
+	</goal>
+</project>

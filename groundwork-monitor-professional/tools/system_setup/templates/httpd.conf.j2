@@ -1,0 +1,702 @@
+# $Id: httpd.conf 28741 2017-09-18 23:53:27Z mcarey $
+#
+# Copyright (C) 2010-2016 GroundWork Open Source, Inc. ("GroundWork")
+# All rights reserved. This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public License version 2
+# as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+# Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+#
+# This is the main Apache HTTP server configuration file.  It contains the
+# configuration directives that give the server its instructions.
+# See <URL:http://httpd.apache.org/docs/2.2> for detailed information.
+# In particular, see
+# <URL:http://httpd.apache.org/docs/2.2/mod/directives.html>
+# for a discussion of each configuration directive.
+#
+# Do NOT simply read the instructions in here without understanding
+# what they do.  They're here only as hints or reminders.  If you are unsure
+# consult the online docs. You have been warned.
+#
+# Configuration and logfile names: If the filenames you specify for many
+# of the server's control files begin with "/" (or "drive:/" for Win32), the
+# server will use that explicit path.  If the filenames do *not* begin
+# with "/", the value of ServerRoot is prepended -- so "logs/foo.log"
+# with ServerRoot set to "/usr/local/groundwork/apache2" will be interpreted by the
+# server as "/usr/local/groundwork/apache2/logs/foo.log".
+
+#
+# ServerRoot: The top of the directory tree under which the server's
+# configuration, error, and log files are kept.
+#
+# Do not add a slash at the end of the directory path.  If you point
+# ServerRoot at a non-local disk, be sure to point the LockFile directive
+# at a local disk.  If you wish to share the same ServerRoot for multiple
+# httpd daemons, you will need to change at least LockFile and PidFile.
+#
+ServerRoot "/usr/local/groundwork/apache2"
+ServerTokens Min
+
+#
+# Listen: Allows you to bind Apache to specific IP addresses and/or
+# ports, instead of the default. See also the <VirtualHost>
+# directive.
+#
+# Change this to Listen on specific IP addresses as shown below to
+# prevent Apache from glomming onto all bound IP addresses.
+#
+#Listen 12.34.56.78:80
+{% if protocol == "https" and redirect %}
+Listen 80
+{% else %}
+#Listen 80
+{% endif %}
+
+#
+# Dynamic Shared Object (DSO) Support
+#
+# To be able to use the functionality of a module which was built as a DSO you
+# have to place corresponding `LoadModule' lines at this location so the
+# directives contained in it are actually available _before_ they are used.
+# Statically compiled modules (those listed by `httpd -l') do not need
+# to be loaded here.
+#
+# Example:
+# LoadModule foo_module modules/mod_foo.so
+#
+LoadModule authn_file_module modules/mod_authn_file.so
+#LoadModule authn_dbm_module modules/mod_authn_dbm.so
+#LoadModule authn_anon_module modules/mod_authn_anon.so
+#LoadModule authn_dbd_module modules/mod_authn_dbd.so
+LoadModule authn_default_module modules/mod_authn_default.so
+LoadModule authz_host_module modules/mod_authz_host.so
+#LoadModule authz_groupfile_module modules/mod_authz_groupfile.so
+LoadModule authz_user_module modules/mod_authz_user.so
+#LoadModule authz_dbm_module modules/mod_authz_dbm.so
+#LoadModule authz_owner_module modules/mod_authz_owner.so
+LoadModule authz_default_module modules/mod_authz_default.so
+LoadModule auth_basic_module modules/mod_auth_basic.so
+LoadModule auth_digest_module modules/mod_auth_digest.so
+#LoadModule dbd_module modules/mod_dbd.so
+LoadModule dumpio_module modules/mod_dumpio.so
+LoadModule ext_filter_module modules/mod_ext_filter.so
+LoadModule include_module modules/mod_include.so
+LoadModule filter_module modules/mod_filter.so
+LoadModule deflate_module modules/mod_deflate.so
+LoadModule log_config_module modules/mod_log_config.so
+#LoadModule log_forensic_module modules/mod_log_forensic.so
+LoadModule logio_module modules/mod_logio.so
+LoadModule env_module modules/mod_env.so
+#LoadModule mime_magic_module modules/mod_mime_magic.so
+#LoadModule cern_meta_module modules/mod_cern_meta.so
+LoadModule expires_module modules/mod_expires.so
+LoadModule headers_module modules/mod_headers.so
+LoadModule ident_module modules/mod_ident.so
+#LoadModule usertrack_module modules/mod_usertrack.so
+#LoadModule unique_id_module modules/mod_unique_id.so
+LoadModule setenvif_module modules/mod_setenvif.so
+LoadModule version_module modules/mod_version.so
+LoadModule proxy_module modules/mod_proxy.so
+LoadModule proxy_connect_module modules/mod_proxy_connect.so
+LoadModule proxy_ftp_module modules/mod_proxy_ftp.so
+LoadModule proxy_http_module modules/mod_proxy_http.so
+LoadModule proxy_ajp_module modules/mod_proxy_ajp.so
+LoadModule proxy_balancer_module modules/mod_proxy_balancer.so
+LoadModule ssl_module modules/mod_ssl.so
+LoadModule mime_module modules/mod_mime.so
+#LoadModule dav_module modules/mod_dav.so
+LoadModule status_module modules/mod_status.so
+LoadModule autoindex_module modules/mod_autoindex.so
+LoadModule asis_module modules/mod_asis.so
+LoadModule info_module modules/mod_info.so
+LoadModule cgi_module modules/mod_cgi.so
+LoadModule vhost_alias_module modules/mod_vhost_alias.so
+LoadModule negotiation_module modules/mod_negotiation.so
+LoadModule dir_module modules/mod_dir.so
+LoadModule imagemap_module modules/mod_imagemap.so
+LoadModule actions_module modules/mod_actions.so
+#LoadModule speling_module modules/mod_speling.so
+#LoadModule userdir_module modules/mod_userdir.so
+LoadModule alias_module modules/mod_alias.so
+
+# Comment the below module to enable PHP-FPM
+LoadModule php5_module        modules/libphp5.so
+
+# This enables using PHP-FPM when mod_php is disabled
+<IfModule !php5_module>
+    #https://docs.bitnami.com/general/components/php-fpm/#php-fpm-did-not-handle-the-connection-error
+    Action application/x-httpd-php "/bitnami-error-php-fpm-did-not-handle-the-connection"
+    Define USE_PHP_FPM
+    Include "conf/php-fpm-apache.conf"
+</IfModule>
+
+
+
+#########################################################
+# Enable SSL
+#
+# Create ssl certificate and key (see bookshelf for more details)
+# and un-comment the sections below
+#
+
+LoadModule rewrite_module modules/mod_rewrite.so
+
+# Secure (SSL/TLS) connections
+{% if protocol == "https" %}
+Include conf/extra/httpd-ssl.conf
+
+RewriteEngine On
+  {% if redirect %}
+RewriteCond %{SERVER_PORT} !^443$
+
+#Specify the server name (replace my-server with the server name to use)
+RewriteRule ^/(.*)$ {{ protocol }}://{{ servername }}/$1 [NE]
+  {% else %}
+#RewriteCond %{SERVER_PORT} !^443$
+
+#Specify the server name (replace my-server with the server name to use)
+#RewriteRule ^/(.*)$ https://{{ servername }}/$1 [NE]
+  {% endif %}
+{% else %}
+#RewriteCond %{SERVER_PORT} !^443$
+
+#Specify the server name (replace my-server with the server name to use)
+#RewriteRule ^/(.*)$ https://{{ servername }}/$1 [NE]
+{% endif %}
+
+###########################################################
+
+<IfModule !mpm_netware_module>
+#
+# If you wish httpd to run as a different user or group, you must run
+# httpd as root initially and it will switch.
+#
+# User/Group: The name (or #number) of the user/group to run httpd as.
+# It is usually good practice to create a dedicated user and group for
+# running httpd, as with most system services.
+#
+User nagios
+Group nagios
+</IfModule>
+
+# 'Main' server configuration
+#
+# The directives in this section set up the values used by the 'main'
+# server, which responds to any requests that aren't handled by a
+# <VirtualHost> definition.  These values also provide defaults for
+# any <VirtualHost> containers you may define later in the file.
+#
+# All of these directives may appear inside <VirtualHost> containers,
+# in which case these default settings will be overridden for the
+# virtual host being defined.
+#
+
+#
+# ServerAdmin: Your address, where problems with the server should be
+# e-mailed.  This address appears on some server-generated pages, such
+# as error documents.  e.g. admin@your-domain.com
+#
+ServerAdmin you@example.com
+
+#
+# ServerName gives the name and port that the server uses to identify itself.
+# This can often be determined automatically, but we recommend you specify
+# it explicitly to prevent problems during startup.
+#
+# If your host doesn't have a registered DNS name, enter its IP address here.
+#
+ServerName {{ servername }}
+
+#
+# DocumentRoot: The directory out of which you will serve your
+# documents. By default, all requests are taken from this directory, but
+# symbolic links and aliases may be used to point to other locations.
+#
+DocumentRoot "/usr/local/groundwork/apache2/htdocs"
+
+#
+# Each directory to which Apache has access can be configured with respect
+# to which services and features are allowed and/or disabled in that
+# directory (and its subdirectories).
+#
+# First, we configure the "default" to be a very restrictive set of
+# features.
+#
+<Directory />
+    Options FollowSymLinks Indexes ExecCGI
+    AllowOverride None
+    Order allow,deny
+    Deny from all
+</Directory>
+
+#
+# Note that from this point forward you must specifically allow
+# particular features to be enabled - so if something's not working as
+# you might expect, make sure that you have specifically enabled it
+# below.
+#
+
+#
+# This should be changed to whatever you set DocumentRoot to.
+#
+<Directory "/usr/local/groundwork/apache2/htdocs">
+    #
+    # Possible values for the Options directive are "None", "All",
+    # or any combination of:
+    #   Indexes Includes FollowSymLinks SymLinksifOwnerMatch ExecCGI MultiViews
+    #
+    # Note that "MultiViews" must be named *explicitly* --- "Options All"
+    # doesn't give it to you.
+    #
+    # The Options directive is both complicated and important.  Please see
+    # http://httpd.apache.org/docs/2.2/mod/core.html#options
+    # for more information.
+    #
+    Options FollowSymLinks
+
+    #
+    # AllowOverride controls what directives may be placed in .htaccess files.
+    # It can be "All", "None", or any combination of the keywords:
+    #   Options FileInfo AuthConfig Limit
+    #
+    AllowOverride None
+
+    #
+    # Controls who can get stuff from this server.
+    #
+    Order allow,deny
+    Allow from all
+</Directory>
+
+#
+# DirectoryIndex: sets the file that Apache will serve if a directory
+# is requested.
+#
+<IfModule dir_module>
+    DirectoryIndex index.html index.php index.html.var
+</IfModule>
+
+#
+# Use mod_deflate for text files including html, css, and javascript
+#
+AddOutputFilterByType DEFLATE text/html text/plain text/css application/x-javascript
+
+#
+# The following lines prevent .htaccess and .htpasswd files from being
+# viewed by Web clients.
+#
+<FilesMatch "^\.ht">
+    Order allow,deny
+    Deny from all
+    Satisfy All
+</FilesMatch>
+
+#
+# ErrorLog: The location of the error log file.
+# If you do not specify an ErrorLog directive within a <VirtualHost>
+# container, error messages relating to that virtual host will be
+# logged here.  If you *do* define an error logfile for a <VirtualHost>
+# container, that host's errors will be logged there and not here.
+#
+ErrorLog logs/error_log
+
+#
+# LogLevel: Control the number of messages logged to the error_log.
+# Possible values include: debug, info, notice, warn, error, crit,
+# alert, emerg.
+#
+LogLevel warn
+
+<IfModule log_config_module>
+    #
+    # The following directives define some format nicknames for use with
+    # a CustomLog directive (see below).
+    #
+    LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
+    LogFormat "%h %l %u %t \"%r\" %>s %b" common
+
+    <IfModule logio_module>
+      # You need to enable mod_logio.c to use %I and %O
+      LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" %I %O" combinedio
+    </IfModule>
+
+    #
+    # The location and format of the access logfile (Common Logfile Format).
+    # If you do not define any access logfiles within a <VirtualHost>
+    # container, they will be logged here.  Contrariwise, if you *do*
+    # define per-<VirtualHost> access logfiles, transactions will be
+    # logged therein and *not* in this file.
+    #
+    CustomLog logs/access_log combined
+
+    #
+    # If you prefer a logfile with access, agent, and referer information
+    # (Combined Logfile Format) you can use the following directive.
+    #
+    #CustomLog logs/access_log combined
+</IfModule>
+
+<IfModule alias_module>
+    #
+    # Redirect: Allows you to tell clients about documents that used to
+    # exist in your server's namespace, but do not anymore. The client
+    # will make a new request for the document at its new location.
+    # Example:
+    # Redirect permanent /foo http://www.example.com/bar
+
+    #
+    # Alias: Maps web paths into filesystem paths and is used to
+    # access content that does not live under the DocumentRoot.
+    # Example:
+    # Alias /webpath /full/filesystem/path
+    #
+    # If you include a trailing / on /webpath then the server will
+    # require it to be present in the URL.  You will also likely
+    # need to provide a <Directory> section to allow access to
+    # the filesystem path.
+
+    #
+    # ScriptAlias: This controls which directories contain server scripts.
+    # ScriptAliases are essentially the same as Aliases, except that
+    # documents in the target directory are treated as applications and
+    # run by the server when requested rather than as documents sent to the
+    # client.  The same rules about trailing "/" apply to ScriptAlias
+    # directives as to Alias.
+    #
+    #ScriptAlias /cgi-bin/ "/usr/local/groundwork/core/.*/cgi-bin/"
+
+</IfModule>
+
+<IfModule cgid_module>
+    #
+    # ScriptSock: On threaded servers, designate the path to the UNIX
+    # socket used to communicate with the CGI daemon of mod_cgid.
+    #
+    #Scriptsock logs/cgisock
+</IfModule>
+
+#
+# DefaultType: the default MIME type the server will use for a document
+# if it cannot otherwise determine one, such as from filename extensions.
+# If your server contains mostly text or HTML documents, "text/plain" is
+# a good value.  If most of your content is binary, such as applications
+# or images, you may want to use "application/octet-stream" instead to
+# keep browsers from trying to display binary files as though they are
+# text.
+#
+DefaultType text/plain
+
+<IfModule mime_module>
+    #
+    # TypesConfig points to the file containing the list of mappings from
+    # filename extension to MIME-type.
+    #
+    TypesConfig conf/mime.types
+
+    #
+    # AddType allows you to add to or override the MIME configuration
+    # file specified in TypesConfig for specific file types.
+    #
+    #AddType application/x-gzip .tgz
+    #
+    # AddEncoding allows you to have certain browsers uncompress
+    # information on the fly. Note: Not all browsers support this.
+    #
+    #AddEncoding x-compress .Z
+    #AddEncoding x-gzip .gz .tgz
+    #
+    # If the AddEncoding directives above are commented-out, then you
+    # probably should define those extensions to indicate media types:
+    #
+    AddType application/x-compress .Z
+    AddType application/x-gzip .gz .tgz
+    AddType application/x-httpd-php .php .php5 .php4 .php3
+    #
+    # AddHandler allows you to map certain file extensions to "handlers":
+    # actions unrelated to filetype. These can be either built into the server
+    # or added with the Action directive (see below)
+    #
+    # To use CGI scripts outside of ScriptAliased directories:
+    # (You will also need to add "ExecCGI" to the "Options" directive.)
+    #
+    # <Directory /usr/local/groundwork/core/.*/cgi-bin>
+        ## We can no longer define a global CGI script handler that includes
+        ## .pl scripts, because we sometimes allow .pl scripts to be downloaded
+        ## from certain directories.  Thus any such handler must be specific
+        ## to the directory where it is to apply.  But in fact, we now execute
+        ## CGIs in a JBoss Portal context rather than an Apache context, so
+        ## there is no longer any reason to establish a set of core/.*/cgi-bin
+        ## directories with this capability.
+        # AddHandler cgi-script .cgi .pl
+        # Options ExecCGI
+        # SetHandler cgi-script
+    # </Directory>
+
+    # For type maps (negotiated resources):
+    #AddHandler type-map var
+
+    #
+    # Filters allow you to process content before it is sent to the client.
+    #
+    # To parse .shtml files for server-side includes (SSI):
+    # (You will also need to add "Includes" to the "Options" directive.)
+    #
+    #AddType text/html .shtml
+    #AddOutputFilter INCLUDES .shtml
+</IfModule>
+
+#
+# The mod_mime_magic module allows the server to use various hints from the
+# contents of the file itself to determine its type.  The MIMEMagicFile
+# directive tells the module where the hint definitions are located.
+#
+#MIMEMagicFile conf/magic
+
+#
+# Customizable error responses come in three flavors:
+# 1) plain text 2) local redirects 3) external redirects
+#
+# Some examples:
+#ErrorDocument 500 "The server made a boo boo."
+#ErrorDocument 404 /missing.html
+#ErrorDocument 404 "/cgi-bin/missing_handler.pl"
+#ErrorDocument 402 http://www.example.com/subscription_info.html
+#
+
+#
+# EnableMMAP and EnableSendfile: On systems that support it,
+# memory-mapping or the sendfile syscall is used to deliver
+# files.  This usually improves server performance, but must
+# be turned off when serving from networked-mounted
+# filesystems or if support for these functions is otherwise
+# broken on your system.
+#
+#EnableMMAP off
+#EnableSendfile off
+
+
+# INCLUDED FROM OLD HTTPD.CONF
+
+Alias /icons/ "/usr/local/groundwork/apache2/icons/"
+<Directory "/usr/local/groundwork/apache2/icons">
+    Options MultiViews
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+</Directory>
+
+#Bookshelf content needs an alias for all the external API docs
+Alias /bookshelf-data/ "/usr/local/groundwork/core/bookshelf/htdocs/bookshelf/bookshelf-data/"
+<Directory "/usr/local/groundwork/core/bookshelf/htdocs/bookshelf/bookshelf-data/">
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+</Directory>
+
+Alias /nagios/contexthelp "/usr/local/groundwork/nagios/share/contexthelp"
+<Directory "/usr/local/groundwork/nagios/share/contexthelp/">
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+</Directory>
+
+Alias /nagios/images "/usr/local/groundwork/nagios/share/images"
+<Directory "/usr/local/groundwork/nagios/share/images">
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+</Directory>
+
+Alias /nagios/stylesheets "/usr/local/groundwork/nagios/share/stylesheets"
+<Directory "/usr/local/groundwork/nagios/share/stylesheets">
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+</Directory>
+
+Alias /nagios/js "/usr/local/groundwork/nagios/share/js"
+<Directory "/usr/local/groundwork/nagios/share/js">
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+</Directory>
+
+
+ScriptAlias /monitor/cgi-bin "/usr/local/groundwork/core/.*/cgi-bin"
+<Directory "/usr/local/groundwork/core/.*/cgi-bin">
+    AllowOverride AuthConfig
+    Options ExecCGI
+    PassEnv LD_LIBRARY_PATH
+    PassEnv NAGIOS_CGI_CONFIG
+    Allow from all
+</Directory>
+
+# Supplemental configuration
+#
+# The configuration files in the conf/extra/ directory can be
+# included to add extra features or to modify the default configuration of
+# the server, or you may simply copy their contents here and change as
+# necessary.
+
+# Server-pool management (MPM specific)
+#Include conf/extra/httpd-mpm.conf
+
+# Multi-language error messages
+#Include conf/extra/httpd-multilang-errordoc.conf
+
+# Fancy directory listings
+#Include conf/extra/httpd-autoindex.conf
+
+# Language settings
+#Include conf/extra/httpd-languages.conf
+
+# User home directories
+#Include conf/extra/httpd-userdir.conf
+
+# Real-time info on requests and configuration
+#Include conf/extra/httpd-info.conf
+
+# Virtual hosts
+#Include conf/extra/httpd-vhosts.conf
+
+# Local access to the Apache HTTP Server Manual
+#Include conf/extra/httpd-manual.conf
+
+
+# Various default settings
+#Include conf/extra/httpd-default.conf
+
+#
+# Note: The following must must be present to support
+#       starting without SSL on platforms with no /dev/random equivalent
+#       but a statically compiled-in mod_ssl.
+#
+<IfModule ssl_module>
+SSLRandomSeed startup builtin
+SSLRandomSeed connect builtin
+</IfModule>
+
+#
+# Include GroundWork configuration files
+#
+Include /usr/local/groundwork/apache2/conf/groundwork/*.conf
+
+TraceEnable off
+
+# Repair an improper Content-Type header from clients (GDMA 2.3.2 and earlier releases).
+<Location /foundation-webapp/restwebservices/autoRegister/registerAgentByProfile>
+    # The <If> directive isn't available until Apache 2.4.
+    # <If "%{REQUEST_METHOD} == 'POST'">
+	RequestHeader edit Content-Type ^text/plain$ application/x-www-form-urlencoded
+    # </If>
+</Location>
+
+#Uncomment the below if your security requirement is to utilize ssl, and the requirement is to have httponly
+#and secure cookies enabled in groundwork.
+#Header edit Set-Cookie ^(.*)$ $1;HttpOnly;Secure
+
+ProxyRequests Off
+
+<Proxy *>
+Order deny,allow
+Allow from all
+</Proxy>
+
+# REST APIs require ability to accept escaped slashes in names;
+# (note 'nocanon' argument to ProxyPass for /foundation-webapp)
+AllowEncodedSlashes NoDecode
+
+# Proxy pass for JOSSO. JOSSO is running on port 8888
+ProxyPass /josso/             http://localhost:8888/josso/
+
+# Proxy Pass for legacy applications GDMA JDMA that use old 6.7 Rest API's
+ProxyPass /foundation-webapp/restwebservices http://localhost:{{frontend_jboss_port}}/legacy-rest/api
+
+# Proxy pass for all applications
+ProxyPass /foundation-webapp              http://localhost:{{frontend_jboss_port}}/foundation-webapp
+ProxyPass /reportserver                   http://localhost:8080/reportserver
+ProxyPass /birtviewer                     http://localhost:8080/birtviewer
+ProxyPass /monarch/                       http://localhost:8080/monarch/ timeout=5400
+ProxyPass /monarch-export/                http://localhost:8080/monarch-export/
+ProxyPass /nagios-app/                    http://localhost:8080/nagios-app/
+ProxyPass /gwos-vema-vmware               http://localhost:8080/gwos-vema-vmware/
+ProxyPass /gwos-vema-rhev                 http://localhost:8080/gwos-vema-rhev/
+ProxyPass /status-restservice             http://localhost:8080/status-restservice
+ProxyPass /cloudhub                       http://localhost:8080/cloudhub
+ProxyPass /performance/images/            http://localhost:8080/performance/htdocs/performance/images/
+ProxyPass /performance/                   http://localhost:8080/performance/
+ProxyPass /reports/                       http://localhost:8080/reports/
+ProxyPass /profiles/                      http://localhost:8080/profiles/
+ProxyPass /nagvis_share/                  http://localhost:8080/nagvis_share/
+ProxyPass /gwos-jbossas7-monitoringAgent/ http://localhost:8080/gwos-jbossas7-monitoringAgent/
+ProxyPass /gwos-tomcat-monitoringAgent/   http://localhost:8888/gwos-tomcat-monitoringAgent/
+
+# Proxy pass for legacy paths, now remapped to work under our Portal.
+ProxyPassMatch ^/graphs/cgi-bin/(.*)$ http://localhost:8080/performance/cgi-bin/graphs/$1
+
+# JPP Proxy passes
+ProxyPass /groundwork-skin http://localhost:8080/groundwork-skin
+ProxyPass /eXoResources    http://localhost:8080/eXoResources
+ProxyPass /rest            http://localhost:8080/rest
+ProxyPass /eXoGadgetServer http://localhost:8080/eXoGadgetServer
+ProxyPass /gwtGadgets      http://localhost:8080/gwtGadgets
+ProxyPass /exoadmin        http://localhost:8080/exoadmin
+ProxyPass /web             http://localhost:8080/web
+
+# Proxy Pass for RESTful API
+ProxyPass /api http://localhost:{{frontend_jboss_port}}/foundation-webapp/api nocanon
+
+# The ordering of these lines is important, because some requests might match more than one pattern.
+ProxyPassMatch ^/(portal/classic/(?:groundwork-administration|config|auto-disc).*)$ http://localhost:8080/$1 timeout=600
+ProxyPassMatch ^/portal(.*)$  http://localhost:8080/portal$1
+ProxyPassMatch ^/nms-(.*)$    http://localhost:8080/nms-$1
+ProxyPassMatch ^/nagvis/(.*)$ http://localhost:8080/nagvis/$1
+
+ProxyPreserveHost On
+ProxyStatus On
+
+# Apache Mutex needs to be defined on newer OS like CentOS 7.2
+AcceptMutex flock
+
+# Alias for plugin downloads
+#Alias /plugin_download "/usr/local/groundwork/apache2/htdocs/agents/plugin_download"
+
+<IfModule headers_module>
+    <IfVersion >= 2.4.7 >
+        Header always setifempty X-Frame-Options SAMEORIGIN
+    </IfVersion>
+    <IfVersion < 2.4.7 >
+        Header always merge X-Frame-Options SAMEORIGIN
+    </IfVersion>
+    RequestHeader unset Proxy
+</IfModule>
+
+# The following lines prevent .user.ini PHP settings files from being viewed by Web clients.
+<Files ".user.ini">
+
+<IfVersion < 2.3 >
+    Order allow,deny
+    Deny from all
+</IfVersion>
+<IfVersion >= 2.3>
+    Require all denied
+</IfVersion>
+
+</Files>
+
+# Security
+ServerSignature Off
+ServerTokens Prod
+TraceEnable Off
+
+Include "/usr/local/groundwork/apache2/conf/ssi.conf"
+
+Alias /snmp "/usr/local/groundwork/core/snmp/htdocs/snmp"

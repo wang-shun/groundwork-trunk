@@ -1,0 +1,18 @@
+--- POE-Component-IKC-0.2200/IKC/Responder.pm.orig	2009-05-08 12:46:42.000000000 -0700
++++ POE-Component-IKC-0.2200/IKC/Responder.pm	2010-03-01 11:59:38.000000000 -0800
+@@ -255,13 +255,13 @@
+ 
+     if($callback and 'CODE' ne ref $callback)
+     {
+-        $sender = $sender->ID if ref $sender;
++        my $sender_id = (ref $sender) ? $sender->ID : $sender;
+         my $state=$callback;
+         $callback=sub 
+         {
+             DEBUG and 
+                 warn "Subscription callback to '$state'\n";
+-            $kernel->post($sender, $state, @_);
++            $kernel->post($sender_id, $state, @_);
+         };
+     }
+     $heap->{self}->subscribe($sessions, $callback, $sender->ID);

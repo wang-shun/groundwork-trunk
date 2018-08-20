@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+    <!--
+        Copyright (C) 2009 GroundWork Open Source, Inc. (GroundWork) All
+        rights reserved. This program is free software; you can
+        redistribute it and/or modify it under the terms of the GNU
+        General Public License version 2 as published by the Free
+        Software Foundation. This program is distributed in the hope
+        that it will be useful, but WITHOUT ANY WARRANTY; without even
+        the implied warranty of MERCHANTABILITY or FITNESS FOR A
+        PARTICULAR PURPOSE. See the GNU General Public License for more
+        details. You should have received a copy of the GNU General
+        Public License along with this program; if not, write to the
+        Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+        Boston, MA 02110-1301, USA.
+    -->
+
+<deployments>
+    <deployment>
+        <parent-ref>groundwork-monitor</parent-ref>
+        <if-exists>keep</if-exists>
+        <page>
+            <page-name>nms</page-name>
+                    <if-exists>overwrite</if-exists>                
+                    <display-name xml:lang="en">NMS</display-name>
+                    <properties>
+                        <property>
+                            <name>order</name>
+                            <value>5</value>
+                        </property>
+                        <property>
+                            <name>layout.id</name>
+                            <value>1column</value>
+                        </property>
+                    </properties>
+                        <window>
+                            <window-name>CactiWindow
+                            </window-name>
+                            <instance-ref>CactiInstance
+                            </instance-ref>
+                            <region>center</region>
+                            <height>0</height>
+                        </window>
+                        <security-constraint>
+                    <policy-permission>
+                        <role-name>Admin</role-name>
+                        <action-name>viewrecursive</action-name>
+                    </policy-permission>
+                </security-constraint>                    
+                    <page>
+                        <page-name>cacti</page-name>
+                        <if-exists>overwrite</if-exists>                
+                        <display-name xml:lang="en">Cacti</display-name>
+                        <properties>
+                            <property>
+                                <name>order</name>
+                                <value>0</value>
+                            </property>
+                            <property>
+                                <name>layout.id</name>
+                                <value>1column</value>
+                            </property>
+                        </properties>
+                    </page>
+                     <page>
+                        <page-name>nedi</page-name>
+                        <if-exists>overwrite</if-exists>                
+                        <display-name xml:lang="en">NeDi Network Discovery</display-name>
+                        <properties>
+                            <property>
+                                <name>order</name>
+                                <value>1</value>
+                            </property>
+                            <property>
+                                <name>layout.id</name>
+                                <value>1column</value>
+                            </property>
+                        </properties>
+                    </page>
+                     <page>
+                        <page-name>ntop</page-name>
+                        <if-exists>overwrite</if-exists>                
+                        <display-name xml:lang="en">ntop</display-name>
+                        <properties>
+                            <property>
+                                <name>order</name>
+                                <value>2</value>
+                            </property>
+                            <property>
+                                <name>layout.id</name>
+                                <value>1column</value>
+                            </property>
+                        </properties>
+                    </page>
+                     <page>
+                        <page-name>weathermap</page-name>
+                        <if-exists>overwrite</if-exists>                
+                        <display-name xml:lang="en">Weathermap Editor</display-name>
+                        <properties>
+                            <property>
+                                <name>order</name>
+                                <value>3</value>
+                            </property>
+                            <property>
+                                <name>layout.id</name>
+                                <value>1column</value>
+                            </property>
+                        </properties>
+                    </page>
+            </page>
+        </deployment>
+        <deployment>
+        <parent-ref>groundwork-monitor.nms.cacti
+        </parent-ref>
+        <if-exists>overwrite</if-exists>
+        <window>
+            <window-name>CactiWindow
+            </window-name>
+            <instance-ref>CactiInstance
+            </instance-ref>
+            <region>center</region>
+            <height>0</height>
+        </window>
+    </deployment>
+    <deployment>
+        <parent-ref>groundwork-monitor.nms.nedi
+        </parent-ref>
+        <if-exists>overwrite</if-exists>
+        <window>
+            <window-name>NediWindow
+            </window-name>
+            <instance-ref>NediInstance
+            </instance-ref>
+            <region>center</region>
+            <height>0</height>
+        </window>
+    </deployment>
+    <deployment>
+        <parent-ref>groundwork-monitor.nms.weathermap
+        </parent-ref>
+        <if-exists>overwrite</if-exists>
+        <window>
+            <window-name>WeathermapWindow
+            </window-name>
+            <instance-ref>WeathermapInstance
+            </instance-ref>
+            <region>center</region>
+            <height>0</height>
+        </window>
+    </deployment>
+    <deployment>
+        <parent-ref>groundwork-monitor.nms.ntop
+        </parent-ref>
+        <if-exists>overwrite</if-exists>
+        <window>
+            <window-name>NtopWindow
+            </window-name>
+            <instance-ref>NtopInstance
+            </instance-ref>
+            <region>center</region>
+            <height>0</height>
+        </window>
+    </deployment>
+    
+
+</deployments>

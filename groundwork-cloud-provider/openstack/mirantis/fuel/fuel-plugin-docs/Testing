@@ -1,0 +1,42 @@
+On what is apparently the Fuel Master for our Mirantis Lab test environment:
+
+[root@fuel plugins]# hostname
+fuel.domain.tld
+[root@fuel plugins]# fuel plugins --install /tmp/fuel-plugin-groundwork-monitor-7.1-7.1.0-1.noarch.rpm 
+DEPRECATION WARNING: /etc/fuel/client/config.yaml exists and will be used as the source for settings. This behavior is deprecated. Please specify the path to your custom settings file in the FUELCLIENT_CUSTOM_SETTINGS environment variable.
+...
+Complete!
+Plugin /tmp/fuel-plugin-groundwork-monitor-7.1-7.1.0-1.noarch.rpm was successfully installed.
+
+[root@fuel plugins]# cat /etc/fuel/client/config.yaml
+SERVER_ADDRESS: "10.20.0.2"
+SERVER_PORT: "8000"
+KEYSTONE_USER: "admin"
+KEYSTONE_PASS: "admin"
+KEYSTONE_PORT: "5000"
+
+Partial output from "fuel --help":
+
+            Default configuration for Fuel Client uses the
+            following parameters:
+
+            SERVER_ADDRESS: "127.0.0.1"
+            LISTEN_PORT: "8000"
+            KEYSTONE_USER: "admin"
+            KEYSTONE_PASS: "admin"
+
+            These options can be changed by putting some or all of them
+            into a yaml-formatted text file and specifying its full path
+            in the FUELCLIENT_CUSTOM_SETTINGS environment variable.
+
+[root@fuel ~]# fuel plugins --list
+DEPRECATION WARNING: /etc/fuel/client/config.yaml exists and will be used as the source for settings. This behavior is deprecated. Please specify the path to your custom settings file in the FUELCLIENT_CUSTOM_SETTINGS environment variable.
+id | name                           | version | package_version
+---|--------------------------------|---------|----------------
+5  | fuel-plugin-groundwork-monitor | 7.1.0   | 3.0.0          
+
+[root@fuel plugins]# fuel plugins --remove fuel-plugin-groundwork-monitor==7.1.0
+...
+Complete!
+Plugin fuel-plugin-groundwork-monitor==7.1.0 was successfully removed.
+

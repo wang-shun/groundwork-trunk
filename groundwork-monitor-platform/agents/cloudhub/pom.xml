@@ -1,0 +1,793 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.groundwork</groupId>
+        <artifactId>gw-agents-pom</artifactId>
+        <version>2.5-SNAPSHOT</version>
+    </parent>
+
+    <groupId>org.groundwork</groupId>
+    <artifactId>gw-cloudhub</artifactId>
+    <packaging>war</packaging>
+
+    <version>2.5-SNAPSHOT</version>
+    <name>Cloudhub Application</name>
+    <description>Groundwork Cloudhub Monitoring Application</description>
+
+    <properties>
+        <skipDist>false</skipDist>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <skipTests>true</skipTests>
+        <webXmlPath>${project.basedir}/src/main/profiles/jboss/web.xml</webXmlPath>
+        <!--
+            Note for usage in IntelliJ, enable systemPropertyVariables
+            Preferences->Build->BuildTools->Maven->RunningTests
+                [x] systemPropertyVariables
+        -->
+        <GWOS_REST_API>http://localhost/api</GWOS_REST_API>
+        <GWOS_REST_USER>RESTAPIACCESS</GWOS_REST_USER>
+        <GWOS_REST_PW>7UZZVvnLbuRNk12Yk5H33zeYdWQpnA7j9shir7QfJgwh</GWOS_REST_PW>
+
+        <groundwork-home>/usr/local/groundwork</groundwork-home>
+
+        <com.amazonaws.version>1.9.22</com.amazonaws.version>
+        <!--
+        Patched the Cloudera CM API, see unprocessed pull request:
+
+            https://github.com/cloudera/cm_api/pull/63/commits/76ef10e0834f67ab5f93169e4c8d56d14eb69993
+
+        Forked Repo with pull request is here:
+
+            https://github.com/bluesunrise/cm_api/tree/cm5-5.14.0
+
+        the new 5.14.0-2018-02-13 jar has been added to Groundwork Nexus Repository where build server can pick it up
+
+                Groundwork Nexus: http://geneva/nexus
+        -->
+        <cloudera.version>5.14.0-2018-02-13</cloudera.version>
+    </properties>
+
+    <!-- Common Dependencies -->
+    <dependencies>
+        <dependency>
+            <groupId>org.opendaylight</groupId>
+            <artifactId>opendaylight</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.jayway.jsonpath</groupId>
+            <artifactId>json-path</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.groundwork</groupId>
+            <artifactId>agents-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>servlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>jstl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.wutka</groupId>
+            <artifactId>jox</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.vmware</groupId>
+            <artifactId>vim25-JAXWS</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.doublecloud</groupId>
+            <artifactId>vijava</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>javax.servlet</groupId>
+                    <artifactId>javax.servlet-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.sun.xml.ws</groupId>
+            <artifactId>jaxws-tools</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.sun.xml.ws</groupId>
+            <artifactId>jaxws-rt</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>javax.xml.ws</groupId>
+            <artifactId>jaxws-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>joda-time</groupId>
+            <artifactId>joda-time</artifactId>
+        </dependency>
+
+        <!-- OpenStack Dependencies -->
+        <dependency>
+            <groupId>javax.json</groupId>
+            <artifactId>javax.json-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish</groupId>
+            <artifactId>javax.json</artifactId>
+        </dependency>
+
+        <!-- NetApp Dependencies -->
+        <dependency>
+            <groupId>com.netapp.manage</groupId>
+            <artifactId>manageontap</artifactId>
+        </dependency>
+
+        <!-- Test Dependencies -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>javax.validation</groupId>
+            <artifactId>validation-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-validator</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-beanutils</groupId>
+            <artifactId>commons-beanutils</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-jexl3</artifactId>
+        </dependency>
+
+        <!-- AWS -->
+        <!--<dependency>-->
+			<!--<groupId>com.amazonaws</groupId>-->
+			<!--<artifactId>aws-java-sdk-codedeploy</artifactId>-->
+			<!--<version>${com.amazonaws.version}</version>-->
+		<!--</dependency>-->
+        <!--<dependency>-->
+            <!--<groupId>com.amazonaws</groupId>-->
+            <!--<artifactId>aws-java-sdk</artifactId>-->
+            <!--<version>${com.amazonaws.version}</version>-->
+        <!--</dependency>-->
+        <dependency>
+            <artifactId>aws-java-sdk-core</artifactId>
+            <groupId>com.amazonaws</groupId>
+            <optional>false</optional>
+            <version>${com.amazonaws.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <artifactId>aws-java-sdk-ec2</artifactId>
+            <groupId>com.amazonaws</groupId>
+            <optional>false</optional>
+            <version>${com.amazonaws.version}</version>
+        </dependency>
+        <dependency>
+            <artifactId>aws-java-sdk-rds</artifactId>
+            <groupId>com.amazonaws</groupId>
+            <optional>false</optional>
+            <version>${com.amazonaws.version}</version>
+        </dependency>
+        <dependency>
+            <artifactId>aws-java-sdk-cloudwatch</artifactId>
+            <groupId>com.amazonaws</groupId>
+            <optional>false</optional>
+            <version>${com.amazonaws.version}</version>
+        </dependency>
+        <dependency>
+            <artifactId>aws-java-sdk-cloudwatchmetrics</artifactId>
+            <groupId>com.amazonaws</groupId>
+            <optional>false</optional>
+            <version>${com.amazonaws.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-java-sdk-elasticloadbalancing</artifactId>
+            <version>${com.amazonaws.version}</version>
+        </dependency>
+        <!-- Cloudera -->
+        <!-- https://mvnrepository.com/artifact/com.cloudera.api/cloudera-manager-api -->
+        <!-- the version of jaxrs pulled in from cloudera-manager-api appears to cause conflicts with the cxf provided
+             by jboss.  overriding with a version (2.4.9) that is compatible -->
+        <dependency>
+            <groupId>com.cloudera.api</groupId>
+            <artifactId>cloudera-manager-api</artifactId>
+            <version>${cloudera.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
+                <!-- uncomment this for IntelliJ debug
+                <exclusion>
+                    <groupId>org.apache.cxf</groupId>
+                    <artifactId>cxf-rt-frontend-jaxrs</artifactId>
+                </exclusion>
+                -->
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.7.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.azure</groupId>
+            <artifactId>azure</artifactId>
+            <version>1.9.0-GW</version>
+        </dependency>
+
+        <!-- Nedi -->
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP-java7</artifactId>
+            <version>2.4.13</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-fileupload</groupId>
+            <artifactId>commons-fileupload</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.6</version>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <finalName>cloudhub</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <configuration>
+                    <webXml>${webXmlPath}</webXml>
+                    <packagingExcludes>WEB-INF/lib/*sources.jar</packagingExcludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <skipTests>${skipTests}</skipTests>
+                    <includes>
+                        <!--
+                            NOTE: test require VPN up and running if remote,
+                                    and the following servers are expected to be running locally:
+
+                                1. Groundwork JBoss server + EnterpriseFoundation war on localhost
+                                    you can override this setting with GWOS_REST_API system property
+                                2. Apache HTTP Server if you are not going through port 8080. By default the tests
+                                   expect enterprise-foundation war to be proxied over /api with mod_proxy
+                                    ProxyPass /api http://localhost:8080/foundation-webapp/api
+                                3. JOSSO Server running for Rest API Authentication
+                                    optionally proxy passed via Apache mod_proxy
+                                        ProxyPass /josso http://localhost:8888/josso
+                                    this setting can be configured in Groundwork
+                                    and the following servers running on the Groundwork network
+
+                                4. Docker Server running BoxSpy at
+                                    dock-01-integration.groundwork.groundworkopensource.com:8081
+
+                                5. OpenDayLight Server running at
+                                    172.28.113.201:8080
+
+                                6. OpenStack Server running at (requires Keystone, Nova, Ceilometer)
+                                    agno.groundwork.groundworkopensource.com
+
+                                7. VmWare Server running at
+                                    vermont2.groundwork.groundworkopensource.com
+
+                                8. Redhat Virtualization server running at
+                                    eng-rhev-m-1.groundwork.groundworkopensource.com
+
+                                9. EC2 Amazon Server running at
+                                   us-west-2.amazonaws.com
+
+                                10. eng-rh6-dev1 needs to be up for testing 7.0.2 functionality
+                        -->
+
+                        <!-- Agent and pluggable VEMA API Tests -->
+                        <include>**/org/groundwork/cloudhub/configuration/ConfigurationServiceTest.java</include>
+                        <include>**/org/groundwork/cloudhub/configuration/ProfileServiceTest.java</include>
+                        <include>**/org/groundwork/cloudhub/connectors/AmazonTest.java</include>
+                        <include>**/org/groundwork/cloudhub/connectors/DockerTest.java</include>
+                        <include>**/org/groundwork/cloudhub/connectors/OpenDayLightTest.java</include>
+                        <include>**/org/groundwork/cloudhub/connectors/OpenStackTest.java</include>
+                        <include>**/org/groundwork/cloudhub/connectors/VMwareTest.java</include>
+                        <include>**/org/groundwork/cloudhub/connectors/AgentConnectionsTest.java</include>
+                        <!-- 2015-02-03 Re-enable test when server is online again -->
+                        <!--<include>**/org/groundwork/cloudhub/connectors/RedhatTest.java</include>-->
+
+                        <!-- GWOS Tests -->
+                        <include>**/org/groundwork/cloudhub/gwos/ConnectionTest.java</include>
+                        <include>**/org/groundwork/cloudhub/gwos/RenameDockerHostsTest.java</include>
+                        <include>**/org/groundwork/cloudhub/gwos/UpdateStatusTest.java</include>
+                        <include>**/org/groundwork/cloudhub/gwos/DeleteServicesTest.java</include>
+                        <include>**/org/groundwork/cloudhub/gwos/SendMessageTest.java</include>
+                        <include>**/org/groundwork/cloudhub/gwos/AppTypeMigrationTest.java</include>
+
+                        <!-- Monitor Agent Tests -->
+                        <include>**/org/groundwork/cloudhub/monitor/CloudhubMonitorAgentTest.java</include>
+                        <include>**/org/groundwork/cloudhub/monitor/SynchronizeInventoryTest.java</include>
+
+                        <!-- Load Tests -->
+                        <!--<include>**/org/groundwork/cloudhub/monitor/VermontLoadTest.java</include>-->
+
+                    </includes>
+                    <systemPropertyVariables>
+                        <GWOS_REST_API>${GWOS_REST_API}</GWOS_REST_API>
+                        <GWOS_REST_USER>${GWOS_REST_USER}</GWOS_REST_USER>
+                        <GWOS_REST_PW>${GWOS_REST_PW}</GWOS_REST_PW>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>1.2.1</version>
+            <executions>
+            <execution>
+                <id>cloudhub-configs</id>
+                <phase>install</phase>
+                <goals>
+                    <goal>exec</goal>
+                </goals>
+                <configuration>
+                    <executable>./cloudhub-configs.sh</executable>
+                    <arguments>
+                        <argument>${groundwork-home}</argument>
+                        <argument>${project.basedir}/src/profiles</argument>
+                    </arguments>
+                </configuration>
+            </execution>
+            </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>1.3</version>
+                <configuration>
+                    <workingDirectory>src/main/app</workingDirectory>
+                    <installDirectory>dist</installDirectory>
+                    <skip>${skipDist}</skip>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install node and npm</id>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                        <configuration>
+                            <nodeVersion>v6.10.2</nodeVersion>
+                            <npmVersion>4.2.0</npmVersion>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm install</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <!-- Optional configuration which provides for running any npm command -->
+                        <configuration>
+                            <arguments>install</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm run build</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <!-- Optional configuration which provides for running any npm command -->
+                        <configuration>
+                            <arguments>run build</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>jboss</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <webXmlPath>${project.basedir}/src/main/profiles/jboss/web.xml</webXmlPath>
+            </properties>
+            <build>
+                <resources>
+                    <resource>
+                        <directory>src/main/resources</directory>
+                        <excludes>
+                            <exclude>log4j.xml</exclude>
+                        </excludes>
+                    </resource>
+                </resources>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <inherited>true</inherited>
+                        <configuration>
+                            <source>1.7</source>
+                            <target>1.7</target>
+                            <showDeprecation>false</showDeprecation>
+                            <showWarnings>true</showWarnings>
+                            <optimize>true</optimize>
+                            <compilerVersion>1.7</compilerVersion>
+                            <fork>true</fork>
+                            <!--                    <argLine>-Xmx512M</argLine> -->
+                            <annotationProcessors>
+                                <annotationProcessor>com.microsoft.azure.management.apigeneration.LangDefinitionProcessor</annotationProcessor>
+                            </annotationProcessors>
+                            <compilerArguments>
+                                <AaddGeneratedAnnotation>true</AaddGeneratedAnnotation>
+                                <Adebug>true</Adebug>
+                            </compilerArguments>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+            <dependencies>
+                <dependency>
+                    <groupId>org.groundwork</groupId>
+                    <artifactId>gw-cloudhub-josso</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.httpcomponents</groupId>
+                    <artifactId>httpclient</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.groundwork</groupId>
+                    <artifactId>collagerest-client</artifactId>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>org.jboss.resteasy</groupId>
+                            <artifactId>resteasy-jaxrs</artifactId>
+                        </exclusion>
+                        <exclusion>
+                            <groupId>org.jboss.resteasy</groupId>
+                            <artifactId>resteasy-jaxb-provider</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+                <dependency>
+                    <groupId>org.groundwork</groupId>
+                    <artifactId>collage-api</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>javax.servlet</groupId>
+                    <artifactId>jstl</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>commons-discovery</groupId>
+                    <artifactId>commons-discovery</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>wsdl4j</groupId>
+                    <artifactId>wsdl4j</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>commons-collections</groupId>
+                    <artifactId>commons-collections</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>commons-lang</groupId>
+                    <artifactId>commons-lang</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>com.sun.xml.messaging.saaj</groupId>
+                    <artifactId>saaj-impl</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+
+                <!-- josso dependencies -->
+                <dependency>
+                    <groupId>org.josso</groupId>
+                    <artifactId>josso-servlet-agent</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.jboss.resteasy</groupId>
+                    <artifactId>resteasy-jaxrs</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.jboss.resteasy</groupId>
+                    <artifactId>resteasy-jaxb-provider</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.postgresql</groupId>
+                    <artifactId>postgresql</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <!-- jboss-711 profile same as jboss except that in 722 commons-lang3 was added to jboss groundwork module
+             commons-lang3 is not in 711 groundwork module, but is 722 -->
+        <profile>
+            <id>jboss-711</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <webXmlPath>${project.basedir}/src/main/profiles/jboss/web.xml</webXmlPath>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-war-plugin</artifactId>
+                        <configuration>
+                            <classifier>711</classifier>
+                        </configuration>
+                    </plugin>
+                </plugins>
+                <resources>
+                    <resource>
+                        <directory>src/main/resources</directory>
+                        <excludes>
+                            <exclude>log4j.xml</exclude>
+                        </excludes>
+                    </resource>
+                </resources>
+            </build>
+            <dependencies>
+                <dependency>
+                    <groupId>org.groundwork</groupId>
+                    <artifactId>gw-cloudhub-josso</artifactId>
+                </dependency>
+                <!-- this dependency is for groundwork version 7.1.1 or earlier, not needed after 7.2.2 -->
+                <dependency>
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-lang3</artifactId>
+                    <scope>compile</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.httpcomponents</groupId>
+                    <artifactId>httpclient</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.groundwork</groupId>
+                    <artifactId>collagerest-client</artifactId>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>org.jboss.resteasy</groupId>
+                            <artifactId>resteasy-jaxrs</artifactId>
+                        </exclusion>
+                        <exclusion>
+                            <groupId>org.jboss.resteasy</groupId>
+                            <artifactId>resteasy-jaxb-provider</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+                <dependency>
+                    <groupId>org.groundwork</groupId>
+                    <artifactId>collage-api</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>javax.servlet</groupId>
+                    <artifactId>jstl</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>commons-discovery</groupId>
+                    <artifactId>commons-discovery</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>wsdl4j</groupId>
+                    <artifactId>wsdl4j</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>commons-collections</groupId>
+                    <artifactId>commons-collections</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>commons-lang</groupId>
+                    <artifactId>commons-lang</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>com.sun.xml.messaging.saaj</groupId>
+                    <artifactId>saaj-impl</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+
+                <!-- josso dependencies -->
+                <dependency>
+                    <groupId>org.josso</groupId>
+                    <artifactId>josso-servlet-agent</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.jboss.resteasy</groupId>
+                    <artifactId>resteasy-jaxrs</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.jboss.resteasy</groupId>
+                    <artifactId>resteasy-jaxb-provider</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.postgresql</groupId>
+                    <artifactId>postgresql</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <profile>
+            <id>tomcat</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                    <value>false</value>
+                </property>
+            </activation>
+            <properties>
+                <webXmlPath>${project.basedir}/src/main/profiles/tomcat/web.xml</webXmlPath>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.tomcat.maven</groupId>
+                        <artifactId>tomcat7-maven-plugin</artifactId>
+                        <version>2.2</version>
+                        <configuration>
+                            <port>9090</port>
+                            <path>/cloudhub</path>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <artifactId>maven-war-plugin</artifactId>
+                        <configuration>
+                            <classifier>tc</classifier>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <inherited>true</inherited>
+                        <configuration>
+                            <source>1.7</source>
+                            <target>1.7</target>
+                            <showDeprecation>false</showDeprecation>
+                            <showWarnings>true</showWarnings>
+                            <optimize>true</optimize>
+                            <compilerVersion>1.7</compilerVersion>
+                            <fork>true</fork>
+                            <!--                    <argLine>-Xmx512M</argLine> -->
+                            <annotationProcessors>
+                                <annotationProcessor>com.microsoft.azure.management.apigeneration.LangDefinitionProcessor</annotationProcessor>
+                            </annotationProcessors>
+                            <compilerArguments>
+                                <AaddGeneratedAnnotation>true</AaddGeneratedAnnotation>
+                                <Adebug>true</Adebug>
+                            </compilerArguments>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+            <dependencies>
+                <dependency>
+                    <groupId>org.groundwork</groupId>
+                    <artifactId>collagerest-common</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.groundwork</groupId>
+                    <artifactId>collagerest-client</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.groundwork</groupId>
+                    <artifactId>collage-api</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>javax.servlet</groupId>
+                    <artifactId>jstl</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-lang3</artifactId>
+                    <scope>compile</scope>
+                </dependency>
+                <dependency>
+                    <groupId>commons-discovery</groupId>
+                    <artifactId>commons-discovery</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>wsdl4j</groupId>
+                    <artifactId>wsdl4j</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.jboss.resteasy</groupId>
+                    <artifactId>resteasy-jaxrs</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.jboss.resteasy</groupId>
+                    <artifactId>resteasy-jaxb-provider</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.jboss.resteasy</groupId>
+                    <artifactId>resteasy-jackson-provider</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.postgresql</groupId>
+                    <artifactId>postgresql</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
+
+    </profiles>
+
+</project>

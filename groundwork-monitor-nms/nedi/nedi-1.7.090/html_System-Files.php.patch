@@ -1,0 +1,19 @@
+--- nedi/html/System-Files.php.orig	2017-05-23 05:19:13.000000000 -0700
++++ nedi/html/System-Files.php	2017-08-24 12:13:01.834387411 -0700
+@@ -223,13 +223,15 @@
+ 		echo "\t\t\t<option value=\"$l\" ".( ($file == $l)?" selected":"").">$l\n";
+ 	}
+ }
+-foreach ($ldir as $d){
++if( !empty($ldir) ){
++    foreach ($ldir as $d){
+ 	$cfgd = substr( $d, strlen($nedipath)+6 );
+ 	echo "\t\t\t<option value=\"\" class=\"drd\">-- ".urldecode($cfgd)."\n";
+ 	foreach (glob("$d/*.cfg") as $f){
+ 		$l = substr($f,strlen($d)+1);
+ 		echo "\t\t\t<option value=\"$cfgd/$l\"".( ($file == "$cfgd/$l")?" selected":"").">$l\n";
+ 	}
++    }
+ }
+ ?>
+ 		</select>

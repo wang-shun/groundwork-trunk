@@ -1,0 +1,11 @@
+--- nagios-4.3.2/base/notifications.c.orig	2017-05-09 10:03:31.000000000 -0700
++++ nagios-4.3.2/base/notifications.c	2017-07-08 21:09:24.999639497 -0700
+@@ -36,7 +36,7 @@
+ {
+ 	contact *c = NULL;
+ 
+-	if (!name || !(c = find_contact(name)))
++	if (!name || (c = find_contact(name)))
+ 		return c;
+ 	for (c = contact_list; c; c = c->next)
+ 		if (!strcmp(c->alias, name))

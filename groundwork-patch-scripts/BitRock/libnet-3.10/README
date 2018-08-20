@@ -1,0 +1,69 @@
+November 14, 2016:
+
+The Domain.pm-3.10.1 file in this directory is adapted from the
+changes we originally made against libnet-1.22 and posted here:
+https://rt.cpan.org/Public/Bug/Display.html?id=60729#txn-1045971
+We then went further and ported those changes into the libnet-3.02
+release.  And now we have brought those exact same changes into
+the libnet-3.10 release, which is current as of this writing.
+
+See also comments from another user, who claims our fixed version for
+libnet-1.22 still does not act correctly under some circumstances:
+https://rt.cpan.org/Public/Bug/Display.html?id=60729#txn-1100129
+https://rt.cpan.org/Public/Bug/Display.html?id=60729#txn-1100132
+
+We will be addressing that user's complaint, to the extent that it
+might or might not be valid given that he's asking that the package
+still yield the correct response after him having corrupted the data
+sources on which the answer is based.
+
+The Domain.pm-3.10.1 file in this directory constitutes our first cut
+of folding in our patches from Net/Domain.pm in the libnet-1.22 release
+into the libnet-3.10 release.  It also provides support for callbacks,
+which may be useful for debugging when things go wrong.  This is the
+copy that we are folding into the GWMEE 7.1.1 release and also the GDMA
+2.5.0 release.
+
+In the past, we were also in contact with the new libnet maintainer, and
+intended to take some extra effort to fold in fixes to all other known
+issues and push those upstream.  That never happened, but it ought to now.
+And part of that effort should be to adopt whatever debug-trace strategy
+is used by other modules in the libnet distribution, so the entire Perl
+community is comfortable with our approach.  It is especially important
+to get concurrence on this because libnet (and thus Net::Domain) is part
+of the Perl Core.  That should get our changes published in the standard
+distribution, so we can stop maintaining our own patches.
+
+Here's a complete list of all the bugs I know of reported against the
+Net::Domain package, that we should fix in a consolidated patch:
+
+https://rt.cpan.org/Public/Bug/Display.html?id=53559
+https://rt.cpan.org/Public/Bug/Display.html?id=60729
+https://rt.cpan.org/Public/Bug/Display.html?id=69238
+https://rt.cpan.org/Public/Bug/Display.html?id=73410
+https://rt.cpan.org/Public/Bug/Display.html?id=94153
+https://rt.cpan.org/Public/Bug/Display.html?id=115704
+
+We also need to address the issue we have seen in the field, in that a
+host.domain name is pulled apart and then portions of the start and end
+pieces are pasted back together in looping that tends to paste the wrong
+pieces together first.  This can end up constructing some fully qualified
+hostname that happens to match some undesired host out on the Internet
+instead of the desired host.  The code should be inverted so it instead
+first tries various combinations that are likely to be locally correct.
+And the original failure mode needs to be documented so folks understand
+the bad things that might happen and how the revised code does its best
+to sidestep them.
+
+I suspect it might also help to support a set of package variables that
+could be used to control the order in which certain tests are made
+by the Net::Domain routines, in case the standard ordering produces
+poor results.  (We don't want to be subject to whatever vagaries of
+implementation happened to work in the original developer's context,
+but not in contexts that we encounter in the field.)  Perhaps some small
+local state machine is appropriate, with configurable path choices.
+I imagine that we will end up posting to the Perl mailing lists before
+we're completely done developing this part of the upgrade.
+
+See GWMON-12804 to track how the patch file we are providing here
+evolves over time.

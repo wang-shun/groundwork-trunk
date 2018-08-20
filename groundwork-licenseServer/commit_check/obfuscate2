@@ -1,0 +1,308 @@
+#!/usr/bin/perl -w --
+
+# Copyright (c) 2010-2017 by GroundWork Open Source, Inc.
+# All rights reserved.
+
+# Obfuscate a single file of C code.
+
+# The intent is to carry out transformations to hide the intent of the code:
+# (*) Preprocess all kinds of C symbols expressed as OBFN_readable_name
+#     and turn them into seemingly random valid names which are consistent
+#     across the entire program.
+# (*) Encode literal strings expressed as OBFS_string("...") and
+#     create both declarations for them (as seemingly random valid names)
+#     and references to them in the code.  The references must decrypt
+#     the string values before use.
+# (*) Strip comments and blank lines from the code.
+# Future versions may do even more.
+
+use strict;
+use warnings;
+
+my @inc     = ();
+my @def     = ();
+my %var     = ();
+my %str     = ();
+my %fun     = ();
+my %type    = ();
+my %name    = ();
+my %used    = ();
+my $str_num = 0;
+my $initial = 'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz';
+my $remains = $initial . '_0123456789';
+
+# You must choose this character wisely.  It cannot replicate any character
+# used in your program's strings, or they will be truncated at that point,
+# and the world will end.
+my $hide_char = "0xAA";
+
+# my %keywords = {
+#     => 'EXIT_SUCCESS',
+#     => 'FILE',
+#     => 'NULL',
+#     => 'argc',
+#     => 'argv',
+#     => 'atoi',
+#     => 'char',
+#     => 'const',
+#     => 'do',
+#     => 'else',
+#     => 'fclose',
+#     => 'fopen',
+#     => 'for',
+#     => 'if',
+#     => 'int',
+#     => 'main',
+#     => 'my_bool',
+#     => 'printf',
+#     => 'regex_t',
+#     => 'regmatch_t',
+#     => 'return',
+#     => 'static',
+#     => 'strdup',
+#     => 'strndup',
+#     => 'struct',
+#     => 'unsigned',
+#     => 'while',
+# };
+
+main();
+
+sub main {
+    local $_;
+
+    open_urandom();
+
+    my $string_struct = <<EOF;
+#include <string.h>
+
+// You must choose this character wisely.  It cannot replicate any character
+// used in your program's strings, or they will be truncated at that point.
+static char OBFN_xor = $hide_char;
+
+struct OBFN_string_struct
+    {
+    char *OBFN_string_addr;
+    char *OBFN_string;
+    };
+
+char *OBFN_string_convert (struct OBFN_string_struct *OBFN_string_ptr)
+    {
+    if (!OBFN_string_ptr->OBFN_string_addr)
+	{
+	char *OBFN_ptr;
+	OBFN_string_ptr->OBFN_string_addr = strdup(OBFN_string_ptr->OBFN_string);
+	for (OBFN_ptr=OBFN_string_ptr->OBFN_string_addr;*OBFN_ptr;++OBFN_ptr)
+	    {
+	    *OBFN_ptr ^= OBFN_xor;
+	    }
+	}
+    return (OBFN_string_ptr->OBFN_string_addr);
+    }
+
+EOF
+
+    my $prelude = $string_struct;
+
+    my $input;
+    do {
+	## Slurp mode -- read the entire file at once.
+	local $/;
+	$input = <>;
+    };
+
+    $prelude = filter($prelude);
+    $input   = filter($input);
+
+    foreach my $v (keys %var) {
+	$var{$v} = obfuscate_var($v);
+    }
+
+    foreach my $s (keys %str) {
+	$var{$s} = obfuscate_var($s);
+	$str{$s} = obfuscate_str($s, $str{$s});
+    }
+    close_urandom();
+
+    my @strings = ();
+    foreach my $s (keys %str) {
+	push @strings, "struct OBFN_string_struct $var{$s} = { 0, \"$str{$s}\" };\n"
+    }
+
+    my @declarations = ();
+    my @functions = ();
+    foreach my $f (keys %fun) {
+	(my $raw_fun = $f) =~ s/OBFF_//;
+	$type{$f} = 'void' if !$type{$f};
+	push @declarations, "extern $type{$f} $raw_fun();\n";
+	push @functions, "$type{$f} (*$var{$f})() = $raw_fun;\n";
+    }
+
+    for ( @def, @inc, $prelude, @strings, @declarations, @functions, $input ) {
+	while (s/(OBFS_\w+)\s*\(\s* ( "(\\"|[^"])*" | [a-zA-Z0-9_]+ | \s+ )+ \s*\)/
+	    '('.$var{$1}.'.'.$var{OBFN_string_addr}.'?'.$var{$1}.'.'.$var{OBFN_string_addr}.':'.$var{OBFN_string_convert}.'(&'.$var{$1}.'))'
+	    /xeg) {
+	}
+	while (/OBFN_\w+/) {
+	    s/$&/$var{$&}/;
+	}
+	## FIX LATER:  We can't have this substitution in play for the actual
+	## function definition, only for its invocations; because of this,
+	## the support for OBFF_ is still experimental (in development).
+	while (/OBFF_\w+/) {
+	    s/$&/(*$var{$&})/;
+	}
+	print if $_ !~ /^\s+$/;
+    }
+}
+
+sub filter {
+    my $code = shift;
+    local $_;
+
+    for ($code) {
+	## FIX MINOR:  For reasons we don't understand, taking this substitution out
+	## of the loop and applying a "g" modifier does not allow it to recognize all
+	## places where it should make the intended substitutions.  Perhaps there is
+	## some degree of allowing iteratively operating on previous substitutions?
+	while (s{^ ( (?: [^"] | "(?:\\"|[^"])*" )* ) (//.*) $}{$1}xm) {
+	}
+	## FIX MINOR:  Capturing the defines up front means that they cannot themselves
+	## contain any references to OBXX functions.  But this is needed to process
+	## OBFS_string references that might refer to such definitions.  This is an
+	## artifact of our processing the entire body of code as one string.  It allows
+	## us to process a multi-line OBFS_string call (where OBFS_string calls might
+	## reference definitions, so those definitions must be available) but does not
+	## allow an OBFS_string call to be processed for a definition value.  We will
+	## need to check whether this leaves any exposed strings.
+	while (s{^(\s*#\s*define\s.*\n)}{}m) {
+	    (my $d = $1) =~ s/^\s+//;
+	    push @def, $d;
+	}
+	while (s{^(\s*#\s*include\s.*\n)}{}m) {
+	    (my $i = $1) =~ s/^\s+//;
+	    push @inc, $i;
+	}
+	while (/OBFS_string\s*\(\s* (( "(\\"|[^"])*" | [a-zA-Z0-9_]+ | \s+ )+) \s*\)/xg) {
+	    my $str_name = "OBFS_$str_num";
+	    $str{$str_name} = condense($1);
+	    s/OBFS_string/$str_name/;
+	    ++$str_num;
+	}
+	while (/OBFN_\w+/g) {
+	    $var{$&} = 1;
+	}
+	while (/\(([^()]+)\)\s*(OBFF_\w+)/g) {
+	    ## Capture the casted type for later use.  We don't yet support casts
+	    ## that include parentheses, but might do so in a later version.
+	    $type{$2} = $1;
+	}
+	while (/OBFF_\w+/g) {
+	    $var{$&} = 1;
+	    $fun{$&} = 1;
+	}
+    }
+
+    return $code;
+}
+
+sub open_urandom {
+    open URANDOM, '<', '/dev/urandom' or die 'Cannot open /dev/urandom';
+}
+
+sub close_urandom {
+    close URANDOM;
+}
+
+sub entropy {
+    my $base  = shift;
+    my $len   = shift;
+    my $chaos = undef;
+    do  {
+	# Use /dev/urandom and one of the drand48() functions repeatedly,
+	# to pull together a string of length $len chosen from characters
+	# in $remains.
+	$chaos = '';
+	while (length $chaos < $len) {
+	    my $buf = '';
+	    read URANDOM, $buf, 1;
+	    my $offset = int( (unpack('C', $buf) / 256) * length ($remains) );
+	    $chaos .= substr $remains, $offset, 1;
+	}
+    } while ($used{$chaos});
+    $used{$chaos} = 1;
+    return $chaos;
+}
+
+sub obfuscate_var {
+    my $var = shift;
+    if (!$name{$var}) {
+	my $offset = int( rand() * length($initial) );
+	my $random = entropy($remains, 15);
+	$name{$var} = (substr $initial, $offset, 1 ) . $random;
+    }
+    return $name{$var};
+}
+
+sub obfuscate_str {
+    my $var = shift;
+    my $str = shift;
+    my $hex = unpack "H*", $str ^ ( chr(hex($hide_char)) x length($str) );
+    $hex =~ s/\w\w/\\x$&/g;
+    if ($hex =~ /x00/) {
+	# Having a NUL character in the middle of the obfuscated string
+	# will cause the C program to treat the string as truncated early,
+	# which will change the behavior of the program when it tries to
+	# unobfuscate the obfuscated copy.  That is not acceptable.  To
+	# fix this for your particular program, choose a different value
+	# for the hide character.
+	die "ERROR:  Cannot safely obfuscate a string containing the hide character ($hide_char).\n";
+    }
+    return $hex;
+}
+
+sub make_defs {
+    my %defs = ();
+    local $_;
+    foreach (@def) {
+	if (/^\s*#\s*define\s+([A-Za-z0-9_]+)\s+(.*)/) {
+	    $defs{$1} = $2;
+	}
+    }
+    return %defs;
+}
+
+# Handle all the possible constructions in a C string (except trigraphs, which are rarely used).
+sub condense {
+    my $string = shift;
+    my %def = make_defs(@def);
+    my @substrings = split( /( \s+ | "(?:\\"|[^"])*" | [A-Za-z0-9_]+ )/x, $string );
+    foreach my $str (@substrings) {
+	# This currently only does one level of macro interpolation.
+	# That could be generalized.
+	if (!defined($str) || $str =~ /^\s+$/) {
+	    $str = '';
+	}
+	elsif ($str !~ /^\s*$/ && $str !~ /^"/) {
+	    $str = $def{$str};
+	}
+	$str =~ s/\\\\/<<<backslash>>>/g;
+	$str =~ s/\\n/\n/g;
+	$str =~ s/\\r/\r/g;
+	$str =~ s/\\t/\t/g;
+	$str =~ s/\\f/\f/g;
+	$str =~ s/\\a/\a/g;
+	$str =~ s/\\b/\b/g;
+	$str =~ s/\\v/\x0b/g;
+	$str =~ s/\\'/'/g;
+	$str =~ s/\\"/"/g;
+	$str =~ s/\\[?]/?/g;
+	$str =~ s/\\([0-7]{1,3})/chr(oct($1))/eg;
+	$str =~ s/\\x([0-9a-fA-F]+)/chr(hex($1))/eg;
+	$str =~ s/<<<backslash>>>/\\/g;
+	$str =~ s/^\s*"|"\s*$//g;
+    }
+    return join('', @substrings);
+}
+
+exit 0;

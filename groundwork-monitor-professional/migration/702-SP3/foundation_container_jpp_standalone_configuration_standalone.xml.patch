@@ -1,0 +1,102 @@
+--- foundation/container/jpp/standalone/configuration/standalone.xml.orig	2015-08-23 17:29:52.687181673 -0600
++++ foundation/container/jpp/standalone/configuration/standalone.xml	2015-08-23 17:29:52.688181688 -0600
+@@ -32,6 +32,7 @@
+     <system-properties>
+         <property name="gatein.jcr.config.type" value="local"/>
+         <property name="gatein.jcr.index.changefilterclass" value="org.exoplatform.services.jcr.impl.core.query.DefaultChangesFilter"/>
++        <property name="org.apache.tomcat.util.ENABLE_MODELER" value="true"/>
+     </system-properties>
+ 
+ 
+@@ -71,6 +72,13 @@
+                     <pattern-formatter pattern="%d %-5p [%c] (%t) %s%E%n"/>
+                 </formatter>
+             </console-handler>
++            <file-handler name="SolarWinds">
++                <formatter>
++                    <pattern-formatter pattern="%d - %m%n"/>
++                </formatter>
++                <file relative-to="jboss.server.log.dir" path="SolarWinds.log"/>
++                <append value="true"/>
++            </file-handler>
+             <periodic-rotating-file-handler name="FILE">
+                 <level name="INFO"/>
+                 <formatter>
+@@ -107,6 +115,9 @@
+             <logger category="org.groundwork">
+                 <level name="ERROR"/>
+             </logger>
++            <logger category="com.groundwork.feeder.service">
++                <level name="WARN"/>
++            </logger>
+             <logger category="org.jboss.naming.remote">
+                 <level name="FATAL"/>
+             </logger>
+@@ -191,6 +202,21 @@
+             <logger category="com.groundworkopensource">
+                 <level name="WARN"/>
+             </logger>
++            <logger category="org.groundwork.rs.client.PortalCustomGroupMigration">
++                <level name="INFO"/>
++            </logger>
++            <logger category="com.groundworkopensource.portal.statusviewer.servlet.StatusViewerInitServlet">
++                <level name="INFO"/>
++            </logger>
++            <logger category="org.groundwork.connectors.solarwinds.audit">
++                <level name="INFO"/>
++                <handlers>
++                    <handler name="SolarWinds"/>
++                </handlers>
++            </logger>
++            <logger category="eu.medsea.mimeutil.detector">
++                <level name="ERROR"/>
++            </logger>
+             <root-logger>
+                 <level name="ERROR"/>
+                 <handlers>
+@@ -255,6 +281,9 @@
+                 <module name="org.picocontainer" slot="main"/>
+                 <module name="org.apache.xerces" slot="main"/>
+                 <module name="com.groundwork.security" slot="main"/>
++                <module name="org.jasypt" slot="main"/>
++                <module name="com.ibm.icu4j" slot="main"/>
++                <module name="org.apache.commons.configuration" slot="main"/>
+             </global-modules>
+             <spec-descriptor-property-replacement>false</spec-descriptor-property-replacement>
+             <jboss-descriptor-property-replacement>true</jboss-descriptor-property-replacement>
+@@ -333,7 +362,7 @@
+         <subsystem xmlns="urn:jboss:domain:jdr:1.0"/>
+         <subsystem xmlns="urn:jboss:domain:jmx:1.1">
+             <show-model value="true"/>
+-            <remoting-connector/>
++            <remoting-connector use-management-endpoint="false"/>
+         </subsystem>
+         <subsystem xmlns="urn:jboss:domain:jpa:1.0">
+             <jpa default-datasource=""/>
+@@ -480,6 +509,7 @@
+                 </security-domain>
+                 <security-domain name="gatein-domain" cache-type="default">
+                     <authentication>
++                        <login-module code="com.groundwork.core.security.GroundworkJbossLoginModule" flag="required"/>
+                         <login-module code="org.gatein.sso.integration.SSODelegateLoginModule" flag="required">
+                             <module-option name="enabled" value="${gatein.sso.login.module.enabled}"/>
+                             <module-option name="delegateClassName" value="${gatein.sso.login.module.class}"/>
+@@ -487,7 +517,6 @@
+                             <module-option name="realmName" value="gatein-domain"/>
+                             <module-option name="password-stacking" value="useFirstPass"/>
+                         </login-module>
+-                        <login-module code="com.groundwork.core.security.GroundworkJbossLoginModule" flag="required"/>
+                         <login-module code="org.exoplatform.services.security.j2ee.JBossAS7LoginModule" flag="required">
+                             <module-option name="portalContainerName" value="portal"/>
+                             <module-option name="realmName" value="gatein-domain"/>
+@@ -496,7 +525,9 @@
+                 </security-domain>
+                 <security-domain name="secure-api-domain" cache-type="default">
+                     <authentication>
+-                        <login-module code="com.groundwork.core.security.GroundworkJbossLoginModule" flag="required"/>
++                        <login-module code="RealmDirect" flag="required">
++                            <module-option name="password-stacking" value="useFirstPass"/>
++                        </login-module>
+                     </authentication>
+                 </security-domain>
+             </security-domains>

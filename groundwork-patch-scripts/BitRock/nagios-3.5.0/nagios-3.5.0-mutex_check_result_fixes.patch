@@ -1,0 +1,110 @@
+--- nagios-3.5.0/base/utils.c.orig	2013-03-09 13:46:35.000000000 -0800
++++ nagios-3.5.0/base/utils.c	2013-03-18 14:01:59.000000000 -0700
+@@ -276,11 +276,18 @@
+ extern int             debug_verbosity;
+ extern unsigned long   max_debug_file_size;
+ 
++#ifdef USE_EVENT_BROKER
++pthread_mutex_t check_result_list_lock = PTHREAD_MUTEX_INITIALIZER;
++#endif
++
+ /* from GNU defines errno as a macro, since it's a per-thread variable */
+ #ifndef errno
+ extern int errno;
+ #endif
+ 
++/* Establish that this patch is in place. */
++char mutex_patch_ident[] = "$MutexPatchCompileTime: " __TIME__ " on " __DATE__ " (" __FILE__ ") $";
++
+ 
+ 
+ /******************************************************************/
+@@ -2628,12 +2639,26 @@
+ check_result *read_check_result(check_result **listp) {
+ 	check_result *first_cr = NULL;
+ 
+-	if(*listp == NULL)
+-		return NULL;
++#ifdef USE_EVENT_BROKER
++	/* Acquire the check result list mutex */
++	pthread_mutex_lock(&check_result_list_lock);
++#endif
+ 
++	if(*listp == NULL) {
++#ifdef USE_EVENT_BROKER
++		/* Relinquish the check result list mutex */
++		pthread_mutex_unlock(&check_result_list_lock);
++#endif
++		return NULL;
++		}
+ 	first_cr = *listp;
+ 	*listp = (*listp)->next;
+ 
++#ifdef USE_EVENT_BROKER
++	/* Relinquish the check result list mutex */
++	pthread_mutex_unlock(&check_result_list_lock);
++#endif
++
+ 	return first_cr;
+ 	}
+ 
+@@ -2680,6 +2705,10 @@
+ 	if(new_cr == NULL)
+ 		return ERROR;
+ 
++#ifdef USE_EVENT_BROKER
++	/* Acquire the check result list mutex */
++	pthread_mutex_lock(&check_result_list_lock);
++#endif
+ 	/* add to list, sorted by finish time (asc) */
+ 
+ 	/* find insertion point */
+@@ -2706,6 +2735,11 @@
+ 		last_cr->next = new_cr;
+ 		}
+ 
++#ifdef USE_EVENT_BROKER
++	/* Relinquish the check result list mutex */
++	pthread_mutex_unlock(&check_result_list_lock);
++#endif
++
+ 	return OK;
+ 	}
+ 
+@@ -2717,6 +2751,11 @@
+ 	check_result *this_cr = NULL;
+ 	check_result *next_cr = NULL;
+ 
++#ifdef USE_EVENT_BROKER
++	/* Acquire the check result list mutex */
++	pthread_mutex_lock(&check_result_list_lock);
++#endif
++
+ 	for(this_cr = *listp; this_cr != NULL; this_cr = next_cr) {
+ 		next_cr = this_cr->next;
+ 		free_check_result(this_cr);
+@@ -2725,6 +2764,11 @@
+ 
+ 	*listp = NULL;
+ 
++#ifdef USE_EVENT_BROKER
++	/* Relinquish the check result list mutex */
++	pthread_mutex_unlock(&check_result_list_lock);
++#endif
++
+ 	return OK;
+ 	}
+ 
+--- nagios-3.5.0/base/checks.c.orig	2013-03-09 13:46:35.000000000 -0800
++++ nagios-3.5.0/base/checks.c	2013-03-19 18:08:19.000000000 -0700
+@@ -202,7 +202,9 @@
+ 			handle_async_host_check_result_3x(temp_host, queued_check_result);
+ 			}
+ 
+-		log_debug_info(DEBUGL_CHECKS | DEBUGL_IPC, 1, "Deleted check result file '%s'\n", queued_check_result->output_file);
++		if(queued_check_result->output_file) {
++			log_debug_info(DEBUGL_CHECKS | DEBUGL_IPC, 1, "Deleted check result file '%s'\n", queued_check_result->output_file);
++			}
+ 
+ 		/* free allocated memory */
+ 		free_check_result(queued_check_result);

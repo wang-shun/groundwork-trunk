@@ -1,0 +1,34 @@
+<div class="modal-header">
+    <button type="button" class="close" aria-hidden="true" ng-click="close()">&times;</button>
+    <h4 class="modal-title">Manage Host Groups</h4>
+</div>
+<form role="form" novalidate class="css-form">
+    <div class="modal-body" wo-augment-dialog>
+
+        <div class="admin-header">
+            <div class="col-md-12 col-sm-12 no-padding">
+                <ul class="nav nav-pills nav-admin pull-right">
+                    <li class="host-add"><a ng-click="addHost()"><i class="glyphicon glyphicon-plus"></i></a></li>
+                    <li><a ng-click="deleteHosts()" a-disabled="!gridOptions.selectedItems.length"><i class="glyphicon glyphicon-trash"></i></a></li>
+                </ul>
+
+                <form class="col-md-4 col-sm-4" role="search">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Search" name="srch-term" id="srch-term" ng-model="filter.term" ng-keyup="doSearchDelayed()" />
+                        <div class="input-group-btn">
+                            <button class="btn btn-default" type="submit" ng-click="doSearch()"><i class="glyphicon glyphicon-search"></i></button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <br />
+
+        <div class="grid" ng-grid="gridOptions" style="min-height: 250px">
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button class="btn btn-default" ng-click="close()">Close</button>
+    </div>
+</form>

@@ -1,0 +1,61 @@
+--- weathermap.orig/setup.php	2010-03-03 01:50:48.000000000 -0800
++++ weathermap/setup.php	2010-10-06 13:54:05.000000000 -0700
+@@ -109,6 +109,19 @@
+ 	//	{
+ 	//		print '<link id="media-rss" title="My Network Weathermaps" rel="alternate" href="?action=mrss" type="application/rss+xml">';
+ 	//	}
++
++// Begin REQUEST_URI fix
++if (!isset($_SERVER['REQUEST_URI']))
++        {
++        $_SERVER['REQUEST_URI'] = substr($_SERVER['PHP_SELF'],0 );
++
++        if (isset($_SERVER['QUERY_STRING']) AND $_SERVER['QUERY_STRING'] != "")
++                {
++                $_SERVER['REQUEST_URI'] .= '?'.$_SERVER['QUERY_STRING'];
++                }
++        }
++// End REQUEST_URI fix
++
+ 	if(preg_match('/plugins\/weathermap\//',$_SERVER['REQUEST_URI'] ,$matches))
+     {
+ 		print '<LINK rel="stylesheet" type="text/css" media="screen" href="weathermap-cacti-plugin.css">';
+@@ -117,6 +130,19 @@
+ 
+ function weathermap_page_title( $t )
+ {
++
++// Begin REQUEST_URI fix
++if (!isset($_SERVER['REQUEST_URI']))
++        {
++        $_SERVER['REQUEST_URI'] = substr($_SERVER['PHP_SELF'],0 );
++
++        if (isset($_SERVER['QUERY_STRING']) AND $_SERVER['QUERY_STRING'] != "")
++                {
++                $_SERVER['REQUEST_URI'] .= '?'.$_SERVER['QUERY_STRING'];
++                }
++        }
++// End REQUEST_URI fix
++
+         if(preg_match('/plugins\/weathermap\//',$_SERVER['REQUEST_URI'] ,$matches))
+         {
+                 $t .= " - Weathermap";
+@@ -583,6 +609,18 @@
+ 
+ 		print '<a href="' . $config['url_path'] . 'plugins/weathermap/weathermap-cacti-plugin.php"><img src="' . $config['url_path'] . 'plugins/weathermap/images/'.$prefix.'tab_weathermap';
+ 		// if we're ON a weathermap page, print '_red'
++// Begin REQUEST_URI fix
++if (!isset($_SERVER['REQUEST_URI']))
++        {
++        $_SERVER['REQUEST_URI'] = substr($_SERVER['PHP_SELF'],0 );
++
++        if (isset($_SERVER['QUERY_STRING']) AND $_SERVER['QUERY_STRING'] != "")
++                {
++                $_SERVER['REQUEST_URI'] .= '?'.$_SERVER['QUERY_STRING'];
++                }
++        }
++// End REQUEST_URI fix
++
+ 		if(preg_match('/plugins\/weathermap\/weathermap-cacti-plugin.php/',$_SERVER['REQUEST_URI'] ,$matches))
+ 		{
+ 			print "_red";

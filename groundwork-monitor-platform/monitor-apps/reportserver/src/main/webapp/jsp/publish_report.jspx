@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<jsp:root version="1.2" xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component">
+	<jsp:directive.page contentType="text/html;charset=ISO-8859-1"
+		pageEncoding="ISO-8859-1" />
+	<f:view>
+		<html>
+		<body>
+		<f:loadBundle basename="#{localeBean.baseName}" var="message" />
+		<ice:form id="publishReportPortlet_frmPublish" partialSubmit="true">
+			<ice:panelGroup id="publishReportPortlet_pnlPublish">
+
+				<ice:panelGroup id="publishReportPortlet_pnlHeader">
+					<ice:outputText id="publishReportPortlet_txtHeader"
+						value="#{message['publish_report.header_text']}" />
+				</ice:panelGroup>
+
+				<ice:panelGrid columns="2" id="publishReportPortlet_pnlInputComponent">
+					<ice:outputLabel id="publishReportPortlet_lblInputComponent"
+						for="portletPublishReport_inputPublishReport"
+						value="#{message['publish_report.filebox_label']}" />
+					<ice:panelGroup id="pnlPublishAndMsg">	
+					<ice:inputFile progressRender="true"
+						id="portletPublishReport_inputPublishReport"
+						actionListener="#{inputFileController.uploadFile}" width="600"
+						height="50" fileNamePattern=".+\.rptdesign" uniqueFolder="false"
+						uploadDirectoryAbsolute="true"
+						uploadDirectory="#{inputFileController.uploadPath}" />
+						<h:messages id="publishReportPortlet_msgInputComponent" layout="table"
+							globalOnly="false" showDetail="true" showSummary="false" />
+					</ice:panelGroup>
+				</ice:panelGrid>
+
+				<ice:panelGroup id="publishReportPortlet_pnlList">
+					<ice:outputText id="publishReportPortlet_txtList"
+						value="#{message['publish_report.list_label']}" />
+
+					<ice:dataTable id="publishReportPortlet_tblList" width="600px"
+						value="#{inputFileController.fileListBean.fileList}" var="fileObject">
+						<ice:column id="publishReportPortlet_columnFileName">
+							<f:facet name="header">
+							</f:facet>
+							<ice:outputText id="publishReportPortlet_txtFileName" value="#{fileObject.fileName}" />
+						</ice:column>
+						<ice:column id="publishReportPortlet_columnFileLastModified">
+							<f:facet name="header">
+							</f:facet>
+							<ice:outputText id="publishReportPortlet_txtFileLastModified"
+								value="#{fileObject.lastModified}" />
+						</ice:column>
+
+					</ice:dataTable>
+
+				</ice:panelGroup>
+			</ice:panelGroup>
+		</ice:form>
+		</body>
+		</html>
+	</f:view>
+</jsp:root>
+

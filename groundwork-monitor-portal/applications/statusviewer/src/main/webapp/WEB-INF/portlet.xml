@@ -1,0 +1,1044 @@
+<?xml version="1.0" encoding="UTF-8"?>
+	<!--
+		Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork) All
+		rights reserved. This program is free software; you can redistribute
+		it and/or modify it under the terms of the GNU General Public License
+		version 2 as published by the Free Software Foundation. This program
+		is distributed in the hope that it will be useful, but WITHOUT ANY
+		WARRANTY; without even the implied warranty of MERCHANTABILITY or
+		FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+		for more details. You should have received a copy of the GNU General
+		Public License along with this program; if not, write to the Free
+		Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+		02110-1301, USA.
+	-->
+<portlet-app xmlns="http://java.sun.com/xml/ns/portlet/portlet-app_2_0.xsd"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/portlet/portlet-app_2_0.xsd http://java.sun.com/xml/ns/portlet/portlet-app_2_0.xsd"
+	version="2.0">
+
+	<!--
+		Note: DO NOT add Default Preferences to Entire Network portlets -
+		Summary, Events and Nagios Statistics portlets.
+	-->
+
+	<!--
+		Network Tree Portlet, that contains Host and Service Trees, along with
+		Search functionality
+	-->
+	<!-- <portlet>
+		<portlet-name>networkTree</portlet-name>
+		<display-name>Tree View Portlet</display-name>
+		<description>Tree View portlet provides the tabs; Hosts, Services,
+			and Search. The host and services tabs display lists of monitored
+			host groups and service groups which are expandable so that you can
+			view detailed host and service status quickly. Search tab enables
+			quick access to specified monitoring objects based on the entered
+			host, service, alias, and IP address criteria.</description>
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.NetworkTreePortlet</portlet-class>
+		<init-param>
+			<name>com.icesoft.faces.portlet.viewPageURL</name>
+			<value>/jsp/networkTree.iface</value>
+		</init-param>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+		</supports>
+		<portlet-info>
+			<title>Network Tree</title>
+		</portlet-info>
+	</portlet> -->
+	<portlet>
+		<portlet-name>hostGroup-status</portlet-name>
+		<!--description>Host Group Summary portlet shows monitoring
+			statistics at the Entire Network level with drill-down capability for
+			viewing detailed data. Displayed graphs provide an at-a-glance
+			filtered view of your overall host group status.</description-->
+			<display-name>Host Group Status Summary Portlet</display-name>
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.HostGroupStatisticsPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+		</supports>
+		<supported-locale>de</supported-locale>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>es</supported-locale>
+		<portlet-info>
+			<title>HostGroup Status:Entire Network</title>
+		</portlet-info>
+	</portlet>
+	<portlet>
+		<portlet-name>host-status</portlet-name>
+		<display-name>Host Status Summary Portlet</display-name>
+		<!--description>Host Summary portlet shows monitoring statistics at
+			the Entire Network and Host Group levels with drill-down capability
+			for viewing detailed data. Displayed graphs provide an at-a-glance
+			filtered view of your overall host status representing segments of
+			host states.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.HostStatisticsPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+			<portlet-mode>edit</portlet-mode>
+		</supports>
+		<supported-locale>de</supported-locale>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>es</supported-locale>
+		<portlet-info>
+			<title>Host Status:Entire Network</title>
+		</portlet-info>
+		<portlet-preferences>
+			<preference>
+				<name>defaultHostGroupPreference</name>
+				<value>#L!nux#</value>
+			</preference>
+		</portlet-preferences>
+	</portlet>
+
+	<portlet>
+		<portlet-name>servicesgroup-status</portlet-name>
+		<display-name>Service Group Status Summary Portlet</display-name>
+		<!--description>Service Group Summary portlet shows monitoring
+			statistics at the Entire Network level with drill-down capability for
+			viewing detailed data. These graphs provide an at-a-glance filtered
+			view of your overall service group status.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.ServiceGroupStatisticsPortlet</portlet-class>
+
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+		</supports>
+		<supported-locale>de</supported-locale>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>es</supported-locale>
+		<portlet-info>
+			<title>Service Group Status:Entire Network</title>
+		</portlet-info>
+	</portlet>
+
+	<portlet>
+		<portlet-name>service-status</portlet-name>
+		<display-name>Service Status Summary Portlet</display-name>
+		<!--description>Service Summary portlet shows monitoring
+			statistics at the Entire Network, Host Group, Service Group and Host
+			levels with drill-down capability for viewing detailed data. These
+			graphs provide an at-a-glance filtered view of your overall service
+			status representing segments of service states.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.ServiceStatisticsPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+			<portlet-mode>edit</portlet-mode>
+		</supports>
+		<supported-locale>de</supported-locale>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>es</supported-locale>
+		<portlet-info>
+			<title>Service Status:Entire Network</title>
+		</portlet-info>
+	</portlet>
+
+	<!-- Filters Portlet -->
+	<portlet>
+		<portlet-name>FiltersPortlet</portlet-name>
+		<display-name>Filters Portlet</display-name>
+		<!--description>Filters portlet allows specific host and or
+			service states to be filtered and displayed. Selections made in these
+			drop-downs affect the displayed contents of all other portlets on the
+			Status page. This portlet is viewable at the entire network, host
+			group, service
+			group, and host levels.</description-->
+
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.FilterPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+		</supports>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>en</supported-locale>
+		<supported-locale>de</supported-locale>
+		<portlet-info>
+			<title>Filters</title>
+		</portlet-info>
+	</portlet>
+
+	<!-- Nagios Monitoring Statistics Portlet - Horizontal -->
+	<portlet>
+		<portlet-name>NagiosMonitoringStatistics</portlet-name>
+		<display-name>Nagios Monitoring Statistics Portlet</display-name>
+		<!--description>Nagios Monitor Statistics table (placed
+			horizontally) shows the number of services and hosts that have a
+			monitoring feature setting enabled or disabled. The color-coded
+			indicators indicates the global state of the feature. Feature
+			settings include Active Checks, Passive Checks, Notifications, Flap
+			Detection, and Event Handlers for host and services. Disabled
+			indicators provide links for drill-down capability.</description-->
+
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.NagiosMonitoringStatisticsPortlet</portlet-class>
+		<init-param>
+			<name>com.icesoft.faces.portlet.viewPageURL</name>
+			<value>/jsp/nagiosMonitoringStatisticsHorizontal.iface</value>
+		</init-param>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+		</supports>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>en</supported-locale>
+		<supported-locale>de</supported-locale>
+		<portlet-info>
+			<title>Nagios Monitoring Statistics</title>
+		</portlet-info>
+	</portlet>
+
+	<!-- Nagios Monitoring Statistics Portlet - Stacked -->
+	<portlet>
+		<portlet-name>StackedNagiosMonitoringStatistics</portlet-name>
+		<display-name>Stacked Nagios Monitoring Statistics Portlet</display-name>
+		<!--description>Nagios Monitor Statistics table (placed in a
+			stacked manner) shows the number of services and hosts that have a
+			monitoring feature setting enabled or disabled. The color-coded
+			indicators indicates the global state of the feature. Feature
+			settings include Active Checks, Passive Checks, Notifications, Flap
+			Detection, and Event Handlers for host and services. Disabled
+			indicators provide links for drill-down capability.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.StackedNagiosMonitoringStatisticsPortlet</portlet-class>
+		<init-param>
+			<name>com.icesoft.faces.portlet.viewPageURL</name>
+			<value>/jsp/nagiosMonitoringStatisticsStacked.iface</value>
+		</init-param>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+		</supports>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>en</supported-locale>
+		<supported-locale>de</supported-locale>
+		<portlet-info>
+			<title>Nagios Monitoring Statistics</title>
+		</portlet-info>
+	</portlet>
+
+	<!-- Health Portlets -->
+	<!-- Host Health Portlet -->
+	<portlet>
+		<portlet-name>hostHealth</portlet-name>
+		<display-name>Host Health Portlet</display-name>
+		<!--description>Host Health portlet provides quick status and
+			information for the selected host. A color-coded status indicator
+			shows the current state of selected host. In addition, the time the
+			host has been in the current state, and the number of Groups and
+			Parents for this host - are conveniently listed.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.HostHealthPortlet</portlet-class>
+
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+			<portlet-mode>edit</portlet-mode>
+		</supports>
+		<supported-locale>en</supported-locale>
+		<portlet-info>
+			<title>Host Health</title>
+		</portlet-info>
+		<portlet-preferences>
+			<preference>
+				<name>defaultHostPref</name>
+				<value>localhost</value>
+			</preference>
+		</portlet-preferences>
+		<security-role-ref>
+			<role-name>GWUser</role-name>
+		</security-role-ref>
+
+		<security-role-ref>
+			<role-name>GWAdmin</role-name>
+		</security-role-ref>
+
+		<security-role-ref>
+			<role-name>GWOperator</role-name>
+		</security-role-ref>
+	</portlet>
+
+
+	<!-- Host Group Health Portlet -->
+	<portlet>
+		<portlet-name>HostGroupHealth</portlet-name>
+		<display-name>Host Group Health Portlet</display-name>
+		<!--description>Host Group Health portlet provides quick status for
+			the selected host group’s host and service availability. A color
+			coded status indicator shows the host group's, as a parent node, most
+			critical state.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.HostGroupHealthPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+			<portlet-mode>edit</portlet-mode>
+		</supports>
+		<supported-locale>de</supported-locale>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>es</supported-locale>
+		<portlet-info>
+			<title>Host Group Health</title>
+		</portlet-info>
+		<portlet-preferences>
+			<preference>
+				<name>defaultHostGroupPreference</name>
+				<value>#L!nux#</value>
+			</preference>
+		</portlet-preferences>
+	</portlet>
+
+	<!-- Service Group Health Portlet -->
+	<portlet>
+		<portlet-name>serviceGroupHealth</portlet-name>
+		<display-name>Service Group Health Portlet</display-name>
+		<!--description>Service Group Health portlet provides quick status
+			for the selected service group’s service availability. A color coded
+			status indicator shows the service group's, as a parent node, most
+			critical state.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.ServiceGroupHealthPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+			<portlet-mode>edit</portlet-mode>
+		</supports>
+		<supported-locale>en</supported-locale>
+		<portlet-info>
+			<title>Service Group Health</title>
+		</portlet-info>
+		<portlet-preferences>
+			<preference>
+				<name>defaultServiceGroupPreference</name>
+				<value>!D#fault!</value>
+			</preference>
+		</portlet-preferences>
+	</portlet>
+
+	<!-- Service Health Portlet -->
+	<portlet>
+		<portlet-name>serviceHealth</portlet-name>
+		<display-name>Service Health Portlet</display-name>
+		<!--description>Service Health portlet provides quick status and
+			information for the selected service. A color-coded status indicator
+			shows the service state along with the time the service has been in
+			the current state. Host and number of Groups associated with this
+			service are also displayed, both of which you can drill-down into for
+			more detailed information.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.ServiceHealthPortlet</portlet-class>
+
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+			<portlet-mode>edit</portlet-mode>
+		</supports>
+		<supported-locale>en</supported-locale>
+		<portlet-info>
+			<title>Service Health</title>
+		</portlet-info>
+		<portlet-preferences>
+			<preference>
+				<name>defaultServicePref</name>
+				<value>icmp_ping</value>
+			</preference>
+			<preference>
+				<name>defaultHostPref</name>
+				<value>localhost</value>
+			</preference>
+		</portlet-preferences>
+		<security-role-ref>
+			<role-name>GWUser</role-name>
+		</security-role-ref>
+
+		<security-role-ref>
+			<role-name>GWAdmin</role-name>
+		</security-role-ref>
+
+		<security-role-ref>
+			<role-name>GWOperator</role-name>
+		</security-role-ref>
+	</portlet>
+
+	<!-- Host Information Portlet -->
+	<portlet>
+		<portlet-name>HostInformation</portlet-name>
+		<display-name>Host Information Portlet</display-name>
+		<!--description>Host Information portlet shows detailed status and
+			check information. Here you can directly schedule downtime or disable
+			notifications, and schedule or disable checks.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.HostInformationPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+			<portlet-mode>edit</portlet-mode>
+		</supports>
+		<supported-locale>de</supported-locale>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>es</supported-locale>
+		<portlet-info>
+			<title>Host Information</title>
+		</portlet-info>
+
+		<portlet-preferences>
+			<preference>
+				<name>defaultHostPref</name>
+				<value>localhost</value>
+			</preference>
+			<preference>
+				<name>defaultHostCustLink1Pref</name>
+				<value>http://www.nagios.org</value>
+			</preference>
+		</portlet-preferences>
+
+		<security-role-ref>
+			<role-name>GWUser</role-name>
+		</security-role-ref>
+
+		<security-role-ref>
+			<role-name>GWAdmin</role-name>
+		</security-role-ref>
+
+		<security-role-ref>
+			<role-name>GWOperator</role-name>
+		</security-role-ref>
+	</portlet>
+
+	<!-- Service Information Portlet -->
+	<portlet>
+		<portlet-name>ServiceInformation</portlet-name>
+		<display-name>Service Information Portlet</display-name>
+		<!--description>Service Status Information portlet shows detailed
+			status and check information for the selected service. Here you can
+			directly schedule downtime or disable notifications, schedule or
+			disable checks and can acknowledge service problem.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.ServiceInformationPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+			<portlet-mode>edit</portlet-mode>
+		</supports>
+		<supported-locale>de</supported-locale>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>es</supported-locale>
+		<portlet-info>
+			<title>Service Information</title>
+		</portlet-info>
+		<portlet-preferences>
+			<preference>
+				<name>defaultServicePref</name>
+				<value>icmp_ping</value>
+			</preference>
+			<preference>
+				<name>defaultHostPref</name>
+				<value>localhost</value>
+			</preference>
+			<preference>
+				<name>defaultServiceCustLink1Pref</name>
+				<value>http://www.nagios.org</value>
+			</preference>
+		</portlet-preferences>
+
+		<security-role-ref>
+			<role-name>GWUser</role-name>
+		</security-role-ref>
+
+		<security-role-ref>
+			<role-name>GWAdmin</role-name>
+		</security-role-ref>
+
+		<security-role-ref>
+			<role-name>GWOperator</role-name>
+		</security-role-ref>
+	</portlet>
+
+	<!--
+		Host List Portlet : displays list of hosts under current HostGroup
+	-->
+	<portlet>
+		<portlet-name>HostListPortlet</portlet-name>
+		<display-name>Host List Portlet</display-name>
+		<!--description>Host List portlet provides a listing and status of
+			the host group's hosts. Each device name (Host Name) can be selected
+			to drill-down into for more detail, and each host problem can be
+			directly acknowledged.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.HostListPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+			<portlet-mode>edit</portlet-mode>
+		</supports>
+		<supported-locale>de</supported-locale>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>es</supported-locale>
+		<portlet-info>
+			<title>Host List</title>
+		</portlet-info>
+		<portlet-preferences>
+			<preference>
+				<name>defaultHostGroupPreference</name>
+				<value>#L!nux#</value>
+			</preference>
+		</portlet-preferences>
+	</portlet>
+
+	<!-- Service List Portlet -->
+	<portlet>
+		<portlet-name>serviceList</portlet-name>
+		<display-name>Service List Portlet</display-name>
+		<!--description>Service List portlet lists the services and their
+			status. Each Service Name can be selected to drill-down for more
+			detail, and each service problem can be directly acknowledged.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.ServiceListPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+			<portlet-mode>edit</portlet-mode>
+		</supports>
+		<supported-locale>de</supported-locale>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>es</supported-locale>
+		<portlet-info>
+			<title>Services</title>
+		</portlet-info>
+		<portlet-preferences>			
+			<preference>
+				<name>defaultHostGroupPreference</name>
+				<value>#L!nux#</value>
+			</preference>
+			<preference>
+				<name>defaultServiceGroupPreference</name>
+				<value>!D#fault!</value>
+			</preference>
+		</portlet-preferences>
+	</portlet>
+
+	<!-- Monitoring Performance Portlet -->
+	<portlet>
+		<portlet-name>monitoringPerformance</portlet-name>
+		<display-name>Monitoring Performance Portlet</display-name>
+		<!--description>Monitoring Performance portlet shows the
+			performance monitoring graphs and statistics in form of dial charts.
+			It communicates with “Nagios Performance” JMS topic to show graphs
+			for Service Latency, Execution and Checks. It also displays various
+			statistical data like Active and Passive Service Checks per 1/5/15
+			minutes.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.MonitoringPerformancePortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+		</supports>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>en</supported-locale>
+		<supported-locale>de</supported-locale>
+		<portlet-info>
+			<title>Monitoring Performance</title>
+		</portlet-info>
+	</portlet>
+
+	<!-- Host Availability Portlet -->
+	<portlet>
+		<portlet-name>HostAvailability</portlet-name>
+		<display-name>Host Availability (Recent State Changes) Portlet</display-name>
+		<!--description>Host Availability displays color-coded status for a
+			selected host. The name of the host and number of services are listed
+			first (e.g. local host (23 Services)), and the colored horizontal
+			bars show the host's availability by status color. The Time selector
+			enables the user to change the present time period for the graph.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.HostAvailabilityPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+			<portlet-mode>edit</portlet-mode>
+		</supports>
+		<supported-locale>de</supported-locale>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>es</supported-locale>
+		<portlet-info>
+			<title>Host Availability Graph</title>
+		</portlet-info>
+		<portlet-preferences>
+			<preference>
+				<name>defaultHostPref</name>
+				<value>localhost</value>
+			</preference>
+			
+		</portlet-preferences>
+	</portlet>
+
+	<!-- Performance measurement portlet  -->
+	<portlet>
+		<portlet-name>PerfMeasurement</portlet-name>
+		<display-name>Performance Measurement Portlet</display-name>
+		<!--description>Performance Measurement portlet provides RRD
+			graphs for the various host services. Time filters like Today, Last
+			24 Hours, Last 30 Days etc can be chosen as per the user needs. The
+			integrated performance graphs display time-series data such as;
+			network bandwidth, CPU utilization, machine-room temperature,
+			transaction response times, and server load averages. These graphs
+			are viewable at the host and service levels.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.PerfMeasurementPortletEE</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+			<portlet-mode>edit</portlet-mode>
+		</supports>
+		<supported-locale>de</supported-locale>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>es</supported-locale>
+		<portlet-info>
+			<title>Performance Measurement Portlet</title>
+		</portlet-info>
+		<portlet-preferences>
+			<preference>
+				<name>defaultHostPref</name>
+				<value>localhost</value>
+			</preference>
+			<preference>
+				<name>timepref</name>
+				<value>1</value>
+			</preference>
+		</portlet-preferences>
+	</portlet>
+	<!-- Event  portlet  -->
+	<portlet>
+		<portlet-name>EventPortlet</portlet-name>
+		<display-name>Events Portlet</display-name>
+		<!--description>Events portlet is an embedded Event Console
+			application which provides an event list for the entire network or
+			for selected host group along with the capability of applying actions
+			(e.g. Accept Log Message, Notify Log Message, Nagios Acknowledge),
+			sorting, and pausing incoming events. This portlet is viewable at the
+			host group, service group, host and service levels in Status Viewer.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.EventPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+			<portlet-mode>edit</portlet-mode>
+		</supports>
+		<supported-locale>de</supported-locale>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>es</supported-locale>
+		<portlet-info>
+			<title></title>
+		</portlet-info>
+		<portlet-preferences>
+			<preference>
+				<name>defaultHostGroupPreference</name>
+				<value>#L!nux#</value>
+			</preference>			
+		</portlet-preferences>		
+	</portlet>
+	<!-- Actions Portlet -->
+	<portlet>
+		<portlet-name>Actions</portlet-name>
+		<display-name>Actions Portlet</display-name>
+		<!--description>Actions portlet provides the command categories;
+			Acknowledge, Downtime, Notifications, Settings, Event Handlers, and
+			Check Results. These settings are reflected in various portlets as
+			per the status page. The available commands, throughout the Status
+			application, depends on the current status of the object in question.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.ActionsPortlet</portlet-class>
+		<!--
+			<init-param> <name>com.icesoft.faces.portlet.viewPageURL</name>
+			<value>/jsp/actions.iface</value> </init-param>
+		-->
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+		</supports>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>en</supported-locale>
+		<supported-locale>de</supported-locale>
+		<portlet-info>
+			<title>Actions</title>
+		</portlet-info>
+	</portlet>
+
+	<!-- Comments Portlet -->
+	<portlet>
+		<portlet-name>commentsPortlet</portlet-name>
+		<display-name>Comments Portlet</display-name>
+		<!--description>Comments portlet is used to log informational
+			comments for other users. This portlet is
+			available at the Host and
+			Service levels.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.CommentsPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+		</supports>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>en</supported-locale>
+		<supported-locale>de</supported-locale>
+		<portlet-info>
+			<title>Comments</title>
+		</portlet-info>
+		<portlet-preferences>
+			<preference>
+				<name>defaultHostPref</name>
+				<value>localhost</value>
+			</preference>
+		</portlet-preferences>
+	</portlet>
+	<!-- Service Availability Portlet -->
+	<portlet>
+		<portlet-name>ServiceAvailability</portlet-name>
+		<display-name>Service Availability (Recent State Changes)
+			Portlet</display-name>
+		<!--description>Service Availability displays color-coded status
+			for a selected service. The name of the service and the colored
+			horizontal bar show this service's availability by status color. The
+			Time selector enables the user to change the present time period for
+			the graph.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.ServiceAvailabilityPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
+			<portlet-mode>edit</portlet-mode>
+		</supports>
+		<supported-locale>de</supported-locale>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>es</supported-locale>
+		<portlet-info>
+			<title>Service Availability Graph</title>
+		</portlet-info>
+		<portlet-preferences>
+			<preference>
+				<name>defaultServicePref</name>
+				<value>icmp_ping</value>
+			</preference>
+			<preference>
+				<name>defaultHostPref</name>
+				<value>localhost</value>
+			</preference>
+		</portlet-preferences>
+	</portlet>
+
+	<!--
+		<filter> <filter-name>ICEFaces Portlet Filter</filter-name>
+		<filter-class>com.groundworkopensource.portal.common.IceFacesPortletFilter</filter-class>
+		<lifecycle>RENDER_PHASE</lifecycle> </filter> <filter-mapping>
+		<filter-name>ICEFaces Portlet Filter</filter-name>
+		<portlet-name>*</portlet-name> </filter-mapping>
+	-->
+
+	<!-- Seurat Portlet -->
+	<portlet>
+		<portlet-name>Seurat</portlet-name>
+		<display-name>Seurat View Portlet</display-name>
+		<!--description>Seurat view offers an overall view of a Host Groups
+			Hosts status sortable by Host Name, Status, Last State Change. Along
+			with this, it provides ability to drill down to “host details” by
+			right-clicking on any of the displayed host - where one can have a
+			view of services under that host and can acknowledge problems for
+			that host and services.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.SeuratPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+			<portlet-mode>edit</portlet-mode>
+		</supports>
+		<supported-locale>de</supported-locale>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>es</supported-locale>
+		<portlet-info>
+			<title>Seurat View</title>
+		</portlet-info>
+		<portlet-preferences>
+			<preference>
+				<name>seuratEntNetPref</name>
+				<value>true</value>
+			</preference>
+			<preference>
+				<name>defaultHostGroupPreference</name>
+				<value>#L!nux#</value>
+			</preference>
+		</portlet-preferences>
+	</portlet>
+
+	<portlet>
+		<portlet-name>HostViewPortlet</portlet-name>
+		<display-name>Host View Portlet</display-name>
+		<!--description>Host View portlet is a mega portlet available on host
+			level in status viewer. Host Mega Portlet is a collection of Host
+			Health, Host Information, Host Status Summary, Host List, Comments,
+			Performance Measurement, Filters, Availability (Enterprise Edition
+			Only) and Events (Enterprise Edition Only) Portlets.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.HostViewPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+		</supports>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>en</supported-locale>
+		<supported-locale>de</supported-locale>
+		<portlet-info>
+			<title>HostView</title>
+		</portlet-info>
+		<!--
+			<portlet-preferences> <preference> <name>defaultHostPref</name>
+			<value>localhost</value> </preference> <preference>
+			<name>nodeName</name> <value>localhost</value> </preference>
+			</portlet-preferences>
+		-->
+
+		<security-role-ref>
+			<role-name>GWUser</role-name>
+		</security-role-ref>
+
+		<security-role-ref>
+			<role-name>GWAdmin</role-name>
+		</security-role-ref>
+
+		<security-role-ref>
+			<role-name>GWOperator</role-name>
+		</security-role-ref>
+	</portlet>
+
+
+	<portlet>
+		<portlet-name>ServiceViewPortlet</portlet-name>
+		<display-name>Service View Portlet</display-name>
+		<!--description>Service View portlet is a mega portlet available
+			on service level in status viewer. Service Mega Portlet is a
+			collection of Service Health, Service Information, Service Status
+			Summary, Service List, Comments, Performance Measurement, Filters,
+			Availability (Enterprise Edition Only) and Events (Enterprise Edition
+			Only) Portlets.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.ServiceViewPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+		</supports>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>en</supported-locale>
+		<supported-locale>de</supported-locale>
+		<portlet-info>
+			<title>ServiceView</title>
+		</portlet-info>
+
+		<security-role-ref>
+			<role-name>GWUser</role-name>
+		</security-role-ref>
+
+		<security-role-ref>
+			<role-name>GWAdmin</role-name>
+		</security-role-ref>
+
+		<security-role-ref>
+			<role-name>GWOperator</role-name>
+		</security-role-ref>
+	</portlet>
+
+	<portlet>
+		<portlet-name>HostGroupViewPortlet</portlet-name>
+		<display-name>Host Group View Portlet</display-name>
+		<!--description>Host Group View portlet is a mega portlet available
+			on host group level in status viewer. Host Group Mega Portlet is a
+			collection of Host Group Health, Host Status Summary, Service Status
+			Summary, Host List, Nagios Monitoring Statistics, Filters, and Events
+			(Enterprise Edition Only) Portlets.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.HostGroupViewPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+		</supports>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>en</supported-locale>
+		<supported-locale>de</supported-locale>
+		<portlet-info>
+			<title>HostGroupViewPortlet</title>
+		</portlet-info>
+	</portlet>
+
+
+	<!--
+		<filter> <filter-name>ICEFaces Portlet Filter</filter-name>
+		<filter-class>com.groundworkopensource.portal.common.IceFacesPortletFilter</filter-class>
+		<lifecycle>RENDER_PHASE</lifecycle> </filter> <filter-mapping>
+		<filter-name>ICEFaces Portlet Filter</filter-name>
+		<portlet-name>*</portlet-name> </filter-mapping>
+	-->
+
+	<portlet>
+		<portlet-name>ServiceGroupViewPortlet</portlet-name>
+		<display-name>Service Group View Portlet</display-name>
+		<!--description>Service Group View portlet is a mega portlet
+			available on service group level in status viewer. Service Group Mega
+			Portlet is a collection of Service Group Health, Service Status
+			Summary, Service List, Stacked Nagios Monitoring Statistics, Filters,
+			and Events (Enterprise Edition Only) Portlets.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.ServiceGroupViewPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+		</supports>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>en</supported-locale>
+		<supported-locale>de</supported-locale>
+		<portlet-info>
+			<title>ServiceGroupView</title>
+		</portlet-info>
+		<!--
+			<portlet-preferences> <preference> <name>defaultHostPref</name>
+			<value>localhost</value> </preference> <preference>
+			<name>nodeName</name> <value>localhost</value> </preference>
+			</portlet-preferences>
+		-->
+
+	</portlet>
+
+	<portlet>
+		<portlet-name>NetworkViewPortlet</portlet-name>
+		<display-name>Network View Portlet</display-name>
+		<!--description>Network View portlet is a mega portlet available
+			on entire network level in status viewer. Service Group Mega Portlet
+			is a collection of Host Status Summary, Service Status Summary, Host
+			Group Status Summary, Service Group Status Summary and Nagios
+			Monitoring Statistics Portlets.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.NetworkViewPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+		</supports>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>en</supported-locale>
+		<supported-locale>de</supported-locale>
+		<portlet-info>
+			<title>NetworkView</title>
+		</portlet-info>
+		
+		<security-role-ref>
+			<role-name>GWUser</role-name>
+		</security-role-ref>
+
+		<security-role-ref>
+			<role-name>GWAdmin</role-name>
+		</security-role-ref>
+
+		<security-role-ref>
+			<role-name>GWOperator</role-name>
+		</security-role-ref>
+
+	</portlet>
+
+	<portlet>
+		<portlet-name>DateTimePortlet</portlet-name>
+		<display-name>Date-Time Portlet</display-name>
+		<!--description>Date Time portlet displays the current date and time.
+			This portlet refreshes itself in certain interval.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.DateTimePortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+		</supports>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>en</supported-locale>
+		<supported-locale>de</supported-locale>
+		<portlet-info>
+			<title>DateTime</title>
+		</portlet-info>
+
+	</portlet>
+
+	<portlet>
+		<portlet-name>NetworkServicePlugin</portlet-name>
+		<display-name>Network Service Plugin Portlet</display-name>
+		<!--description>Network Service Plugin Portlet shows Groundwork
+			Notifications and Installation Information to the user. “Notification
+			Service” needs to be enabled by administrator in order to display
+			various notifications from groundwork. “Build Installation
+			Information” includes information like Installer Name (build version
+			currently installed), Installation Date, etc.</description-->
+		<portlet-class>
+			com.groundworkopensource.portal.statusviewer.portlet.NetworkServicePluginPortlet</portlet-class>
+		<supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+		</supports>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>en</supported-locale>
+		<supported-locale>de</supported-locale>
+		<portlet-info>
+			<title>NetworkServicePlugin</title>
+		</portlet-info>
+	</portlet>
+	
+        
+    <portlet>  
+		  <portlet-name>CustomGroups</portlet-name>  
+		  <display-name>CustomGroups entry</display-name>  
+		  <portlet-class>  
+		     com.icesoft.faces.webapp.http.portlet.MainPortlet  
+		  </portlet-class>  
+		  <init-param>  
+		    <name>com.icesoft.faces.portlet.viewPageURL</name>  
+		    <value>/jsp/customGroupList.iface</value>  
+		  </init-param>  
+		  <supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+		</supports>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>en</supported-locale>
+		<supported-locale>de</supported-locale>
+		<portlet-info>
+			<title>Custom Groups entry</title>
+		</portlet-info>
+	</portlet>
+        
+    <portlet>  
+		  <portlet-name>EventPies</portlet-name>  
+		  <display-name>Event Pies</display-name>  
+		  <portlet-class>  
+		     com.icesoft.faces.webapp.http.portlet.MainPortlet  
+		  </portlet-class>  
+		  <init-param>  
+		    <name>com.icesoft.faces.portlet.viewPageURL</name>  
+		    <value>/jsp/eventsPie.iface</value>  
+		  </init-param>  
+		  <supports>
+			<mime-type>text/html</mime-type>
+			<portlet-mode>VIEW</portlet-mode>
+		</supports>
+		<supported-locale>fr</supported-locale>
+		<supported-locale>en</supported-locale>
+		<supported-locale>de</supported-locale>
+		<portlet-info>
+			<title>Event Pies</title>
+		</portlet-info>
+	</portlet>   
+	
+	<!-- Custom Addition Starts -->
+  	<!-- Custom Addition Ends -->
+	     
+</portlet-app>

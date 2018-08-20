@@ -1,0 +1,285 @@
+#!/usr/bin/expect -Nn-
+
+# This one script can be called as two different commands, depending on the
+# name of the file containing the script:
+#
+# essh:  just like ssh, except it allows an initial "-P password" command-line option
+# escp:  just like scp, except it allows an initial "-P password" command-line option
+#
+# This program is for use in (hopefully rare) situations where you need to invoke
+# ssh or scp from a script, but don't want to have permanent authentication keys
+# installed that would allow passwordless login.  Use of essh or escp in the general
+# case is strongly discouraged, because passing a cleartext password on the command
+# line is a big no-no from a security standpoint.
+
+# Copyright 2014 GroundWork Open Source, Inc. ("GroundWork")
+# All rights reserved.  Use is subject to GroundWork commercial license terms.
+
+# Revision History:
+#
+# 2014-07-10 GH 0.0.0	Original version.
+# 2014-07-12 GH 0.0.1	Handle CR characters sensibly;
+#			handle empty $argv correctly;
+#			improve script security.
+# 2014-07-27 GH 0.0.2	Defeat deadlock in non-interactive/non-tty-stdin contexts.
+
+# TO DO:
+# (*) Look at possible signal handling, to ensure that any signals received
+#     by this script are properly passed on to the spawed process (and then
+#     specifically, to the remote process).  Ensure that the remote process
+#     dies under such circumstances.
+
+# Find the filename we were invoked as, then drop the first character
+# to determine the underlying command we're emulating.
+regexp "(.*/)?(.*)" $argv0 ignore path_to script
+regexp ".(.*)" $script ignore base_command
+
+# This procedure is borrowed from http://wiki.tcl.tk/8177 though it is not the
+# most robust version on that page.  The best version uses lassign, which is not
+# available until tcl 8.5, which we cannot depend on having available.  But this
+# simple version will suffice for our primitive purposes here.
+proc lshift listVar {
+    upvar 1 $listVar l
+    set r [lindex $l 0]
+    set l [lreplace $l [set l 0] 0]
+    return $r
+}
+
+# For reasons we don't fully understand, expect captures \r\n line terminations
+# in its buffering where we only expect to see \n line termination.  We don't
+# want the \r characters in our captured output, so we provide an easy means
+# to filter out such extra characters.  This might fail to produce the desired
+# result if the buffer ended with a \r character (before the following \n was
+# seen and processed), but we don't expect that will be a common occurrence.
+proc send_user_nocr {dirty} {
+    regsub -all "\r\n" $dirty "\n" clean
+    send_user -- $clean
+}
+
+proc print_usage {} {
+    global base_command
+    global script
+    send_user "usage:  $script \[-P {password}\] {$base_command-arguments}\n"
+    send_user "where:  -P {password}    is the login password for the remote\n"
+    send_user "                         user you are trying to connect as\n"
+    send_user "        {$base_command-arguments}  are the arguments you would normally\n"
+    send_user "                         pass to $base_command\n"
+}
+
+if { $argc == 0 || "$argv" == "{}" } {
+    print_usage
+    exit 1
+}
+
+set password ""
+if { [lindex $argv 0] == "-P" } {
+    if { [llength $argv] < 2 } {
+	send_user -- "-P requires an additional password argument\n"
+	exit 1
+    }
+    set password [lindex $argv 1]
+    lshift argv
+    lshift argv
+}
+
+proc exit_status {} {
+    global base_command
+    set wait_status [wait]
+    if { [lindex $wait_status 2] == 0} {
+	return [lindex $wait_status 3]
+    } else {
+	send_user "ERROR:  Cannot determine $base_command exit status ([lindex $wait_status 3 end]).\n"
+	exit 127
+    }
+}
+
+if [catch { set pid [eval spawn -noecho /usr/bin/$base_command [lrange $argv 0 end]] } reason] {
+    send_user "ERROR:  Cannot spawn $base_command ($reason).\n"
+    exit 127
+}
+
+# Simplify the nested expect commands just below, by pulling most of the commonality of default
+# special-condition matching out to where it applies uniformly to those expect commands.
+expect_before {
+    eof {
+	exit [exit_status]
+    }
+    timeout {
+	send_user -- "$base_command execution was timed out by $script\n"
+	close
+	exit 127
+    }
+}
+
+# Disable output from the spawned program from automatically appearing in the output
+# of this script.  This allows us to invisibly process any password-prompt interaction,
+# and to process line terminations to suppress \r characters.  While this is in effect,
+# we take pains to explicitly mirror any output that we do actually want to appear.
+log_user 0
+
+set timeout 15
+expect {
+    "assword: " {
+	send "$password\r"
+	expect {
+	    eof {
+		exit [exit_status]
+	    }
+	    timeout {
+		send_user -- "$base_command interaction was timed out by $script waiting for password acknowledgement\n"
+		close
+		exit 127
+	    }
+	    "\n" {
+		# We expect only a single newline (and no other text at this point) to have been sent
+		# from the remote side in response to the password submission; it is that newline that
+		# we are using to break out of this expect{} call, and suppressing (not echoing) here.
+	    }
+	}
+	expect {
+	    "Permission denied, please try again.\r" {
+		send_user "Invalid password.\n"
+		close
+		exit 127
+	    }
+	    "\n" {
+		send_user_nocr $expect_out(buffer)
+	    }
+	}
+    }
+    "\n" {
+	send_user_nocr $expect_out(buffer)
+    }
+}
+
+# Flush any spawned-process output that we collected earlier but that hasn't yet
+# been discarded because of our previous pattern-matching attempts but hasn't yet
+# been mirrored to the script's output.  This doesn't in any way gather any more
+# output from the spawned process.
+expect * {
+    send_user_nocr $expect_out(buffer)
+}
+
+# Remove default actions for "expect", so we don't get confused later on what
+# conditions and actions are in play.
+expect_before
+
+# The rest of this script is not working for true interactive use, e.g. by running
+# "essh machine bash", although "essh machine" works just fine interactively.
+#
+# * like "ssh machine bash", no shell prompts are issued
+# * unlike "ssh machine bash", no commands are run
+# * because no commands are run, exiting from the remote side via an "exit" command
+#   doesn't stop essh right away
+#
+# Note that "essh machine bash -i" works, but produces the following at the start
+# of the session, followed by the first prompt:
+#
+#   bash: cannot set terminal process group (13571): Inappropriate ioctl for device
+#   bash: no job control in this shell
+#
+# Similarly, "essh machine tcsh -i" works, but produces the following at the start
+# of the session, followed by the first prompt:
+#
+#   Warning: no access to tty (Bad file descriptor).
+#   Thus no job control in this shell.
+#
+# Track down what is happening here, on that basis.  None of the above is considered
+# to be critical, because you shouldn't be using this script for such interactive work
+# in the first place.  If that's what you're up to, just use the underlying command.
+
+# As with send_user_nocr, we want to suppress extra \r characters in the interact
+# output, particularly if we are logging to a file.  But the mechanism used to so
+# so depends on whether or not we are writing to a terminal.  (We must allow the
+# terminal driver to turn \n into \r\n so we cannot use send_user -raw in that case.)
+# Thanks go to http://rosettacode.org/wiki/Check_output_device_is_a_terminal#Tcl for
+# the mechanism used here to find the isatty type of the output stream ($to_tty).
+set to_tty [expr {![catch {fconfigure stdout -mode}]}]
+
+# The following close_on_eof call is a bit of undocumented magic pixie-dust which is necessary
+# so the "interact" command at the end of this script does not close stdout when it finds that
+# stdin is either not a tty or not open (it's not yet clear which condition is the driving force),
+# without even exercising the eof clause of the interact scripting.  Whatever the condition is,
+# it causes "interact" to immediately return and not attempt any interaction, thereby not copying
+# any output from the spawned command to the output from this script.  That would subvert the
+# purpose of this script when it is run in a context where the stdin stream might meet that
+# condition (which can happen in a non-interactive, automated-scripting environment).  Worse,
+# the closing of stdout makes it impossible to use a subsequent "expect" to gather any trailing
+# output from the spawned command and log it to this script's output (since stdout is closed).
+# This command is not documented in the "Exploring Expect" book, because it was implemented in
+# Expect version 5.42b0 on 2004-07-06, well after that book was published.  And for some reason
+# it is not documented in the expect(1) man page, either, nor in the "info expect" document.
+#
+# Thanks go to https://groups.google.com/forum/#!msg/comp.lang.tcl/t1GE0TeC8RQ/ek0YZSwWMfcJ
+# for basic information on the existence and use of the "close_on_eof" command.  However, not
+# mentioned there is the full usage, which we have abstracted by examining the code:
+#    close_on_eof
+#    close_on_eof -d
+#    close_on_eof -i $spawn_id
+#    close_on_eof 0
+#    close_on_eof -d 0
+#    close_on_eof -i $spawn_id 0
+# where "0" can be "1" instead if you want to force the standard behavior.  The first three
+# of these commands get the current value of this setting; the last three set it.  The -d
+# option sets the default value, presumably only for future spawns.  (The -d option doesn't
+# work for our use here, apparently because we need this call to apply to this script's own
+# i/o channels [that is, to stdin and stdout], and not to any spawned-process i/o channels.)
+#
+# Also not mentioned in that posting is that fact that, at least for our usage here to get it
+# to apply to the upcoming "interact" command, we either need to have had this setting already
+# established (via a simple "close_on_eof 0") before we spawned the child process, or we need
+# to use one of Expect's predefined spawn IDs ($user_spawn_id) to make the close_on_eof apply
+# to the stdin and stdout channels.  Apparently, before a spawn and without a -i option, the
+# "close_on_eof" command applies to the existing (initial) i/o channels, in the same way that
+# "expect" and "send" commands do in that situation.  But it's more logical to place this code
+# in closer proximity to the "interact" that requires it, so we used the predefined spawn ID.
+close_on_eof -i $user_spawn_id 0
+
+# If stdin is not an open tty, then this "interact" command returns immediately, without
+# attempting to interact with the spawned process and without checking for either output
+# from the spawned process or an EOF on the connection to the spawned process.  This is not
+# good, because without the subsequent "expect" commmand, it would mean that this parent
+# process immediately waits for the spawned process to exit, while the spawned process is
+# still attempting to write data to the parent process.  Thus we would have a deadlock.
+# The problem is solved both by the preceding close_on_eof (so stdout remains open for the
+# following "expect" command) and by that "expect" command, which comes into play only if
+# the "interact" command aborted without reading any spawned-process output data.
+set got_eof 0
+interact {
+    -o
+    "\r\n" {
+	if { $to_tty } {
+	    send_user "\n"
+	} else {
+	    send_user -raw "\n"
+	}
+    }
+    eof {
+	set got_eof 1
+	return
+    }
+}
+
+# If the interact above entirely skipped processing, either because stdin was not
+# a tty or was already closed (it's not yet clear which condition triggers such
+# behavior), it will have left any additional output from the child process still
+# unread and still not copied to this script's output.  If we then immediately
+# wait for the child process to die, we will likely have a deadlock, wherein we
+# are waiting for the child to exit, while the child is waiting for us to read
+# some of its remaining output.  So if we find ourselves in that position, the
+# following expect must be run to flush the output as we more or less expected
+# that the interact above would have already done.
+if { !$got_eof } {
+    set timeout -1
+    expect {
+	eof {
+	    send_user_nocr $expect_out(buffer)
+	}
+	"\n" {
+	    send_user_nocr $expect_out(buffer)
+	    exp_continue
+	}
+    }
+}
+
+exit [exit_status]

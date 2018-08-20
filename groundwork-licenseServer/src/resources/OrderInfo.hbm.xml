@@ -1,0 +1,112 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+    "-//Hibernate/Hibernate Mapping DTD 2.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd" >
+    
+<hibernate-mapping default-lazy="false">
+<!-- 
+    Created by the Middlegen Hibernate plugin 2.1
+
+    http://boss.bekk.no/boss/middlegen/
+    http://www.hibernate.org/
+-->
+
+<class 
+    name="com.groundworkopensource.webapp.license.hibernate.OrderInfo" 
+    table="OrderInfo"
+>
+
+    <id
+        name="orderInfoId"
+        type="java.lang.String"
+        column="OrderInfoID"
+    >
+        <generator class="assigned" />
+    </id>
+
+    <property
+        name="orderDate"
+        type="java.sql.Timestamp"
+        column="OrderDate"
+        length="19"
+    />
+    <property
+        name="startDate"
+        type="java.sql.Timestamp"
+        column="StartDate"
+        length="19"
+    />
+    <property
+        name="expiryDate"
+        type="java.sql.Timestamp"
+        column="ExpiryDate"
+        length="19"
+    />
+    <property
+        name="hardLimitExpiryDate"
+        type="java.sql.Timestamp"
+        column="HardLimitExpiryDate"
+        length="19"
+    />
+    <property
+        name="sku"
+        type="java.lang.String"
+        column="SKU"
+        length="512"
+    />
+    <property
+        name="softLimitDevice"
+        type="java.lang.Short"
+        column="SoftLimitDevice"
+        length="6"
+    />
+    <property
+        name="hardLimitDevice"
+        type="java.lang.Short"
+        column="HardLimitDevice"
+        length="6"
+    />
+    <property
+        name="productVersion"
+        type="java.lang.String"
+        column="ProductVersion"
+        length="100"
+    />
+    <property
+        name="productName"
+        type="java.lang.String"
+        column="ProductName"
+        length="256"
+    />
+    <property
+        name="networkServiceRequired"
+        type="java.lang.Byte"
+        column="NetworkServiceRequired"
+        length="1"
+    />
+    <property
+        name="bitRockInstallId"
+        type="java.lang.String"
+        column="BitRockInstallID"
+        length="100"
+    />
+    <property
+        name="modifiedDate"
+        type="java.sql.Timestamp"
+        column="ModifiedDate"
+        length="19"
+    />
+
+    <!-- Associations -->
+     
+    <!-- bi-directional many-to-one association to Customer -->
+    <many-to-one
+        name="customer"
+        class="com.groundworkopensource.webapp.license.hibernate.Customer"
+        not-null="true"
+    >
+        <column name="CustomerID" />
+    </many-to-one>
+
+</class>
+</hibernate-mapping>

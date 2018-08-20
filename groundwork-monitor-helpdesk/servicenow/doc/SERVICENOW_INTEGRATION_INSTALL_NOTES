@@ -1,0 +1,411 @@
+====================================================================
+Installation and Maintenance Notes for the ServiceNow Integration
+for GroundWork Monitor 7.0.2 and 7.1.0
+January 2015
+====================================================================
+
+For later reference at the customer site, these notes are included in the
+installed software, as this file:
+/usr/local/groundwork/servicenow/doc/groundwork-servicenow-integration-2.0.0/SERVICENOW_INTEGRATION_INSTALL_NOTES
+
+====================================================================
+Installation and Configuration
+====================================================================
+
+(0) Both install and uninstall actions will force a bounce of gwservices
+    to pick up changes, so you will only want to take such actions when your
+    monitoring can tolerate a brief outage.
+
+(1) The ServiceNow Integration is supplied as an RPM file that is to be
+    installed or upgraded in the usual manner, with an "rpm" command
+    (as shown below).  However, the installation process will create a new
+    HelpDeskBridgeDB database, and to set it up properly the RPM package will
+    need temporary access to the PostgreSQL administrative account ("postgres")
+    on the relevant PostgreSQL server.  Since for security reasons, we don't
+    permanently store the admnistrative account credentials anywhere within
+    the GroundWork Monitor software, it will need to be provided to the
+    RPM package by means of environment variables.  Thus you will need a
+    command similar to this (continued across multiple lines here for ease
+    of presentation, but representing a single command line):
+
+	env PG_HOST="mydbserver" PG_PASS="myadminpass" \
+	    rpm -Uvh groundwork-servicenow-integration-2.0.0-24623.el5.noarch.rpm
+
+    On a Debian-based system, such as Ubuntu, the equialent commands would
+    be like this, to first convert the RPM to a form that can be installed
+    on the system.  The "unknown tag" error is expected and not of concern.
+
+	# alien -c -k groundwork-servicenow-integration-2.0.0-24623.el5.noarch.rpm
+	error: incorrect format: unknown tag
+	groundwork-servicenow-integration_2.0.0-24623.el5_all.deb generated
+
+	# env PG_HOST="mydbserver" PG_PASS="myadminpass" \
+	    dpkg -i groundwork-servicenow-integration_2.0.0-24623.el5_all.deb
+
+    Specifying PG_HOST is optional (when you have a local PostgreSQL instance
+    on your GroundWork server), while specifying PG_PASS is mandatory in all
+    cases.  Here mydbserver is the host on which your PostgreSQL database runs
+    (defaulting to localhost, if you don't supply a definition for PG_HOST);
+    and myadminpass is the PostgreSQL administrative password on that host.
+
+    The package can be uninstalled with a command like:
+
+	rpm -e groundwork-servicenow-integration
+
+    or on a Debian-based system like Ubuntu:
+
+        dpkg -P groundwork-servicenow-integration
+
+(2) Historically, for the Caller field in a ServiceNow incident to be filled in
+    properly, the ServiceNow Integration must pass as the 'caller_id' field
+    a username which matches an existing name in the ServiceNow database,
+    when creating the incident.  That full name must look either like
+    "Firstname Lastname", matching a corresponding name in ServiceNow, or
+    it must be a single word that matches a single-word name in ServiceNow.
+    Since we would be deriving the caller name from the GroundWork logged-in
+    operator name, the customer would need to create all GroundWork user
+    IDs that might create ServiceNow incidents in one of these same formats,
+    and ensure that the ServiceNow database contains those same operator names.
+
+    That said, it is possible for the customer to have their ServiceNow
+    instance set up to ignore whatever we send as the caller_id value,
+    and to just use a specific fixed value (say, "GroundWork") which is
+    configured on their side to be used for all incidents created by the
+    ServiceNowSOAPUser that is established in the servicenow_module.conf
+    config file.  In that situation, there is little to worry about with
+    respect to the caller_id value we send, and no special conventions would
+    be needed for GroundWork user names.
+
+    Alternatively, a fixed caller_id value can be set on the GroundWork side,
+    via the NewIncidentCaller option in the servicenow_module.conf file.
+    For more detail, see the comments for that option in that config file.
+    In this situation, there need be no special care taken in the forms of
+    the GroundWork usernames, and they need not match names defined in
+    ServiceNow.
+
+(3) Once the package is installed, the following configuration files in
+    the /usr/local/groundwork/servicenow/config/ directory will need to
+    be modified by the customer to reflect local preferences.  In each
+    case, documentation on the file content format is included directly
+    in the file.
+
+    authorized_users.conf
+	This file contains a list of all GroundWork Monitor user names
+	that you want to allow to file helpdesk tickets (in this case,
+	ServiceNow Incidents).
+
+    hostgroup_and_service_to_assignment_group_mapping.conf
+	This file contains a mapping from {hostgroup, service} pairs to an
+	associated Assignment Group as known to ServiceNow.  It is used
+	only if you have "AssignmentGroupMappingType = HostgroupService"
+	in the servicenow_module.conf file.
+
+    hostgroup_to_category_and_subcategory_mapping.conf
+	This file contains a mapping from hostgroups to corresponding
+	{Category, Subcategory} pairs as known to ServiceNow.  It is
+	used only if you enable the Send_category and Send_subcategory
+	options in the servicenow_module.conf file.
+
+    monarch_group_to_location_mapping.conf
+	This file contains a mapping from Monarch Group names (reflecting
+	GroundWork servers) to their Locations as known to ServiceNow.
+
+    oneway_helpdesk.conf
+    	This file contains references to other configuration files,
+	as well as various other operational parameters.  Most of
+	these settings will be fine using the values in the standard
+	distribution.  You might want to tune the MonitorStatus setting.
+
+    servicegroup_to_assignment_group_mapping.conf
+	This file contains a mapping from servicegroups to an associated
+	Assignment Group as known to ServiceNow.  It is used only if
+	you have "AssignmentGroupMappingType = ServiceGroup" in the
+	servicenow_module.conf file.
+
+    servicenow_module.conf
+	This file contains configuration settings which are specific to
+	the ServiceNow integration.  Most of the values you will leave
+	as they come in the distribution.  You will likely need to set
+	the ServiceNow access credentials (ServiceNowSOAPEndpoint,
+	ServiceNowSOAPUser, and ServiceNowSOAPPass).  You will also
+	likely need to set the DefaultGroundWorkServer.  You may also
+	want to select your own preferred values for the UnknownCategory,
+	UnknownSubcategory, and UnknownAssignmentGroup strings.
+
+	You will also need to set a value for the ServiceNow_SSL_CA_FILE
+	parameter.  More on this below.
+
+    twoway_helpdesk.conf
+    	This file contains references to other configuration files,
+	as well as a few other operational parameters.  Possibly the
+	ResolvedStates might need some tweaking, though we have set
+	this value to what we believe is sensible for ServiceNow.
+
+(4) Access to the ServiceNowSOAPEndpoint is generally done via HTTPS,
+    and thus requires SSL certificate exchange and validation as part of the
+    secure-connection protocol.  Validation includes checking the hostname
+    which is included in the ServiceNow SSL certificate, to help prevent
+    a possible Man-In-The-Middle (MITM) attack.  To make that happen, the
+    client (this ServiceNow integration code) must already have locally
+    available a root certificate from the Certificate Authority (CA) that
+    provided the SSL server certificate to ServiceNow to protect their site.
+    As of this writing, that CA turns out to be Entrust.
+
+    We do not bundle the Entrust root certificate directly into the ServiceNow
+    integration, for a couple of reasons.
+
+    (*) Customers will, for auditing purposes in secure installations,
+	want traceability as to from-where and how such certificates were
+	obtained, and how they were validated.
+
+    (*) It is possible that at some point in the future the ServiceNow
+	SSL certificate will be changed so it is no longer validated by
+	this Entrust root certificate.	(ServiceNow could change their CA
+	provider; or possibly [though unlikely], the CA root certificate might
+	be compromised, and ServiceNow would need to obtain and install a
+	new SSL certificate on their site.)  In such cases, the GroundWork
+	customer will need to know how to quickly restore a functional SSL
+	connection to ServiceNow.
+
+    The Entrust root certificate can currently be found at their developer
+    site, which can be reached at:
+
+	http://www.entrust.net/developer/
+
+    From that page, you will need to download, install, and validate
+    the "Entrust.net Certification Authority (2048)" root certificate.
+    To do so, follow these steps:
+
+    (a) Click the "Download Root Certificates" button at the bottom of
+	the page.
+
+    (b) Select "Personal Use and Secure Server Installation", and click
+	the "Download Certificates" button.
+
+    (c) Click on "Root Certificates".
+
+    (d) Scroll down to "Entrust.net Certification Authority (2048)".
+
+    (e) Immediately under that, use the "File Download: entrust_2048_ca.cer"
+	link to download the required CA root certificate for your use.
+
+    (f) Save the file, and place it on the GroundWork server in the
+	/usr/local/groundwork/servicenow/config/ directory.
+
+    (g) Make sure the ownership and permissions on the installed file do
+	not allow anyone other than the "root" user to write to the file:
+
+	    cd /usr/local/groundwork/servicenow/config
+	    chown root:nagios entrust_2048_ca.cer
+	    chmod 444         entrust_2048_ca.cer
+
+	(It's not actually necessary for this file to be owned by root; it
+	could just as well be owned by nagios instead.	The main point is
+	to set it up to prevent arbitrary or accidental modifications.
+	However you choose to set the ownership and permissions, make sure
+	the file is readable by the nagios user.)
+
+    (h) In the servicenow_module.conf file in that same directory, make sure
+	the ServiceNow_SSL_CA_FILE option is uncommented and contains the
+	full pathname to the file you just installed:
+
+	    ServiceNow_SSL_CA_FILE = "/usr/local/groundwork/servicenow/config/entrust_2048_ca.cer"
+
+    (i) To validate the certificate in the downloaded file
+	against the checksums advertised by Entrust back on the
+	http://www.entrust.net/developer/ page, use the following commands:
+
+	    cd /usr/local/groundwork/servicenow/config
+	    sed -e '/-/d' entrust_2048_ca.cer | base64 -i -d | sha1sum   | tr a-z A-Z | sed -e 's/ *-//;s/..../& /g'
+	    sed -e '/-/d' entrust_2048_ca.cer | base64 -i -d | sha256sum | tr a-z A-Z | sed -e 's/ *-//;s/..../& /g'
+
+	The two checksum commands will produce output that should exactly
+	mirror the content and form of the SHA checksums provided by
+	Entrust, which are currently:
+
+	    Certificate Thumbprint (SHA-1):
+	    5030 0609 1D97 D4F5 AE39 F7CB E792 7D7D 652D 3431
+
+	    Certificate Thumbprint (SHA-256):
+	    6DC4 7172 E01C BCB0 BF62 580D 895F E2B8 AC9A D4F8 7380 1E0C 10B9 C837 D21E B177
+
+    (j) Here are some alternate commands to validate the certificate checksums,
+	using OpenSSL for the checksum calculations and reformatting its
+	output to match the punctuation and spacing shown on the Entrust
+	developer page:
+
+	    cd /usr/local/groundwork/servicenow/config
+	    openssl x509 -in entrust_2048_ca.cer -fingerprint -noout -sha1   | sed -e 's/.*=//;s/://g;s/..../& /g'
+	    openssl x509 -in entrust_2048_ca.cer -fingerprint -noout -sha256 | sed -e 's/.*=//;s/://g;s/..../& /g'
+
+(5) It is possible to set up a ServiceNow deployment that uses
+    a multi-level hierarchy of Location data.  For example, you
+    might see successive levels of "Earth" / "Africa" / "Cape Town,
+    South Africa" in the ServiceNow menu for selecting a Location.
+    While we have observed such a setup on a ServiceNow demo system,
+    we have not developed whatever coding changes are needed to support
+    such a structure.  (Only the leaf-node values appear to be saved
+    in an Incident if the Location is chosen from the GUI menu, but
+    programmatically specifying only a leaf-node value when an Incident
+    is created does not get the right string into the Incident, and
+    we don't have any information from ServiceNow as to how to specify
+    a multi-level value.)  Instead, our current ServiceNow Integration
+    code is restricted to supporting a single-level list, and the
+    content of the monarch_group_to_location_mapping.conf file must
+    reflect that restriction.
+
+    The same sort of situation arises with respect to Assignment Groups.
+    A multi-level hierarchy is possible within ServiceNow, but we have
+    no information from any ServiceNow programming documentation as to
+    how such a hierarchy might be supported via the Perl API.  Thus the
+    content of the hostgroup_and_service_to_assignment_group_mapping.conf
+    file must reflect only a single-level structure of Assignment Groups.
+
+(6) There is a property called "fas.executor.interrupt" that should be
+    present in the /usr/local/groundwork/config/foundation.properties
+    file.  This property controls how long the Event Console will wait
+    for an Action Script to complete before interrupting its own wait
+    for the script.  (The script itself is not interrupted and will
+    still run to completion, but an extra Event Console event will be
+    generated from this wait-interruption.)  The default self-interrupt
+    time, if this propert is not set, is 2 seconds.  This parameter is
+    missing from the copy of the foundation.properties file delivered
+    in GWMEE 7.0.2 and previous releases, but will be automatically added
+    during RPM installation to cleanly support the ServiceNow integration.
+    We set the value to 20 seconds to allow the ServiceNow system enough
+    time to respond to incident creation requests without any spurious
+    errors being logged.  We have seen requests take as long as 17
+    seconds in testing.
+
+	# Interrupt the action wait thread after this long, in seconds
+	fas.executor.interrupt = 20
+
+(7) The groundwork-servicenow-integration RPM will no longer drop the
+    HelpDeskBridgeDB database if it already exists.  That was previously
+    done to ensure that its structure is up-to-date with the latest
+    scripting code.  However, if you were upgrading from a previous
+    release, this would lose any information on unresolved ServiceNow
+    incidents.  The key issue here is that resolving any such incidents
+    within ServiceNow would not update their Operation Status within
+    GroundWork Monitor.
+
+    This issue has now been addressed so the database will be left as-is
+    during an upgrade.  If we ever change the database or table schema
+    in a future release, the upgrade process at that time will take care
+    of whatever conversion is needed.
+
+(8) This integration adds the following elements to the Event Console:
+
+    (a) A "Create a ServiceNow Incident" item in the Actions menu.
+
+    (b) The following new Public Filters now appear in the left side panel:
+
+	(+) Open Nagios Events
+	(+) Notified Nagios Events
+	(+) Accepted Nagios Events
+
+	These filters are controlled via configuration in the
+	/usr/local/groundwork/servicenow/config/console-admin-config.xml
+	file, which is applied automatically when the package is installed.
+
+====================================================================
+Operation
+====================================================================
+
+(*) To create a ServiceNow Incident from the GroundWork Event Console:
+
+    (a) Select one or more events by clicking on their background areas.
+        The backgrounds will turn a shade of light blue.
+
+    (b) In the Actions menu at the top of the list of events, choose the
+	"Create a ServiceNow Incident" row.
+
+    (c) Enter a comment into the "Input required" pop-up box that appears.
+	This text will end up as the initial Work Notes in the ServiceNow
+	Incident.
+
+    (d) Click the Submit button in that pop-up box.
+
+(*) When a ServiceNow Incident is created, each of the selected events
+    that has a NAGIOS application type (as observed in the Event Console
+    "Application Type" column), will have a corresponding acknowledge
+    message sent to Nagios.  This message will include the ServiceNow
+    incident number:
+
+	Host problem tracked in ServiceNow incident {INCIDENT_NUMBER}
+	Service problem tracked in ServiceNow incident {INCIDENT_NUMBER}
+
+    If the host or host service is still in a not-OK state at this time,
+    Nagios will accept and store the comment in said acknowledgement,
+    and this text will be subsequently forwarded on to Foundation.
+    Said comments will be visible in the Host Comments section of a host,
+    or the Service Comments of a host service, within Status Viewer.
+
+(*) A background job is run periodically to check the GroundWork
+    helpdeskbridgedb database for still-unresolved ServiceNow
+    incidents.  This happens via a "nagios"-user cron job that runs the
+    /usr/local/groundwork/servicenow/bin/twoway_helpdesk.pl script.  If the
+    GroundWork side believes there are any unresolved ServiceNow incidents
+    outstanding, it polls ServiceNow to see if any of those incidents have been
+    recently resolved.  If it finds any such resolved incidents, the associated
+    GroundWork events are changed to an accepted state in Foundation (the
+    TerminalOperationStatus configured in twoway_helpdesk.conf), ServiceNow
+    comments are processed as described below, and the GroundWork database
+    is updated.
+
+(*) If the SendNagiosClosingComments option is enabled in the
+    twoway_helpdesk.conf config file, then when a ServiceNow Incident
+    is later found to have been resolved, the "Close notes" that
+    were manually entered in the ServiceNow UI when the incident was
+    resolved will be pulled back and sent as commments to Nagios.
+    If Nagios recognizes the host or host service, it will save the
+    comments, and they will be subsequently forwarded on to Foundation.
+    Said comments will be visible in the Host Comments section of a host,
+    or the Service Comments of a host service, within Status Viewer.
+
+====================================================================
+Troubleshooting
+====================================================================
+
+(*) Log messages for the ServiceNow integration appear in files in the
+    /usr/local/groundwork/servicenow/logs/ directory.
+
+(*) If the steps above for setting up access to the ServiceNow endpoint
+    are not followed, the ServiceNow integration scripts will fail with log
+    messages such as "Can't verify SSL peers without knowing which Certificate
+    Authorities to trust" or "Can't connect ... (certificate verify failed)".
+
+(*) If you forget to install the SSL root certificate, you might simply get
+    this message as a response in the Event Console when attempting to create
+    a new ServiceNow Incident:
+
+	Error occurred: INTERNAL_ERROR : ERROR: An error
+	was encountered while invoking createTicket: 500
+	Can't connect to commonwealthdev.service-now.com:443 at
+	/usr/local/groundwork/servicenow/perl/lib/ServiceNow/Connection.pm
+	line 70
+
+    with the following corresponding message in the
+    /usr/local/groundwork/servicenow/logs/oneway.log file:
+
+	ERROR:	500 Can't connect to commonwealthdev.service-now.com:443 at
+	/usr/local/groundwork/servicenow/perl/lib/ServiceNow/Connection.pm
+	line 70
+
+====================================================================
+Ongoing Maintenance; Upgrades and Uninstalls
+====================================================================
+
+The servicenow/config/*_mapping.conf mapping configuration files
+represent static data which is not automatically updated when you add
+new hostgroups or servicegroups to the GroundWork system, nor when you
+extend or modify such things as locations or assignment groups elsewhere
+in your infrastructure.  You should periodically review these files to
+make sure they are up-to-date.
+
+If you ever decide to uninstall the groundwork-servicenow-integration package,
+you should consider saving the /usr/local/groundwork/servicenow/config/*
+files beforehand in case you might want to reference them in the future.
+It is likely that you have invested a significant amount of time in customizing
+their content for your site.  This is especially true if you wish to upgrade
+this package to a later release.

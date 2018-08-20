@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans-2.0.dtd">
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2007  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License 
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+-->
+<beans>
+  <!-- CollageAdmin-->
+  
+  <bean id="collageAdminTarget" class="com.groundwork.collage.impl.admin.CollageAdminImpl" >
+    <property name="sessionFactory">
+      <ref bean="hibernateSessionFactory"/>
+    </property>
+    <constructor-arg><ref bean="com.groundwork.collage.CollageAdminMetadata"/></constructor-arg>
+
+    <constructor-arg><ref bean="org.groundwork.foundation.bs.metadata.MetadataService"/></constructor-arg>
+    <constructor-arg><ref bean="org.groundwork.foundation.bs.monitorserver.MonitorServerService"/></constructor-arg>
+    <constructor-arg><ref bean="org.groundwork.foundation.bs.device.DeviceService"/></constructor-arg>
+    <constructor-arg><ref bean="org.groundwork.foundation.bs.host.HostService"/></constructor-arg>
+    <constructor-arg><ref bean="org.groundwork.foundation.bs.status.StatusService"/></constructor-arg>
+    <constructor-arg><ref bean="org.groundwork.foundation.bs.hostgroup.HostGroupService"/></constructor-arg>
+    <constructor-arg><ref bean="org.groundwork.foundation.bs.logmessage.LogMessageService"/></constructor-arg>
+    <constructor-arg><ref bean="org.groundwork.foundation.bs.category.CategoryService"/></constructor-arg>
+    <constructor-arg><ref bean="org.groundwork.foundation.bs.logmessage.ConsolidationService"/></constructor-arg>
+    <constructor-arg><ref bean="org.groundwork.foundation.bs.performancedata.PerformanceDataService"/></constructor-arg>
+    <constructor-arg><ref bean="org.groundwork.foundation.bs.hostidentity.HostIdentityService"/></constructor-arg>
+
+  </bean>
+
+  <bean id="com.groundwork.collage.CollageAdmin" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+    <property name="transactionManager">
+      <ref bean="hibernateTransactionManager"/>
+    </property>
+    <property name="target">
+      <ref bean="collageAdminTarget"/>
+    </property>
+    <property name="transactionAttributes">
+      <props>
+        <prop key="update*">PROPAGATION_REQUIRED</prop>
+        <prop key="rename*">PROPAGATION_REQUIRED</prop>
+        <prop key="add*">PROPAGATION_REQUIRED</prop>
+        <prop key="remove*">PROPAGATION_REQUIRED</prop>
+        <prop key="acknowledgeEvent">PROPAGATION_REQUIRED</prop>
+        <prop key="reset*">PROPAGATION_REQUIRED</prop>
+        <!-- executeCommands should not be part of a transaction. It's the entry point for batch processing -->
+        <prop key="executeCommands">PROPAGATION_SUPPORTS</prop>
+        <prop key="*">PROPAGATION_SUPPORTS</prop>
+      </props>
+    </property>
+    
+    <!-- Interceptors on inserts -->
+     <property name="postInterceptors">
+		<list>
+			<ref bean="serviceHostStatusAdvisor"/>
+			<ref bean="hostGroupAdvisor"/>
+			<ref bean="publishEventAdvisor" /> 
+			<ref bean="categoryAdvisor" /> 
+			<ref bean="serviceStatusAdvisor" /> 
+		</list>
+	</property>
+  </bean>
+
+<!-- AdminApplication Bean  Similar to CollageAdmin but for Application monitoring -->
+  
+  <bean id="collageAdminApplicationTarget" class="com.groundwork.collage.impl.admin.CollageAdminApplicationImpl" >
+    <constructor-arg><ref bean="com.groundwork.collage.CollageAdmin"/></constructor-arg>
+  </bean>
+
+  <bean id="com.groundwork.collage.CollageAdminApplication" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+    <property name="transactionManager">
+      <ref bean="hibernateTransactionManager"/>
+    </property>
+    <property name="target">
+      <ref bean="collageAdminApplicationTarget"/>
+    </property>
+    <property name="transactionAttributes">
+      <props>
+        <prop key="update*">PROPAGATION_REQUIRED</prop>
+        <prop key="add*">PROPAGATION_REQUIRED</prop>
+        <prop key="remove*">PROPAGATION_REQUIRED</prop>
+        <prop key="insert*">PROPAGATION_REQUIRED</prop>
+        <prop key="acknowledgeEvent">PROPAGATION_REQUIRED</prop>
+        <prop key="*">PROPAGATION_SUPPORTS</prop>
+      </props>
+    </property>
+    
+    <!-- Interceptors on inserts -->
+     <property name="postInterceptors">
+		<list>
+			<ref bean="startupRuntimeAttributeAdvisor"/>
+			<ref bean="applicationGroupAdvisor"/> 
+		</list>
+	</property>
+  </bean>
+
+  <bean id="collageAdminMetadataTarget" class="com.groundwork.collage.impl.admin.CollageAdminMetadataImpl">
+    <constructor-arg><ref bean="org.groundwork.foundation.bs.metadata.MetadataService"/></constructor-arg>
+  </bean>
+
+  <bean id="com.groundwork.collage.CollageAdminMetadata" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+    <property name="transactionManager">
+      <ref bean="hibernateTransactionManager"/>
+    </property>
+    <property name="target">
+      <ref bean="collageAdminMetadataTarget"/>
+    </property>
+    <property name="transactionAttributes">
+      <props>
+        <prop key="createOrAssignUnknownProperties">PROPAGATION_NESTED</prop>
+        <prop key="get*">PROPAGATION_SUPPORTS</prop>
+        <prop key="*">PROPAGATION_REQUIRED</prop>
+      </props>
+    </property>
+  </bean>   
+  
+  <!-- AOP Advisor used to notify Statistics module about changes-->
+	<bean id="serviceHostStatusAdvisor" 
+    class="org.springframework.aop.support.RegexpMethodPointcutAdvisor">
+    <property name="advice"><ref bean="serviceHostStatusAfterAdvice"/></property>
+    <property name="pattern">
+        <value>.*UpdateHost|.*UpdateHosts|.*removeHost|.*updateServiceStatus|.*Service|.*propagateServiceChangesToHost|.*UpdateHostList|.*renameHost</value>
+    </property>
+	</bean>
+	
+	<bean id="serviceStatusAdvisor" 
+    class="org.springframework.aop.support.RegexpMethodPointcutAdvisor">
+    <property name="advice"><ref bean="serviceStatusAfterAdvice"/></property>
+    <property name="pattern">
+  	<value>.*Service|.*updateServiceStatus</value>
+ 	</property>
+	</bean>
+	
+	<bean id="categoryAdvisor" 
+    class="org.springframework.aop.support.RegexpMethodPointcutAdvisor">
+    <property name="advice"><ref bean="categoryAfterAdvice"/></property>
+    <property name="pattern">
+       <value>.*CategoryEntity|.*Category|.*propagate.*ServiceGroup|.*propagate.*Categories</value>
+    </property>
+	</bean>
+	
+	<bean id="hostGroupAdvisor" 
+    class="org.springframework.aop.support.RegexpMethodPointcutAdvisor">
+    <property name="advice"><ref bean="hostGroupAfterAdvice"/></property>
+    <property name="pattern">
+        <value>.*HostGroup</value>
+    </property>
+	</bean>
+	
+	<bean id="publishEventAdvisor"
+    class="org.springframework.aop.support.RegexpMethodPointcutAdvisor">
+    <property name="advice"><ref bean="publishEventsAfterAdvice"/></property>
+    <property name="pattern">
+        <value>.*updateLogMessage|.*triggerAcknowledgeEventAOP</value>
+    </property>
+	</bean>
+
+	<bean id="startupRuntimeAttributeAdvisor" 
+    class="org.springframework.aop.support.RegexpMethodPointcutAdvisor">
+    <property name="advice"><ref bean="serviceHostStatusAfterAdvice"/></property>
+    <property name="pattern">
+        <value>.*Attribute</value>
+    </property>
+	</bean>
+	
+	<bean id="applicationGroupAdvisor" 
+    class="org.springframework.aop.support.RegexpMethodPointcutAdvisor">
+    <property name="advice"><ref bean="hostGroupAfterAdvice"/></property>
+    <property name="pattern">
+        <value>.*ApplicationGroup</value>
+    </property>
+	</bean>
+	
+	<!-- Advisor beans -->
+	 <bean id="serviceHostStatusAfterAdvice" class="com.groundwork.collage.impl.aop.ServiceHostStatusAfterAdvice">
+	 	<constructor-arg><ref bean="org.groundwork.foundation.bs.statistics.StatisticsService"/></constructor-arg>
+     </bean>
+     
+     <bean id="hostGroupAfterAdvice" class="com.groundwork.collage.impl.aop.HostGroupAfterAdvice">
+     	<constructor-arg><ref bean="org.groundwork.foundation.bs.statistics.StatisticsService"/></constructor-arg>
+     </bean>
+     
+     <bean id="publishEventsAfterAdvice" class="com.groundwork.collage.impl.aop.PublishEventsAfterAdvice">     
+     </bean>    
+     
+      <bean id="serviceStatusAfterAdvice" class="com.groundwork.collage.impl.aop.ServiceStatusAfterAdvice">     
+      	<constructor-arg><ref bean="org.groundwork.foundation.bs.statistics.StatisticsService"/></constructor-arg>
+     </bean>     
+     
+      <bean id="categoryAfterAdvice" class="com.groundwork.collage.impl.aop.CategoryAfterAdvice">     
+      	<constructor-arg><ref bean="org.groundwork.foundation.bs.statistics.StatisticsService"/></constructor-arg>
+     </bean>      
+</beans>

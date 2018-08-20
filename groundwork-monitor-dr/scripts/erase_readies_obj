@@ -1,0 +1,45 @@
+#!/bin/bash -e
+
+# erase_readies_obj
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+PATH=/bin:/usr/bin
+
+print_usage() {
+    echo "usage:  erase_readies_obj {erase_path}"
+}
+
+if [ $# -ne 1 ]; then
+    print_usage
+    exit 1
+fi
+
+erase_path="$1"
+
+if [[ ! ("$erase_path" =~ '/erase$') ]]; then
+    echo 'ERROR:  erase_path must end in "/erase"'
+    exit 1
+fi
+
+# "@" might not be a shell metacharacter, but it is so often interpreted by
+# programs as separating a username and a hostname that we treat it as such.
+if [[ "$erase_path" =~ '[]<>(){}|~;&!*?\	$ `"'"'"'%^@[]' ]]; then
+    echo 'FATAL:  erase_path cannot contain space, tab, any shell glob characters,'
+    echo '        or any other shell metacharacters'
+    exit 1
+fi
+
+# Following a symlink would be a potential security risk, as it could point anywhere.
+if [ -L $erase_path ]; then
+    echo "ERROR:  cannot follow a symlink"
+    exit 1
+fi
+
+# We must take special precautions here to deal with possibly nothing matching
+# this "rm" glob.  Fortunately, "rm -f" does nothing dangerous (and thankfully,
+# emits no error message) if no file or directory arguments follow.  The long
+# pattern matches names of the form:  .../YYYY-MM-DD.hh_mm_ss
+shopt -s nullglob
+rm -rf $erase_path/2[[:digit:]][[:digit:]][[:digit:]]-[[:digit:]][[:digit:]]-[[:digit:]][[:digit:]].[[:digit:]][[:digit:]]_[[:digit:]][[:digit:]]_[[:digit:]][[:digit:]]

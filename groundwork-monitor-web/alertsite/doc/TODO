@@ -1,0 +1,121 @@
+Still to do:
+
+(*) re-test a Commit after a fresh install, after all the new install
+    instructions have been followed
+
+(*) update the GWiki page on this AlertSite integration; include links
+    to the ALERTSITE_INTEGRATION_INSTALL_NOTES and to the archived RPM
+
+(*) FIX MINOR:  The query_alertsite.pl script should check upon startup
+    to see if it is running as root, and exit with a message to STDOUT
+    if so, to prevent an administrator from unthinkingly running the
+    script manually as root.  Or rename the Replication::Utility package
+    as GW::Utility, and call our GW::Utility::run_as_nagios() routine to
+    attempt to switch to running as nagios.
+
+(*) FIX MINOR:  Get the GWMEE base-product upgrade process to preserve
+    the /usr/local/groundwork/alertsite/config/query_alertsite.conf file
+    across an upgrade.
+
+(*) FIX MINOR:  Note in upgrade/migration instructions (to handle
+    transitions to future GroundWork releases):  the "alertsite" database
+    is currently dropped and re-created during RPM install, thus losing
+    last-access timestamp data for all devices.  Address this in a future
+    release.
+
+(*) FIX MINOR:  Consider adding host and service dependencies to the
+    Monarch objects we create and have the user import, so the proper
+    dependencies on the AlertSite Status daemon are automatically
+    established when new hosts and services are added by the AlertSite
+    status daemon.
+
+(*) FIX MINOR:  The process_service_perfdata_file feeder script takes
+    actions similar to the query_alertsite.pl script in this AlertSite
+    Integration, in that it creates and updates RRD files.  At some
+    customer deployments, we occasionally see in that other context some
+    evidence of either poison RRD update data or corrupted RRD files
+    that cause the feeder to die on a semi-regular basis, presumably
+    when RRD updates occur.  If that happens, the quick in-the-field
+    workaround is to switch to using an external program to perform
+    the RRD updates, rather than having our own script die.  At least
+    this way, our script can move on and ignore the bad data, if we
+    are willing to ignore failures of the external program execution.
+    Without that, our updates can completely stall.
+
+    The point here is that we need the following:
+
+    (+) A way to catch deadly errors generated from the RRDs package
+	(perhaps using eval{};, even though the RRDs documentation
+	implies it's not needed).  We'll know more about this once we
+	have a diagnosis of the problem in the other context, so we can
+	know whether it stems from something like a segfault that won't
+	be catchable, or whether it's something that could be caught
+	and logged.
+
+    (+) A way to optionally but intentionally ignore RRD file update
+	errors that do not completely crash the script (although that
+	is already effectively the current behavior in the AlertSite
+	Integration package).
+
+    (+) A way to optionally invoke an external rrdtool program to perform
+	RRD updates, for emergency use.
+
+    (+) A way to generate an Event Console log message if we do detect
+	one or more corrupted RRD files during a processing cycle, if
+	we can maintain control long enough to send out the message.
+
+    (+) Some means to analyze and repair a corrupted RRD file, if such
+	is possible, so we don't lose all historical data by just
+	deleting the file and having it be re-created from scratch.
+	Even if there are no tools to look in detail at such a file,
+	perhaps an attempt to dump the existing file, then create and
+	load a new file with the old data might achieve the same effect.
+
+    (+) A troubleshooting guide for our Support folks, to describe how
+	to invoke the debug options to spill more data to diagnose any
+	in-the-field problems.	(There is now such a section in the
+	install notes for the AlertSite Integration.)
+
+(*) FIX LATER:  Consider sending RRD updates to rrdcached.  If we do
+    that, we need to handle the case when duplicate data may be sent,
+    and try to preserve as much data as possible if that happens.
+
+(*) FIX LATER:  We are manufacturing host addresses in the 127.1.X.X
+    range, always trying for a unique address (one larger than the last
+    address currently in use).  There are some corner cases wherein such
+    host addresses might be re-used (i.e., if hosts at the end of the used
+    range get deleted, and then new hosts get added).  If that happens,
+    the GWCollageDB.Device.DisplayName value does not get updated with the
+    name of the new host using that IP address, so all log messages in
+    the Event Console (or in the mini-console within Status Viewer) for
+    the new host show up looking as though they come from the old host.
+    This problem is complicated by the desire to retain old log messages
+    for now-defunct devices, so we don't have a perfect solution.
+
+(*) FIX LATER:  Perhaps in some future version, instead of automatically
+    adding hosts and services to Monarch when they show up in the data
+    stream, instead write them to a file and allow a manually-initiated
+    later auto-import to read that file and perform the import actions.
+    This would allow the administrator to potentially review and edit
+    the file, perhaps deleting some test hosts not actually of interest
+    in production.  Whether or not this capability actually makes sense
+    might depend partly on the degree to which continued operation of
+    the AlertSite scripting depends on having this data in Monarch.
+
+(*) FIX LATER, maybe FIX NEVER:  Ask AlertSite to provide an API
+    extension to retrieve metric data for multiple devices, possibly with
+    individual-selected per-device time initervals, all in one query.
+    (Actually, if we knew for certain that such a query would work, we
+    might be willing to dispense with the per-device time intervals, and
+    instead just use a single global from..through interval.)  Note that
+    the need for this has been significantly reduced, now that we have
+    decoupled processing status data from processing metric data.
+
+(*) Note:  Because of the requirement for the AlertSite Integration
+    feeder script to synchronize with Monarch Commit operations, along
+    with the capability to inject new hosts and services into Monarch,
+    it is unlikely that we will be able to support operation of this
+    feeder on a child server.  Our current protocol for synchronization
+    requires access to certain files that are manipulated on the parent
+    server, and we don't have an alternative protocol worked out that
+    would provide similar completely-reliable operation on a child server.

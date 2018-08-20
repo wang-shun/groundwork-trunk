@@ -1,0 +1,56 @@
+#!/bin/bash -e
+
+# launch_perf_data_processing
+
+VERSION="1.3 (January 13, 2015)"
+
+if [ $# -ne 0 ]; then
+    if [ "$1" = "--version" ]; then
+	echo "launch_perf_data_processing version $VERSION"
+	exit 0
+    else
+	echo "usage:  launch_perf_data_processing [--version]"
+	exit 1
+    fi
+fi
+
+# Rotate the performance data log file so the process_service_perfdata_file
+# script will have unencumbered access to a copy that it knows Nagios will
+# not be writing into as it tries to read the file.
+#
+# The source_file must match the setting within the Nagios configuration;
+# the target_file must match the corresponding perfdata daemon configuration.
+source_file=/usr/local/groundwork/nagios/var/service-perfdata.dat
+target_file=/usr/local/groundwork/nagios/var/service-perfdata.dat.being_processed
+if [ -f $source_file -a ! -f $target_file ]; then
+    mv $source_file $target_file
+fi
+
+# This script has to cope with not knowing beforehand whether there
+# is zero, one, or more than one copy of the target process running.
+
+# The construction here will only work for GW 5.3.0 and later.
+# This "pids" variable might include newlines, so we have to
+# watch out for how it gets handled in later processing.
+pids=`ps -w -w -o pid,args --no-headers -C .perl.bin | egrep /usr/local/groundwork/nagios/eventhandlers/process_service_perfdata_file'$' | awk '{print $1}'`
+
+if [ -z "$pids" ]; then
+    # The target script (perfdata daemon) is not running.  We need to start it ourselves.
+
+    # We used to effectively close all the standard i/o streams (redirecting STDOUT/STDERR
+    # to /dev/null), so as not to have them inherit connections from the parent, so this
+    # launch script could exit reliably under all conditions.  That was just a temporary
+    # workaround.  What we ought to do instead is to make the script act as a daemon and take
+    # all the necessary precautions on its own, including disconnecting from the controlling
+    # terminal.  And then it might not even be necessary to run it here in the background, as
+    # the daemonized version of the script should take that action on its own.
+    #
+    # In the meantime, we now redirect STDOUT/STDERR to append to the standard log file for the
+    # primary perfdata daemon, so as to capture any early-execution errors that might show up
+    # before the daemon has a chance to open its own log file to report configuration errors.
+
+    # This path should match the corresponding setting in the config/perfdata.properties file.
+    primary_debuglog=/usr/local/groundwork/nagios/var/log/process_service_perfdata_file.log
+
+    /usr/local/groundwork/nagios/eventhandlers/process_service_perfdata_file <&- >>$primary_debuglog 2>&1 &
+fi

@@ -1,0 +1,790 @@
+--- nagios-4.2.4/include/config.h.in.orig	2016-12-07 08:31:10.000000000 -0800
++++ nagios-4.2.4/include/config.h.in	2017-01-30 21:44:54.026087291 -0800
+@@ -113,6 +113,7 @@
+ 
+ #include <stdio.h>
+ #include <stdlib.h>
++#include <pthread.h>
+ 
+ /* needed for the time_t structures we use later... */
+ /* this include must come before sys/resource.h or we can have problems on some OSes */
+--- nagios-4.2.4/include/objects.h.orig	2016-12-07 08:31:10.000000000 -0800
++++ nagios-4.2.4/include/objects.h	2017-01-30 21:44:54.027087291 -0800
+@@ -173,6 +173,10 @@
+ 	struct rusage rusage;   			/* resource usage by this check */
+ 	struct check_engine *engine;                    /* where did we get this check from? */
+ 	const void *source;				/* engine handles this */
++	struct check_result *next;			/* added by GroundWork for use with Bronx */
++#ifdef USE_CHECK_RESULT_DOUBLE_LINKED_LIST
++	struct check_result *prev;			/* added by GroundWork for use with Bronx */
++#endif
+ 	} check_result;
+ 
+ 
+@@ -711,6 +715,150 @@
+ 	struct timeperiod *dependency_period_ptr;
+ 	} hostdependency;
+ 
++// Since Nagios 4 completely dropped support for the check_result_list data structure,
++// we are free to redefine it as we please when we rescuscitate it for use in passing
++// results back from Bronx.  In particular, it used to be a single-linked list.  But
++// now, we could make it completely different, depending on our own evaluation of what
++// would make using it most efficient.
++//
++// In thinking about how this data structure gets used, the basic idea is that Bronx
++// adds elements to the set, and Nagios removes and processes those elements.  For
++// proper effect, Nagios really wants to process the elements in chronological order,
++// by finish_time.  We can either have Bronx compare elements as it inserts them, to
++// keep the data structure continually ordered by finish_time, or we can hava Nagios
++// search for the earliest element as it removes them.  Which is faster?  If we don't
++// sort going in, we're pretty much stuck going out with a full walk of the entire
++// data structure to ensure we really did get the earliest element.  That effectively
++// means O(1) input and O(n^^2) output from the data structure.  (Bronx can make no
++// guarantees that the incoming data it sees arrives in chronological order, since it
++// is receiving data from many independent sources.)  If we sort going in, extracting
++// the earliest element becomes trivial -- O(1) -- and our choice of data structure
++// will control the complexity of adding elements in the right places.
++//
++// The old Nagios 3 code kept this data structure as a single-linked list.  When it
++// wanted to add a new item, it walked the list linearly from the beginning of the list
++// until it found the right location.  Elements were then extracted from the beginning
++// of the list.  But notice something here:  while monotonicity of the finish_time in
++// the incoming stream is not guaranteed, the long-term trend is certainly that later
++// additions will tend to have later timestamps.  Which means that the insertion of
++// each item will generally need to search far into the linked list before finding its
++// final position.  That's just dumb -- you're baking in a process that means that
++// typically, much more than half the list will be searched for every insertion.  So
++// the first improvement we could make would be to either (1) reverse the order of the
++// list to be descending in time, pop from the tail, and still walk from the head for
++// insertions, or (2) keep the order of the list as ascending in time, still pop from
++// the head, but walk from the tail for insertions.  The latter approach is trivial to
++// implement, so that's what we'll do for the first iteration, using a double-linked
++// list so we have access to both ends.  The complexity of insertions will then fall
++// considerably, at least on an absolute basis.  it's obviously at least O(n), but
++// I imagine it might be something approaching O(n * log(n)), given that on an ongoing
++// basis, even though we would be doing a linear search from the tail end, because we
++// generally shouldn't need to search too far back into the list before finding the
++// final resting place for each new item.  Maybe that might make it O(n * sqrt(n)) or
++// somesuch.
++//
++// However, note the following issue, which will affect any dynamically-linked data
++// structure that can end up with elements scattered all over memory.  If we want the
++// best possible performance, we need to consider how the hardware operates in a modern
++// microprocessor.  In particular, hardware caching, pre-fetch, and cache misses can
++// have an enormous effect on performance, good or bad.  The C++ community emphasizes
++// that linked lists are often no longer recommended for simple queues; packed vectors
++// should often be used instead.  All the elements end up right next to each other in
++// memory, making it very fast to access the next member (it's very likely already in
++// the cache, either because of wide-word fetches of whole cache lines or because of
++// automatic speculative data prefetches).  Yes, insertions and deletions can end up
++// copying a lot of data, depending on the size and number of the elements.  But those
++// operations, being linear walks of contiguous data, can often be surprisingly fast.
++// (That said, a single check_result is about 240 bytes, meaning it's huge relative to
++// cache lines.  There are some issues here of trying to keep down the size of each
++// vector element by making it a pointer to a larger payload located elsewhere.  If you
++// do this in the most straightforward manner, with just pointers in the elements, you
++// may well be back to invoking unwanted cache-busting behavior as you still try to
++// access the sort field in each remote item in turn for comparisons.  But you could
++// instead make each element consist of both the pointer to the larger payload and that
++// element's sort field, avoiding the need for remote access by replicating just the
++// critical data in the vector elements.  That would get you both speed and efficiency,
++// at the small cost of managing these extra elements.)
++//
++// Further optimizations are possible, at the cost of some logic complexity.  In any
++// list data structure using a vector as the underlying base, implementation is key to
++// performance.  One could, for example, choose to not re-align the vector on every pop
++// from the start of the list, instead keeping track of the start of the valid range
++// within the vector.  That could save a lot of copying, wherein re-aligning the start
++// of the list would only be invoked if insertions finally bump up against the end and
++// there is space at the start so the whole range of valid data can be shifted down to
++// make space at the end instead.  This takes advantage of the fact that we know in
++// advance the usage pattern is only ever extracting data from the front of the list.
++// Another possible optimization would be to dynamically decide during insertions
++// whether the front or back of the list is shifted over to make room for the new
++// element.  If there is space at the start of the list to accommodate a new element
++// and the front part is shorter than the back part relative to the desired position
++// of the new element, it could be faster to shift the front part and leave the back
++// part in place.  Actual measurements would be needed to establish the performance
++// at various levels of insertion and deletion activity.  Note that the model here in
++// Bronx/Nagios usage of this particular list is that each element gets inserted once
++// and extracted once; there is never any intermediate searching for any given element.
++// That can impact our notion of how to optimize operations on this data structure.
++// Of course, using a vector means you have to allow for vector length extension if
++// the number of elements grows beyond the initial vector allocation.
++//
++// It's possible that some other data structure might do better overall than either
++// a double-linked list or a vector.  For instance, one might consider some sort of
++// balanced tree.  But bear in mind that since we would be unloading the tree always
++// at the very first element, and we would be loading the tree always toward the last
++// element, the overall operational tendency would be to continually drive the tree
++// toward an unbalanced state, requiring frequent and possibly large rebalancing.
++// That would have to be taken account of in comparison to whatever performance
++// improvement we would get by not doing a linear search from the back of a list.
++// One might also consider skiplists or other data structures.  As before, the issue
++// is the cost of structure maintenance.  The only search we do is during insertion,
++// because we only ever pop the first element (by position, not by content); I am
++// assuming that can be done without an expensive search to find that element.  So
++// we don't have repeated searches as an overall weighting factor.  The open question
++// is, would we get enough performance benefit from switching from an estimated
++// O(n * sqrt(n)) overall performance for our double-linked list to the O(n * log(n))
++// performance offered by such complicated data structures?
++//
++// For one final comparison, assuming my unproven but intuitive model of sqrt(n)
++// performance for double-linked-list insertions, here are some ratios to consider:
++//
++//     n     sqrt(n)  log2(n)  sqrt(n) / log2(n)
++//     ====  =======  =======  =================
++//       10   3.1623   2.3026  1.37
++//      100  10.0000   4.6052  2.17
++//      166  12.8840   5.1120  2.52
++//     1000  31.6228   6.9078  4.58
++//
++// So quite possibly, other data structures could be considerably faster.  How much
++// this matters in practice is open to interpretation, as this simple comparison
++// does not take into account larger structure-maintenance costs.  And we would
++// need to figure out where we are on this curve, i.e., at what rate does the data
++// come in and how much accumulates before the data structure gets drained.  For
++// a simple calculation, if we had 1000 hosts each with 10 services, reporting in
++// at 10-minute centers, that would be 10,000 services every 10 minutes, or 1000
++// services per minute, or 166 services on average in each 10-second period between
++// reaping cycles (typical value for check_result_reaper_frequency).  This scales
++// non-linearly with increasing volume, but we don't have absolute timings to check.
++//
++// Since we lived with an even worse complexity (approaching O(n^^2)) in the
++// Nagios-3-era Bronx implementation, I don't see strong pressure right now to spend
++// development time in this area.  We could certainly look at that in the future if
++// Nagios/Bronx performance appears to drag, although there are other issues within
++// Bronx itself (better parallel handling of incoming connections) that deserve our
++// attention first, and that are likely to have a larger overall impact on system
++// reliability.  So for the time being, a double-linked-list it is, with popping
++// from the front end and pushing initiated from the back end.
++//
++#ifndef USE_CHECK_RESULT_DOUBLE_LINKED_LIST
++extern check_result *check_result_list;
++#endif
++//
++// For a double-linked list, we don't declare these variables here because no code
++// other than in the file where these variables are defined needs to access them.
++//
++// extern check_result *check_result_list_head;
++// extern check_result *check_result_list_tail;
++
+ extern struct command *command_list;
+ extern struct timeperiod *timeperiod_list;
+ extern struct host *host_list;
+--- nagios-4.2.4/include/nagios.h.orig	2016-12-07 08:31:10.000000000 -0800
++++ nagios-4.2.4/include/nagios.h	2017-01-30 21:51:34.477254188 -0800
+@@ -502,9 +502,23 @@
+ 
+ 
+ /**** IPC Functions ****/
++void save_queued_check_results(void);
+ int process_check_result_queue(char *);
+ int process_check_result_file(char *);
+ int process_check_result(check_result *);
++
++#ifdef USE_CHECK_RESULT_DOUBLE_LINKED_LIST
++int add_check_result_to_double_list(check_result *new_cr);
++#define ADD_ONE_CHECK_RESULT(dummy_check_result_list_ptr, check_result_ptr) add_check_result_to_double_list(check_result_ptr)
++check_result *read_check_result_double_list(void);		/* reads a host/service check result from the list in memory */
++#define READ_ONE_CHECK_RESULT(dummy_check_result_list_ptr) read_check_result_double_list()
++#else
++int add_check_result_to_list(check_result **, check_result *);
++#define ADD_ONE_CHECK_RESULT(check_result_list_ptr, check_result_ptr) add_check_result_to_list(check_result_list_ptr, check_result_ptr)
++check_result *read_check_result(check_result **);		/* reads a host/service check result from the list in memory */
++#define READ_ONE_CHECK_RESULT(check_result_list_ptr) read_check_result(check_result_list_ptr)
++#endif
++
+ int delete_check_result_file(char *);
+ int init_check_result(check_result *);
+ int free_check_result(check_result *);                  	/* frees memory associated with a host/service check result */
+--- nagios-4.2.4/base/checks.c.orig	2016-12-07 08:31:10.000000000 -0800
++++ nagios-4.2.4/base/checks.c	2017-01-30 21:44:54.028087292 -0800
+@@ -23,6 +23,7 @@
+ #include "../include/config.h"
+ #include "../include/comments.h"
+ #include "../include/common.h"
++#include "../include/objects.h"
+ #include "../include/statusdata.h"
+ #include "../include/downtime.h"
+ #include "../include/macros.h"
+@@ -45,14 +46,53 @@
+ 
+ /* reaps host and service check results */
+ int reap_check_results(void) {
++	check_result *queued_check_result = NULL;
++	time_t current_time = 0L;
++	time_t reaper_start_time = 0L;
++	int status;
+ 	int reaped_checks = 0;
+ 
+ 	log_debug_info(DEBUGL_FUNCTIONS, 0, "reap_check_results() start\n");
+ 	log_debug_info(DEBUGL_CHECKS, 0, "Starting to reap check results.\n");
+ 
++	/* get the start time */
++	time(&reaper_start_time);
++
+ 	/* process files in the check result queue */
+ 	reaped_checks = process_check_result_queue(check_result_path);
+ 
++	/* read all check results that have come in... */
++	while((queued_check_result = READ_ONE_CHECK_RESULT(&check_result_list))) {
++
++		reaped_checks++;
++
++		log_debug_info(DEBUGL_CHECKS, 2, "Found a check result (#%d) to handle...\n", reaped_checks);
++
++		// We will get back either OK or ERROR.
++		status = process_check_result(queued_check_result);
++
++		/* free allocated memory */
++		free_check_result(queued_check_result);
++		my_free(queued_check_result);
++
++		if (status != OK) {
++			continue;
++			}
++
++		/* break out if we've been here too long (max_check_reaper_time seconds) */
++		time(&current_time);
++		if((int)(current_time - reaper_start_time) > max_check_reaper_time) {
++			log_debug_info(DEBUGL_CHECKS, 0, "Breaking out of check result reaper: max reaper time exceeded\n");
++			break;
++			}
++
++		/* bail out if we encountered a signal */
++		if(sigshutdown == TRUE || sigrestart == TRUE) {
++			log_debug_info(DEBUGL_CHECKS, 0, "Breaking out of check result reaper: signal encountered\n");
++			break;
++			}
++		}
++
+ 	log_debug_info(DEBUGL_CHECKS, 0, "Finished reaping %d check results\n", reaped_checks);
+ 	log_debug_info(DEBUGL_FUNCTIONS, 0, "reap_check_results() end\n");
+ 
+@@ -294,6 +334,7 @@
+ 		clear_volatile_macros_r(&mac);
+ 		svc->latency = old_latency;
+ 		free_check_result(cr);
++		// FIX MINOR:  This looks like a memory leak to me -- don't we need my_free(cr) here as well?  Who free()s the cr?
+ 		my_free(processed_command);
+ 		return OK;
+ 		}
+@@ -2193,6 +2234,7 @@
+ 		clear_volatile_macros_r(&mac);
+ 		hst->latency = old_latency;
+ 		free_check_result(cr);
++		// FIX MINOR:  This looks like a memory leak to me -- don't we need my_free(cr) here as well?  Who free()s the cr?
+ 		my_free(processed_command);
+ 		return OK;
+ 	}
+--- nagios-4.2.4/base/utils.c.orig	2016-12-07 08:31:10.000000000 -0800
++++ nagios-4.2.4/base/utils.c	2017-01-30 21:44:54.030087292 -0800
+@@ -221,6 +221,14 @@
+ 
+ notification    *notification_list;
+ 
++// We will use either check_result_list for a single-linked list, or the pair
++// check_result_list_head and check_result_list_tail for a double-linked list.
++#ifdef USE_CHECK_RESULT_DOUBLE_LINKED_LIST
++check_result    *check_result_list_head = NULL;
++check_result    *check_result_list_tail = NULL;
++#else
++check_result    *check_result_list = NULL;
++#endif
+ time_t max_check_result_file_age;
+ 
+ check_stats     check_statistics[MAX_CHECK_STATS_TYPES];
+@@ -235,11 +243,18 @@
+ 
+ sched_info scheduling_info;
+ 
++#ifdef USE_EVENT_BROKER
++pthread_mutex_t check_result_list_lock = PTHREAD_MUTEX_INITIALIZER;
++#endif
++
+ /* from GNU defines errno as a macro, since it's a per-thread variable */
+ #ifndef errno
+ extern int errno;
+ #endif
+ 
++/* Establish that this patch is in place. */
++char check_result_list_patch_ident[] = "$CheckResultListPatchCompileTime: " __TIME__ " on " __DATE__ " (" __FILE__ ") $";
++
+ 
+ /* Initialize the non-shared main configuration variables */
+ void init_main_cfg_vars(int first_time) {
+@@ -2069,6 +2084,207 @@
+ /************************* IPC FUNCTIONS **************************/
+ /******************************************************************/
+ 
++/* move check result to queue directory */
++int move_check_result_to_queue(char *checkresult_file) {
++	char *output_file = NULL;
++	char *temp_buffer = NULL;
++	int output_file_fd = -1;
++	mode_t new_umask = 077;
++	mode_t old_umask;
++	int result = 0;
++
++	/* save the file creation mask */
++	old_umask = umask(new_umask);
++
++	/* create a safe temp file */
++	asprintf(&output_file, "%s/cXXXXXX", check_result_path);
++	output_file_fd = mkstemp(output_file);
++
++	/* file created okay */
++	if(output_file_fd >= 0) {
++
++		log_debug_info(DEBUGL_CHECKS, 2, "Moving temp check result file '%s' to queue file '%s'...\n", checkresult_file, output_file);
++
++#ifdef __CYGWIN__
++		/* Cygwin cannot rename open files - gives Permission Denied */
++		/* close the file */
++		close(output_file_fd);
++#endif
++
++		/* move the original file */
++		result = my_rename(checkresult_file, output_file);
++
++#ifndef __CYGWIN__
++		/* close the file */
++		close(output_file_fd);
++#endif
++
++		/* create an ok-to-go indicator file */
++		asprintf(&temp_buffer, "%s.ok", output_file);
++		if((output_file_fd = open(temp_buffer, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR)) >= 0)
++			close(output_file_fd);
++		my_free(temp_buffer);
++
++		/* delete the original file if it couldn't be moved */
++		if(result != 0)
++			unlink(checkresult_file);
++		}
++	else
++		result = -1;
++
++	/* reset the file creation mask */
++	umask(old_umask);
++
++	/* log a warning on errors */
++	if(result != 0)
++		logit(NSLOG_RUNTIME_WARNING, TRUE, "Warning: Unable to move file '%s' to check results queue.\n", checkresult_file);
++
++	/* free memory */
++	my_free(output_file);
++
++	return OK;
++	}
++
++
++
++/* save all host and service checks currently queued in the check result list to an external file */
++void save_queued_check_results(void) {
++	check_result *temp_cr = NULL;
++	check_result *this_cr = NULL;
++	check_result *next_cr = NULL;
++	char *checkresult_file = NULL;
++	int checkresult_file_fd = -1;
++	FILE *checkresult_file_fp = NULL;
++	mode_t new_umask = 077;
++	mode_t old_umask;
++	time_t current_time;
++
++	log_debug_info(DEBUGL_FUNCTIONS, 0, "save_queued_check_results()\n");
++
++#ifdef USE_EVENT_BROKER
++	/* Acquire the check result list mutex */
++	pthread_mutex_lock(&check_result_list_lock);
++#endif
++
++	/* nothing to do */
++	if
++#ifdef USE_CHECK_RESULT_DOUBLE_LINKED_LIST
++	    (check_result_list_head == NULL)
++#else
++	    (check_result_list == NULL)
++#endif
++		{
++#ifdef USE_EVENT_BROKER
++		/* Relinquish the check result list mutex */
++		pthread_mutex_unlock(&check_result_list_lock);
++#endif
++		return;
++		}
++
++	log_debug_info(DEBUGL_CHECKS, 1, "Saving host/service check results obtained from the check result queue ...\n");
++
++	/* open a temp file for storing check result(s) */
++	old_umask = umask(new_umask);
++	asprintf(&checkresult_file, "%s/checkXXXXXX", temp_path);
++	checkresult_file_fd = mkstemp(checkresult_file);
++	umask(old_umask);
++	if(checkresult_file_fd < 0) {
++		logit(NSLOG_RUNTIME_ERROR, TRUE, "Failed to open checkresult file '%s': %s\n", checkresult_file, strerror(errno));
++		free(checkresult_file);
++#ifdef USE_EVENT_BROKER
++		/* Relinquish the check result list mutex */
++		pthread_mutex_unlock(&check_result_list_lock);
++#endif
++		return;
++		}
++
++	checkresult_file_fp = fdopen(checkresult_file_fd, "w");
++
++	time(&current_time);
++	fprintf(checkresult_file_fp, "### Passive Check Result File ###\n");
++	fprintf(checkresult_file_fp, "# Time: %s", ctime(&current_time));
++	fprintf(checkresult_file_fp, "file_time=%lu\n", (unsigned long)current_time);
++	fprintf(checkresult_file_fp, "\n");
++
++	log_debug_info(DEBUGL_CHECKS | DEBUGL_IPC, 1, "Passive check result(s) will be written to '%s' (fd=%d)\n", checkresult_file, checkresult_file_fd);
++
++	/* write check results to file */
++	if(checkresult_file_fp) {
++
++		/* write all service checks to check result queue file for later processing */
++		for(
++#ifdef USE_CHECK_RESULT_DOUBLE_LINKED_LIST
++		    temp_cr = check_result_list_head;
++#else
++		    temp_cr = check_result_list;
++#endif
++		    temp_cr != NULL; temp_cr = temp_cr->next) {
++
++			fprintf(checkresult_file_fp, "### Nagios %s Check Result ###\n", (temp_cr->object_check_type == SERVICE_CHECK) ? "Service" : "Host");
++			fprintf(checkresult_file_fp, "# Time: %s", ctime(&temp_cr->start_time.tv_sec));
++			fprintf(checkresult_file_fp, "host_name=%s\n", (temp_cr->host_name == NULL) ? "" : temp_cr->host_name);
++			if(temp_cr->object_check_type == SERVICE_CHECK)
++				fprintf(checkresult_file_fp, "service_description=%s\n", (temp_cr->service_description == NULL) ? "" : temp_cr->service_description);
++			fprintf(checkresult_file_fp, "check_type=%d\n", temp_cr->check_type);
++			fprintf(checkresult_file_fp, "check_options=%d\n", temp_cr->check_options);
++			fprintf(checkresult_file_fp, "scheduled_check=%d\n", temp_cr->scheduled_check);
++			fprintf(checkresult_file_fp, "reschedule_check=%d\n", temp_cr->reschedule_check);
++			fprintf(checkresult_file_fp, "latency=%f\n", temp_cr->latency);
++			fprintf(checkresult_file_fp, "start_time=%lu.%lu\n", temp_cr->start_time.tv_sec, temp_cr->start_time.tv_usec);
++			fprintf(checkresult_file_fp, "finish_time=%lu.%lu\n", temp_cr->finish_time.tv_sec, temp_cr->finish_time.tv_usec);
++			fprintf(checkresult_file_fp, "early_timeout=%d\n", temp_cr->early_timeout);
++			fprintf(checkresult_file_fp, "exited_ok=%d\n", temp_cr->exited_ok);
++			fprintf(checkresult_file_fp, "return_code=%d\n", temp_cr->return_code);
++
++			/* newlines and backslashes in output are not escaped in temp_cr->output, but must be in the file */
++			char *escaped_output = escape_newlines(temp_cr->output);
++			fprintf(checkresult_file_fp, "output=%s\n", (escaped_output == NULL) ? "" : escaped_output);
++			my_free(escaped_output);
++
++			fprintf(checkresult_file_fp, "\n");
++			}
++		}
++
++	/* close the temp file */
++	fclose(checkresult_file_fp);
++
++	/* move check result to queue directory */
++	move_check_result_to_queue(checkresult_file);
++
++	/* free memory */
++	my_free(checkresult_file);
++
++	/* free memory for the passive check result list */
++#ifdef USE_CHECK_RESULT_DOUBLE_LINKED_LIST
++	this_cr = check_result_list_head;
++#else
++	this_cr = check_result_list;
++#endif
++	while(this_cr != NULL) {
++		next_cr = this_cr->next;
++		my_free(this_cr->host_name);
++		my_free(this_cr->service_description);
++		my_free(this_cr->output);
++		my_free(this_cr);
++		this_cr = next_cr;
++		}
++#ifdef USE_CHECK_RESULT_DOUBLE_LINKED_LIST
++	check_result_list_head = NULL;
++	check_result_list_tail = NULL;
++#else
++	check_result_list = NULL;
++#endif
++
++#ifdef USE_EVENT_BROKER
++	/* Relinquish the check result list mutex */
++	pthread_mutex_unlock(&check_result_list_lock);
++#endif
++
++	return;
++	}
++
++
++
+ /* processes files in the check result queue directory */
+ int process_check_result_queue(char *dirname) {
+ 	char file[MAX_FILENAME_LENGTH];
+@@ -2373,6 +2589,62 @@
+ 
+ 
+ 
++#ifdef USE_CHECK_RESULT_DOUBLE_LINKED_LIST
++/* reads the first host/service check result from the list in memory */
++check_result *read_check_result_double_list(void) {
++	check_result *first_cr = NULL;
++
++#ifdef USE_EVENT_BROKER
++	/* Acquire the check result list mutex */
++	pthread_mutex_lock(&check_result_list_lock);
++#endif
++
++	if(check_result_list_head != NULL) {
++		first_cr = check_result_list_head;
++		check_result_list_head = check_result_list_head->next;
++		if(check_result_list_head == NULL) {
++			check_result_list_tail = NULL;
++			}
++		else {
++			check_result_list_head->prev = NULL;
++			}
++		}
++
++#ifdef USE_EVENT_BROKER
++	/* Relinquish the check result list mutex */
++	pthread_mutex_unlock(&check_result_list_lock);
++#endif
++
++	return first_cr;
++	}
++#endif
++
++#ifndef USE_CHECK_RESULT_DOUBLE_LINKED_LIST
++/* reads the first host/service check result from the list in memory */
++check_result *read_check_result(check_result **listp) {
++	check_result *first_cr = NULL;
++
++#ifdef USE_EVENT_BROKER
++	/* Acquire the check result list mutex */
++	pthread_mutex_lock(&check_result_list_lock);
++#endif
++
++	if(*listp != NULL) {
++		first_cr = *listp;
++		*listp = (*listp)->next;
++		}
++
++#ifdef USE_EVENT_BROKER
++	/* Relinquish the check result list mutex */
++	pthread_mutex_unlock(&check_result_list_lock);
++#endif
++
++	return first_cr;
++	}
++#endif
++
++
++
+ /* initializes a host/service check result */
+ int init_check_result(check_result *info) {
+ 
+@@ -2405,6 +2677,192 @@
+ 
+ 
+ 
++#ifdef USE_CHECK_RESULT_DOUBLE_LINKED_LIST
++/* adds a new host/service check result to the list in memory */
++int add_check_result_to_double_list(check_result *new_cr) {
++	check_result *temp_cr = NULL;
++	check_result *last_cr = NULL;
++
++	if(new_cr == NULL)
++		return ERROR;
++
++#ifdef USE_EVENT_BROKER
++	/* Acquire the check result list mutex */
++	pthread_mutex_lock(&check_result_list_lock);
++#endif
++
++	/* add to list, sorted by finish time (ascending) */
++	/* equal elements are added at the end of the sublist of equal elements */
++
++	/* find insertion point */
++	for(temp_cr = check_result_list_tail; temp_cr != NULL; temp_cr = temp_cr->prev) {
++		if(temp_cr->finish_time.tv_sec <= new_cr->finish_time.tv_sec) {
++			if(temp_cr->finish_time.tv_sec < new_cr->finish_time.tv_sec)
++				break;
++			else if(temp_cr->finish_time.tv_usec <= new_cr->finish_time.tv_usec)
++				break;
++			}
++		last_cr = temp_cr;
++		}
++
++	/* item goes at tail of list */
++	if(check_result_list_tail == NULL || temp_cr == check_result_list_tail) {
++		new_cr->prev = check_result_list_tail;
++		new_cr->next = NULL;
++		if(check_result_list_tail == NULL) {
++			check_result_list_head = new_cr;
++			}
++		else {
++			check_result_list_tail->next = new_cr;
++			}
++		check_result_list_tail = new_cr;
++		}
++
++	/* item goes at head of list */
++	else if(temp_cr == NULL) {
++		new_cr->prev = NULL;
++		new_cr->next = check_result_list_head;
++		if(check_result_list_head == NULL) {
++			check_result_list_tail = new_cr;
++			}
++		else {
++			check_result_list_head->prev = new_cr;
++			}
++		check_result_list_head = new_cr;
++		}
++
++	/* item goes in middle of list */
++	else {
++		new_cr->prev = temp_cr;
++		temp_cr->next = new_cr;
++		new_cr->next = last_cr;
++		last_cr->prev = new_cr;
++		}
++
++#ifdef USE_EVENT_BROKER
++	/* Relinquish the check result list mutex */
++	pthread_mutex_unlock(&check_result_list_lock);
++#endif
++
++	return OK;
++	}
++#endif
++
++#ifndef USE_CHECK_RESULT_DOUBLE_LINKED_LIST
++/* adds a new host/service check result to the list in memory */
++int add_check_result_to_list(check_result **listp, check_result *new_cr) {
++	check_result *temp_cr = NULL;
++	check_result *last_cr = NULL;
++
++	if(new_cr == NULL)
++		return ERROR;
++
++#ifdef USE_EVENT_BROKER
++	/* Acquire the check result list mutex */
++	pthread_mutex_lock(&check_result_list_lock);
++#endif
++
++	/* add to list, sorted by finish time (ascending) */
++	/* equal elements are added at the end of the sublist of equal elements */
++
++	/* find insertion point */
++	last_cr = *listp;
++	for(temp_cr = *listp; temp_cr != NULL; temp_cr = temp_cr->next) {
++		if(temp_cr->finish_time.tv_sec >= new_cr->finish_time.tv_sec) {
++			if(temp_cr->finish_time.tv_sec > new_cr->finish_time.tv_sec)
++				break;
++			else if(temp_cr->finish_time.tv_usec > new_cr->finish_time.tv_usec)
++				break;
++			}
++		last_cr = temp_cr;
++		}
++
++	/* item goes at head of list */
++	if(*listp == NULL || temp_cr == *listp) {
++		new_cr->next = *listp;
++		*listp = new_cr;
++		}
++
++	/* item goes in middle or at end of list */
++	else {
++		new_cr->next = temp_cr;
++		last_cr->next = new_cr;
++		}
++
++#ifdef USE_EVENT_BROKER
++	/* Relinquish the check result list mutex */
++	pthread_mutex_unlock(&check_result_list_lock);
++#endif
++
++	return OK;
++	}
++#endif
++
++
++
++#ifdef USE_CHECK_RESULT_DOUBLE_LINKED_LIST
++/* frees all memory associated with the check result list */
++int free_check_result_double_list(void){
++	check_result *this_cr=NULL;
++	check_result *next_cr=NULL;
++
++#ifdef USE_EVENT_BROKER
++	/* Acquire the check result list mutex */
++	pthread_mutex_lock(&check_result_list_lock);
++#endif
++
++	for(this_cr=check_result_list_head;this_cr!=NULL;this_cr=next_cr){
++		next_cr=this_cr->next;
++		free_check_result(this_cr);
++		my_free(this_cr);
++		}
++
++	check_result_list_head=NULL;
++	check_result_list_tail=NULL;
++
++#ifdef USE_EVENT_BROKER
++	/* Relinquish the check result list mutex */
++	pthread_mutex_unlock(&check_result_list_lock);
++#endif
++
++	return OK;
++	}
++
++#define FREE_ALL_CHECK_RESULTS(dummy_check_result_list_ptr) free_check_result_double_list()
++#endif
++
++#ifndef USE_CHECK_RESULT_DOUBLE_LINKED_LIST
++/* frees all memory associated with the check result list */
++int free_check_result_list(check_result **listp) {
++	check_result *this_cr = NULL;
++	check_result *next_cr = NULL;
++
++#ifdef USE_EVENT_BROKER
++	/* Acquire the check result list mutex */
++	pthread_mutex_lock(&check_result_list_lock);
++#endif
++
++	for(this_cr = *listp; this_cr != NULL; this_cr = next_cr) {
++		next_cr = this_cr->next;
++		free_check_result(this_cr);
++		my_free(this_cr);
++		}
++
++	*listp = NULL;
++
++#ifdef USE_EVENT_BROKER
++	/* Relinquish the check result list mutex */
++	pthread_mutex_unlock(&check_result_list_lock);
++#endif
++
++	return OK;
++	}
++
++#define FREE_ALL_CHECK_RESULTS(check_result_list_ptr) free_check_result_list(check_result_list_ptr)
++#endif
++
++
++
+ /* frees memory associated with a host/service check result */
+ int free_check_result(check_result *info) {
+ 
+@@ -3326,6 +3784,9 @@
+ 	/* free memory allocated to comments */
+ 	free_comment_data();
+ 
++	/* free check result list */
++	FREE_ALL_CHECK_RESULTS(&check_result_list);
++
+ 	/* free event queue data */
+ 	squeue_destroy(nagios_squeue, SQUEUE_FREE_DATA);
+ 	nagios_squeue = NULL;

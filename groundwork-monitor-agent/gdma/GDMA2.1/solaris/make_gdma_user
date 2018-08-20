@@ -1,0 +1,75 @@
+#!/bin/csh -f
+
+# Create the gdma user and group if they do not already exist, so we
+# have the standard place available into which to install the built files.
+if ({ /usr/bin/id gdma >&/dev/null }) then
+    # The gdma user already exists.  For now, we'll assume
+    # the same is true for the gdma group, without checking.
+    : # do nothing
+else
+    # The gdma user does not exist.  Build it up, in stages.  Use the
+    # home directory expected by our package, and a disabled password.
+
+    # First add the group, if it doesn't already exist ...
+    if ({ /usr/sbin/groupmod gdma >& /dev/null }) then
+	: # this group already exists, so we do nothing special here
+    else
+	# Create the gdma group ...
+	echo 'Adding the "gdma" group ...'
+	if ({ /usr/sbin/groupadd gdma }) then
+	    : # it worked, so we do nothing special here
+	else
+	    echo 'Cannot create the "gdma" group; aborting\!'
+	    # Kill the install right now, before we do some damage
+	    # that we cannot automatically back out later.
+	    exit 1
+	endif
+    endif
+
+    # Then add the user ...
+    echo 'Adding the "gdma" user ...'
+   # mkdir -p /opt/groundwork/gdma
+    if ({ /usr/sbin/useradd -c "GroundWork Agent" -d /opt/groundwork/gdma -e "" -f 0 -g gdma -s /bin/sh gdma }) then
+	chown gdma:gdma /opt/groundwork/gdma
+    else
+	echo 'Cannot create the "gdma" user; aborting\!'
+	# Kill the install right now, before we do some damage
+	# that we cannot automatically back out later.
+	exit 1
+    endif
+
+    # Then disable the user's password ...
+    echo 'Disabling the "gdma" user'"'"'s password ...'
+    switch (`uname -r`)
+	case 5.6:
+	case 5.8:
+	case 5.9:
+	    set passwdlockoption = -l
+	    breaksw
+	case 5.10:
+	case 5.11:
+	    set passwdlockoption = -N
+	    breaksw
+	default:
+	    echo "========================================================================"
+	    echo "ERROR:  This script has only been ported so far to Solaris 5.6,"
+	    echo "        Solaris 8 through Solaris 10, and OpenSolaris.  Aborting\!"
+	    echo "========================================================================"
+	    exit 1
+	    breaksw
+    endsw
+    if ({ /usr/bin/passwd $passwdlockoption gdma }) then
+	: # it worked, so we do nothing special here
+    else
+	echo 'Cannot disable the "gdma" user password; aborting\!'
+	# Kill the install right now, before we do some damage
+	# that we cannot automatically back out later.
+	exit 1
+    endif
+endif
+
+# Make the parent directory under which builds will drop results.  In the
+# final GDMA package, this will be done when the package gets installed,
+# but for now this directory won't be there unless we make it ourselves.
+mkdir -p  /opt/groundwork
+chmod 777 /opt/groundwork

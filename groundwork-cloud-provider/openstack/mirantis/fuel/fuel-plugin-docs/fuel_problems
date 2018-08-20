@@ -1,0 +1,273 @@
+Folks,
+
+The following issues were observed last weekend during testing
+of the trial Fuel plugin.  Note that these items represent my own
+personal opinions, have not been vetted by GroundWork, and might
+not represent the opinion of GroundWork.  Nonetheless, I feel it
+is important to raise these issues now, while the stakes are low,
+so they can be corrected well before the stakes become high.
+
+Beyond what is presented here, there is one other very serious
+issue which I think needs discussion.  But it will take more time
+to write up, and I want to get what I have so far out to everyone
+so they have time to look it over before today's meeting.  I will
+send info on the other issue in a separate email when it is ready.
+
+
+General Fuel Plugin Design and Implementation
+=============================================
+
+(*) At one point, I had a "stage" defined in deployment_tasks.yaml,
+    by analogy with that field for tasks.yaml, so I could add the /8500
+    qualifier to push this deployment stage into the "monitoring" range,
+    per the Fuel Plugin Wiki doc.  But either this is apparently not
+    supported, or at least I don't understand what else is needed to
+    do so.  (Must the stage refer to some specific task defined in the
+    same plugin?)  I saw a Pin-Priority of 1100 somewhere and wonder
+    if that is related.  Eventually, seeing that the stage declaration
+    was not working, I commented it out; I wonder if there is any loss
+    of functionality, or possible inappropriate deployment sequencing,
+    in doing so.
+
+(*) Are there role-naming conventions for plugins?  If so, they
+    ought to be spelled out in the documentation, as opposed to
+    the "plugin-name_role" descriptions that are currently used.
+    I eventually settled on "groundwork_monitor" as the role name
+    (not that I'm dissatisfied with it), mainly because it seemed
+    to fit best with the on-screen presentation of other role names.
+
+(*) I am not using the tasks.yaml config file at all (in favor
+    of using the deployment_tasks.yaml file for all equivalent
+    data), so I tried to remove tasks.yaml entirely from the plugin.
+    But then I got some error messages from the Fuel plugin builder:
+
+	fpb --check .
+	Validation failed
+	File './tasks.yaml' does not exist
+
+    So I ended up just planting a file in the plugin containing an
+    empty list ( [] ).  The plugin builder ought to accommodate
+    a missing file, since the doc implies that it is effectively
+    obsolete.  The question is, why is tasks.yaml still required
+    during plugin build, when a deployment_tasks.yaml file is
+    present?
+
+(*) With respect to logging from the plugin deployment:
+
+    (+) My plugin deployment scripting currently uses its own
+	deployment logfile, which for the moment I plant here:
+
+	    /var/log/fuel-plugin-groundwork-monitor/deployment.log
+
+	My scripting creates the extra directory for this purpose, so
+	as not to otherwise pollute the existing /var/log directory.
+	What standards are plugin deployment scripts supposed to
+	follow for logfile placement?
+
+    (+) How do I get my plugin deployment log files placed in the
+	filesystem and perhaps registered with Fuel so they can be
+	seen in the Fuel UI?
+
+(*) With respect to handling of config data, and specifically of
+    password information:
+
+    (+) The support for regular-expression validation of config-data
+	entry in the plugin-configuration screen, and its related
+	error handling, needs to be explained in detail in the doc.
+	I tried Perl-compatible regular-expression syntax in the
+	regex.source field, and that seemed to work just fine.
+
+    (+) During deployment, the Fuel system creates a /etc/astute.yaml
+	-> /etc/groundwork_monitor.yaml symlink.  This needs to
+	be clearly spelled out in the documentation (for instance,
+	that the symlink exists, what its lifetime is, that the role
+	name is used for the target file, and that the target file
+	will be left around after plugin deployment is complete).
+
+    (+) The plugin doc ought to present some sample code for
+	extracting UI-specified plugin config values from the
+	/etc/astute.yaml file, especially in the context of
+	a bash script trying to access such data.  For my own
+	experimentation, I stole some code from other existing
+	plugins, but that level of sloppy messing around should
+	not be needed.
+
+    (+) The doc for environment_config.yaml needs to describe that
+	"type: password" is available, what it does, and what its
+	severe security limitations are (trivial visibility of the
+	cleartext value in the UI; storage of the cleartext value
+	in multiple locations in the filesystem).
+
+    (+) After plugin deployment, /etc/groundwork_monitor.yaml
+	contains a cleartext copy of the password data; around 4
+	files in the system end up with this information stored in
+	cleartext.  But enterprise customers at mutiple places where
+	I have worked (including well before GroundWork) have long
+	told us that sensible security policy prohibits such storage.
+
+
+GroundWork-specific Plugin Issues
+=================================
+
+(*) The large GroundWork Monitor BitRock installer file will be left
+    on a deployed node (under /etc/fuel/plugins/...) after deployment
+    is complete.  We should probably remove it after a successful
+    deployment on a node, to save space there (almost a gigabyte).
+    Does this comport with Mirantis' notion of acceptable behavior?
+
+(*) With respect to handling of password information:
+
+    (+) The GroundWork Monitor BitRock installer requires just one
+	site-specific piece of information to perform an install in
+	unattended mode, namely the database-administrator password
+	for PostgreSQL.  I configured the trial plugin to accept
+	that information from the Fuel UI, mainly as something
+	of an experiment to see how config data in general and
+	password data in particular are handled.  But due to the
+	inappropriately trivial visibility of the actal password in
+	the Fuel UI, and the inappropriate filesystem storage of
+	password data in cleartext (especially, persisting long
+	after the deployment is complete), I will be removing
+	this capability from the plugin.  Instead, we will just
+	hardcode a fixed password, and document that it *must*
+	be changed immediately after the deployment is complete,
+	just as several other critical credentials need to be
+	adjusted within GroundWork Monitor at first install.
+
+    (+) The issues with the password handling mean that we will
+	be unable to support remote-PostgreSQL database setups,
+	since a remote-database administrative password is used
+	during the install of the GroundWork software after a Remote
+	Database is installed.
+
+(*) Initial testing using an GW-intaller emulator has been done
+    on a node with 80 GB disk.  The GroundWork Monitor BitRock
+    installer says that it normally requires a minimum of 160
+    GB free.  The current setup is good, both to check the GW
+    installer's reaction to that amount of storage, and to see
+    how the complaint about it it is presented to the Fuel user.
+    But we will then probably also want to add more disk to the
+    GroundWork Monitor node.
+
+(*) I need to ask Hans about our KB doc for 7.1 vs. the 7.0 release.
+    7.1 pages do not appear to be as comprehensive, and I need to
+    know where the plugin doc should point for certain references
+    (such as changing administrative passwords).
+
+(*) For further GroundWork plugin development, I need the following:
+
+    (+) official copyright text from GroundWork
+    (+) official license information from GroundWork
+    (+) edit doc files into their final form
+    (+) cleanup of config files (remove scaffolding)
+
+
+Fuel UI Behavior
+================
+
+General
+-------
+
+(*) The Fuel UI has font-size problems, which can be seen if you use
+    Firefox and set a minimum font size of 16.  I use that setting
+    all the time because I have a high-resolution screen and I
+    need to see text clearly.  Otherwise, it can be really tiny.
+    But screen eleemnts in the Fuel UI are not adaptively sized to
+    fully contain their content, so the boxes that are supposed to
+    contain certain information overflow and do not automatically
+    expand with their content.  This is a significant CSS problem,
+    my guess being that the CSS uses fixed pixel measurements.
+
+Deployment Issues
+-----------------
+
+(*) With respect to deployment timing:
+
+    (+) What are the deploy progress-bar percentage estimates
+	based on?  By observation, they are clearly inaccurate with
+	respect to time.
+
+    (+) Mirantis needs to time install of the Ubuntu software as
+	well as OpenStack components, and set expectations so an
+	administrator knows how long a particular deployment is
+	expected to take.  It's okay if you overestimate and it
+	actually takes less time than claimed.
+
+    (+) Is there a timeout imposed when re-installing a node?
+	Where would it appear in the UI?  This needs to be tested
+	as well with plugin-deployment timeouts.
+
+    (+) In the main dashboard screen, it takes a long time after
+	the progress bar is 100% and all nodes are Ready before
+	Deploy is actually declared done.  What is happening during
+	that period?
+
+    (+) Plugin developers could use some means to specify "expected"
+	times in plugin-deployment steps, to feed the overall
+	deployment-progress percentage calculation and get that
+	displayed in the UI as part of overall deployment progress.
+
+(*) I don't see any way to add just my one new role for this
+    plugin to an already-deployed BASE_OS machine.  Perhaps I do
+    not understand the intended OpenStack node deployment model.
+    Is it the case that one is expected to know everything about
+    a node before adding the node to the system, such that it can
+    never subsequently acquire any additional roles?
+
+(*) Removing (uninstalling) a plugin does not immediately erase it
+    from all UI screens.  It is very possible to be misled about
+    the current state of the plugin system.  I have developed a
+    habit of revisiting the Plugin screen to force the UI through
+    code paths that seem to refresh the UI's internal state, but
+    that should not be necessary.  (If necessary, I can test to be
+    more precise about which screens seem to hold on to old state.)
+
+(*) At certain times during plugin deployment testing I saw error
+    messages in the Fuel UI that referred to the Astute log files,
+    but that gave no hint as to where to find such files.  The error
+    messages ought to specify exactly where to find such files
+    (either in the UI, or via full machine:/pathname locations).
+
+(*) With respect to handling of password information:
+
+    (+) Having a trivial means to expose password data in cleartext
+	in the UI is obviously convenient, but very silly from a
+	security perspective.  The usual convention is to instead
+	require duplicate keying, to confirm that it was entered
+	correctly.  Past that, it should never be visible, due to
+	possible shoulder-surfing concerns.
+
+    (+) As mentioned above, storing password data in cleartext in
+	the filesystem is outright unacceptable, from a security
+	perspective.
+
+(*) To remove and re-install a plugin, you first have to delete all
+    nodes currently using the plugin, then disable the plugin itself
+    in a separate screen.  There are two issues with this.  One,
+    this full process needs to be spelled out in the documentation.
+    And two, there is a big issue with versioning around this setup.
+    While it's true that all of my testing only involves a single
+    initial version of the plugin, we would need to understand how
+    future versions are handled.  Is it possible to have multiple
+    versions of the same plugin available within Fuel, independently
+    selectable for deployment?  That can be a critical capability
+    when upgrading or migrating to a newer version of the GroundWork
+    Monitor software.
+
+(*) During the course of initial plugin-deployment testing, I had
+    to constantly delete a node that was currently assigned the
+    "groundwork_monitor" role, in order to install a new copy of
+    the plugin.  But then I observed that ordinary node deletion
+    installs OpenStack, apparently on the node that just got deleted,
+    at the time of node deletion.  What is the point of this?
+    Won't it just be overwritten in the future when the node is
+    added back to the infrastructure?  Installing OpenStack upon
+    node deletion just seems like a waste of time.
+
+(*) An operating-system only (BASE_OS) deploy action claims in
+    its "Success" details that fuel-plugin-groundwork-monitor
+    is deployed!!  This seems really misleading, as there is no
+    evidence of such on the node itself.
+
+Glenn
+

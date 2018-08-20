@@ -1,0 +1,31 @@
+*** noma_2.0.3/share/inc/content_status_viewer.php.orig	Mon Nov 21 03:25:24 2011
+--- noma_2.0.3/share/inc/content_status_viewer.php	Mon Aug 20 17:35:25 2012
+***************
+*** 209,220 ****
+  
+  
+  	// Sorry, this is the only way I could solve concat differences between backends without rewriting the frontend too much!
+          if ($dbConf['type'] == 'mysql')
+  	{
+  		$concat1 = 'concat("ACTIVE ",retries) as result ';
+                  $concat2 = 'concat("ESC ",counter) as result ';
+  	} 
+! 	elseif ($dbConf['type'] == 'sqlite3')
+  	{
+                  $concat1 = '"ACTIVE "||retries as result ';
+                  $concat2 = '"ESC "||counter as result ';
+--- 209,222 ----
+  
+  
+  	// Sorry, this is the only way I could solve concat differences between backends without rewriting the frontend too much!
++ 	// PostgreSQL supports both the SQL-standard A||B string concantenation and the concat(A,B) function.  For that database,
++ 	// we choose to go with the standards-compliant formulation.
+          if ($dbConf['type'] == 'mysql')
+  	{
+  		$concat1 = 'concat("ACTIVE ",retries) as result ';
+                  $concat2 = 'concat("ESC ",counter) as result ';
+  	} 
+! 	elseif ($dbConf['type'] == 'sqlite3' or $dbConf['type'] == 'postgresql')
+  	{
+                  $concat1 = '"ACTIVE "||retries as result ';
+                  $concat2 = '"ESC "||counter as result ';

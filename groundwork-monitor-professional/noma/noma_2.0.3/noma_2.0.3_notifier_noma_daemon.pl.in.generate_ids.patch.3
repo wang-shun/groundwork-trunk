@@ -1,0 +1,149 @@
+--- noma_2.0.3/notifier/noma_daemon.pl.in.orig.3	2017-08-09 19:13:47.342105998 -0700
++++ noma_2.0.3/notifier/noma_daemon.pl.in	2017-08-09 19:13:47.345106139 -0700
+@@ -566,7 +566,7 @@
+                     {
+                         debug('-> setting to active', 2);
+                         $notificationCounter =
+-                            incrementNotificationCounter( $cmdh{status}, $cmdh{host}, $cmdh{service},$cmdh{check_type});
++                            incrementNotificationCounter( $cmdh{status}, $cmdh{host}, $cmdh{service}, $cmdh{check_type}, $cmdh{tmp_commands_id}, \$cmdh{external_id} );
+                     }
+                 }
+                 # no matches!?
+@@ -960,7 +960,18 @@
+ 			return;
+ 		}
+ 
+-        if ( $cmdh{external_id} eq '' or $cmdh{external_id} < 1 ) { $cmdh{external_id} = unique_id(); }
++	if ( $cmd =~ /^notification;/i && $conf->{notifier}->{generate_IDs} ) {
++	    ## In this case, we will either get back an existing problem ID for this host/service,
++	    ## or some random number that we may briefly stuff into the tmp_commands table just below
++	    ## and then replace later on once we generate a standard problem ID for this host/service.
++	    $cmdh{external_id} = unique_id( $cmdh{host}, $cmdh{service} );
++	}
++	elsif ( $cmdh{external_id} eq '' or $cmdh{external_id} < 1 ) {
++	    ## Legacy behavior, generating only a random number and then only when the incoming alert
++	    ## did not already include a problem ID for this host/service.  This branch is also used
++	    ## intentionally for processing escalations.
++	    $cmdh{external_id} = unique_id();
++	}
+ 
+         $cmdh{operation} = lc($cmdh{operation});
+         if (($cmdh{stime} eq ""))
+@@ -1083,6 +1094,34 @@
+ 
+ }
+ 
++
++sub getNotificationID
++{
++    my ( $host, $service, $flag ) = @_;
++    my $id;
++
++    $id = 0 unless defined($flag);
++
++    my $query = "select id from notification_stati where host='$host'";
++
++    if ( defined($service) and $service ne '' )
++    {
++	## service alert
++	$query .= " and service='$service'";
++    }
++    else
++    {
++	$query .= " and check_type='h'";
++    }
++
++    my %dbResult = queryDB($query);
++
++    $id = $dbResult{0}->{id} if ( defined( $dbResult{0}->{id} ) );
++
++    return $id;
++}
++
++
+ # returns UP or OK if the state is not in the table already, otherwise returns the last known state
+ sub getLastState
+ {
+@@ -1410,6 +1449,15 @@
+ ##############################################################################
+ sub unique_id
+ {
++    my ( $host, $service ) = @_;
++
++    if ( $conf->{notifier}->{generate_IDs} and defined $host ) {
++	## In this situation, use the existing notification-ID value,
++	## if available, as the unique "external" problem ID.
++	my $id = getNotificationID( $host, $service );
++	return $id if $id;
++    }
++
+     # we don't use MySQL UUID() to generate IDs
+     # because this won't work in offline mode
+     return sprintf( "%d%05d", time(), int( rand(99999) ) );
+@@ -1420,26 +1468,62 @@
+ sub incrementNotificationCounter
+ {
+ 
+-    my ( $status, $host, $service, $check_type ) = @_;
++    my ( $status, $host, $service, $check_type, $tmp_commands_id, $external_id_ref ) = @_;
+     my $notificationCounter =
+         getNotificationCounter($host, $service, 1);
+ 
++    my $do_final_update = 1;
+     if ( defined($notificationCounter) )
+     {
+         $query = 'update notification_stati set counter=counter+1,
+             check_result=\'' . $status . '\'
+             where host=\'' . $host . '\' and ' . 'service=\'' . $service . '\'';
+-    } else
++    }
++    else
+     {
+         $notificationCounter = 0;
+         $query =
+             'insert into notification_stati (host,service,check_type,check_result,counter,pid)
+             values (' . "'$host','$service','$check_type','$status','1','0')";
++	if ( $conf->{notifier}->{generate_IDs} && $tmp_commands_id ) {
++	    ## In this case, we previously stuffed a temporary filler value into the tmp_commands.external_id
++	    ## column in one new row, because that's all the data we had in hand.  But now that we will obtain
++	    ## the proper value to use for that field, it's time to both update the tmp_commands table and
++	    ## percolate that value back up into the calling code, replacing the filler value for further use.
++	    ## It's up to the calling code to guarantee that no other use was made of the filler value between
++	    ## the time that it was created and this invocation of incrementNotificationCounter().
++	    my $problem_id = updateDB( $query, undef, 'id' );
++	    if ($problem_id) {
++		$query = "update tmp_commands set external_id = $problem_id where id = $tmp_commands_id";
++		if ( defined updateDB($query) ) {
++		    $$external_id_ref = $problem_id;
++		}
++		else {
++		    ## As in the code branch just below, we probably had a database-access problem, and there
++		    ## is nothing we can do about it here except log the occurrence.
++		    debug( "ERROR:  Cannot update the tmp_commands table external_id value to $problem_id for tmp_commands.id $tmp_commands_id, host $host"
++		      . ( $service ? " service $service" : '' ), 1 );
++		}
++	    }
++	    else {
++		## We probably had some sort of database-access problem when trying to insert the new row
++		## into the notification_stati table.  So there is no way to update the caller's external_id
++		## value in this case; we'll just have to live with the random number previously generated.
++		## This means that incoming-alert counting (otherwise referred to inside the NoMa code as
++		## notification counting) won't work, since that external_id value will never be replicated on
++		## any future incoming alert.  Thus while this alert will be properly treated as the first in
++		## a possible sequence, there cannot be any future elements in that same sequence.  Meaning,
++		## the next alert for the same host/service will once again be treated as the first in a
++		## potential sequence.  There's nothing we can do about that here except log the occurrence.
++		debug( "ERROR:  Cannot update the tmp_commands table external_id value for tmp_commands.id $tmp_commands_id, host $host"
++		  . ( $service ? " service $service" : '' ), 1 );
++	    }
++	    $do_final_update = 0;
++	}
+     }
+ 
+-    updateDB($query);
++    updateDB($query) if $do_final_update;
+     return ( $notificationCounter + 1 );
+-
+ }
+ 
+ sub resetNotificationCounter

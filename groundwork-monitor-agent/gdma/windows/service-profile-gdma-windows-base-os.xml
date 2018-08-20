@@ -1,0 +1,215 @@
+<?xml version="1.0" ?>
+<profile>
+ <time_period>
+  <prop name="comment"><![CDATA[All day, every day.]]></prop>
+  <prop name="name"><![CDATA[24x7]]></prop>
+  <prop name="alias"><![CDATA[24 Hours A Day, 7 Days A Week]]></prop>
+  <prop name="tuesday"><![CDATA[00:00-24:00]]></prop>
+  <prop name="friday"><![CDATA[00:00-24:00]]></prop>
+  <prop name="sunday"><![CDATA[00:00-24:00]]></prop>
+  <prop name="saturday"><![CDATA[00:00-24:00]]></prop>
+  <prop name="wednesday"><![CDATA[00:00-24:00]]></prop>
+  <prop name="monday"><![CDATA[00:00-24:00]]></prop>
+  <prop name="thursday"><![CDATA[00:00-24:00]]></prop>
+ </time_period>
+ <command>
+  <prop name="name"><![CDATA[check-host-alive]]></prop>
+  <prop name="type"><![CDATA[check]]></prop>
+  <prop name="command_line"><![CDATA[$USER1$/check_icmp -H $HOSTADDRESS$ -w 3000.0,80% -c 5000.0,100% -n 1]]></prop>
+ </command>
+ <host_template>
+  <prop name="flap_detection_enabled"><![CDATA[1]]></prop>
+  <prop name="check_freshness"><![CDATA[-zero-]]></prop>
+  <prop name="notifications_enabled"><![CDATA[1]]></prop>
+  <prop name="event_handler_enabled"><![CDATA[-zero-]]></prop>
+  <prop name="process_perf_data"><![CDATA[1]]></prop>
+  <prop name="active_checks_enabled"><![CDATA[1]]></prop>
+  <prop name="check_period"><![CDATA[24x7]]></prop>
+  <prop name="passive_checks_enabled"><![CDATA[1]]></prop>
+  <prop name="notification_period"><![CDATA[24x7]]></prop>
+  <prop name="retain_status_information"><![CDATA[1]]></prop>
+  <prop name="max_check_attempts"><![CDATA[3]]></prop>
+  <prop name="notification_options"><![CDATA[d,u,r]]></prop>
+  <prop name="name"><![CDATA[gdma-windows-host]]></prop>
+  <prop name="retain_nonstatus_information"><![CDATA[1]]></prop>
+  <prop name="check_command"><![CDATA[check-host-alive]]></prop>
+  <prop name="comment"><![CDATA[# host_templates gdma-windows-host]]></prop>
+  <prop name="obsess_over_host"><![CDATA[-zero-]]></prop>
+  <prop name="notification_interval"><![CDATA[15]]></prop>
+ </host_template>
+ <service_profile>
+  <prop name="name"><![CDATA[gdma-windows-base-os]]></prop>
+  <prop name="description"><![CDATA[GDMA Windows Base OS monitoring profile]]></prop>
+  <prop name="service"><![CDATA[gdma_wmi_cpu]]></prop>
+  <prop name="service"><![CDATA[gdma_wmi_disk_C]]></prop>
+  <prop name="service"><![CDATA[gdma_wmi_disktransfers]]></prop>
+  <prop name="service"><![CDATA[gdma_wmi_mem]]></prop>
+  <prop name="service"><![CDATA[gdma_wmi_memory_pages]]></prop>
+ </service_profile>
+
+ <command>
+  <prop name="name"><![CDATA[gdma_fresh]]></prop>
+  <prop name="type"><![CDATA[check]]></prop>
+  <prop name="command_line"><![CDATA[$USER1$/check_dummy 1 "Stale Status"]]></prop>
+ </command>
+ <service_template>
+  <prop name="retry_check_interval"><![CDATA[1]]></prop>
+  <prop name="flap_detection_enabled"><![CDATA[1]]></prop>
+  <prop name="check_freshness"><![CDATA[1]]></prop>
+  <prop name="notifications_enabled"><![CDATA[0]]></prop>
+  <prop name="event_handler_enabled"><![CDATA[1]]></prop>
+  <prop name="active_checks_enabled"><![CDATA[0]]></prop>
+  <prop name="process_perf_data"><![CDATA[1]]></prop>
+  <prop name="check_period"><![CDATA[24x7]]></prop>
+  <prop name="is_volatile"><![CDATA[0]]></prop>
+  <prop name="freshness_threshold"><![CDATA[900]]></prop>
+  <prop name="passive_checks_enabled"><![CDATA[1]]></prop>
+  <prop name="notification_period"><![CDATA[24x7]]></prop>
+  <prop name="max_check_attempts"><![CDATA[2]]></prop>
+  <prop name="retain_status_information"><![CDATA[1]]></prop>
+  <prop name="parallelize_check"><![CDATA[1]]></prop>
+  <prop name="notification_options"><![CDATA[u,c,w,r]]></prop>
+  <prop name="retain_nonstatus_information"><![CDATA[1]]></prop>
+  <prop name="name"><![CDATA[gdma_wmi_all]]></prop>
+  <prop name="normal_check_interval"><![CDATA[10]]></prop>
+  <prop name="notification_interval"><![CDATA[15]]></prop>
+  <prop name="obsess_over_service"><![CDATA[1]]></prop>
+ </service_template>
+ <service_external>
+  <prop name="name"><![CDATA[gdma_wmi_cpu]]></prop>
+  <prop name="type"><![CDATA[service]]></prop>
+  <prop name="data"><![CDATA[Check_gdma_wmi_cpu_get_cpu[1]_Enable="ON"
+Check_gdma_wmi_cpu_get_cpu[1]_Service="gdma_wmi_cpu"
+Check_gdma_wmi_cpu_get_cpu[1]_Command="cscript.exe //nologo //T:60 $Plugin_Directory$\v2\check_cpu_load_percentage.vbs -h $Target_Host$ -inst _Total -t 97,99"
+
+#  Uncomment the Check_Interval directive to specify the check interval for this GDMA service. Or, use the 
+#  host external directive Default_Service_Check_Interval to set a default interval for any GDMA service that
+#  does not have a Check_Interval defined. 
+#Check_gdma_wmi_cpu_get_cpu[1]_Check_Interval="300"]]></prop>
+ </service_external>
+ <service_name>
+  <prop name="error"><![CDATA[Empty String (parse_xml)]]></prop>
+  <prop name="template"><![CDATA[gdma_wmi_all]]></prop>
+  <prop name="name"><![CDATA[gdma_wmi_cpu]]></prop>
+  <prop name="check_command"><![CDATA[gdma_fresh]]></prop>
+  <prop name="service_external"><![CDATA[gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_external>
+  <prop name="name"><![CDATA[gdma_wmi_disk_C]]></prop>
+  <prop name="type"><![CDATA[service]]></prop>
+  <prop name="data"><![CDATA[Check_gdma_wmi_disk_C_get_disk[1]_Enable="ON"
+Check_gdma_wmi_disk_C_get_disk[1]_Service="gdma_wmi_disk_C"
+Check_gdma_wmi_disk_C_get_disk[1]_Command="cscript.exe //nologo //T:60 $Plugin_Directory$\v2\check_disks_percentage_space_used.vbs -h $Target_Host$ -inst C: -t 80,90"
+
+#  Uncomment the Check_Interval directive to specify the check interval for this GDMA service. Or, use the 
+#  host external directive Default_Service_Check_Interval to set a default interval for any GDMA service that
+#  does not have a Check_Interval defined. 
+#Check_gdma_wmi_disk_C_get_disk[1]_Check_Interval="300"]]></prop>
+ </service_external>
+ <service_name>
+  <prop name="error"><![CDATA[Empty String (parse_xml)]]></prop>
+  <prop name="template"><![CDATA[gdma_wmi_all]]></prop>
+  <prop name="name"><![CDATA[gdma_wmi_disk_C]]></prop>
+  <prop name="check_command"><![CDATA[gdma_fresh]]></prop>
+  <prop name="service_external"><![CDATA[gdma_wmi_disk_C]]></prop>
+ </service_name>
+ <service_external>
+  <prop name="name"><![CDATA[gdma_wmi_disktransfers]]></prop>
+  <prop name="type"><![CDATA[service]]></prop>
+  <prop name="data"><![CDATA[Check_gdma_wmi_disktransfers_get_disktransfers[1]_Enable="ON"
+Check_gdma_wmi_disktransfers_get_disktransfers[1]_Service="gdma_wmi_disktransfers"
+Check_gdma_wmi_disktransfers_get_disktransfers[1]_Command="cscript.exe //nologo //T:60 $Plugin_Directory$\v2\check_counter_counter.vbs -h $Target_Host$ -class "Win32_PerfRawData_PerfDisk_PhysicalDisk" -inst Name=_Total -prop "DiskTransfersPersec" -w 10000 -c 20000"
+
+#  Uncomment the Check_Interval directive to specify the check interval for this GDMA service. Or, use the 
+#  host external directive Default_Service_Check_Interval to set a default interval for any GDMA service that
+#  does not have a Check_Interval defined. 
+#Check_gdma_wmi_disktransfers_get_disktransfers[1]_Check_Interval="300"
+]]></prop>
+ </service_external>
+ <service_name>
+  <prop name="error"><![CDATA[Empty String (parse_xml)]]></prop>
+  <prop name="template"><![CDATA[gdma_wmi_all]]></prop>
+  <prop name="name"><![CDATA[gdma_wmi_disktransfers]]></prop>
+  <prop name="check_command"><![CDATA[gdma_fresh]]></prop>
+  <prop name="service_external"><![CDATA[gdma_wmi_disktransfers]]></prop>
+ </service_name>
+ <service_external>
+  <prop name="name"><![CDATA[gdma_wmi_mem]]></prop>
+  <prop name="type"><![CDATA[service]]></prop>
+  <prop name="data"><![CDATA[Check_gdma_wmi_mem_get_mem[1]_Enable="ON"
+Check_gdma_wmi_mem_get_mem[1]_Service="gdma_wmi_mem"
+Check_gdma_wmi_mem_get_mem[1]_Command="cscript.exe //nologo //T:60 $Plugin_Directory$\v2\check_memory_percentage_space_used.vbs -h $Target_Host$ -inst _Total -t 80,90"
+
+#  Uncomment the Check_Interval directive to specify the check interval for this GDMA service. Or, use the 
+#  host external directive Default_Service_Check_Interval to set a default interval for any GDMA service that
+#  does not have a Check_Interval defined. 
+#Check_gdma_wmi_mem_get_mem[1]_Check_Interval="300"]]></prop>
+ </service_external>
+ <service_name>
+  <prop name="error"><![CDATA[Empty String (parse_xml)]]></prop>
+  <prop name="template"><![CDATA[gdma_wmi_all]]></prop>
+  <prop name="name"><![CDATA[gdma_wmi_mem]]></prop>
+  <prop name="check_command"><![CDATA[gdma_fresh]]></prop>
+  <prop name="service_external"><![CDATA[gdma_wmi_mem]]></prop>
+ </service_name>
+ <service_external>
+  <prop name="name"><![CDATA[gdma_wmi_memory_pages]]></prop>
+  <prop name="type"><![CDATA[service]]></prop>
+  <prop name="data"><![CDATA[Check_gdma_wmi_memory_pages_get_swapping[1]_Enable="ON"
+Check_gdma_wmi_memory_pages_get_swapping[1]_Service="gdma_wmi_memory_pages"
+Check_gdma_wmi_memory_pages_get_swapping[1]_Command="cscript.exe //nologo //T:60 $Plugin_Directory$\v2\check_counter_counter.vbs -h $Target_Host$ -class "Win32_PerfRawData_PerfOS_Memory" -inst "*" -prop "PagesPerSec" -w 15000 -c 20000"
+
+#  Uncomment the Check_Interval directive to specify the check interval for this GDMA service. Or, use the 
+#  host external directive Default_Service_Check_Interval to set a default interval for any GDMA service that
+#  does not have a Check_Interval defined. 
+#Check_gdma_wmi_memory_pages_get_swapping[1]_Check_Interval="300"]]></prop>
+ </service_external>
+ <service_name>
+  <prop name="error"><![CDATA[Empty String (parse_xml)]]></prop>
+  <prop name="template"><![CDATA[gdma_wmi_all]]></prop>
+  <prop name="name"><![CDATA[gdma_wmi_memory_pages]]></prop>
+  <prop name="check_command"><![CDATA[gdma_fresh]]></prop>
+  <prop name="service_external"><![CDATA[gdma_wmi_memory_pages]]></prop>
+ </service_name>
+ <host_external>
+  <prop name="name"><![CDATA[gdma-windows]]></prop>
+  <prop name="type"><![CDATA[host]]></prop>
+  <prop name="data"><![CDATA[### Start "gdma-windows" host externals ###
+
+# IP address of the GroundWork (GW) server - Primary
+Monitor_Server[1] = "192.168.1.100"
+
+# Port used by NSCA to send status to the GW server
+NSCA_Port = "5667"	
+
+# NSCA send program name on this system
+NSCA_Program = "c:\groundwork\winagent\send_nsca_win32_bin\send_nsca.exe -od "	
+
+# NSCA send configuration file
+NSCA_Configuration = "c:\groundwork\winagent\send_nsca_win32_bin\send_nsca.cfg"
+
+# Location of vbs gdma plugin scripts
+Plugin_Directory = "c:\groundwork\winagent\plugins"
+
+# Log file on local system used for debug.
+Output_Logdir = "c:\groundwork\winagent\logs"			
+
+# Spooling options
+# On/Off : on -> on,  off or not defined -> off
+Spooling = "on"
+
+# location and name of spool file
+Spool_File = "c:\groundwork\winagent\gmda.spool"  
+
+# Per-service check interval, for services which do not have one defined
+Default_Service_Check_Interval = "600"
+
+### End "gdma-windows" host externals ###]]></prop>
+ </host_external>
+ <host_profile>
+  <prop name="host_template"><![CDATA[gdma-windows-host]]></prop>
+  <prop name="name"><![CDATA[gdma-windows-base-os]]></prop>
+  <prop name="description"><![CDATA[GDMA Windows Base OS monitoring profile]]></prop>
+  <prop name="service_profile"><![CDATA[gdma-windows-base-os]]></prop>
+ </host_profile>
+</profile>

@@ -1,0 +1,450 @@
+<!--
+	Copyright (C) 2008 GroundWork Open Source, Inc. ("GroundWork")
+	All rights reserved. Use is subject to GroundWork commercial license terms.
+-->
+<!--
+	Top level build script for GroundWork Professional
+-->
+<project default="allBuild"
+         xmlns:j="jelly:core"
+         xmlns:maven="jelly:maven"
+         xmlns:ant="jelly:ant">
+
+	<goal name='allBuild' 
+		description="Moves all components packages for monitor-professional into the deplyoment folders">
+		
+		<attainGoal name="snmp" />
+<!--		<attainGoal name="prepare" />-->
+		<attainGoal name="apache" />
+		<attainGoal name="sqldata" />
+		<attainGoal name="logreports.build" />
+		<attainGoal name="foundation.build" />	
+	    <attainGoal name="profiles" />
+		<!-- New servlet based console -->
+		<!-- <attainGoal name="noc.build" /> -->
+	</goal>
+	
+	<goal name="allClean"
+	        description="Clean the master project and all subprojects">
+	    <attainGoal name="subClean" />
+	    <attainGoal name="clean" />
+		
+		<attainGoal name="logreports.clean" />
+		<attainGoal name="console.clean" />
+		<attainGoal name="foundation.clean" />
+		<!-- New servlet based console -->
+		<attainGoal name="noc.clean" />
+	  	
+		<!-- Deploy config file -->
+		<delete dir="${org.groundwork.deploy.prefix}/config/db.properties.pro" />
+		
+		<delete dir="${org.groundwork.deploy.prefix}/etc/snmp" />
+		<delete dir="${org.groundwork.deploy.prefix}/profiles" />
+		<delete dir="${org.groundwork.deploy.prefix}/tools" />
+	  
+	</goal>
+	
+	<goal name="deploy" 
+		description="Deploy build into deploy area" >
+		
+<!--		<attainGoal name="logreports.deploy" />
+		<attainGoal name="foundation.deploy" /> -->
+		<!-- New servlet based console -->
+		<!-- <attainGoal name="noc.deploy" /> -->
+		<!-- Enable Event broker in Professional -->
+		<attainGoal name="eventbroker.deploy" />
+		
+		<!-- Deploy config file -->
+<!--		<copy file="${basedir}/resources/db.properties" tofile="${org.groundwork.deploy.prefix}/config/db.properties.pro" overwrite="true" />
+		<delete file="${org.groundwork.deploy.prefix}/config/foundation.properties.pro" />
+		<copy file="${basedir}/../foundation/resources/foundation.properties" tofile="${org.groundwork.deploy.prefix}/config/foundation.properties.pro" overwrite="true" />
+-->
+		<!-- Advanced reports -->
+		<mkdir dir="${org.groundwork.report.directory}"/>
+		
+		<!-- Reports -->
+		<copy todir="${org.groundwork.report.directory}">
+			<fileset dir="${basedir}/../foundation/misc/web-application/reportserver/reports" includes="**/*" excludes="**/.svn" />
+		</copy>
+		
+		<!-- 6.0 Advanced Reports requires a configuration file in the report root directory -->
+		<copy todir="${org.groundwork.report.directory}">
+			<fileset dir="${basedir}/../monitor-portal/applications/reportserver/src/main/resources" includes="*.xml" excludes="**/.svn" />
+		</copy>
+		
+	</goal>
+		
+	<goal name="snmp"
+		description="Build snmp and updated config files" >
+
+		<!--COPY snmp boot script-->
+		<mkdir dir="${org.groundwork.deploy.prefix}/etc/snmp/mibs"/>
+
+		<exec dir="${basedir}/snmp/snmptt" executable="cp" >
+			<arg line="snmptt.ini ${org.groundwork.deploy.prefix}/etc/snmp"/>
+		</exec>
+
+		<exec dir="${basedir}/snmp" executable="cp" >
+			<arg line="snmpttd.init ${org.groundwork.deploy.prefix}/etc/snmp"/>
+		</exec>
+
+		<!--COPY config file -->
+		<exec dir="${basedir}/snmp" executable="cp" >
+			<arg line="snmptrapd.conf ${org.groundwork.deploy.prefix}/etc/snmp"/>
+		</exec>
+
+		<!--COPY snmpt mibs -->
+		<copy todir="${org.groundwork.deploy.prefix}/etc/snmp">
+			<fileset dir="${basedir}/snmp/mibs" includes="*"/>
+		</copy>
+		
+		<mkdir dir="${org.groundwork.deploy.prefix}/var/snmp"/>
+		
+		<!--COPY snmpt scripts -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/nagios/eventhandlers"/>
+		
+		<copy file="${basedir}/snmp/snmptt/gwprocesstrap.pl" tofile="${org.groundwork.deploy.prefix}/nagios/eventhandlers/gwprocesstrap.pl">
+		</copy>
+
+		<!-- PERMISSION -->
+		<exec dir="${org.groundwork.deploy.prefix}/nagios/eventhandlers" executable="chmod" >
+			<arg line="+x gwprocesstrap.pl"/>
+		</exec>
+
+		<!-- PERMISSION -->
+		<exec dir="${basedir}/snmp/snmptt" executable="chmod" >
+			<arg line="-R +x ./"/>
+		</exec>
+
+		<!--COPY snmpt scripts -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/sbin"/>
+		<copy file="${basedir}/snmp/snmptt/snmptthandler" tofile="${org.groundwork.deploy.prefix}/sbin/snmptthandler">
+		</copy>
+
+		<!-- PERMISSION -->
+		<exec dir="${basedir}/snmp/snmpconvert" executable="chmod" >
+			<arg line="-R +x ./"/>
+		</exec>
+
+		<!--COPY snmpt scripts -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/bin"/>
+		<copy todir="${org.groundwork.deploy.prefix}/bin">
+			<fileset dir="${basedir}/snmp/snmpconvert" includes="*"/>
+		</copy>
+
+		<!--COPY snmpt scripts -->
+		<copy todir="${org.groundwork.deploy.prefix}/sbin">
+			<fileset dir="${basedir}/snmp/snmptt" includes="snmptt"/>
+		</copy>
+
+		<!--COPY snmpt scripts -->
+		<exec dir="${org.groundwork.deploy.prefix}/bin" executable="chmod" >
+			<arg line="-R +x ./"/>
+		</exec>
+		<exec dir="${org.groundwork.deploy.prefix}/sbin" executable="chmod" >
+			<arg line="-R +x ./"/>
+		</exec>
+
+		<!-- set up directories for mibtool -->
+		<mkdir dir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/snmp/mibtool"/>
+		<mkdir dir="${org.groundwork.deploy.prefix}/apache2/htdocs/snmp/mibtool/css"/>
+		<mkdir dir="${org.groundwork.deploy.prefix}/apache2/htdocs/snmp/mibtool/js/yui"/>
+		<mkdir dir="${org.groundwork.deploy.prefix}/tmp/snmp/mibtool"/>
+		<mkdir dir="${org.groundwork.deploy.prefix}/tools/snmp/lib/MIB"/>
+		<mkdir dir="${org.groundwork.deploy.prefix}/tools/snmp/mibtool/tmpl"/>
+
+		<!-- PERMISSION -->
+		<exec dir="${org.groundwork.deploy.prefix}/tmp/snmp/mibtool" executable="chmod" >
+			<arg line="-R 777 ./"/>
+		</exec>
+		
+		<!--COPY mibtool cgi script-->
+		<copy file="${basedir}/snmp/mibtool/index.cgi" tofile="${org.groundwork.deploy.prefix}/apache2/cgi-bin/snmp/mibtool/index.cgi">
+		</copy>
+
+		<!--COPY profiles cgi script-->
+		<copy todir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/profiles">
+			<fileset dir="${basedir}/profiles/profile_tools" includes="*.pl"/>
+		</copy>
+
+		<!-- PERMISSION -->
+		<exec dir="${org.groundwork.deploy.prefix}/apache2/cgi-bin/snmp/mibtool" executable="chmod" >
+			<arg line="+x index.cgi"/>
+		</exec>
+		  
+		<!--COPY mibtool JavaScript files-->
+		<copy todir="${org.groundwork.deploy.prefix}/apache2/htdocs/snmp/mibtool/js">
+			<fileset dir="${basedir}/snmp/mibtool/js" includes="*.js"/>
+		</copy>
+		<copy todir="${org.groundwork.deploy.prefix}/apache2/htdocs/snmp/mibtool/js/yui">
+			<fileset dir="${basedir}/snmp/mibtool/js/yui" includes="*.js"/>
+		</copy>
+
+		<!--COPY mibtool CSS files-->
+		<copy todir="${org.groundwork.deploy.prefix}/apache2/htdocs/snmp/mibtool/css">
+			<fileset dir="${basedir}/snmp/mibtool/css" includes="*.css"/>
+		</copy>
+
+		<!--COPY mibtool .pm file(s)-->
+		<copy todir="${org.groundwork.deploy.prefix}/tools/snmp/lib/MIB">
+			<fileset dir="${basedir}/snmp/mibtool/lib/MIB" includes="*.pm"/>
+		</copy>
+
+		<!--COPY mibtool template file(s)-->
+		<copy todir="${org.groundwork.deploy.prefix}/tools/snmp/mibtool/tmpl">
+			<fileset dir="${basedir}/snmp/mibtool/tmpl" includes="*.tmpl"/>
+		</copy>
+
+	</goal>
+		
+	<goal name="apache" 
+		description="Update the Apache configuration so that it matches the Monitor-Professinal Layout" >
+		
+		<!-- Copy the correct config file into the Apache distribution -->
+		<delete file="${org.groundwork.deploy.prefix}/apache2/conf/httpd.conf"/>
+		<copy todir="${org.groundwork.deploy.prefix}/apache2/conf" file="${basedir}/apache/httpd.conf" overwite="true" />
+		<exec dir="${org.groundwork.deploy.prefix}/apache2/conf" executable="mv" >
+		      <arg line="httpd.conf httpd.conf.pro"/>
+		    </exec>
+
+		
+	</goal>
+		<goal name="prepare" 
+				description="Generates spec file for Monitor-PRO">
+			<!-- RPM build script -->
+			<copy file="${basedir}/../../groundwork-monitor/build/buildRPM.sh"   todir="spec" overwrite="true">
+	          <filterset begintoken="@" endtoken="@">
+	            <filter token="DEPENDENCY"     value="${org.groundwork.rpm.dependencies}"/>
+	             <filter token="RELEASE_NUMBER"   value="${org.groundwork.rpm.release.number}"/>
+	             <filter token="PREFIX"   value="${org.groundwork.deploy.prefix}"/>
+	          	 <filter token="PACKAGE_NAME" value="${org.groundwork.rpm.package.name}" />
+	          	 <filter token="PACKAGE_VERSION"   value="${org.groundwork.rpm.package.version}"/>
+				 <filter token="EXPORT_FILELIST"   value="${org.groundwork.rpm.filelist}"/>
+	          	 <filter token="SPEC_FILE_NAME" value="${org.groundwork.rpm.specfile}" />
+	          	<filter token="RPM_ROOT" value="/" />
+	          </filterset>
+	       </copy>
+
+			<!-- Spec file -->
+			<copy file="${basedir}/resources/${org.groundwork.rpm.specfile}"   todir="spec" overwrite="true">
+	          <filterset begintoken="@" endtoken="@">
+	             <filter token="DEPENDENCY"     value="${org.groundwork.rpm.dependencies}"/>
+	             <filter token="RELEASE_NUMBER"   value="${org.groundwork.rpm.release.number}"/>
+	             <filter token="PREFIX"   value="${org.groundwork.deploy.prefix}"/>
+	          	 <filter token="PACKAGE_NAME" value="${org.groundwork.rpm.package.name}" />
+	          	 <filter token="PACKAGE_VERSION"   value="${org.groundwork.rpm.package.version}"/>
+				 <filter token="EXPORT_FILELIST"   value="${org.groundwork.rpm.filelist}"/>
+	          	 <filter token="SPEC_FILE_NAME" value="${org.groundwork.rpm.specfile}" />
+	          </filterset>
+	       </copy>
+				
+		</goal>  
+	
+	<!-- Build console files -->
+	<goal name="console" 
+			description="Build console Monitor-PRO">
+	</goal>
+	
+	
+	
+	<!-- Log Reporting -->
+	<!-- Deploy log reports files -->
+	<goal name="logreports.build" 
+			description="Deploy log reports for Monitor-PRO">
+		
+		<maven:reactor
+		               basedir="${basedir}/log-reporting"
+		               includes="project.xml"
+		               goals="allBuild"
+		               banner="Building"
+		               ignoreFailures="false"/>
+	</goal>
+
+	<!-- Deploy log reports files -->
+	<goal name="logreports.deploy" 
+			description="Deploy log reports for Monitor-PRO">
+		
+		<maven:reactor
+				               basedir="${basedir}/log-reporting"
+				               includes="project.xml"
+				               goals="allDeploy"
+				               banner="Deploying"
+				               ignoreFailures="false"/>
+		
+	</goal>
+	
+	<!-- Clean log reports files -->
+	<goal name="logreports.clean" 
+			description="Clean log reports for Monitor-PRO">
+		
+		<maven:reactor
+				               basedir="${basedir}/log-reporting"
+				               includes="project.xml"
+				               goals="allClean"
+				               banner="Cleaning"
+				               ignoreFailures="false"/>
+	</goal>
+
+  	  	<goal name="sqldata"
+            description="Deploy Professional Databases">
+       
+  	  		<mkdir dir="${org.groundwork.deploy.prefix}/databases"/>
+
+            <copy todir="${org.groundwork.deploy.prefix}/databases">
+                    <fileset dir="${basedir}/sqldata">
+                            <include name="create-monitor-professional-db.sql"/>
+                            <include name="dashboard.sql"/>
+                    	    <include name="my-large.cnf"/>
+                    </fileset>
+            </copy>
+  	  		
+  			<!-- Database updates for SNMP and Syslog -->
+<!--  			   <copy todir="" file="${basedir}/database/foundation-pro-extension.sql" overwrite="true" /> -->
+  			<copy todir="${com.groundwork.database.scripts}">
+  					    <fileset dir="${basedir}/../foundation/collage/database/seed">
+  					      <include name="**/*.sql"/>
+  					      <exclude name="*/.svn" />
+  					    </fileset>
+  				</copy>
+    	</goal>
+
+
+	<!-- Build/Deploy foundation files for Professional build -->
+		<goal name="foundation.build" 
+				description="Build Foundation Monitor-PRO component">
+			
+			<!-- Cleanup -->
+			<delete dir="${org.groundwork.deploy.prefix}/services/feeder-nagios-log" />
+			<delete file="${org.groundwork.deploy.prefix}/etc/nagios-event-feeder" />
+			
+			<!-- Nagios console feeder -->
+			<copy todir="${org.groundwork.deploy.prefix}/etc" file="${basedir}/syslib/nagios-event-feeder" overwite="true" />
+		</goal>
+		
+		<goal name="foundation.clean" 
+				description="Clean foundation for Monitor-PRO components">
+			
+			<delete dir="${org.groundwork.deploy.prefix}/services/feeder-nagios-log" />
+			<delete file="${org.groundwork.deploy.prefix}/config/adapter.properties" />
+
+		</goal>
+	
+		
+		<goal name="foundation.deploy" 
+				description="Deploy Foundation for Monitor-PRO">
+				
+			<!-- Extended Adapter for Log Messages -->
+			<delete file="${org.groundwork.deploy.prefix}/foundation/feeder/nagios2master.pl"/>
+			<mkdir dir="${org.groundwork.deploy.prefix}/foundation/feeder"/>
+			<copy todir="${org.groundwork.deploy.prefix}/foundation/feeder">
+				<fileset dir="${basedir}/../foundation/collagefeeder/scripts">
+					<include name="nagios2master.pl"/>
+					<exclude name="*/.svn" />
+				</fileset>
+			</copy>
+			
+			<copy file="${basedir}/../foundation/collagefeeder/scripts/nagios2collage_eventlog.pl"   todir="${org.groundwork.deploy.prefix}/foundation/feeder" overwrite="true">
+					          <filterset begintoken="@" endtoken="@">
+					             <filter token="PERL_DIR"     value="${org.groundwork.perl.dir}"/>
+					             <filter token="NAGIOS_VAR"   value="${org.groundwork.nagios.var}"/>
+					             <filter token="NAGIOS_NAGIOS_LOG"   value="${org.groundwork.nagios.nagios}"/>
+					          	 <filter token="FEEDER_LOG" value="${org.groundwork.feeder.log}" />
+					          </filterset>
+			</copy>
+			
+			<!-- Extended Adapter for Log Messages -->
+			<delete file="${org.groundwork.deploy.prefix}/config/adapter.properties"/>
+			<copy todir="${org.groundwork.deploy.prefix}/config">
+			    <fileset dir="${basedir}/../foundation/resources">
+			      <include name="adapter.properties"/>
+			      <exclude name="*/.svn" />
+			    </fileset>
+			</copy>
+			
+			<!-- SNMPTRAP SYSLOG Reset script copy -->
+			<mkdir dir="${org.groundwork.deploy.prefix}/foundation/scripts"/>
+			<copy todir="${org.groundwork.deploy.prefix}/foundation/scripts">
+				<fileset dir="${basedir}/../foundation/resources">
+					<include name="reset_passive_check.sh"/>
+					<exclude name="*/.svn" />
+				</fileset>
+			</copy>
+	                 
+		</goal>
+
+	<!-- GroundWork profiles -->
+	<goal name="profiles"
+		description="GroundWork profiles and tools" >
+		
+		<maven:reactor
+			          basedir="${basedir}/profiles"
+			          includes="project.xml"
+			          goals="allDeploy"
+			          banner="Deploys Tools "
+			          postProcessing="false"
+			          ignoreFailures="false"/>
+		
+		<maven:reactor
+			          basedir="${basedir}/tools"
+			          includes="project.xml"
+			          goals="allDeploy"
+			          banner="Deploys Tools "
+			          postProcessing="false"
+			          ignoreFailures="false"/>
+	</goal>
+	
+	<goal name="noc.build" 
+				description="Build servlet based NOC console">
+			
+			<maven:reactor
+			               basedir="${basedir}/../foundation/misc/web-application/console"
+			               includes="project.xml"
+			               goals="build"
+			               banner="Building NOC"
+			               ignoreFailures="false"/>
+		</goal>
+	
+	<goal name="noc.clean" 
+					description="Cleaning up servlet based NOC console">
+		
+				<maven:reactor
+				               basedir="${basedir}/../foundation/misc/web-application/console"
+				               includes="project.xml"
+				               goals="allClean"
+				               banner="Cleaning NOC"
+				               ignoreFailures="false"/>
+			</goal>
+	
+	<goal name="noc.deploy" 
+					description="Build servlet based NOC console">
+		
+				<maven:reactor
+				               basedir="${basedir}/../foundation/misc/web-application/console"
+				               includes="project.xml"
+				               goals="deploy"
+				               banner="Deploying NOC"
+				               ignoreFailures="false"/>
+				
+				<!-- Add the console properties file to build -->
+				<copy todir="${org.groundwork.deploy.prefix}/config" file="${basedir}/../foundation/misc/web-application/console/src/java/console.properties" overwrite="true" />
+				<copy todir="${org.groundwork.deploy.prefix}/config" file="${basedir}/../foundation/misc/web-application/console/src/java/console-admin-config.xml" overwrite="true" />
+				<mkdir dir="${org.groundwork.deploy.prefix}/config/resources"/>	
+				<copy todir="${org.groundwork.deploy.prefix}/config/resources" file="${basedir}/../foundation/misc/web-application/console/src/java/messages_en.properties" overwrite="true" />
+				<copy todir="${org.groundwork.deploy.prefix}/config/resources" file="${basedir}/../foundation/misc/web-application/console/src/java/messages_fr.properties" overwrite="true" />
+	</goal>
+	
+	<goal name="eventbroker.deploy"
+				description="Deploy al filrs necessary for the Event Broker install" >
+			
+			<!-- Copy the Event Broker configuration files None for 5.2 - default it's configured out of the box-->
+		
+		    <!-- Database update for Monarch -->
+		     <copy todir="${org.groundwork.deploy.prefix}/databases" file="${basedir}/database/monarch-event-broker.sql" overwrite="true" />
+
+			<!-- Nagios bootstrap without NSCA -->
+			<copy todir="${org.groundwork.deploy.prefix}/nagios/etc" file="${basedir}/nagios/nagios.initd.pro" overwrite="true" />
+						
+		</goal>
+
+	
+</project>

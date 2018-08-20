@@ -1,0 +1,256 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="en">
+  <head>
+<title>Defining Groups</title>
+<link rel="stylesheet" type="text/css" href="/monarch/groundwork.css"/>
+  </head>
+  <body>
+<!-- Start Main table-->
+<table class="main" border="0" cellpadding="1" cellspacing="0">
+  <tbody>
+  <tr>
+    <td valign="top"><h1 class="chapter"> <img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> Advanced Configuration - Defining Groups</h1>
+    <h4>Copyright 2006 GroundWork Open Source, Inc. ("GroundWork").<br />
+    All rights reserved. Use is subject to GroundWork commercial license.</h4>
+<!-- Start Main Contents -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+  <tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader">Contents</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- TOC -->
+    <ul class="level01">
+      <li><a href="#s5chapter11a">How Do I Define and Manage Groups?</a>
+      <ul class="level02">
+        <li><a href="#s5chapter11a1">New Group</a></li>
+        <li><a href="#s5chapter11a2">Manage Group - Detail</a></li>
+        <li><a href="#s5chapter11a3">Manage Group - Host Assignment</a></li>
+        <li><a href="#s5chapter11a4">Manage Group - Sub Groups</a></li>
+        <li><a href="#s5chapter11a5">Manage Group - Macros</a>
+        <ul class="level03">
+          <li><a href="#s5chapter11b1">Step 1 - Commands</a></li>
+          <li><a href="#s5chapter11b2">Step 2 - Services</a></li>
+          <li><a href="#s5chapter11b3">Step 3 - Service to Host Assignment</a></li>
+          <li><a href="#s5chapter11b4">Step 4 - Add Macro</a></li>
+          <li><a href="#s5chapter11b5">Step 5 - New Group, Assign Host Group, Set Macros</a></li>
+          <li><a href="#s5chapter11b6">Step 6 - Export</a></li>
+        </ul></li>
+      </ul></li>
+    </ul> 
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Section 1 -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+<tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader"><a name="section1"></a>Defining Groups</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- How Do I Use Define a new Group -->
+    <a name="s5chapter11a"></a><h1 class="chapter"> <img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> How Do I Define and Manage Groups?</h1>
+<hr />
+    <a name="s5chapter11a1"></a><h1 class="wMargins">New Group</h1>
+    <ol>
+      <li>Select <b>Groups</b> from the Configuration menu options.</li>
+      <li>Select <b>New</b>.</li>
+      <li>The <b>New Group</b> screen will be displayed.</li>
+      <li>Enter a Group <b>Name</b>. As Hosts are assigned to Groups they will be found in files named <code class="bookshelfcode">&#60;group_name&#62;_hosts.cfg</code> and their Services will be found in <code class="bookshelfcode">&#60;group_name&#62;_services.cfg</code>. Group names must therefore conform to file naming standards.</li>
+      <li>Select <b>Add</b> to go to the next screen, <b>Manage Group</b>. 
+    <h4>Figure 5.11.1a. New Group</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    <a name="s5chapter11a2"></a><h1 class="wMargins">Manage Group - Detail</h1>
+    <ol>
+      <li>In the <b>Detail</b> tab, enter the properties (see <b>Table 5.11.1b.</b> below).</li>
+      <li>Select <b>Save</b> to add the new Group. <b>Delete</b> will remove the Group. Select <b>Rename</b> to change the name of the current Group. The <b>Close</b> option exits the Manage Group screen without saving.
+    <h4>Figure 5.11.2a. Detail</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1b.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+    <h4>Table 5.11.1b. Detail</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>Group name.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Description</b></td>
+    <td>[Optional] Store comments or instructions here.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Contact Groups</b></td>
+    <td>Contact Groups assigned to Groups provide the default Contact Group for Hosts and Services where no Contact Group has been defined at the Host Group, Host, or Service levels. With Nagios&#174;, Contact Groups are assigned separately to Hosts and to Services or Host Groups. GroundWork still allows the Nagios&#174; 1.2 method of assigning Contact Groups to Host Groups. Even when they share the same Contact Group it still requires administration at two points. Setting the Contact Group on a Group eliminates this redundancy.<br /><br />
+    <b>Note</b>: Contact Groups defined on a Group WILL OVERRIDE the Contact Groups defined on Host Templates and Service Templates. Also, Contact Groups assigned to Child Sub Groups will in turn override Contact Groups on a Parent Group.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Group Status</b></td>
+    <td>Setting the Group to inactive will remove the member Hosts and their Services from the Nagios&#174; GUI's and place them in the _Inactive Host Group in Status Viewer (GroundWork Monitor), while preserving their configurations. Hosts can be reinstated by simply removing them from the Group with the inactive setting, or removing the inactive setting for the Group.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Multiple Instances - <br />Build Instance Properties:<br />Build Folder</b></td>
+    <td>Multiple Instances - Groups provide the means to centrally administer Multiple instances of Nagios&#174;. Each instance is a Group and a Group can be a Parent to a Group of Child Sub Groups. Note that with each Group, the left tree navigation provides links to its own Nagios&#174; CGI configuration, its own main Nagios&#174; configuration and its own set of Nagios&#174; resource Macros. GroundWork does not at this time officially sanction a method of deployment. The Build Instance option will generate the appropriate set of files for the instance in the writable folder specified, and then call the deployment module MonarchDeploy.pm. There is also the option to simply export these files.<br /><br />
+    <b>Tree Menus</b><br /><br />
+    <ul class="level01">
+      <li><b>Nagios&#174; CGI</b> - Use this option to configure this instance’s Nagios&#174; CGI configuration.</li>
+      <li><b>Nagios&#174; CGG</b> - Use this option to configure this instance’s main Nagios&#174; configuration.</li>
+      <li><b>Resource CFG</b> - Use this option to configure this instance’s Nagios&#174; resource macros.</li>
+      <li><b>Pre flight test</b> - This option does a Nagios&#174; pre flight test (nagios –v) of the group or instance.</li>
+      <li><b>Build instance and Deployment</b> - Use this option to generate the Nagios&#174; configuration files for this instance, and to call the Deployment module.<br />
+      You will find the MonarchDeploy.pm module in the monarch/lib folder of your installation (Note: if you are using the stand alone version this is the installation path /lib). The module is called from the Build instance option under the group, and left unmodified is does nothing. There are some sample subroutines in the module with documentation. You will likely need at least some Perl skills to implement an automated deployment, but you might also simply call a shell script.</li>
+      <li><b>Export</b> - This option generates a downloadable set of Nagios&#174; configuration files for thei instance.</li>
+    </ul>
+    Build Instance Properties; these are located on the Detail tab of Manage Group and include the following Build Folder, Nagios&#174; etc Folder, Force Hosts, and Force Checks. If you are not administering Multiple Instances of Nagios&#174; ignore these properties. They are not necessary to run a pre-flight check against a Group.<br /><br />
+    Build Folder - This is a web account (nobody on GroundWork installations) writable folder used to stage builds. When Build instance is executed, this is the folder where the Nagios&#174; files are written. Enter the web service writeable folder for this distribution. An incorrect entry or a folder with the incorrect permissions will cause the build instance to fail.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Nagios&#174; etc Folder</b></td>
+    <td>This is the folder on the target Nagios&#174; Host where the configuration files reside. The <code class="bookshelfcode">nagios.cfg</code> file will be built using this path. Enter the path of the Nagios&#174; configuration folder on the target Host. The value here will only be used to generate the <code class="bookshelfcode">nagios.cfg</code> file, but it should reflect the actual location on the target Host where the Nagios&#174; object configuration files will reside.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Force Hosts</b></td>
+    <td>Select this option to dictate the list of Hosts to be included in this instance. This option will override the Sub Group Host lists while still applying the Macros from those Groups where common members reside.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Force Checks</b></td>
+    <td>Use this option to override the values set on Hosts, Services and their Templates. Typically, in a multi-instance Nagios&#174; implementation, the Parent monitoring Host runs with Passive Checks while the Child monitoring Hosts run with Active Checks. Depending on how your Hosts are currently configured, enable Force Checks and select the appropriate Active/Passive option.</td>
+  </tr>
+</tbody>
+</table>
+      </li>
+    </ol>
+    <a name="s5chapter11a3"></a><h1 class="wMargins">Manage Group - Host Assignment</h1>
+    <p>Hosts and Services are written to Nagios&#174; configuration files based on Group Names. By default all Hosts are written to <code class="bookshelfcode">hosts.cfg</code> and all Services are written to <code class="bookshelfcode">services.cfg</code>. As previously mentioned, as Hosts are assigned to Groups they will be found in files named <code class="bookshelfcode">&#60;group_name&#62;_hosts.cfg</code> and their Services will be found in <code class="bookshelfcode">&#60;group_name&#62;_services.cfg</code>. Group names must therefore conform to file naming standards.</p>
+    <p>If you are using Groups to distribute Hosts and Services into different Nagios&#174; configuration files you will want to use Host Groups where Host members don’t overlap, or add Hosts individually to each Group. The draw back to the latter option is that with each new Host you will need to assign it manually to a Group, whereas Host assignment with Host Groups is automatic (e.g. When the Host is assigned to the Host Group). Where Host membership overlaps one or many Groups, the Host is assigned to the file of the last Group read. Groups are read in dictionary sorted order.</p>
+    <ol>
+      <li>In the <b>Hosts</b> tab, check a box for Host Assignment by <b>Hosts</b> individually or by <b>Host Group</b>. The preferred method is to assign Host Groups as new Hosts will be included here when they are assigned to the Host Group.
+    <h4>Figure 5.11.3a. Host Assignment</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1c.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /></li>
+    </ol>
+    <a name="s5chapter11a4"></a><h1 class="wMargins">Manage Groups - Sub Groups</h1>
+    <p>Sub Groups are useful only in special circumstances, in particular to build multiple instances of Nagios&#174;. Should one find the need for them bear in mind that Hosts and Services will be assigned to the file of last dictionary sorted Child Group in which they are found. Conversely, where Macros overlap the value is taken from the first dictionary sorted Parent Group. In other words, once a match has been made and the Macro replaced, it will no longer be recognized as a Macro when subsequent Groups are processed.</p>
+    <ol>
+      <li>In the <b>Sub Groups</b> tab, select from the bottom list of existing Groups and select <b>Add Group(s)</b> to assign Groups. Select from the top list and select <b>Remove</b> to un-assign Groups.
+    <h4>Figure 5.11.4a. Sub Groups</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1d.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    <a name="s5chapter11a5"></a><h1 class="wMargins">Manage Groups - Macros</h1>
+    <p>The following steps and figures will walk you through an example of a Service Check that is performed through multiple proxies (WMI proxies in our example).</p>
+    <a name="s5chapter11b1"></a><h2>Step 1 - Commands</h2>
+    <ol>
+      <li>Group Macros extend the Nagios&#174; <code class="bookshelfcode">$ARG#$</code> Macros on Service Checks. The next two screens show how the Macro <b>%PROXY%</b> extends the definitions from the Command syntax through the Service Check.
+    <h4>Figure 5.11.5a. Command Properties</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1e.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    <a name="s5chapter11b2"></a><h2>Step 2 - Services</h2>
+    <ol>
+      <li>By creating a Service and using a Macro in place of the Proxy argument, you can apply the Service to multiple Hosts and each Host will inherit the value from the Group to which it is assigned. Normally you would assign real values to Command arguments in Service Checks. Group Macros allow you to set and manage these values at the Group level.</li>
+      <li>Here we replace the previous Command line with Macros with the Group Macro<b>%PROXY%</b>.</li>
+      <li>For our example, you will need to create Host Groups; <b>Windows HostGroup1</b> and <b>Windows HostGroup2</b> with Hosts <b>Windows1</b> and <b>Windows2</b> assigned, respectively.
+    <h4>Figure 5.11.5b. Service Check</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1f.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    <a name="s5chapter11b3"></a><h2>Step 3 - Service to Host Assignment</h2>
+    <ol>
+      <li>In the Service tab of Manage Host you can add, modify, and remove Services for the current Host. <b>Note</b>: Managing Services from this page will in all likelihood put the Host out of sync with its Service Profiles. After making changes, use caution when applying Profiles to this Host. Continuing with our Proxy example we add the Service <b>wmi_exchange_mailbox_sendq</b> to the Hosts <b>Windows1</b> and <b>Windows2</b>.
+    <h4>Figure 5.11.5c. Service to Host Assignment</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1g.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+    <h4>Figure 5.11.5d. Service to Host Assignment</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1g2.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    <a name="s5chapter11b4"></a><h2>Step 4 - Add Macro</h2>
+    <ol>
+      <li>Here we will create our Group Macro <b>%PROXY%</b>. Enter a <b>Name</b>, <b>Description</b>, and <b>Value</b> for the Macro, then select <b>Add New Macro</b>.<br /><br />
+      <b>Note</b>: Great care needs to be taken in Macro names. Do not use any names from the list of Nagios&#174; macros for instance. Use names that are unique and not likely in the least to match some other part of the Check Command string. For example, a naming scheme that uses a special character such as <code class="bookshelfcode">%</code> in the prefix and suffix of the name will likely maintain uniqueness, so a proxy Macro might be named <code class="bookshelfcode">%PROXY%</code>. It is not a good idea to use <code class="bookshelfcode">$</code> as that is the special character Nagios&#174; uses in Macros.
+    <h4>Figure 5.11.5e. Add Macro</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1h.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    <a name="s5chapter11b5"></a><h2>Step 5 - New Group, Assign Host Group, Set Macros (Group 1: Windows_WMI_Proxy1)</h2>
+    <h3>New Group (Group 1: Windows_WMI_Proxy1)</h3>
+    <p>In the next set of steps we will create our new Groups (<b>Windows_WMI_Proxy1</b> and <b>Windows_WMI_Proxy2</b>), assign a Host Group to our Groups (<b>Windows1_HostGroup</b> and <b>Windows2_HostGroup</b>), and set the <b>%PROXY% Macro</b> to each Group.</p>
+    <ol>
+      <li>Select <b>Groups</b> from the Configuration menu options.</li>
+      <li>Select <b>New</b>.</li>
+      <li>The <b>New Group</b> screen will be displayed.</li>
+      <li>Enter the Group <b>Windows_WMI_Proxy1</b>.</li>
+      <li>Select <b>Add</b> to go to the next screen, <b>Manage Group</b>.
+    <h4>Figure 5.11.5f. New Group Windows_WMI_Proxy1</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1i.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    <h3>Assign Host Group (Host Group 1: Windows1_HostGroup)</h3>
+    <ol>
+      <li>Select the <b>Hosts</b> tab.</li>
+      <li>Select <b>Windows1_HostGroup</b> from the list of Host Groups at the bottom of the screen.</li>
+      <li>Select <b>Add HostGroup(s)</b>, you will see the Group now listed at the top of the screen.</li>
+      <li>Continue with <b>Set Macros</b> below.
+    <h4>Figure 5.11.5g. Host Assignment</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1j.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    <h3>Set Macros (Group 1: Windows_WMI_Proxy1)</h3>
+    <ol>
+      <li>Select the %PROXY% Macro from the list at the bottom of the screen and click <b>Add Macro(s)</b> to assign it to the Window_WMI_Proxy1 Group.</li>
+      <li>Adjust the values as needed and select <b>Save</b> to apply it to the Group. Well keep the value <b>172.28.113.201</b>.</li>
+      <li>To use the Label option you must select <b>Enable label</b> and enter a value, then click <b>Save</b> to apply it to the Group. The value is appended to the Service description on Services where the Macro is found, so we suggest using an underscore as the first character.<br /><br />
+      <b>Note</b>: The <b>Enable Label</b> option can be useful where there is a need for redundant Checks. To illustrate, using our Proxy example, it may be beneficial to run the Checks through a second proxy as a failover measure. Using this option eliminates the necessity of creating a second set of Services. By assigning the a Host to two Groups, each with the %PROXY% Macro but assigned different values, enabling the label option and assigning a value will generate a second set of Checks on Services where the %PROXY% Macro is found. The Label is appended to the Service description on the second set of Checks, so we suggest using an underscore at the start of the Label value.</li>
+      <li>Repeat the last three steps for the second Group starting with <b>New Group (Group2: Windows_WMI_Proxy2)</b> below.
+    <h4>Figure 5.11.5h. Set Macro</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1k.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    <h3>New Group (Group 2: Windows_WMI_Proxy2)</h3>
+    <ol>
+      <li>Create the Group <b>Windows_WMI_Proxy2</b>.
+    <h4>Figure 5.11.5i. New Group Windows_WMI_Proxy2</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1k2.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    <h3>Assign Host Group (Host Group 2: Windows2_HostGroup)</h3>
+    <ol>
+      <li>Assign the Host Group <b>Windows1_HostGroup</b> to the Group <b>Windows_WMI_Proxy2</b>.
+    <h4>Figure 5.11.5j. Host Assignment</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1l.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    <h3>Set Macros (Group 2: Windows_WMI_Proxy2)</h3>
+    <ol>
+      <li>Assign the <b>%PROXY%</b> Macro to the <b>Window_WMI_Proxy2</b> Group.</li>
+      <li>Adjust the values as needed and select <b>Save</b> to apply it to the Group. Well change the value to <b>172.28.113.202</b>.</li>
+    <h4>Figure 5.11.5k. Set Macros</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1m.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    <a name="s5chapter11b6"></a><h2>Step 6 - Export</h2>
+    <h3>Tools Export (Group 1: Windows_WMI_Proxy1_services.cfg)</h3>
+    <p>Macro values are substituted during a Pre flight test, Commit, and Export; in each case, Nagios&#174; reads them from the files that have been generated. Group Macros are virtually unlimited but unlike Nagios&#174; Macros, they can only be used on Service Checks and not in Command definitions.</p>
+    <h4>Figure 5.11.5l. Windows_WMI_Proxy1_services.cfg</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1n.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+    <h3>Tools Export (Group 2: Windows_WMI_Proxy2_services.cfg)</h3>
+    <h4>Figure 5.11.5m. Windows_WMI_Proxy2_services.cfg</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter11_1o.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+
+<!-- End -->
+</tbody>
+</table>
+  </body>
+</html>

@@ -1,0 +1,35 @@
+#!/bin/tcsh -ef
+
+if ( $#argv < 3) then
+    echo "usage:  convert_pathname from_path to_path [from_path to_path] ... -- file ..."
+    exit 1
+endif
+
+set patterns = ()
+
+while ( $#argv >= 2 && $argv[1] != "--" && $argv[2] != "--" )
+    set from_path = "$1"
+    set to_path   = "$2"
+    shift
+    shift
+    set patterns = ( $patterns -e "s#$from_path#$to_path#g" )
+end
+
+# Drop the "--"
+if ( $argv[1] == "--" ) then
+    shift
+else
+    echo "usage:  convert_pathname from_path to_path [from_path to_path] ... -- file ..."
+    exit 1
+endif
+
+foreach file ($*)
+    # Convert only plain files, not symlinks or other artifacts.
+    if ( -f $file ) then
+	# First copy all the permission bits ...
+        cp -p $file ,$file
+	# ... then copy and convert the file contents.
+	sed $patterns $file > ,$file
+	mv ,$file $file
+    endif
+end

@@ -1,0 +1,40 @@
+#!/bin/bash -e
+
+# make_backup_obj
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+PATH=/bin:/usr/bin
+
+print_usage() {
+    echo "usage:  make_backup_obj {shadow_path}"
+}
+
+if [ $# -ne 1 ]; then
+    print_usage
+    exit 1
+fi
+
+shadow_path="$1"
+
+if [[ ! ("$shadow_path" =~ '/shadow$') ]]; then
+    echo 'ERROR:  shadow_path must end in "/shadow"'
+    exit 1
+fi
+
+# Note:  We don't do the move conditionally depending on whether the
+# $shadow_path already exists, because we want this script to fail (and
+# thereby let us know the backup was not really made) if it does not.
+
+# I wish there was a do...while construct in the shell.
+datetime=`/bin/date +%F.%H_%M_%S`
+# Avoid unexpected but maybe possible collisions.
+while [ -d $shadow_path/../$datetime ]
+do
+    sleep 2
+    datetime=`/bin/date +%F.%H_%M_%S`
+done
+
+mv $shadow_path $shadow_path/../$datetime
+mkdir $shadow_path

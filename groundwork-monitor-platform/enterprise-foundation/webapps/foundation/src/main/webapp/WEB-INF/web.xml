@@ -1,0 +1,281 @@
+<!-- <?xml version="1.0" encoding="ISO-8859-1"?>
+Collage - The ultimate data integration framework. Copyright (C) 2004-2007 
+	GroundWork Open Source Solutions info@groundworkopensource.com This program 
+	is free software; you can redistribute it and/or modify it under the terms 
+	of version 2 of the GNU General Public License as published by the Free Software 
+	Foundation. This program is distributed in the hope that it will be useful, 
+	but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+	or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for 
+	more details. You should have received a copy of the GNU General Public License 
+	along with this program; if not, write to the Free Software Foundation, Inc., 
+	51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+<!DOCTYPE web-app
+  PUBLIC "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+  "http://java.sun.com/dtd/web-app_2_3.dtd">
+ -->
+<web-app id="foundation-webapp" version="3.0" xmlns="http://java.sun.com/xml/ns/javaee"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
+	<display-name>Foundation Enterprise</display-name>
+	<context-param>
+      <param-name>org.jboss.jbossfaces.JSF_CONFIG_NAME</param-name>
+      <param-value>Mojarra-1.2</param-value>
+ 	</context-param>
+	<context-param>
+		<param-name>javax.faces.STATE_SAVING_METHOD</param-name>
+		<param-value>server</param-value>
+	</context-param>
+	<context-param>
+		<param-name>javax.faces.DEFAULT_SUFFIX</param-name>
+		<param-value>.jspx</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.debugDOMUpdate</param-name>
+		<param-value>false</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.concurrentDOMViews</param-name>
+		<param-value>true</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.synchronousUpdate</param-name>
+		<param-value>true</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.uploadDirectoryAbsolute</param-name>
+		<param-value>true</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.uploadMaxFileSize</param-name>
+		<param-value>16384000</param-value>
+	</context-param>
+	<context-param>
+		<param-name>com.icesoft.faces.blockingConnectionTimeout</param-name>
+		<param-value>120000</param-value>
+	</context-param>
+
+	 <listener>
+		<listener-class>org.apache.axis.transport.http.AxisHTTPSessionListener</listener-class>
+	</listener>
+	<listener>
+		<listener-class>
+			com.icesoft.faces.util.event.servlet.ContextEventRepeater</listener-class>
+	</listener>
+
+    <!-- Filter to shutdown REST clients on request thread -->
+    <filter>
+        <filter-name>RestClientShutdownFilter</filter-name>
+        <filter-class>org.groundwork.rs.client.web.RestClientShutdownFilter</filter-class>
+    </filter>
+
+    <filter>
+        <filter-name>hibernateFilter</filter-name>
+        <filter-class>org.groundwork.rs.resources.RestHibernateSessionFilter</filter-class>
+    </filter>
+
+   <filter>
+        <filter-name>CollageRestAuthFilter</filter-name>
+        <filter-class>org.groundwork.rs.auth.AuthFilter</filter-class>
+    </filter>
+
+    <!-- Filter to shutdown REST clients on request thread -->
+    <filter-mapping>
+        <filter-name>RestClientShutdownFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+        <dispatcher>FORWARD</dispatcher>
+        <dispatcher>REQUEST</dispatcher>
+        <dispatcher>INCLUDE</dispatcher>
+    </filter-mapping>
+
+    <filter-mapping>
+        <filter-name>hibernateFilter</filter-name>
+        <url-pattern>/api/*</url-pattern>
+        <dispatcher>REQUEST</dispatcher>
+        <dispatcher>FORWARD</dispatcher>
+        <dispatcher>INCLUDE</dispatcher>
+    </filter-mapping>
+
+    <filter-mapping>
+        <filter-name>CollageRestAuthFilter</filter-name>
+        <url-pattern>/api/*</url-pattern>
+        <dispatcher>REQUEST</dispatcher>
+        <dispatcher>FORWARD</dispatcher>
+        <dispatcher>INCLUDE</dispatcher>
+    </filter-mapping>
+
+	<servlet>
+		<servlet-name>foundation</servlet-name>
+		<servlet-class>org.itgroundwork.foundation.engine.FoundationServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+
+	<servlet>
+		<servlet-name>AxisServlet</servlet-name>
+		<servlet-class>
+			org.apache.axis.transport.http.AxisServlet
+		</servlet-class>
+	</servlet>
+
+	<servlet>
+		<servlet-name>AdminServlet</servlet-name>
+		<servlet-class>
+			org.apache.axis.transport.http.AdminServlet
+		</servlet-class>
+		<load-on-startup>100</load-on-startup>
+	</servlet>
+
+	<servlet>
+		<servlet-name>SOAPMonitorService</servlet-name>
+		<servlet-class>
+			org.apache.axis.monitor.SOAPMonitorService
+		</servlet-class>
+		<init-param>
+			<param-name>SOAPMonitorPort</param-name>
+			<param-value>5001</param-value>
+		</init-param>
+		<load-on-startup>100</load-on-startup>
+	</servlet>
+
+	<servlet>
+		<servlet-name>PerformancedataServlet</servlet-name>
+		<servlet-class>
+			org.itgroundwork.foundation.request.PerformanceDataPost
+		</servlet-class>
+	</servlet>
+
+	<servlet>
+		<servlet-name>Faces Servlet</servlet-name>
+		<servlet-class>javax.faces.webapp.FacesServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet>
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<servlet-class>
+			com.icesoft.faces.webapp.xmlhttp.PersistentFacesServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet>
+		<servlet-name>Blocking Servlet</servlet-name>
+		<servlet-class>com.icesoft.faces.webapp.xmlhttp.BlockingServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+
+	<servlet>
+		<servlet-name>uploadServlet</servlet-name>
+		<servlet-class>
+			com.icesoft.faces.component.inputfile.FileUploadServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+
+	<servlet-mapping>
+		<servlet-name>
+			foundation
+		</servlet-name>
+		<url-pattern>
+			/foundation/*
+		</url-pattern>
+	</servlet-mapping>
+
+	<servlet-mapping>
+		<servlet-name>AxisServlet</servlet-name>
+		<url-pattern>/servlet/AxisServlet</url-pattern>
+	</servlet-mapping>
+
+	<servlet-mapping>
+		<servlet-name>AxisServlet</servlet-name>
+		<url-pattern>*.jws</url-pattern>
+	</servlet-mapping>
+
+	<servlet-mapping>
+		<servlet-name>AxisServlet</servlet-name>
+		<url-pattern>/services/*</url-pattern>
+	</servlet-mapping>
+
+	<servlet-mapping>
+		<servlet-name>SOAPMonitorService</servlet-name>
+		<url-pattern>/SOAPMonitor</url-pattern>
+	</servlet-mapping>
+
+	<servlet-mapping>
+		<servlet-name>
+			PerformancedataServlet
+		</servlet-name>
+		<url-pattern>
+			/performanceDataPost/*
+		</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<url-pattern>*.jspx</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<url-pattern>*.iface</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<url-pattern>/xmlhttp/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>Persistent Faces Servlet</servlet-name>
+		<url-pattern>/faces/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>Blocking Servlet</servlet-name>
+		<url-pattern>/block/*</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>uploadServlet</servlet-name>
+		<url-pattern>/uploadHtml</url-pattern>
+	</servlet-mapping>
+
+	<session-config>
+		<!-- Default to 5 minute session timeouts -->
+		<session-timeout>5</session-timeout>
+	</session-config>
+
+	<!-- currently the W3C havent settled on a media type for WSDL; http://www.w3.org/TR/2003/WD-wsdl12-20030303/#ietf-draft 
+		for now we go with the basic 'it's XML' response -->
+	<mime-mapping>
+		<extension>wsdl</extension>
+		<mime-type>text/xml</mime-type>
+	</mime-mapping>
+
+	<mime-mapping>
+		<extension>xsd</extension>
+		<mime-type>text/xml</mime-type>
+	</mime-mapping>
+
+	<welcome-file-list id="WelcomeFileList">
+		<welcome-file>index.jsp</welcome-file>
+		<welcome-file>index.html</welcome-file>
+		<welcome-file>index.jws</welcome-file>
+	</welcome-file-list>
+
+    <!--Only soap is protected with BASIC auth-->
+    <security-constraint>
+        <web-resource-collection>
+            <web-resource-name>Foundation Application</web-resource-name>
+            <description>Require users to authenticate</description>
+            <url-pattern>/services/*</url-pattern>
+            <http-method>HEAD</http-method>
+            <http-method>GET</http-method>
+            <http-method>POST</http-method>
+            <http-method>PUT</http-method>
+            <http-method>DELETE</http-method>
+        </web-resource-collection>
+        <auth-constraint>
+            <role-name>*</role-name>
+        </auth-constraint>
+    </security-constraint>
+    <login-config>
+        <auth-method>BASIC</auth-method>
+    </login-config>
+
+    <security-role>
+        <description>Any role</description>
+        <role-name>*</role-name>
+    </security-role>
+
+
+</web-app>

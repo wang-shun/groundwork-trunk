@@ -1,0 +1,326 @@
+<f:view xmlns:h="http://java.sun.com/jsf/html"
+        xmlns:f="http://java.sun.com/jsf/core"
+        xmlns:ice="http://www.icesoft.com/icefaces/component"
+        xmlns:ice-cc="http://www.icesoft.com/icefaces-composite-comps"
+        xmlns:jsp="http://java.sun.com/JSP/Page"
+        xmlns:ui="http://java.sun.com/jsf/facelets">
+    <ice:outputDeclaration doctypeRoot="HTML"
+                           doctypePublic="-//W3C//DTD HTML 4.01 Transitional//EN"
+                           doctypeSystem="http://www.w3.org/TR/html4/loose.dtd" />
+    <ice:portlet>
+    <ice:form id="sysacctmgmtform">
+        <div class="headingSection">
+            <ice:panelGroup>
+                <ice:messages
+                        id="messagesOutput"
+                        showSummary="true"
+                        showDetail="true"
+                        layout="table"
+                        infoClass="info-message"
+                        warnClass="warn-message"
+                        errorClass="error-message"
+                        fatalClass="fatal-message"
+                        globalOnly="true"/>
+
+
+            </ice:panelGroup>
+        </div>
+        <ice:panelGroup layout="block" id="container" styleClass="container">
+            <ice:panelGroup layout="block" id="mainkeygroup" styleClass="panelGroup">
+                <ice:panelGrid id="masterkeypanel" columns="3"
+                             cellpadding="10" cellspacing="1" columnClasses="icePnlGrdCol1,icePnlGrdCol2,icePnlGrdCol3">
+                    <f:facet name="header">
+                        <ice:outputText value="Master Account Info"/>
+                    </f:facet>
+
+                    <ice:outputLabel value="Master Password : "/>
+                    <ice:inputSecret id="masterkeyCredentials" value="#{sysAccountInfo.mainCredentials}" redisplay="true"
+                                   required="true" label="MasterPassword"
+                                   onkeyup="return false;"
+                                   onfocus="if(!this.oninput)this.oninput=function(event){iceSubmitPartial(form,this,event);};">
+                        <f:validateLength minimum="6" maximum="30"/>
+                    </ice:inputSecret>
+                    <ice:message for="masterkeyCredentials" errorClass="error-message"/>
+                    <ice:outputLabel value="Last updated : "/>
+                    <ice:outputText id="lastUpdateMainCredentials" value="#{sysAccountInfo.lastUpdateMainCredentials}"/>
+                    <ice:panelGrid id="masterkeybutton" columns="2">
+                        <ice:commandButton id="masterkeyupdate" value="Update Master Password"
+                                         actionListener="#{sysAccountHandler.updateMainKey}"
+                                         onclick="if (!confirm('Updating master password will update API, Proxy and LDAP(if configured) accounts. Are you sure you want to update master password ?')) return false; else true;"
+                                         disabled="#{sysAccountHandler.updateMainKeyDisabled}">
+                        </ice:commandButton>
+                    </ice:panelGrid>
+                </ice:panelGrid>
+            </ice:panelGroup>
+            <ice:panelGroup layout="block" id="apigroup" styleClass="panelGroup">
+                <ice:panelGrid id="apipanel" columns="3"
+                             cellpadding="10" cellspacing="1" columnClasses="icePnlGrdCol1,icePnlGrdCol2,icePnlGrdCol3">
+                    <f:facet name="header">
+                        <ice:outputText value="Webservices API Account Info"/>
+                    </f:facet>
+                    <ice:outputLabel value="Access : "/>
+                    <ice:inputText id="apiUserName" value="#{sysAccountInfo.apiUserName}" readonly="true"
+                                 label="WebServicesUserName" style="background-color: #D8D8D8;"/>
+                    <ice:message for="apiUserName" errorClass="error-message"/>
+                    <ice:outputLabel value="Token : "/>
+
+                    <ice:inputSecret id="apiCredentials" value="#{sysAccountInfo.apiCredentials}" redisplay="true"
+                                   required="true" label="WebServicesPassword"
+                                   onkeyup="return false;"
+                                   onfocus="if(!this.oninput)this.oninput=function(event){iceSubmitPartial(form,this,event);};">
+
+                    </ice:inputSecret>
+                    <ice:message for="apiCredentials" errorClass="error-message"/>
+                    <ice:outputLabel value="Token (encrypted) : "/>
+                    <ice:outputText id="encApiCredentials" value="#{sysAccountInfo.encAPICredentials}" />
+                    <ice:outputLabel value=""/>
+
+                    <ice:outputLabel value="Last updated : "/>
+                    <ice:outputText id="lastUpdateAPICredentials" value="#{sysAccountInfo.lastUpdateAPICredentials}"/>
+
+                    <ice:panelGrid id="apikeybutton" columns="2">
+                        <ice:commandButton id="apitest" value="#{sysAccountInfo.testButtonLabel}"
+                                         actionListener="#{sysAccountHandler.testAPIAccount}"
+                                         disabled="#{sysAccountHandler.testAPIAccountDisabled}">
+
+                        </ice:commandButton>
+                        <ice:commandButton id="apiupdate" value="Update API Account"
+                                         actionListener="#{sysAccountHandler.updateAPIAccount}"
+                                         onclick="if (!confirm('Are you sure you want to update API account info ?')) return false; else true;"
+                                         disabled="#{sysAccountHandler.updateAPIAccountDisabled}">
+
+                        </ice:commandButton>
+                    </ice:panelGrid>
+                </ice:panelGrid>
+            </ice:panelGroup>
+            <ice:panelGroup layout="block" id="apireadergroup" styleClass="panelGroup">
+                <ice:panelGrid id="apireaderpanel" columns="3"
+                             cellpadding="10" cellspacing="1" columnClasses="icePnlGrdCol1,icePnlGrdCol2,icePnlGrdCol3">
+                    <f:facet name="header">
+                        <ice:outputText value="Webservices API Reader Account Info"/>
+                    </f:facet>
+                    <ice:outputLabel value="Access : "/>
+                    <ice:inputText id="apiReaderUserName" value="#{sysAccountInfo.apiReaderUserName}" readonly="true"
+                                 label="WebServicesReaderUserName" style="background-color: #D8D8D8;"/>
+                    <ice:message for="apiReaderUserName" errorClass="error-message"/>
+                    <ice:outputLabel value="Token : "/>
+
+                    <ice:inputSecret id="apiReaderCredentials" value="#{sysAccountInfo.apiReaderCredentials}" redisplay="true"
+                                   required="true" label="WebServicesReaderPassword"
+                                   onkeyup="return false;"
+                                   onfocus="if(!this.oninput)this.oninput=function(event){iceSubmitPartial(form,this,event);};">
+
+                    </ice:inputSecret>
+                    <ice:message for="apiReaderCredentials" errorClass="error-message"/>
+                    <ice:outputLabel value="Token (encrypted) : "/>
+                    <ice:outputText id="encApiReaderCredentials" value="#{sysAccountInfo.encAPIReaderCredentials}" />
+                    <ice:outputLabel value=""/>
+
+                    <ice:outputLabel value="Last updated : "/>
+                    <ice:outputText id="lastUpdateAPIReaderCredentials" value="#{sysAccountInfo.lastUpdateAPIReaderCredentials}"/>
+
+                    <ice:panelGrid id="apireaderkeybutton" columns="2">
+                        <ice:commandButton id="apiReadertest" value="#{sysAccountInfo.testButtonLabel}"
+                                         actionListener="#{sysAccountHandler.testAPIReaderAccount}"
+                                         disabled="#{sysAccountHandler.testAPIReaderAccountDisabled}">
+
+                        </ice:commandButton>
+                        <ice:commandButton id="apireaderupdate" value="Update API Reader Account"
+                                         actionListener="#{sysAccountHandler.updateAPIReaderAccount}"
+                                         onclick="if (!confirm('Are you sure you want to update API reader account info ?')) return false; else true;"
+                                         disabled="#{sysAccountHandler.updateAPIReaderAccountDisabled}">
+
+                        </ice:commandButton>
+                    </ice:panelGrid>
+                </ice:panelGrid>
+            </ice:panelGroup>
+        <ice:panelGroup layout="block" id="remoteapigroup" styleClass="panelGroup">
+            <ice:panelGrid id="remoteapipanel" columns="3"
+                           cellpadding="10" cellspacing="1" columnClasses="icePnlGrdCol1,icePnlGrdCol2,icePnlGrdCol3">
+                <f:facet name="header">
+                    <ice:outputText value="Remote API Account Info"/>
+                </f:facet>
+                <ice:outputLabel value="Remote Access : "/>
+                <ice:inputText id="remoteapiUserName" value="#{sysAccountInfo.remoteAPIUserName}" readonly="true"
+                               label="remoteapiUserName" style="background-color: #D8D8D8;"/>
+                <ice:message for="remoteapiUserName" errorClass="error-message"/>
+                <ice:outputLabel value="Remote Token : "/>
+
+                <ice:inputSecret id="remoteapiCredentials" value="#{sysAccountInfo.remoteAPICredentials}" redisplay="true"
+                                 label="remoteapiCredentials"
+                                 onkeyup="return false;"
+                                 onfocus="if(!this.oninput)this.oninput=function(event){iceSubmitPartial(form,this,event);};">
+
+                </ice:inputSecret>
+                <ice:panelGrid id="remoteapibutton" columns="2" >
+                <ice:message for="remoteapiCredentials" errorClass="error-message"/>
+
+
+                    <ice:commandButton id="remoteapiupdate" value="Update Remote Account"
+                                       actionListener="#{sysAccountHandler.updateRemoteAPIAccount}"
+                                       onclick="if (!confirm('Are you sure you want to update Remote API account info ?')) return false; else true;"
+                                       disabled="#{sysAccountHandler.updateRemoteAPIAccountDisabled}">
+
+                    </ice:commandButton>
+                </ice:panelGrid>
+            </ice:panelGrid>
+        </ice:panelGroup>
+            <ice:panelGroup layout="block" id="proxygroup" styleClass="panelGroup">
+                <ice:panelGrid id="proxypanel" columns="3"
+                             cellpadding="10" cellspacing="1" columnClasses="icePnlGrdCol1,icePnlGrdCol2,icePnlGrdCol3">
+                    <f:facet name="header">
+                        <ice:outputText value="Proxy Account Info"/>
+                    </f:facet>
+                    <ice:outputLabel value="Proxy Username : "/>
+                    <ice:inputText id="proxyUserName" value="#{sysAccountInfo.proxyUserName}" required="true"
+                                 label="ProxyUserName"
+                                 onkeyup="return false;"
+                                 onfocus="if(!this.oninput)this.oninput=function(event){iceSubmitPartial(form,this,event);};"/>
+                    <ice:message for="proxyUserName" errorClass="error-message"/>
+                    <ice:outputLabel value="Proxy Password : "/>
+                    <ice:inputSecret id="proxyCredentials" value="#{sysAccountInfo.proxyCredentials}" redisplay="true"
+                                   required="true" label="ProxyPassword"
+                                   onkeyup="return false;"
+                                   onfocus="if(!this.oninput)this.oninput=function(event){iceSubmitPartial(form,this,event);};">
+
+                    </ice:inputSecret>
+                    <ice:message for="proxyCredentials" errorClass="error-message"/>
+                    <ice:outputLabel value="Last updated : "/>
+                    <ice:outputText id="lastUpdateProxyCredentials" value="#{sysAccountInfo.lastUpdateProxyCredentials}"/>
+                    <ice:panelGrid id="proxybutton" columns="2">
+                        <ice:commandButton id="proxytest" value="#{sysAccountInfo.testButtonLabel}"
+                                         actionListener="#{sysAccountHandler.testProxyAccount}"
+                                         disabled="#{sysAccountHandler.testProxyAccountDisabled}">
+
+                        </ice:commandButton>
+                        <ice:commandButton id="proxyupdate" value="Update Proxy Account"
+                                         actionListener="#{sysAccountHandler.updateProxyAccount}"
+                                         onclick="if (!confirm('Are you sure you want to update Proxy account info ?')) return false;else true;"
+                                         disabled="#{sysAccountHandler.updateProxyAccountDisabled}">
+
+                        </ice:commandButton>
+                    </ice:panelGrid>
+                </ice:panelGrid>
+            </ice:panelGroup>
+            <ice:panelGroup layout="block" id="toolgroup" styleClass="panelGroup">
+                <ice:panelGrid id="toolpanel" columns="3"
+                               cellpadding="10" cellspacing="1" columnClasses="icePnlGrdCol1,icePnlGrdCol2,icePnlGrdCol3">
+                    <f:facet name="header">
+                        <ice:outputText value="Encryption Tool"/>
+                    </f:facet>
+
+
+                    <ice:outputLabel value="Enter a Password : "/>
+                    <ice:inputSecret id="toolCredentials" value="#{sysAccountInfo.toolCredentials}" redisplay="true"
+                                      label="toolPassword">
+
+                    </ice:inputSecret>
+                    <ice:outputLabel value=""/>
+                    <ice:outputLabel value="Encrypted Password : "/>
+                    <ice:outputText id="toolEncCredentials" value="#{sysAccountInfo.toolEncCredentials}"
+                                     label="toolEncPassword">
+
+                    </ice:outputText>
+
+                    <ice:commandButton id="toolgenerate" value="Generate"
+                                           actionListener="#{sysAccountHandler.encryptToolPassword}">
+                        </ice:commandButton>
+                </ice:panelGrid>
+            </ice:panelGroup>
+            <ice:panelGroup layout="block" id="ldapGroup"
+                          rendered="#{sysAccountInfo.ldapEnabled and sysAccountInfo.ldapDomainCredentialsList.isEmpty()}" styleClass="panelGroup">
+                <ice:panelGrid id="ldapPanelTop" columns="3"
+                             cellpadding="10" cellspacing="1" columnClasses="icePnlGrdCol1,icePnlGrdCol2,icePnlGrdCol3">
+                    <f:facet name="header">
+                        <ice:outputText value="LDAP Account Info"/>
+                    </f:facet>
+                    <ice:outputLabel value="SecurityPrincipal : "/>
+                    <ice:inputText id="ldapUserName" value="#{sysAccountInfo.ldapUserName}" size="40"
+                                 required="#{sysAccountInfo.ldapEnabled and sysAccountInfo.ldapDomainCredentialsList.isEmpty()}" label="LDAPAdminUserName"
+                                 onkeyup="return false;"
+                                 onfocus="if(!this.oninput)this.oninput=function(event){iceSubmitPartial(form,this,event);};"/>
+                    <ice:message for="ldapUserName" errorClass="error-message"/>
+                    <ice:outputLabel value="SecurityCredential : "/>
+                    <ice:inputSecret id="ldapCredentials" value="#{sysAccountInfo.ldapCredentials}" redisplay="true"
+                                   required="#{sysAccountInfo.ldapEnabled and sysAccountInfo.ldapDomainCredentialsList.isEmpty()}" label="LDAPAdminCredentials"
+                                   onkeyup="return false;"
+                                   onfocus="if(!this.oninput)this.oninput=function(event){iceSubmitPartial(form,this,event);};">
+
+                    </ice:inputSecret>
+                    <ice:message for="ldapCredentials" errorClass="error-message"/>
+                </ice:panelGrid>
+                <ice:panelGrid id="ldapPanelBottom" columns="3"
+                               cellpadding="10" cellspacing="1" columnClasses="icePnlGrdCol1,icePnlGrdCol2,icePnlGrdCol3">
+                    <ice:outputLabel value="Last updated : "/>
+                    <ice:outputText id="lastUpdateLDAPCredentials" value="#{sysAccountInfo.lastUpdateLDAPCredentials}"/>
+                    <ice:panelGrid id="ldapbutton" columns="2">
+                        <ice:commandButton id="ldaptest" value="#{sysAccountInfo.testButtonLabel}"
+                                         actionListener="#{sysAccountHandler.testLDAPAccount}"
+                                         disabled="#{sysAccountHandler.testLDAPAccountDisabled}">
+
+                        </ice:commandButton>
+                        <ice:commandButton id="ldapupdate" value="Update LDAP Account"
+                                         actionListener="#{sysAccountHandler.updateLDAPAccount}"
+                                         onclick="if (!confirm('Are you sure you want to update LDAP account info ?')) return false;else true;"
+                                         disabled="#{sysAccountHandler.updateLDAPAccountDisabled}">
+
+                        </ice:commandButton>
+                    </ice:panelGrid>
+                </ice:panelGrid>
+            </ice:panelGroup>
+            <ice:panelGroup layout="block" id="ldapDomainsGroup"
+                            rendered="#{sysAccountInfo.ldapEnabled and !sysAccountInfo.ldapDomainCredentialsList.isEmpty()}" styleClass="panelGroup">
+                <ice:dataTable id="ldapDomainsListTable" value="#{sysAccountInfo.ldapDomainCredentialsList}" var="ldapDomain">
+                    <f:facet name="header">
+                        <ice:outputText value="LDAP Domain Accounts Info"/>
+                    </f:facet>
+                    <ice:column id="ldapDomainsListColumn" >
+                        <ice:panelGrid id="ldapDomainsListPanel" columns="3"
+                                       cellpadding="10" cellspacing="1" columnClasses="icePnlGrdCol1,icePnlGrdCol2,icePnlGrdCol3">
+                            <ice:panelGroup/>
+                            <ice:outputLabel value="Domain #{ldapDomain.domain}"/>
+                            <ice:panelGroup/>
+                            <ice:outputLabel value="SecurityPrincipal : "/>
+                            <ice:inputText id="ldapDomainUserName-#{rowIndex}" value="#{ldapDomain.principal}" size="40"
+                                           required="true" label="LDAPDomainAdminUserName-#{rowIndex}"
+                                           onkeyup="return false;"
+                                           onfocus="if(!this.oninput)this.oninput=function(event){iceSubmitPartial(form,this,event);};"/>
+                            <ice:message for="ldapDomainUserName-#{rowIndex}" errorClass="error-message"/>
+                            <ice:outputLabel value="SecurityCredential : "/>
+                            <ice:inputSecret id="ldapDomainCredentials-#{rowIndex}" value="#{ldapDomain.credential}" redisplay="true"
+                                             required="true" label="LDAPDomainAdminCredentials-#{rowIndex}"
+                                             onkeyup="return false;"
+                                             onfocus="if(!this.oninput)this.oninput=function(event){iceSubmitPartial(form,this,event);};">
+                            </ice:inputSecret>
+                            <ice:message for="ldapDomainCredentials-#{rowIndex}" errorClass="error-message"/>
+                        </ice:panelGrid>
+                    </ice:column>
+                </ice:dataTable>
+                <ice:panelGrid id="ldapDomainsFooterPanel" columns="3"
+                               cellpadding="10" cellspacing="1" columnClasses="icePnlGrdCol1,icePnlGrdCol2,icePnlGrdCol3">
+                    <ice:outputLabel value="Last updated : "/>
+                    <ice:outputText id="lastUpdateLdapDomainsCredentials" value="#{sysAccountInfo.lastUpdateLdapDomainsCredentials}"/>
+                    <ice:panelGrid id="ldapDomainsButton" columns="2">
+                        <ice:commandButton id="ldapDomainsTest" value="#{sysAccountInfo.testButtonLabel}"
+                                           actionListener="#{sysAccountHandler.testLDAPAccount}"
+                                           disabled="#{sysAccountHandler.testLDAPAccountDisabled}">
+
+                        </ice:commandButton>
+                        <ice:commandButton id="ldapDomainsUpdate" value="Update LDAP Accounts"
+                                           actionListener="#{sysAccountHandler.updateLDAPAccount}"
+                                           onclick="if (!confirm('Are you sure you want to update LDAP Accounts Info?')) return false;else true;"
+                                           disabled="#{sysAccountHandler.updateLDAPAccountDisabled}">
+
+                        </ice:commandButton>
+                    </ice:panelGrid>
+                </ice:panelGrid>
+            </ice:panelGroup>
+            <ice:panelGroup layout="block" id="buttongroup" style="margin-left: 220px;">
+                    <ice:commandButton id="test" value="Test All" action="#{sysAccountHandler.testSysAccounts}"
+                                     disabled="#{sysAccountInfo.testButtonDisabled || sysAccountHandler.testSysAccountsDisabled}">
+                    </ice:commandButton>
+            </ice:panelGroup>
+        </ice:panelGroup>
+    </ice:form>
+ </ice:portlet>
+</f:view>

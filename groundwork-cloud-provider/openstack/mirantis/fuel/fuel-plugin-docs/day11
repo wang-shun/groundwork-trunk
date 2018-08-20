@@ -1,0 +1,55 @@
+Hans et al.,
+
+On Sunday I continued development after Hans reset the Lab machines
+to get them unstuck.
+
+At this stage, I had the plugin essentially working with my simple
+scripted GW-installer emulator.  So I tried to include the GroundWork
+BitRock installer directly into the Fuel plugin.  However, the "fpb"
+(Fuel Plugin Builder) tool apparently has a hardcoded assumption
+that only text files will be included in a plugin; no binary
+executables are allowed.  After some angst, I hacked the build
+process to work around this limitation, producing an "x86_64" RPM
+instead of a "noarch" RPM.  I trust that the Fuel plugin installer
+on the Fuel Master will ignore this inconvenient departure from
+its usual expectations.  All of my complex hacks are captured in a
+top-level plugin Makefile so they can be trivially re-run at will.
+If the actual GW installer is included at the proper place in the
+plugin source tree, it will be included in the build and invoked
+during plugin deployment.  If it is missing at build time, the
+plugin will still build without complaint, and automatically
+fall back to using the installer emulator at deployment time.
+No other changes are needed to switch between the two contexts,
+greatly speeding up and simplifying plugin development and testing.
+
+I then found that it would be far faster to transmit trial copies
+of the plugin from GroundWork-based machines than from my own
+machines.  So Hans set up a VM for me to work in, and I uploaded
+all the code there.  That machine turned out to be running CentOS,
+in contrast to Ubuntu which I had used for prior work.  Some effort
+was then spent in setting up the build environment with the correct
+packages, which were different from those needed for Ubuntu, and
+then in porting the build process to run properly under CentOS.
+Of greatest concern was that "rpmbuild", which is invoked by "fpb",
+decides on its own that all binary files in the RPM need to be
+stripped of all symbol information.  Under Ubuntu, this produced
+a pointless error message (since the BitRock installer is already
+stripped as we get it from BitRock), and no net effect.  But under
+Centos, the binary got mangled by this unasked-for processing step.
+So I had to find another special workaround.  The result of all
+this effort is that we have a Makefile that will work on either
+platform, and documentation that shows the full setup process for
+both Linux distributions.
+
+At the end of this push for a workable build, it was 3am Monday,
+and I needed to sleep.  But I left a fully-built plugin for Hans
+that he can test, along with doc on the commands needed to install
+and uninstall the plugin on the Fuel Master.
+
+After the long stretch of work over the weekend, culminating in what
+ought to be a workable test version of the plugin, I took some time
+off on Monday and Tuesday.  I will spend time on Wednesday writing
+up all the notes I took as to what I saw happen with Fuel during
+all of my own trials.
+
+Glenn

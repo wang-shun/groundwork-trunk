@@ -1,0 +1,17 @@
+#!/bin/bash -e
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+# Note:  It's probably not appropriate to try to catch SIGTERM in this script.
+# The reason being, that if we do, and if the signal is recognized while the
+# shell is operating but not running any child process, the signal will end up
+# being ignored.  But if the signal is recognized by a child and the child dies
+# as a result and returns a bad exit status, then this script will die.  This
+# constitutes an inconsistency in the response to a signal, which means that
+# whatever we were trying to achieve by catching the signal will not happen
+# in a reliable manner.  So this trap is just for experimental/development
+# purposes, to prove that this script did actually receive a SIGTERM.
+
+# basename=`basename $0`
+# trap "echo 'NOTICE:  $basename has received SIGTERM but will continue unless one of its own children died.'" TERM

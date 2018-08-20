@@ -1,0 +1,44 @@
+This directory contains certain key database-related dumps that are
+useful either in creating NoMa patches or in testing NoMa distributions,
+upgrades, and patches.
+
+noma-db.sql
+
+    This is a copy of the schema for the "noma" database, as shipped in a
+    GWMEE release.  The official copy is stored elsewhere in Subversion.
+    This copy is here only to simplify the process of constructing NoMa
+    patches, and must be kept up-to-date with the main copy when new
+    patches are to be produced.
+
+noma-entire.sao.2017-08-30_12.52.10.sql.bz2
+
+    This is a complete dump of a "noma" database, collected from running
+    tests of a GroundWork system at fairly high volume over a period
+    of many months.  It represents the best, most complicated database
+    we have for testing of NoMa and especially our data-conversion
+    scripting in patches.  The data it includes was collected before our
+    omnibus NoMa patches were in play, so before it is ready for use with
+    recent NoMa code in GWMEE 7.2.0 builds, it must be converted using
+    our pg_migrate_noma.pl script.  In that sense, it does serve as an
+    excellent testbed for the scripting involved in the pg_migrate_noma.pl
+    processing, especially the switch_noma_to_generated_ids.sql script.
+
+    This file was compressed with bzip2 to best reduce its size for
+    storage in Subversion.  It may be uncompressed with bunzip2.  To load
+    it into the database:
+
+	bunzip2 noma-entire.sao.2017-08-30_12.52.10.sql.bz2
+	service groundwork stop noma
+	psql noma < noma-entire.sao.2017-08-30_12.52.10.sql
+
+    To test the operation of the switch_noma_to_generated_ids.sql script
+    specifically, thereafter:
+
+	psql noma < switch_noma_to_generated_ids.sql
+
+    (Note that the switch_noma_to_generated_ids.sql script can be run
+    multiple times without reloading the database.  The first run on this
+    test database will convert lots of unique-iD values, and later runs
+    will shuffle around some of the leftover data but still be safe for
+    continued operation afterward.)
+

@@ -1,0 +1,4002 @@
+#!/usr/local/groundwork/perl/bin/perl -w
+
+# 2016-08 DN - v1.0.0 - initial version
+# 2017-05 DN - v1.1.0 - large refactoring for 7.2.0 design
+# 2017-05 DN - v1.2.0 - added -create_rps for creation of influx retention policies
+# 2017-05 DN - v1.2.1 - pier code review changes; added a warning on the use of -create_rps
+# 2017-05 DN - v1.2.2 - added -server_name option ; 
+#                       space-padded ='s in setPropertyValues() when setting prop val;
+#                       retention policy code needs to auto create the groundwork db if its not there yet 
+# 2017-05 DN - v1.2.3 - updated addGrafanaDatasource() to also add the GroundWork internal metrics datasource
+# 2017-05 DN - v1.2.4 - grafana defaults.ini tightening : enfore_domain is now true, so domain is now set in updateGrafanaRootURL(); 
+#                       changed REST::Client host to use root_url with creds added ie access Grafana API via our proxy;
+#                       changed GroundWork Internal Metrics datasource to be proxy rather than direct;
+#                       parameterized the datasource names;
+#                       -ssl enable/disable option added
+# 2017-05 DN - v1.2.5 - Added configuration of /usr/local/groundwork/config/influxdb.properties via -server option
+#                       Updated configureSSL() to update /usr/local/groundwork/config/influxdb.properties
+# 2017-06 DN - v1.2.6 - Added configuration of new /usr/local/groundwork/config/foundation.properties collage.metrics.influxdb.url prop
+#                       via -server option.
+#                       Associated change for -ssl option added too.
+# 2017-06 DN - v1.2.7 - Increased retries and timeout when adding grafana datasoures with -add since it can take a while for Grafana to become ready to receive REST calls
+# 2017-06 DN - v1.2.8 - Added importing of GW Grafana dashboards : -import_dashboards
+#                       added auto generation of dashboards based on service profiles : -generate_dashboards
+#                       added deletion of all grafana dashboards : -delete_dashboards
+#                       added exporting of dashboards : -export_dashboards
+#                       added -debug
+# 2017-06 DN - v1.2.9 - updated -import to auto detect file vs dir
+# 2017-06 DN - v1.3.0 - started adding RRD migration functionality : -import_rrds <file|dir>
+#                       added portal nav Dashboards -> Grafana integration functionality for upgrades
+# 2017-06 DN - v1.3.1 - GWMON-13040 - dashboard row ids corrected
+# 2017-06 DN - v1.3.2 - if -root_password was given, hide the password when printing out the command line args info
+# 2017-06 DN - v1.3.3 - -add_service_profiles and cloudhub service profile dashgen functionality added
+# 2017-07 DN - v1.3.4 - don't test for opentsdb aliveness since it will most probably be down; added -version
+# 2017-07 DN - v1.3.5 - -add_service_profiles additional (but currently disabled) logic for upgrade case; added appName global
+# 2017-08 DN - v1.3.6 - added -import_rrds functionality, -ws_props_file , -rrds_dir, -delete_imported_rrd_data
+# 2017-08 DN - v1.3.7 - GWMON-13101 don't add internal metrics datasource 
+# 2017-09 DN - v1.3.8 - GWMON-12646 - switch grafana over to read-only GW API user creds
+# 2017-10 DN - v1.3.9 - GWMON-13164 - Add -rename_server option
+# 2018-05 MS - v1.4.0 - GWMON-13330 grafbridge-control improve error message on RRD data rejected with date < retention policy
+#                       and GWMON-13351 Import destroys existing Influxdb data for host/service
+# 2018-05 MS - v1.4.1 - GWMON-13350 Grafbridge Import RRDs kills influxdb process
+# 2018-05 MS - v1.4.2 - Removed option to allow incomming rrd data to overwrite matching influxdb data.
+#                       Also added support for host or service with embedded balnks to replace with '_'
+
+use version; my $VERSION = version->declare("v1.4.2"); # keep this up to date
+
+#
+# TODO
+# - improve to import specific dashboard list, rather than all.
+# - configureTSDB()
+#    perfdata.properties contains a <foundation> section which need to be considered too.
+#    Need to understand the use-cases more first - will put through QA parent/child too and iterate on this
+#      (*) When you get around to processing the <foundation> section of
+#          perfdata.properties, will need to understand that there may be
+#          multiple subsidiary <foundation_host ...> sections, each with its
+#          own set of options.  Will will need  to analyze to see if there 
+#          is any use case where you might need to change one specific 
+#          copy of such an option value but not another.
+#
+# - At some point in the future when remote influxdb arch is required and supported by installer
+#   need to param host and port for influxdb. Same consideration for Grafana too.
+#
+# - DRY up the REST::Client GET, POST, etc calls that are repeated a lot
+
+use 5.24.0;
+use warnings;
+use strict;
+use Data::Dumper; $Data::Dumper::Indent = 1; $Data::Dumper::Sortkeys = 1; $Data::Dumper::Terse = 1;
+use Getopt::Long;
+use File::Copy qw(copy);
+#use File::Path qw(make_path remove_tree);
+use REST::Client;
+use JSON;
+use Sys::Hostname;
+use URI::Escape;
+use POSIX qw(strftime);
+use MIME::Base64;
+use XML::Simple;
+use DBI;
+use File::Find;
+use File::Basename;
+use Cwd qw(getcwd);
+use RRDs;
+use GW::RAPID;
+use Log::Log4perl qw(:easy);
+use URI::Escape;                        
+use Date::Parse;
+
+sub fail; sub logg; sub debug;
+
+my $FAILSTATUS = 1;
+my $OKSTATUS = 0;
+my %tsdbTypes = ( 'rrd' => undef, 'influxdb' => undef , 'opentsdb' => undef ); # valid backend tsdb types
+my %renderingMethods = ( 'client' => undef, 'server' => undef ); # valid status viewer perf data rendering methods
+my ( $addDatasources, $help, $version, $rendering, $restartGroundWork, $tsdb, $createInfluxRetentionPolicies, $configureSSL,
+     $defaultDatasource, $groundworkDatsourceIsDefault, $opentsdbServer, $noBackups, $globalServerName, $debug,
+     $listDashboards, $deleteDashboards, $importDashboards, $generateDashboards, $exportDashboards, $upgradeNav,
+     $importRRDs, $deleteImportedRRDData, $rootUser, $rootPassword, $addServiceProfiles, $wsPropsFile, $rrdsDir, $renameServer ); # cli vars
+my ( %tsdbs, %sslOptions );
+
+# used in HTTP API calls
+my $appName = "grafbridge-control";
+
+# default GW install location
+my $installDir = "/usr/local/groundwork";
+
+# Grafana datasource names
+my $gwDSName = "GroundWork"; # Name of the Grafana GroundWork datasource
+my $gwInternalsDSName = "GroundWork Internal Metrics"; # Name of the GW internal metrics datasource
+
+# InfluxDB database names
+my $gwDBName ; # Name of the influxdb gw perf db - set by pre-reqs check if -create_rps given - its taken from our GW influxdb.properties
+my $gwInternalsDBName =  "_groundwork_metrics"; # Name of the influxdb gw internal metrics db - this is currently hardcoded in backend - only used if -create_rps given
+
+# default InfluxDB retention policy name
+my $defaultRPName = "groundwork_56_weeks"; 
+
+# default GroundWork Grafana dashboards import location
+my $gwDashboardsDir = "$installDir/grafana/data/gwdashboards";
+
+# default GroundWork profiles location used by -gen
+my $gwProfilesDir = "$installDir/core/profiles";
+
+# ---------------------------------------------------------------------------------
+# Best practice here lifted from our RAPID.pm
+BEGIN {
+    # This is supposed to be the default, but we force it anyway, because we want to ensure that
+    # we have the default SSL_cipher_list from IO::Socket::SSL in play (and not whatever Net::SSL
+    # provides, if anything), even if somebody has set the PERL_NET_HTTPS_SSL_SOCKET_CLASS
+    # environment variable to something else.  See the Net::HTTPS documentation for information
+    # on this variable.
+    # LWP::UserAgent "use"s LWP::Protocol and calls LWP::Protocol::create() to dynamically reference
+    # LWP::Protocol::https if we have an HTTPS connection configured, and that in turn "require"s
+    # Net::HTTPS at run time.  While this chain works just fine, the Perl compilation phase can't
+    # tell whether Net::HTTPS will be loaded, so it complains about "used only once: possible typo"
+    # for the following assignment, which will be the only reference to this variable at compilation
+    # time.  We disable that noisy warning about a known singleton use of the variable.
+    no warnings 'once';
+    $Net::HTTPS::SSL_SOCKET_CLASS = 'IO::Socket::SSL';
+    %sslOptions = (
+        verify_hostname => 1,
+        SSL_ca_path     => "/usr/local/groundwork/common/openssl/certs",
+        SSL_version     => 'TLSv1_2', # Grafana uses TLS 1.2 as well.
+       #SSL_check_crl   => 0, # crl checking not present in this version of the script - will add later if required
+    );
+}
+use IO::Socket::SSL 2.037;  # Make sure IO::Socket::SSL is used in preference to Net::SSL, and use a recent cipher list.
+
+
+# =================================================================================
+main();
+# =================================================================================
+
+# ---------------------------------------------------------------------------------
+sub main {
+
+    my ( $error ) ;
+
+    # parse cli
+    initializeOptions(); 
+    
+    # check prerequisites
+    if ( not checkPrereqs( \$error ) ) { 
+        fail "Prereqs failed. $error";
+    }
+
+    # update the following things if a -server_name was given.
+    # Do this first in case other code users these things later.
+    # - Grafana root_url
+    # - /u/l/g/config/influxdb.properties url
+    if ( defined $globalServerName and not defined $renameServer ) { 
+        if ( not updateGrafanaRootURL( \$error ) ) { 
+            fail $error;
+        }
+        if ( not updateInfluxdbPropertiesURL( \$error ) ) { 
+            fail $error;
+        }
+        if ( not updateCollageMetricsInfluxDBURL( \$error ) ) { 
+            fail $error;
+        }
+    }
+
+    # Rename server 
+    if ( defined $renameServer ) { 
+        if ( not configureGrafanaDatasources( \$error, 1 ) ) { 
+            fail $error;
+        }
+        if ( not updateGrafanaRootURL( \$error ) ) { 
+            fail $error;
+        }
+        if ( not updateInfluxdbPropertiesURL( \$error ) ) { 
+            fail $error;
+        }
+        if ( not updateCollageMetricsInfluxDBURL( \$error ) ) { 
+            fail $error;
+        }
+    }
+
+    # add default GroundWork and GroundWork internal metrics datasources to Grafana if -add_datasources option given
+    # Do this early since some other actions depend on the datasources existing
+    if ( defined $addDatasources and not defined $renameServer ) { 
+        if ( not configureGrafanaDatasources( \$error ) ) { 
+            fail $error;
+        }
+    }
+
+    # delete Grafana dashboards - do this before gen/import to ease refresh -del -gen -imp cycle
+    if ( defined $deleteDashboards ) { 
+        if ( not deleteDashboards( \$error ) ) { 
+            fail $error;
+        }
+    }
+
+    # generate GroundWork Grafana dashboards from GroundWork service profiles
+    if ( defined $generateDashboards ) { 
+        if ( not generateDashboards( \$error ) ) { 
+            fail $error;
+        }
+    }
+
+    # import GroundWork Grafana dashboards
+    if ( defined $importDashboards ) { 
+        if ( not importDashboards( \$error ) ) { 
+            fail $error;
+        }
+    }
+
+    # list Grafana dashboards
+    if ( defined $listDashboards ) { 
+        if ( not listDashboards( \$error ) ) { 
+            fail $error;
+        }
+    }
+
+    # export Grafana dashboards and related bits
+    if ( defined $exportDashboards ) { 
+        if ( not exportDashboards( \$error ) ) { 
+            fail $error;
+        }
+    }
+
+    
+    # create a default InfluxDB retention policy against the local GroundWork InfluxDB instance
+    if ( defined $createInfluxRetentionPolicies ) { 
+        # Create/update retention policy for influxdb perf data database 
+        if ( not createInfluxRetentionPolicy( $gwDBName, \$error ) ) { 
+            fail $error;
+        }
+        # Create/update retention policy for influxdb internal groundwork metrics database
+        if ( not createInfluxRetentionPolicy( $gwInternalsDBName, \$error ) ) { 
+            fail $error;
+        }
+    }
+    
+    # configure destinations for performance data, if -tsdb was given
+    if ( defined $tsdb ) { 
+        if ( not configureTSDB( \$error ) ) { 
+            fail $error;
+        }
+    }
+
+    # configure how perf data is rendered in status viewer, if -rendering was given
+    if ( defined $rendering ) { 
+        if ( not configureStatusViewer( \$error ) ) { 
+            fail $error;
+        }
+    }
+
+    # restart to make changes effective, if -restart was given
+    if ( defined $restartGroundWork ) {
+        if ( not restartGroundWork( \$error ) ) { 
+            fail $error;
+        }
+    }
+    
+    # make changes to Grafana and InfluxDB config's to enable/disable https if -ssl given
+    if ( defined $configureSSL ) {
+        if ( not configureSSL( \$error ) ) { 
+            fail $error;
+        }
+    }
+    
+    # upgrade GW portal nav by inserting Dashboards -> Grafana
+    if ( defined $upgradeNav ) {
+        if ( not upgradeNav( \$error ) ) { 
+            fail $error;
+        }
+    }
+
+    
+    # import RRD data into InfluxDB
+    if ( defined $importRRDs ) {
+        if ( not importRRDs( $gwDBName, \$error ) ) { 
+            fail $error;
+        }
+    }
+    
+    # delete imported RRD data from InfluxDB
+    if ( defined $deleteImportedRRDData ) {
+        if ( not deleteImportedRRDData( \$error ) ) { 
+            fail $error;
+        }
+    }
+    
+    # add influxdb and grafana-server service profiles 
+    if ( defined $addServiceProfiles ) {
+        if ( not addServiceProfiles( \$error ) ) { 
+            fail $error;
+        }
+    }
+    
+
+    logg "Done.";
+    exit $OKSTATUS;
+
+}
+
+# ---------------------------------------------------------------------------------
+sub checkPrereqs {
+
+    # Checks some basic prereqs.  In the case of -create_rps, also sets some globals
+    # Takes a ref to an error string.
+    # Returns 1 if ok, 0 and error by ref if not.
+    
+    my ( $errorRef ) = @_;
+    my ( $gwVersion, %props ) ;
+
+    logg "Checking prerequisites";
+
+    # Check GroundWork installed - test is look for $installDir/Info.txt 
+    # TODO: There's probably a better way to do this test, and one that might better differentiate between GDMA installed, and full GW perhaps.
+    if ( ! -e "$installDir/Info.txt" ) {
+        $$errorRef .= "\tCouldn't find $installDir/Info.txt - assuming GroundWork is not installed here. ";
+        return 0;
+    }
+
+    # If -opentsdb_server <...> was given, check now that this server can be contacted
+    if ( defined $opentsdbServer ) {
+
+        # Check the format is correct - expecting http[s]://server[:port] - if no port, then assume default 4242
+        if ( $opentsdbServer !~ /^(http|https):\/\// ) {
+            $$errorRef .= "\tThe format of the OpenTSDB server URL should begin with http[s]:// - got '$opentsdbServer'. ";
+            return 0;
+        }
+
+        # Check that -tsdb list includes opentsdb 
+        if ( not exists $tsdbs{opentsdb} ) {
+            logg "\tWARNING: The -opentsdb_server option was given, but -tsdb did not include opentsdb. Automatically adding it to the -tsdb list.";
+            $tsdbs{opentsdb} = undef;
+        }
+
+        # If no port specified, add the default opentsdb port
+        if ( $opentsdbServer !~ /^.*:[0-9]+$/ ) { 
+            $opentsdbServer .= ":4242"; 
+	}
+
+        # version 1.3.4 
+        # Upgrading of 711 opentsdb grafbridge beta typically means the opentsdb server is colocated on the GroundWork server. 
+        # The upgrade process turns off opentsdb and so alive test is pointless.
+        # (For fresh install, we're not supporting opentsdb.)
+        #
+        ## Try to reach the opentsdb server
+        #if ( not opentsdbServerAlive( $opentsdbServer, $errorRef ) ) {
+        #   # errorRef will get populated by opentsdbServerAlive on error.
+        #   return 0;
+        #}
+    }
+
+    # if -tsdb included opentsdb, then check -opentsdb_server was supplied
+    if ( exists $tsdbs{opentsdb} and not defined $opentsdbServer ) {
+        $$errorRef .= "\tThe -tsdb list included opentsdb, but no -opentsdb_server argument was supllied - this is required in this case. ";
+        return 0;
+    }
+
+    # if -create_rps or -import_rrds was given, then get the influxdb perf db name and check it exists in influxdb
+    if ( defined $createInfluxRetentionPolicies or defined $importRRDs or defined $deleteImportedRRDData) {
+       %props = ( 'database' => undef );
+       if ( not getPropertyValues( "$installDir/config/influxdb.properties", \%props, "Getting InfluxDB GroundWork performance databae name", $errorRef ) ) { 
+           return 0;
+       }
+       if ( not defined $props{database} ) { 
+           $$errorRef .= "Could not get InfluxDB GroundWork performance database name. ";
+           return 0;
+       }
+       else {
+           $gwDBName = $props{database};
+       }
+    }
+
+    # Get the version of locally installed version of GW 
+    # Commented out for now:  not sure how useful this is since during an upgrade, when this 
+    # first gets called to add the datasource, the Info.txt has has probably been updated already.
+    # %props = ( "version" => undef , 'gw_build' => undef , 'bitrock_build' => undef );
+    # if ( not getPropertyValues( "$installDir/Info.txt", \%props, "Getting props version and gw_build", $errorRef ) ) { 
+    #     return 0;
+    # } 
+    # if ( not defined $props{'version'} ) { 
+    #    $$errorRef = "No version key found in $installDir/Info.txt - could not determine GroundWork version";
+    #    return 0;
+    # }
+    # logg "GroundWork version $props{'version'} Build $props{'bitrock_build'}-$props{'gw_build'}";
+    # 
+    # Additional version checking would go here if necessary
+    # 
+    # At least Grafana 4.2.0 is required for GW 7.2.0, and needs to be  working and reachable.
+    # However, this script is designed to work only against the local groundwok grafana at this time, so this will be satisfied.
+    # If in the future this script changes to support integration with an external grafana instance, then this will need updating.
+    # The configureGrafanaDatasources routine already does its own checking for connectivity so thats not necessary here.
+    
+    # If -restart was given, check script is being run as root user
+    if ( defined $restartGroundWork ) {
+	if ( ( getpwuid $> )  ne 'root' ) {
+	    $$errorRef .= "\tThe -restart option requires that this script be run as root user. ";
+            return 0;
+	}
+    }
+
+    # check can write to cwd if using -export
+    if ( defined $exportDashboards ) {
+        my $cwd = getcwd() ;
+        if ( ! -w $cwd ) {
+	    $$errorRef .= "\tNo write permission to current working directory '$cwd'";
+            return 0;
+        }
+    }
+
+    # check fq path for -generate
+    if ( defined $generateDashboards and $generateDashboards ne '' ) {
+        if ( $generateDashboards !~ /^\// ) {
+	    $$errorRef .= "\tThe -generate_dashboards argument should begin with / ie be fully qualified.";
+            return 0;
+        }
+    }
+
+    # check ws props is accessible - this is used in a few places
+    if ( ! -e $wsPropsFile or ! -r $wsPropsFile ) {
+       fail "Web Services Configuration file '$wsPropsFile' doesn't exist or isn't readable";
+    }
+
+    # check rrds dir 
+    if ( ! -e $rrdsDir or ! -r $rrdsDir or ! -d $rrdsDir ) {
+       fail "RRD storage directory '$rrdsDir' doesn't exist or isn't readable";
+    }
+
+
+    return 1;
+
+}
+
+# ---------------------------------------------------------------------------------
+sub configureStatusViewer {
+    
+    # Configures GroundWork settings that control GW portal perf data rendering method - client side or server side.
+    # Takes a ref to an error string.
+    # Returns 1 if ok, 0 and error by ref if not.
+    
+    my ( $errorRef ) = @_;
+    
+    if ( $rendering eq 'server' ) { 
+        logg "Configuring GroundWork to generate performance data graphs server-side";
+        if ( not setPropertyValues( "$installDir/config/status-viewer.properties", { 'perf.monitoring.client.rendering' => 'false' }, "", $errorRef ) ) {
+            return 0; 
+        }
+    }
+    elsif ( $rendering eq 'client' ) {
+        logg "Configuring GroundWork to generate performance data graphs client-side (i.e. in the browser)";
+        if ( not setPropertyValues( "$installDir/config/status-viewer.properties", { 'perf.monitoring.client.rendering' => 'true' }, "", $errorRef ) ) { 
+            return 0;
+        }
+    }
+    else {
+        $$errorRef .= "Internal error - unrecognized rendering method '$rendering'. ";
+        return 0;
+    }
+   
+    return 1;
+}
+
+# ---------------------------------------------------------------------------------
+sub updateGrafanaRootURL {
+    
+    # Configures Grafana defaults.ini root_url setting with server name provided by -server_name
+    # Takes a ref to an error string.
+    # Returns 1 if ok, 0 and error by ref if not.
+    
+    my ( $errorRef ) = @_;
+    
+    my $rootUrl = "http://$globalServerName/grafana";
+    my $conf = "$installDir/grafana/conf/defaults.ini";
+    logg "Configuring GroundWork Grafana root_url and domain in $conf to $rootUrl";
+    if ( not setPropertyValues( $conf, { 'root_url' => $rootUrl, 'domain' => $globalServerName }, "", $errorRef ) ) {
+        return 0; 
+    }
+   
+    return 1;
+}
+
+# ---------------------------------------------------------------------------------
+sub updateInfluxdbPropertiesURL {
+    
+    # Configures /u/l/g/config/influxdb.properties url setting with server name provided by -server_name
+    # Takes a ref to an error string.
+    # Returns 1 if ok, 0 and error by ref if not.
+    
+    my ( $errorRef ) = @_;
+    my ( %influxProps, $bindAddress, $influxdbPort );
+    
+    # get the influxdb port from the influxdx config bind address first
+    %influxProps = ( "bind-address" => undef );
+    if ( not getPropertyValues( "$installDir/influxdb/etc/influxdb.conf", \%influxProps, "Getting bind-address prop", $errorRef ) ) { 
+        return 0; 
+    }
+    if ( not defined $influxProps{"bind-address"} ) {
+        $$errorRef = "bind-address was not defined in $installDir/influxdb/etc/influxdb.conf";
+        return 0;
+    }
+
+    # Extract the port. Expecting something like ":8086", or perhaps later localhost:8086 or 127.0.0.1:8086
+    # But always expecting :port at the end - there's no default
+    $bindAddress = $influxProps{"bind-address"}; 
+    $bindAddress =~ s/"//g; # remove quotes
+    
+    # check bind-address format 
+    if ( $bindAddress !~ /^.*:\d+$/ ) { 
+        $$errorRef = "bind-address '$bindAddress' in $installDir/influxdb/etc/influxdb.conf was not of the expected format which ends in :<port number>";
+        return 0;
+    }
+
+    $influxdbPort = ( split ':', $bindAddress )[1]; # eg 8086
+
+    # Now have enough info to configure /u/l/g/influxdb.properties
+
+    my $url = "http://$globalServerName:$influxdbPort";
+    my $conf = "$installDir/config/influxdb.properties";
+    logg "Configuring url in $conf to $url";
+    if ( not setPropertyValues( $conf, { 'url' => $url }, "", $errorRef ) ) {
+        return 0; 
+    }
+   
+    return 1;
+}
+
+# ---------------------------------------------------------------------------------
+sub updateCollageMetricsInfluxDBURL {
+    
+    # Configures /u/l/g/config/foundation.properties collage.metrics.influxdb.url prop with server name provided by -server_name
+    # Takes a ref to an error string.
+    # Returns 1 if ok, 0 and error by ref if not.
+    
+    my ( $errorRef ) = @_;
+    my ( %collageProps, $url, $prop, $conf );
+
+    $prop = "collage.metrics.influxdb.url";
+    $conf = "$installDir/config/foundation.properties";
+    
+    # get the influxdb port from the influxdx config bind address first
+    %collageProps = ( $prop => undef );
+    if ( not getPropertyValues( $conf, \%collageProps, "Getting $prop from $conf", $errorRef ) ) { 
+        return 0; 
+    }
+    if ( not defined $collageProps{$prop} ) {
+        $$errorRef = "$prop was not defined in $conf";
+        return 0;
+    }
+
+    # Extract the port. Expecting "http://hostname:8086" (fresh install, hostname=localhost) - the :port is required for influxdb to even work
+    # https case enabled here for future compat 
+
+    $url = $collageProps{$prop};
+    
+    # check url format 
+    if ( $url !~ /^(http|https).*:\d+$/ ) { 
+        $$errorRef = "url '$url' in $conf was not of the expected format http[s]://hostname:<port number>";
+        return 0;
+    }
+
+    # transform the hostname part into the new globalservername
+    # ie http://localhost:8086 -> http://theservername:8086
+    $url =~ s/^(https?:\/\/)(.*)(:\d+)$/$1$globalServerName$3/g;
+
+    logg "Configuring $prop in $conf to $url";
+    if ( not setPropertyValues( $conf, { $prop => $url }, "", $errorRef ) ) {
+        return 0; 
+    }
+   
+    return 1;
+}
+# ---------------------------------------------------------------------------------
+sub configureTSDB {
+    
+    # Configures GroundWork settings that control which tsdb perf data is written to.
+    # Takes a ref to an error string.
+    # Returns 1 if ok, 0 and error by ref if not.
+    #
+    # TODO
+    # perfdata.properties contains a <foundation> section which need to be considered too.
+
+    # -tsdb is a comma separated list of one or more of these: { rrd, influxdb, opentsdb }
+    # Valid sets are:
+    #    rrd
+    #    rrd,     influxdb
+    #    rrd,     opentsdb
+    #    rrd,     influxdb,  opentsdb
+    #    influxdb
+    #    influxdb, opentsdb
+    #    opentsdb
+    #
+    # Depending on what tsdb's are required, different settings are required in these things:
+    #
+    #  perfdata.properties: 
+    #     write_to_rrds
+    #     write_to_rest
+    #  foundation.properties: 
+    #     perfdata.backend.default
+    #     perfdata.vema.writers
+    # 
+    # 
+    
+    my ( $errorRef ) = @_;
+    my ( $write_to_rrds, $write_to_rest, $perfdata_backend_default, $perfdata_vema_writers );
+
+    # rrd related cases
+    if ( exists $tsdbs{rrd} ) {
+
+        $write_to_rrds = "true";
+
+        # rrd, influxdb, opentsdb
+        if ( exists $tsdbs{influxdb} and exists $tsdbs{opentsdb} ) {
+            $write_to_rest = "true";
+            $perfdata_backend_default = "influxdb";
+            $perfdata_vema_writers = "com.groundwork.feeder.service.RRDPerfDataWriter,com.groundwork.feeder.service.OpenTSDBPerfDataWriter";
+        }
+
+        # rrd, influxdb
+        elsif ( exists $tsdbs{influxdb} ) { 
+            $write_to_rest = "true";
+            $perfdata_backend_default = "influxdb";
+            $perfdata_vema_writers = "com.groundwork.feeder.service.RRDPerfDataWriter";
+        }
+
+        # rrd, opentsdb
+        elsif ( exists $tsdbs{opentsdb} ) { 
+            $write_to_rest = "true";
+            $perfdata_backend_default = "opentsdb";
+            $perfdata_vema_writers = "com.groundwork.feeder.service.RRDPerfDataWriter,com.groundwork.feeder.service.OpenTSDBPerfDataWriter";
+        }
+
+        # rrd only
+        else { 
+            $write_to_rest = "false";
+            $perfdata_backend_default = "rrd";
+            $perfdata_vema_writers = "com.groundwork.feeder.service.RRDPerfDataWriter";
+        }
+            
+    }
+
+    # no-rrd cases ...
+    
+    # influxdb and opentsdb 
+    elsif ( exists $tsdbs{influxdb} and exists $tsdbs{opentsdb} ) {
+        $write_to_rrds = "false";
+        $write_to_rest = "true";
+        $perfdata_backend_default = "influxdb";
+        $perfdata_vema_writers = "com.groundwork.feeder.service.OpenTSDBPerfDataWriter";
+    }
+
+    # just influxdb
+    elsif ( exists $tsdbs{influxdb} ) {
+        $write_to_rrds = "false";
+        $write_to_rest = "true";
+        $perfdata_backend_default = "influxdb";
+        $perfdata_vema_writers = "";
+    }
+
+    # just opentsdb
+    elsif ( exists $tsdbs{opentsdb} ) {
+        $write_to_rrds = "false";
+        $write_to_rest = "true";
+        $perfdata_backend_default = "opentsdb";
+        $perfdata_vema_writers = "com.groundwork.feeder.service.OpenTSDBPerfDataWriter";
+    }
+
+    # missed case
+    else {
+        $errorRef = "Unhandled performance data route detected"; 
+        return 0;
+    }
+
+    logg "Configuring perfdata.backend.default and perfdata.vema.writers in foundation.properties";
+    if ( not setPropertyValues( "$installDir/config/foundation.properties", 
+                                 {
+                                     'perfdata.backend.default' => $perfdata_backend_default,
+                                     'perfdata.vema.writers' => $perfdata_vema_writers
+                                 },
+                                 "Configuring foundation.properties",
+                                 $errorRef ) ) {
+            return 0;
+    };
+
+    logg "Configuring write_to_rrds and write_to_rest in perfdata.properties";
+    if ( not setPropertyValues( "$installDir/config/perfdata.properties", 
+                                 {
+                                     'write_to_rrds' => $write_to_rrds,
+                                     'write_to_rest' => $write_to_rest
+                                 },
+                                 "Configuring perfdata.properties",
+                                 $errorRef ) ) {
+            return 0;
+    };
+
+    return 1;
+}
+
+# ---------------------------------------------------------------------------------
+sub fail {
+    # A simple routine to emit a failure message and quit the program with the error status.
+    my ( $error ) = @_;
+    print "Failed with: $error\n";
+    print "Quitting\n";
+    exit $FAILSTATUS;
+}
+
+# ---------------------------------------------------------------------------------
+sub logg {
+    # A simple routine to emit a log message prefixed with a time stamp
+    my ( $info ) = @_;
+    print "[" . localtime() . "] $info\n";
+}
+
+# ---------------------------------------------------------------------------------
+sub debug {
+    # A simple routine to emit a debug log message prefixed with a time stamp
+    return if not defined $debug;
+    my ( $info ) = @_;
+    print "[" . localtime() . "] DEBUG $info\n";
+}
+
+# ---------------------------------------------------------------------------------
+sub initializeOptions {
+
+    # Process command line arguments and provide help.
+    # No args. Returns 1 if ok, fails otherwise.
+
+    # hide the password if -root_password given 
+    # (this way turned out to be much simpler and clear than a regex)
+    # TODO if another options starting with -root_p is addeed, modify this to isolate the -root_password one
+    my @cleanedARGV = @ARGV; # keep @ARGV for GetOptions() later
+    if ( grep /-root_p/, @ARGV ) { # If -root_p[assword] option was given ...
+        for ( my $i = 0; $i <= $#cleanedARGV; $i++ ) { # loop over each arg in cli
+             if ( $cleanedARGV[$i] =~ /-root_p/ ) {  # if this arg is the -root_p[assword] option
+                 if ( ( $i + 1 ) <= $#cleanedARGV ) {  # if there's another arg still to process (might have $0 ... -root_password (and no password) )
+	             $cleanedARGV[ $i+1 ] = "********"; # blank it out 
+                 }
+             }
+        };
+    }
+    print "-" x 80 . "\n$0 version $VERSION\nArguments: @cleanedARGV\n" . "-" x 80 . "\n";
+
+    my $helpString = "
+Groundwork Grafana Integration Control Script - version $VERSION
+
+Description
+
+   This utility is required by the GroundWork installer for fresh and 
+   upgrade installations. It also provides other useful functions, 
+   such as dashboard workflow support and RRD migration.
+
+   This script currently is intended to be used against a locally 
+   installed GroundWork and its instances of Grafana and time series databases
+   such as InfluxDB, RRD and OpenTSDB.
+
+   The script returns $FAILSTATUS on failure/error, and $OKSTATUS on success.
+
+Options
+
+    -add_datasources [hostname]
+         Creates the following Grafana datasources :
+            - a GroundWork performance data datasource called '$gwDSName'
+         If no hostname given, then defaults to a calculated hostname.
+         The Grafana protocol and port are automatically extracted from 
+         $installDir/grafana/conf/defaults.ini.
+         As a precaution, if an existing GroundWork datasource object 
+         is detected, it will be left as-is.
+  
+    -default_datasource 
+         If specified, the GroundWork performance data datasource is 
+         set to be the default datasource in Grafana.
+
+    -tsdb <rrd,influxdb,opentsdb>
+         Controls where performance data is sent. 
+         This is a comma list of one of more of rrd, influxdb, opentsdb
+ 
+    -rendering <client|server> 
+         Controls the method that GroundWork portal uses for 
+         rendering performance data.
+           - client: applies to non RRD data only, 
+                      and rendering is done browser-side.
+           - server: applies to just RRD data only, 
+                      and rendering is done server-side.
+
+    -restart
+         Restart GroundWork after applying the changes.
+         Note that this option requires the script to be run as root user.
+
+    -opentsdb_server http[s]://<server[:port]>
+         OpenTSDB aliveness is checked by getting OpenTSDB's version.
+         This is done with a REST API call to /api/version.
+         If no port is supplied, then 4242 is assumed.
+         If the call to /api/version fails, then it's assumed that OpenTSDB
+         is not reachable and alive at the given URL.
+         This option is not required to be used with -tsdb opentsdb. However,
+         if this option is given, opentsdb is auto added to the -tsdb 
+         argument list if it is not present.
+
+    -no_backups
+         This option is intended to be used when this script is called from 
+         the GroundWork installer.
+         Skip making backups of updated GroundWork properties files. 
+         When this script is called manually, it's suggested this option is 
+         not used so that backups of properties files will be made.
+
+    -create_rps
+         !! USE WITH CAUTION !! This option should only be used directly from the 
+         GroundWork installer on fresh installs. Using this manually can result
+         in a loss of data if you have changed your default '$defaultRPName'
+         retention policy.
+
+         This option creates the InfluxDB default GroundWork retention policy
+         called '$defaultRPName', on the InfluxDB databases that store 
+         GroundWork performance data and internal Groundwork application metrics.
+         If the retention policy is found to exist on the database, it is reset 
+         (i.e. altered).
+
+    -server_name <server name>
+         This option is intended to be used when this script is called from 
+         the GroundWork installer.
+         This option is currently only used for the following :
+         - instantiating the GroundWork Grafana root_url and domain properties 
+           in the Grafana defaults.ini
+         - instantiating the url property in GroundWork influxdb.properties
+         - instantiating the collage.metrics.influxdb.url property in 
+           GroundWork foundation.properties
+
+    -ssl <enable|disable>
+         This option configures Grafana and InfluxDB that come bundled 
+         with Grafana, by enabling / disabling SSL/HTTPS. 
+         GroundWork will need to be configured separately - this just configures
+         the Grafana and InfluxDB components.
+
+         -enable : tries to configure Grafana and InfluxDB for HTTPS/SSL
+         -disable : tries to configure Grafana and InfluxDB for HTTP/no SSL
+
+         Grafana changes: 
+           The protocol in root_url will be changed
+           The url's protocol in the performance data datasource URL will be altered 
+
+         InfluxDB changes: 
+           The https-enabled value will be changed
+           The url's protocol in the internal metrics datasource URL will be altered 
+   
+    -upgrade_nav
+         This option is used by the GroundWork installer during an upgrade. 
+         It exports the portal configuration, updates it by adding Dashboards->Grafana
+         and imports the new portal configuration.
+         This upgrade is achieved by using the jboss REST API
+         /rest/private/managed-components/mop endpoint which requires the GroundWork
+         portal root user credentials.
+
+    -root_user <username>
+    -root_password <password>
+         These two options can be used in conjunction with -upgrade_nav. 
+         They specify the GroundWork portal root credentials.
+         If not supplied, they default to root/root.
+
+    -add_service_profiles [host]
+         Adds the influxdb and grafana-server service profiles to localhost, or [host] if
+         given, and then runs a sychonized commit.
+            
+    -debug
+         Show some debug.
+
+    -help           
+         Show this help
+
+    -rename_server [hostname]
+         Use this option only if you're changing the hostname across the entire 
+         GroundWork installation. This is typically called from gw-config.
+
+    Grafana Dashboard Related Operations
+
+      A number of options are provided to facilitate sharing of Grafana Dashboards.
+
+      -generate_dashboards [<profiles source directory>] 
+         Generates Grafana dashboards based on GroundWork service profiles.
+         If no directory is given, $gwProfilesDir is used.
+         If a directory is given, it must be a fully qualified path.
+         The same structure that is present in $gwProfilesDir is expected,
+         i.e. subdirectories which contain symlinks to service profile xml files.
+         The subdirectories (except 'All') are searched for service-profile-*.xml.
+         Services that match a monarch performanceconfig entry are extracted.
+         Matching is done by equality if 'Use Service as a Regular Expression' is OFF,
+         or done by regular expression if 'Use Service as a Regular Expression' is ON.
+         The subdirectory names are used as Grafana dashboard tags.
+         Generated dashboards are written to $gwDashboardsDir.
+
+      -import_dashboards [<dashboards source directory> | <single dashboard file>]
+         This option imports Grafana dashboards into Grafana.
+         If no argument is given, $gwDashboardsDir is used.
+         If a directory is given, then all dashboards therein are imported.
+         If a file is given, then that one dashboard is imported.
+
+      -list_dashboards
+         Lists Grafana installed dasbboard 'slug' names. 
+         Slug's are just Grafana-friendly names which are required for 
+         various API ops, like deletion with the -delete_dashboards option.
+
+      -delete_dashboards [<comma separated slugs list>]
+         Deletes Grafana dashboards.
+         If no argument list is given, all dashboards will be delete so be careful.
+         You can supply a comma separated list of dashboard 'slugs' too. 
+         You will be prompted to confirm deletion of all, but not for specific slug list.
+         To see the slugs, use the -list_dashboards option.
+         Eg: -delete_dashboards slug1,slug2  - deletes just slug1 and slug2 dashboards
+
+      -export_dashboards [<comma separated uid list>]
+         Exports Grafana dashboards.
+         If no uid list if given, all dashboards are exported.
+         Dashboards are written to the current working directory, in the format <uid>.json.
+         The dashboard id is set to 'null' before writing to ensure it will be imported.
+ 
+    RRD Data Importation Related Options
+
+      Importation of RRD data into InfluxDB is supported. The following algorithm is used :
+          Gather a list of hosts and their services from GroundWork via the GroundWork API
+          For each of the hosts services RRD files :
+              Search for an associated RRD file for this host/service combination, and if found:
+                 Extract datasources and their associated consolidation functions
+                 For each of the Round Robin Archive (RRA)'s contained therein :
+                     Extract the RRD data and build it into data that is InfluxDB consumable 
+                     Write the data for the RRA to InfluxDB
+       
+          Notes
+            - The GroundWork instance is determined by settings in ws_client.properties,
+              which can be adjusted with the -ws_props_file argument )
+            - /usr/local/groundwork/common/bin/rrdtool dump is used for data extraction
+            - InfluxDB notes :
+               - Imported RRD data is tagged with fromRRD=true
+               - Imported RRD metrics are of the format : 
+                    servicename_RRDdatasourcename_RRAconsoliationfunction_RRAprimarydatapointseconds
+                    Example : local_load_load15_AVERAGE_3600seconds
+            - Since GroundWork RRD file names are of the format hostname_servicename.rrd, the 
+              host name and service name that generated the RRD are not deducible since host name
+              and service name can contain underscores too. Also, only importing data that belongs
+              to hosts in the GroundWork system is sufficient.
+
+      -import_rrds
+         Perform an importation of RRDs based on the above algorithm.
+
+      -delete_imported_rrd_data
+         Deletes all InfluxDB time series which have tag fromRRD = true
+
+      -ws_props_file <file>
+         Supply an alternative to the default /usr/local/groundwork/config/ws_client.properties.
+
+      -rrds_dir <dir>
+         Supply a non default GroundWork RRDs storage directory
+
+Author
+    GroundWork 2017
+
+";
+
+    GetOptions(
+
+                  'add_datasources:s'      => \$addDatasources,
+                  'add_service_profiles:s' => \$addServiceProfiles,
+                  'create_rps'             => \$createInfluxRetentionPolicies,
+                  'debug'                  => \$debug,
+                  'delete_dashboards:s'    => \$deleteDashboards, # takes optional comma list of slugs
+                  'default_datasource'     => \$groundworkDatsourceIsDefault,
+                  'export_dashboards:s'    => \$exportDashboards, 
+                  'help'                   => \$help,
+                  'import_dashboards:s'    => \$importDashboards,
+                  'generate_dashboards:s'  => \$generateDashboards,
+                  'list_dashboards'        => \$listDashboards,
+                  'import_rrds'            => \$importRRDs,
+                  'delete_imported_rrd_data' => \$deleteImportedRRDData,
+                  'no_backups'             => \$noBackups,
+                  'opentsdb_server=s'      => \$opentsdbServer,
+                  'rename_server=s'        => \$renameServer, 
+                  'rendering=s'            => \$rendering,
+                  'restart'                => \$restartGroundWork, 
+                  'root_user=s'            => \$rootUser,
+                  'root_password=s'        => \$rootPassword,
+                  'rrds_dir=s'             => \$rrdsDir,
+                  'server_name=s'          => \$globalServerName,
+                  'ssl=s'                  => \$configureSSL,
+                  'tsdb=s'                 => \$tsdb,
+                  'upgrade_nav'            => \$upgradeNav,
+                  'version'                => \$version,
+                  'ws_props_file=s'        => \$wsPropsFile,
+
+    ) or die "$helpString\n";
+
+    if ( defined $help ) { print $helpString; exit $OKSTATUS; }
+    if ( defined $version ) { print "Version $VERSION\n"; exit $OKSTATUS; }
+
+    if ( not defined $addDatasources and 
+         not defined $rendering and 
+         not defined $tsdb and 
+         not defined $restartGroundWork and 
+         not defined $globalServerName and 
+         not defined $configureSSL and 
+         not defined $listDashboards and 
+         not defined $deleteDashboards and 
+         not defined $importDashboards and 
+         not defined $exportDashboards and 
+         not defined $generateDashboards and 
+         not defined $importRRDs and 
+         not defined $deleteImportedRRDData and 
+         not defined $upgradeNav and 
+         not defined $addServiceProfiles and 
+         not defined $renameServer and 
+         not defined $createInfluxRetentionPolicies ) { 
+        fail "No action option supplied - select something to do.\n\n$helpString";
+    }
+
+    # configure default Grafana datasource setting
+    if ( not defined $groundworkDatsourceIsDefault )  {
+        $groundworkDatsourceIsDefault = 0 ; 
+    }
+
+    # check tsdb list contents validity
+    if ( defined $tsdb ) {
+        foreach my $tsdbType ( split ',', $tsdb ) {
+            if ( not exists $tsdbTypes{$tsdbType} ) { 
+                fail "Invalid TSDB type '$tsdbType' specified. Valid types are: " . join (", ",  keys %tsdbTypes) . "\n";
+            }
+        } 
+    }
+
+    # split the cli tsdb list into a hash for later use
+    if ( defined $tsdb ) { 
+        %tsdbs = map { $_ => undef } split(/,/, $tsdb);
+    }
+
+    # check rendering method validity
+    if ( defined $rendering and not exists $renderingMethods{$rendering} ) { 
+        fail "Invalid rendering method '$rendering' specified. Valid methods are: " . join (", ",  keys %renderingMethods) . "\n";
+    } 
+
+    # check ssl arg
+    if ( defined $configureSSL ) {
+        if ( $configureSSL !~ /^(enable|disable)$/ ) {
+            fail "Invalid -ssl option argument - expected 'enable' or 'disable'";
+        }
+    }
+
+    # use default location for import if none given
+    if ( defined $importDashboards ) {
+        $importDashboards = $gwDashboardsDir if $importDashboards eq '';
+        #if ( ! -d $importDashboards or ! -r $importDashboards ) { 
+        #   fail "Dashboards import directory '$importDashboards' doesn't exist or isn't readable";
+        #}
+    }
+
+    # use default location if none given
+    if ( defined $generateDashboards ) { 
+        # if no arg is given, then set the default profiles source dir (files written to cwd)
+        if ( $generateDashboards eq '' ) {
+            $generateDashboards = $gwProfilesDir ;
+        }
+        if ( ! -d $generateDashboards or ! -r $generateDashboards ) { 
+           fail "Dashboards intake generation directory '$generateDashboards' doesn't exist or isn't readable";
+        }
+    }
+
+    if ( defined $deleteDashboards ) {
+       if ( $deleteDashboards eq '' ) { 
+          logg "You are about to delete ALL grafana dashboards - are you sure ? Type in 'yes' and hit enter to confirm";
+          my $go = <STDIN>; chomp $go;
+          if ( $go ne 'yes' ) {
+             fail "Deleton aborted!";
+          }
+       }
+    }
+
+    # set default gw portal root username/password 
+    if ( defined $upgradeNav ) {
+       $rootUser = 'root' if not defined $rootUser ;
+       $rootPassword = 'root' if not defined $rootPassword ;
+    }
+
+    # set default host for -add_service_profiles option
+    if ( defined $addServiceProfiles ) {
+       if ( $addServiceProfiles eq '' ) { 
+           $addServiceProfiles = 'localhost';
+       }
+    }
+
+    # set default ws props
+    if ( not defined $wsPropsFile ) {
+       $wsPropsFile = "/usr/local/groundwork/config/ws_client.properties";
+    }
+
+    # set default rrd dir
+    if ( not defined $rrdsDir ) {
+       $rrdsDir = "/usr/local/groundwork/rrd";
+    }
+
+    if ( defined $renameServer ) { 
+       $globalServerName = $renameServer;
+       $addDatasources = $renameServer;
+    }
+
+    return 1;
+}
+
+# ---------------------------------------------------------------------------------
+sub runSystemCommand {
+
+    # Runs a system command.
+    # 
+    # Args: 
+    #   A command to execute, and an error ref.
+    #   $expectedStatList is optional array containing expected execution statuses. If this arg is not defined, 0 stat is used.
+    #      Eg service groundwork start , after installing grafbridge package in the past, returns 3 instead of 0 apparently, but still works.
+    #   $ignoreStat is also optional - if it's defined, don't bother checking the return stat. Otherwise do check the stat.
+    #   $actuatlStatRef also gets the return stat for use
+    # 
+    # NOTE
+    #   There are many ways to do this sort of thing. I'm sure someone has done it differently and probably better/safer. Open to alternatives.
+
+    my ( $command, $errorRef, $actualStatRef, $expectedStatList, $ignoreStat ) = @_;
+    
+    my ( $cmdStat, $shiftedStat,  $statuses ) ;
+
+    # set expected stat list
+    if ( not defined $expectedStatList ) { 
+        $expectedStatList = [ 0 ];
+    }
+
+    # run the command
+    $cmdStat = system( $command ); 
+   
+    # get the return status 
+    $shiftedStat = $cmdStat >> 8;
+
+    # convert the expected stat list into a comma list
+    $statuses = join ",", @{$expectedStatList};
+
+    # check the stat for success or failure based on the return status
+    if ( not defined $ignoreStat ) { 
+        if ( not ( grep /^$shiftedStat$/, @{$expectedStatList} ) ) {
+            $$errorRef .= "Failed doing '$command' (expecting status in $statuses, got status $shiftedStat). "; 
+            return 0; 
+        }
+    }
+
+    $$actualStatRef = $shiftedStat;
+    
+    return 1;
+}
+
+# ---------------------------------------------------------------------------------
+sub getPropertyValues {
+
+    # Gets property values from config/props files (format: prop = value)
+    # Args
+    #   A property or config file
+    #   A ref to a hash containing a list of properties to get values for of this format { p1 => undef, p2 => undef, .. } )
+    #   Some comments to use when constructing messages
+    #   An error by ref
+    # Success
+    #   returns 1
+    #   fills in values retrieved for properties, or leaves them as undef if not found
+    # Failure
+    #   returns 0 and error by ref
+    
+    my ( $propsFile, $settingsHashRef, $comments, $errorRef ) = @_ ;
+    my ( @config, $line, $prop, $value, %seen) ;
+    
+    # read in the props/config file into mem
+    open (PROPS, $propsFile) or do {
+	    $$errorRef .= "Failed getting property values from $propsFile ($comments). Reason: Could not open the file '$propsFile' for reading: $!. ";
+	    return 0;
+    };
+    @config = <PROPS>;
+    close PROPS;
+
+    # try to retrieve values for each prop
+    LINE: for ( my $i = 0; $i <= $#config ; $i++ ) { # loop over each line of the prop file
+        PROP: foreach $prop ( keys %$settingsHashRef ) {  # loop over each property to adjust 
+            if ( $config[$i] =~ m{ ^\s*$prop\s*=.*$  }xms ) {  # if the line of the prop file matches ...
+                $value = $config[$i];
+                chomp $value;
+                $value =~ s/^\s*$prop\s*=(.*)$/$1/g; # get the value
+                $value =~ s/(^\s*|\s*$)//g; # white space strip
+                $settingsHashRef->{$prop} = $value; # shove value back into settings hash
+            }
+        }
+    }
+
+    return 1;
+
+}
+
+# ---------------------------------------------------------------------------------
+sub setPropertyValues {
+
+    # Sets property values in config/props files (format: prop = value)
+    # If no -no_backups option was given, then a backup of the props file is made.
+    # Args
+    #   A property or config file
+    #   A ref to a hash containing a list of properties to set values for of this format { p1 => v1, p2 => v2, .. } )
+    #   Some comments to use when constructing messages
+    #   An error by ref
+    # Success
+    #   returns 1
+    #   set values for properties found in config file.
+    # Failure
+    #   returns 0 and error by ref
+
+    my ( $propsFile, $settingsHashRef, $comments, $errorRef ) = @_ ;
+    my ( @config, $temp_config_file, $dev, $ino, $mode, $nlink, $uid, $gid, %seen );
+
+    # Read in the config file into memory
+    open (PROPS, $propsFile) or do {
+	    $$errorRef .= "Failed to set properties: Could not open the file '$propsFile' for reading: $!. ";
+	    return 0;
+    };
+    @config = <PROPS>;
+    close PROPS;
+
+    # Open a temporary config file for writing.  We do this so as not to utterly destroy the
+    # old copy if we get interrupted before we're done constructing the updated copy.
+    $temp_config_file = "$propsFile.new.$$";
+    open (CONFOUT, ">", $temp_config_file) or do {
+	    $$errorRef .= "Failed to set properties: Could not open the file '$temp_config_file' for writing: $!. ";
+	    return 0;
+    };
+
+    # Get the file mode which will be re-used later
+    ($dev, $ino, $mode, $nlink, $uid, $gid) = stat $propsFile;
+    if (not defined $mode) {
+	    $$errorRef .= "Failed to set properties: Could not get the mode of the config file '$propsFile': $!. ";
+	    return 0;
+    }
+
+    # Kill any filetype info, and further restrict the permissions to disallow any pointless
+    # set-id/sticky or execute permissions and any group-write or other-write permissions.
+    $mode &= 0644;
+
+    # Set the mode of the new file to the mode of the old file, perhaps sensibly restricted.
+    unless ( chmod( $mode, $temp_config_file ) ) {
+	    $$errorRef .= "Failed to set properties: Could not set the mode of the file '$temp_config_file': $!. ";
+	    return 0;
+    }
+
+    # Set the ownership of the new file to that of the old file.  This should effectively be a
+    # no-op, because we should be running as the owner of the old file.  But if this fails, then
+    # we know we cannot put the config file back as it was without change, so we abort.
+    unless (chown $uid, $gid, $temp_config_file) {
+	    $$errorRef .= "Failed to set properties: Could not set the ownership of the file '$temp_config_file': $!. ";
+	    return 0;
+    }
+
+    # update prop vals
+    foreach my $prop ( keys %$settingsHashRef ) {
+        $seen{ $prop } = 0;
+    }
+    
+    for ( my $i = 0; $i <= $#config ; $i++ ) { # loop over each line of the prop file
+        foreach my $prop ( keys %$settingsHashRef ) {  # loop over each property to adjust 
+            if ( $config[$i] =~ m{ ^\s*$prop\s*=.*$  }xms ) {  # if the line of the prop file matches ...
+                $config[$i] = "$prop = $$settingsHashRef{ $prop }\n";  # adjust its value
+                $seen{ $prop } = 1; # make a note that this prop was actually seen
+            }
+        }
+    }
+
+    # Add any missing props
+    foreach my $prop ( keys %seen ) {
+        if ( $seen{ $prop } == 0 ) { 
+            push @config, "$prop = $$settingsHashRef{ $prop }\n";
+        }
+    }
+
+    # make a backup of the original file if required
+    if ( ! defined $noBackups ) {
+        my $backupName = "$propsFile.grafbridge-control." . POSIX::strftime("%Y-%m-%d.%H_%M_%S", localtime);
+        copy $propsFile, $backupName;
+        if ( not -e $backupName ) { 
+            unlink $temp_config_file;
+	    $$errorRef .= "Failed to make a backup copy of $propsFile to $backupName - no changes have been made to $propsFile. ";
+            return 0;
+        }
+    }
+
+    # write the adjusted props file out to the temp file
+    unless ( print CONFOUT @config ) {
+        $$errorRef .= "Failed to set properties: Could not write to the file '$temp_config_file': $!";
+        return 0;
+    }
+
+    # A close() may flush Perl's I/O buffers, so writing can occur here, too,
+    # and the success of this operation must be checked as well.
+    unless ( close CONFOUT ) {
+	$$errorRef .= "Failed to set properties: Could not close to the file '$temp_config_file': $!. ";
+	return 0;
+    }
+
+    # Perform an atomic rename of the new config file.  By standard UNIX rename semantics,
+    # the end result is that you either get the entire new file or the entire old file at
+    # the name of the old file, depending on whether or not the rename succeeded.  But you
+    # never can get any partial file as a result.  This provide essential safety.
+    unless ( rename( $temp_config_file, $propsFile ) ) {
+	    $$errorRef .= "Failed to set properties: Could not rename the updated file '$temp_config_file': $!. ";
+	    return 0;
+    }
+
+    return 1;
+}
+
+# ---------------------------------------------------------------------------------
+sub configureGrafanaDatasources {
+   
+    # Adds a GroundWork perf data datasource to Grafana using the Grafana API.
+    # Adds a GroundWork internal metrics datasource to Grafana using the Grafana API.
+    # There's currently no upgrade path.
+    # Prob'y other cases that need handling here in the REST calls but it's basically working.
+    # Takes a ref to an error string, and an update flag indicating to overwrite changes - used by -rename_server
+    # Returns 1 on success, 0 and error by ref otherwise.
+
+    my ( $errorRef, $update ) = @_;
+    my ( $grafanaHost, $grafanaUser, $grafanaPassword, $grafanaPort, $grafanaServer,
+         $grafanaGroundWorkDataSourceName, $grafanaAPIJSON, $json_encoded_instructions, $command,
+         $userAgent, $restClient, $HTTPResponseCode, $responseContent, $JSONResponse, %grafanaProps, %wsProps,
+         $getResponse, $getResponseJSON, $retry, $maxRetries, $wait, $influxServerURL, $grafanaHostURL, $dsId  );
+    my %jsonBool = ( 0 => 'false', 1 => 'true' ) ;
+
+    logg "Configuring Grafana GroundWork datasource objects";
+    
+    # create an agent object 
+    eval {
+        $userAgent = LWP::UserAgent->new( agent => $appName, timeout=> 60, ssl_opts => \%sslOptions);
+        #$userAgent = LWP::UserAgent->new( agent => $appName, timeout=> 60);
+    };
+    if ($@) {
+        chomp $@;
+        $@ =~ s/^ERROR:\s+//i;
+        $$errorRef .= "\tCannot create a user agent for adding Grafana datasource: $@. "; 
+        return 0;
+    }
+
+    # Get the grafana protocol and port from the Grafana config file. 
+    # TODO Also try to use default admin creds. This might not work if they have been changed but will work 
+    # most of the time except possibly for customers connecting to existing grafana instances - different procedure for that which this script doesn't yet support.
+    # v1.2.4 changed this to use root_url instead. The reasoning is that the first time this is run from the installer against a local Grafana defaults.ini,
+    # root_url = http://localhost/grafana/ . Then, perhaps -ssl enable is used, changing root_url protocol to https. But, we don't use the protocol property as we're proxying 
+    # through Apache, so the real protocol lies in the root_url not protocol.
+    %grafanaProps = ( "protocol" => undef , 'http_port' => undef, 'admin_user' => undef, 'admin_password' => undef, 'root_url' => undef );
+    if ( not getPropertyValues( "$installDir/grafana/conf/defaults.ini", \%grafanaProps, "Getting props protocal and http_port", $errorRef ) ) { 
+        return 0;
+    } 
+    if ( $addDatasources ne '' ) { 
+        $grafanaServer = $addDatasources ; # ie -add_datasources someHost
+    }
+    else { # ie -add_datasources
+        $grafanaServer = Sys::Hostname::hostname(); 
+    }
+
+    # TODO check root_url defined and of the correct format - starts with http[s].
+    
+    # Create a new REST client pointing to Grafana via the root_url which is expected to be our GroundWork proxy http[s]://gwserver/grafana. 
+    $restClient = REST::Client->new( { host => $grafanaProps{root_url}, timeout => 10, useragent => $userAgent } );
+
+    # Grafana API uses basic auth 
+    $restClient->addHeader("Authorization", "Basic " . encode_base64("$grafanaProps{admin_user}:$grafanaProps{admin_password}") );
+	
+    if ( not defined $restClient ) { 
+       $$errorRef .= "\tCould not create REST::Client object for adding Grafana datasource. "; 
+       return 0;
+    }
+   
+    $restClient->addHeader( "Content-Type", "application/json" );
+    $restClient->addHeader( "Accept", "application/json" );
+
+    # Get GW REST API creds - this script is currently only intended to work against a local GW install.
+    #%wsProps = ( "webservices_user" => undef , 'webservices_password' => undef );
+    %wsProps = ( "webservices_reader_user" => undef , 'webservices_reader_password' => undef ); # v1.3.8
+    if ( not getPropertyValues( "$installDir/config/ws_client.properties", \%wsProps, "Getting props webservices_reader_user and webservices_reader_password", $errorRef ) ) { 
+        return 0;
+    } 
+
+    # For now, the default datasource name must be 'GroundWork' for future compat with our scripted dashboards.
+    # TODO This will get cleaned up in the future when the use cases are clearer for Grafana and scripted templatized dashboards.
+    #DATASOURCE: foreach $grafanaGroundWorkDataSourceName ( $gwDSName, $gwInternalsDSName ) { 
+    DATASOURCE: foreach $grafanaGroundWorkDataSourceName ( $gwDSName ) { # GWMON-13101
+
+        # First see if there's already a datasource called $grafanaGroundWorkDataSourceName and respect that if there is. 
+        # This should result in a 200.
+        $retry = 1 ;
+        $wait = 10; # seconds
+        $maxRetries = 10;  # changed to allow a bit more time for Grafana API to become available 
+        $HTTPResponseCode = -1; # some invalid code
+        logg "\tChecking for existing $grafanaGroundWorkDataSourceName datasource";
+        while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+	    $restClient->GET( "/api/datasources" );
+            $HTTPResponseCode = $restClient->responseCode();
+            $responseContent = $restClient->responseContent();
+            if ( $HTTPResponseCode != 200 )  {
+                logg "\tUnable to get datasources from Grafana - try $retry/$maxRetries, trying again in $wait seconds";
+                sleep $wait;
+            }
+            $retry++;
+        }
+        if ( $retry > $maxRetries ) {
+            $$errorRef .= "\tCould not reach the Grafana API to check for existing datasources. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+            $$errorRef =~ s/\n/ /g;
+            return 0;
+        }
+        
+        # Decode the datasource results and search for the GroundWork one. This will be an array of hashes, each has a name prop
+        # If one is found, then issue a log message and skip it ... unless $update is defined which is set by -rename_server
+        $JSONResponse = decode_json( $responseContent ) ;
+        # search for this $grafanaGroundWorkDataSourceName in the list of found datasources ...
+        foreach my $ds ( @$JSONResponse ) { 
+           
+            if ( $ds->{name} eq $grafanaGroundWorkDataSourceName ) {
+
+                if ( not defined $update ) {
+                    logg "\tGrafana $grafanaGroundWorkDataSourceName datasource already exists - leaving it as-is.";
+                    next DATASOURCE;
+                }
+                else { 
+                    # make a note of the ds id for the PUT / update later
+                    $dsId = $ds->{id};
+		}
+            }
+        }
+
+        if ( defined $update ) { 
+            if ( not defined $dsId ) { 
+                logg "\tNo existing $grafanaGroundWorkDataSourceName datasource was found - nothing to update";
+                return 1;
+            }
+            logg "\tUpdating $grafanaGroundWorkDataSourceName datasource";
+        }
+        else { 
+            logg "\tNo existing $grafanaGroundWorkDataSourceName datasource was found - creating a new one";
+        }
+
+        # For Grafana 4.2.0 Groundwork ...
+	my $webservices_reader_password = $wsProps{webservices_reader_password} // '';
+	my $webservices_reader_user     = $wsProps{webservices_reader_user}     // '';
+        #if ( $grafanaGroundWorkDataSourceName eq 'GroundWork' ) {
+        if ( $grafanaGroundWorkDataSourceName eq $gwDSName ) {
+            my $idProp = "";
+            if ( defined $update and defined $dsId ) { 
+               $idProp = ", \"id\" : $dsId";
+            }
+            $grafanaAPIJSON = <<END_CONTENT;
+        {
+            "name": "$grafanaGroundWorkDataSourceName",
+            "type": "groundwork",
+            "typeLogoUrl": "public/app/plugins/datasource/groundwork/img/gw_logo.gif",
+            "access": "proxy",
+            "url": "",
+            "password": "",
+            "user": "",
+            "database": "",
+            "basicAuth": false,
+            "basicAuthUser": "",
+            "basicAuthPassword": "",
+            "withCredentials": false,
+            "isDefault": $jsonBool{ $groundworkDatsourceIsDefault },
+            "jsonData": {
+              "gwdebug": true,
+              "password": "$webservices_reader_password", 
+              "url": "$grafanaProps{protocol}://$grafanaServer",
+              "username": "$webservices_reader_user"
+            },
+            "secureJsonFields": null
+            $idProp
+        }'
+END_CONTENT
+
+        }
+        #elsif ( $grafanaGroundWorkDataSourceName eq 'GroundWork Internal Metrics' ) {
+        elsif ( $grafanaGroundWorkDataSourceName eq $gwInternalsDSName ) {
+
+            # Calculate the influx server name and port. 
+            # For now, this code is expected to be only called from the installer on a fresh install, where influx and grafana all are on the same host.
+            # TODO
+            # In future if this script needs to work to configure influx on a different server to where grafana is located, this will need to change.
+            # It also assumes that since this is fresh install time invocation, that influxdb is running on http. There is no installer option to
+            # set up ssl at install time yet. If that changes, this will need to change. 
+            # V 1.2.4: changed access to be proxy rather than direct since we're proxying through our Apache server
+            $influxServerURL = "http://$grafanaServer:8086";
+            $grafanaAPIJSON = <<END_CONTENT;
+            {
+                "name": "$grafanaGroundWorkDataSourceName",
+                "type": "influxdb",
+                "typeLogoUrl": "public/app/plugins/datasource/influxdb/img/influxdb_logo.svg",
+                "access": "proxy",
+                "url": "$influxServerURL",
+                "password": "",
+                "user": "",
+                "database": "_groundwork_metrics",
+                "basicAuth": false,
+                "isDefault": false,
+                "jsonData": {
+                }
+          }'
+END_CONTENT
+        }
+        else {
+            $$errorRef .= "\tInternal error - Unrecognized datasource '$grafanaGroundWorkDataSourceName'. ";
+            return 0;
+        } 
+
+
+
+        # The datasource doesn't exist. 
+        # Creating one successfully will result in a 200.
+        # Grafana might have since gone down.
+        # If this POST fails, do some retying before giving up.
+        $retry = 1 ;
+        $HTTPResponseCode = -1;
+        while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+            if ( not defined $update ) {
+                $restClient->POST( "/api/datasources", $grafanaAPIJSON );
+            }
+            else {
+                $restClient->PUT( "/api/datasources/$dsId", $grafanaAPIJSON );
+            }
+
+            $HTTPResponseCode = $restClient->responseCode();
+            $responseContent = $restClient->responseContent();
+            if ( $HTTPResponseCode != 200 )  {
+                logg "\tUnable to create new $grafanaGroundWorkDataSourceName datasource - try $retry/$maxRetries, trying again in $wait seconds";
+                logg "\tDetails: HTTPResponseCode=$HTTPResponseCode, responseContent=$responseContent";
+                sleep $wait;
+            }
+            $retry++;
+        }
+        if ( $retry > $maxRetries ) { 
+                $$errorRef .= "\tFailed to create new datasource. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+                $$errorRef =~ s/\n/ /g;
+                return 0;
+        }
+    
+        if ( not defined $update ) {
+            logg "\tCreated new $grafanaGroundWorkDataSourceName datasource";
+        }
+        else {
+            logg "\tUpdated $grafanaGroundWorkDataSourceName datasource";
+        }
+    
+   }
+
+
+    return 1;
+}
+
+# ---------------------------------------------------------------------------------
+sub createInfluxRetentionPolicy {
+   
+    # Creates/alters default GroundWork InfluxDB retention policy for a given influx db.
+    # Takes an InfluxDB database name, and a ref to an error string, returns 1 on success, 0 and error by ref otherwise.
+
+    my ( $database, $errorRef ) = @_;
+    my ( $userAgent, $restClient, $HTTPResponseCode, $responseContent, $JSONResponse, $retry, $maxRetries, $wait,
+         $defaultRPFound, $influxRPQuery, $messageRP, $defaultDatabaseFound );
+
+    logg "Creating/altering the default GroundWork InfluxDB retention policy '$defaultRPName' on InfluxDB database '$database'";
+    
+    # create an agent object 
+    eval {
+        $userAgent = LWP::UserAgent->new( agent => $appName, timeout=> 60, );
+    };
+    if ($@) {
+        chomp $@;
+        $@ =~ s/^ERROR:\s+//i;
+        $$errorRef .= "\tCannot create a user agent for creating an InfluxDB retention policy: $@. "; 
+        return 0;
+    }
+
+    # TODO at some point in the future when remote influxdb arch is required, need to param host and port for influxdb
+    $restClient = REST::Client->new( { host => "http://localhost:8086",
+	                               timeout => 10,
+	                               useragent => $userAgent } );
+	
+    if ( not defined $restClient ) { 
+       $$errorRef .= "\tCould not create REST::Client object for creating an InfluxDB retention policy. "; 
+       return 0;
+    }
+
+    # See if the database to which the rp is going to be applied exists. If it doesn't, create it. 
+    $retry = 1 ;
+    $wait = 10; # seconds
+    $maxRetries = 3; 
+    $HTTPResponseCode = -1; # some invalid code
+    logg "\tChecking existence of database '$database'";
+    while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+        $restClient->GET( '/query?db=' .$database . '&q=SHOW+DATABASES');
+        $HTTPResponseCode = $restClient->responseCode();
+        $responseContent = $restClient->responseContent();
+        if ( $HTTPResponseCode != 200 )  {
+            logg "\tUnable to check for database existence - try $retry/$maxRetries, trying again in $wait seconds";
+            sleep $wait;
+        }
+        $retry++;
+    }
+    if ( $retry > $maxRetries ) { 
+        $$errorRef .= "\tCould not check database existence. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+        $$errorRef =~ s/\n/ /g;
+        return 0;
+    }
+
+    # see if the default database exists
+    $JSONResponse = decode_json( $responseContent ) ;
+    $defaultDatabaseFound = 0;
+    foreach my $dbName ( @{ $JSONResponse->{results}[0]->{series}[0]->{values} } ) { 
+	if ( $dbName->[0] eq $database ) {
+		$defaultDatabaseFound = 1;
+		last;
+	}
+    }
+
+    # go create the database
+    if ( not $defaultDatabaseFound ) {
+        $retry = 1 ;
+        $wait = 10; # seconds
+        $maxRetries = 3; 
+        $HTTPResponseCode = -1; # some invalid code
+        logg "\tCreating database '$database'";
+        while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+            $restClient->POST( '/query?db=' .$database . '&q=CREATE+DATABASE+'.$database);
+            $HTTPResponseCode = $restClient->responseCode();
+            $responseContent = $restClient->responseContent();
+            if ( $HTTPResponseCode != 200 )  {
+                logg "\tUnable to create database- try $retry/$maxRetries, trying again in $wait seconds";
+                sleep $wait;
+            }
+            $retry++;
+        }
+        if ( $retry > $maxRetries ) { 
+            $$errorRef .= "\tCould not create database $database. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+            $$errorRef =~ s/\n/ /g;
+            return 0;
+        }
+
+        # and once again now need to check the list of databases and see if it got created
+        $retry = 1 ;
+        $wait = 10; # seconds
+        $maxRetries = 3; 
+        $HTTPResponseCode = -1; # some invalid code
+        logg "\tChecking existence of database '$database'";
+        while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+            $restClient->GET( '/query?db=' .$database . '&q=SHOW+DATABASES');
+            $HTTPResponseCode = $restClient->responseCode();
+            $responseContent = $restClient->responseContent();
+            if ( $HTTPResponseCode != 200 )  {
+                logg "\tUnable to check for database existence - try $retry/$maxRetries, trying again in $wait seconds";
+                sleep $wait;
+            }
+            $retry++;
+        }
+        if ( $retry > $maxRetries ) { 
+            $$errorRef .= "\tCould not check database existence. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+            $$errorRef =~ s/\n/ /g;
+            return 0;
+        }
+        $JSONResponse = decode_json( $responseContent ) ;
+        $defaultDatabaseFound = 0;
+        foreach my $dbName ( @{ $JSONResponse->{results}[0]->{series}[0]->{values} } ) { 
+	    if ( $dbName->[0] eq $database ) {
+		    $defaultDatabaseFound = 1;
+		    last;
+	    }
+        }
+        
+        if ( not $defaultDatabaseFound ) {
+            $$errorRef = "\tInfluxDB database '$database' didn't exist initially. A failure occurred trying to create it automatically.";
+            return 0;
+        }
+
+    }
+
+
+    # See if the default rp exists. If it doesn't, just create it. If it does, alter it...
+    $retry = 1 ;
+    $wait = 10; # seconds
+    $maxRetries = 3; 
+    $HTTPResponseCode = -1; # some invalid code
+    logg "\tChecking for existing default GroundWork InfluxDB retention policy called '$defaultRPName' on database '$database'";
+    while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+        $restClient->GET( '/query?db=' .$database . '&q=SHOW+RETENTION+POLICIES+ON+'.$database);
+        $HTTPResponseCode = $restClient->responseCode();
+        $responseContent = $restClient->responseContent();
+        if ( $HTTPResponseCode != 200 )  {
+            logg "\tUnable to get retention policies - try $retry/$maxRetries, trying again in $wait seconds";
+            sleep $wait;
+        }
+        $retry++;
+    }
+    if ( $retry > $maxRetries ) { 
+        $$errorRef .= "\tCould not get InfluxDB retention policies. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+        $$errorRef =~ s/\n/ /g;
+        return 0;
+    }
+
+    # see if the default RP is defined already
+    $JSONResponse = decode_json( $responseContent ) ;
+    # die Dumper $JSONResponse; # to see the structure of the response - it's a bit dense
+    $defaultRPFound = 0;
+    foreach my $rpName ( @{ $JSONResponse->{results}[0]->{series}[0]->{values} } ) { 
+	if ( $rpName->[0] eq $defaultRPName ) {
+		$defaultRPFound = 1;
+		last;
+	}
+    }
+
+    # depending on whether the default rp was found or not, set up to create or alter (useful for a reset) the default rp
+    if ( not $defaultRPFound ) { 
+        $messageRP = "Creating";
+        $influxRPQuery = '/query?db=' . $database . '&q=CREATE+RETENTION+POLICY+"' . $defaultRPName . '"+ON+"' . $database . '"+DURATION+56w+REPLICATION+1+DEFAULT';
+    } else {
+        $messageRP = "Altering";
+        $influxRPQuery = '/query?db=groundwork&q=ALTER+RETENTION+POLICY+"' . $defaultRPName . '"+ON+"' . $database . '"+DURATION+56w+REPLICATION+1+DEFAULT';
+    }
+
+    # try create/alter the default rp.
+    # Not much point in decoding the datasource results because that looks like {"results":[{"statement_id":0}]}, 
+    # regardless of whether the rp was created/altered successfully or not
+    $retry = 1 ;
+    $wait = 10; # seconds
+    $maxRetries = 3; 
+    $HTTPResponseCode = -1; # some invalid code
+    logg "\t$messageRP the default GroundWork InfluxDB retention policy called '$defaultRPName'";
+    while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+        $restClient->POST( $influxRPQuery ); # don't try to uri_escape this btw - it doesn't work here
+        $HTTPResponseCode = $restClient->responseCode();
+        $responseContent = $restClient->responseContent();
+        if ( $HTTPResponseCode != 200 )  {
+            logg "\tUnable to create/alter the retention policy - try $retry/$maxRetries, trying again in $wait seconds";
+            sleep $wait;
+        }
+        $retry++;
+    }
+    if ( $retry > $maxRetries ) { 
+        $$errorRef .= "\tCould not create/alter the InfluxDB retention policy '$defaultRPName' on database '$database'. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+        $$errorRef =~ s/\n/ /g;
+        return 0;
+    }
+
+    # check that the rp was created.
+    # the return status/payload from the api isn't very useful - need to get the list and search again
+    # TODO there should be a similar test for the ALTER too.
+    if ( not $defaultRPFound ) {
+
+        logg "\tChecking retention policy '$defaultRPName' was created on database '$database'";
+        $HTTPResponseCode = -1; # some invalid code
+        $retry = 1 ;
+        $wait = 10; # seconds
+        $maxRetries = 3; 
+        while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+            $restClient->GET( '/query?db=' . $database . '&q=SHOW+RETENTION+POLICIES+ON+' . $database);
+            $HTTPResponseCode = $restClient->responseCode();
+            $responseContent = $restClient->responseContent();
+            if ( $HTTPResponseCode != 200 )  {
+                logg "\tUnable to get retention policies on $database- try $retry/$maxRetries, trying again in $wait seconds";
+                sleep $wait;
+            }
+            $retry++;
+        }
+        if ( $retry > $maxRetries ) { 
+            $$errorRef .= "\tCould not get InfluxDB retention policies on database '$database'. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+            $$errorRef =~ s/\n/ /g;
+            return 0;
+        }
+        # see if the default RP is defined already
+        $JSONResponse = decode_json( $responseContent ) ;
+        # die Dumper $JSONResponse; # to see the structure of the response - its a bit dense
+        my $defaultRPFound = 0;
+        foreach my $rpName ( @{ $JSONResponse->{results}[0]->{series}[0]->{values} } ) { 
+	    if ( $rpName->[0] eq $defaultRPName ) {
+		    $defaultRPFound = 1;
+		    last;
+	    }
+        }
+        if ( not $defaultRPFound ) {
+	    $$errorRef .= "\tAn attempt was made to create the retention policy '$defaultRPName' on InfluxDB database '$database', but failed. ";
+            return 0;
+        }
+
+    }
+    
+    return 1;
+}
+# ---------------------------------------------------------------------------------
+sub restartGroundWork {
+ 
+    # Restarts groundwork in hopefully a way that is OS independent - by calling out ctlscript.sh
+    # Takes a ref to an error string.
+    # Returns 1 if ok, 0 and error by ref if not.
+    # Note: there might be better or more preferred ways of doing this. 
+
+    my ( $errorRef ) = @_;
+
+    logg "Restarting GroundWork";
+    if ( not runSystemCommand( "$installDir/ctlscript.sh restart",  $errorRef ) ) {
+        $$errorRef .= "Failed to restart GroundWork. ";
+        return 0;
+    }
+
+    return 1;
+}
+
+# ---------------------------------------------------------------------------------
+sub opentsdbServerAlive {
+
+
+    # Tries to see if OpenTSDB is "alive", but getting it's version via its /api/version endpoint.
+    # Takes a url to OpenTSDB, and a ref to an error string.
+    # Returns 1 if ok, 0 and error by ref if not.
+
+    my ( $opentsdbURL, $errorRef ) = @_;
+
+    my ( $userAgent, $restClient, $retry, $wait, $maxRetries, $HTTPResponseCode, $responseContent, $JSONResponse ) ;
+
+    logg "\tChecking OpenTSDB is reachable by getting its version";
+
+    # create an agent object 
+    eval {
+        $userAgent = LWP::UserAgent->new( agent => $appName, timeout=> 60, );
+    };
+    if ($@) {
+        chomp $@;
+        $@ =~ s/^ERROR:\s+//i;
+        $$errorRef = "\tCannot create a user agent for opentsdb alive check: $@"; 
+        return 0;
+    }
+
+    $restClient = REST::Client->new( { host => $opentsdbURL, 
+	                               timeout => 10,
+	                               useragent => $userAgent } );
+	
+    if ( not defined $restClient ) { 
+       $$errorRef .= "\tCould not create REST::Client object for OpenTSDB alive check. "; 
+       return 0;
+    }
+
+    # try to call the /api/version endpoint at the given url, repeating a few times before giving up
+    $retry = 1 ;
+    $wait = 10; # seconds
+    $maxRetries = 3; 
+    $HTTPResponseCode = -1; # some invalid code
+    while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+    
+	$restClient->GET( "/api/version" );
+        $HTTPResponseCode = $restClient->responseCode();
+        $responseContent = $restClient->responseContent();
+        if ( $HTTPResponseCode != 200 )  {
+            logg "\tUnable to get version from OpenTSDB at $opentsdbURL - try $retry/$maxRetries, trying again in $wait seconds";
+            sleep $wait;
+        }
+        $retry++;
+    }
+    if ( $retry > $maxRetries ) { 
+        $$errorRef .= "\tCould not get version information from OpenTSDB at $opentsdbURL - assuming OpenTSDB is not reachable. Last status code: $HTTPResponseCode, last response: $responseContent. ";
+        $$errorRef =~ s/\n/ /g;
+        return 0;
+    }
+    
+    # Decode the datasource results and search for the GroundWork one. This will be an array of hashes, each has a name prop
+    # For future compat, if the version prop goes away, its not necessarily an fail, just want to log it though.
+    $JSONResponse = decode_json( $responseContent ) ;
+    if ( exists $JSONResponse->{version} ) { 
+	    logg "\tOpenTSDB version $JSONResponse->{version} found.";
+    }
+    else {
+	    logg "\tUnknown OpenTSDB version found. No version property in JSON response from /api/version - response was:";
+        logg Dumper $JSONResponse;
+    }
+    
+    return 1;
+
+}
+
+# ---------------------------------------------------------------------------------
+sub configureSSL {
+
+    # 1. updates the Grafana datasources by adjusting their url protocols
+    # 2. updates the config files properties
+    # This order is required - if 2 is done first, the REST calls will fail due to protocol being wrong.
+    #
+    # Notes :
+    #  - Grafana : assumes root_url was the one set up by the GW installer and is of the format http[s]://... ie not %(protocol)://...
+    #     
+    # Returns 1 if ok, 0 and error by ref if not.
+    # TODO : DRY up this routine 
+
+    my ( $errorRef ) = @_;
+    my ( %grafanaProps, %influxProps, %gwProps, $protocol, $grafanaRootURL, $influxHTTPS, $gwUrl,
+         $userAgent, $restClient, $HTTPResponseCode, $responseContent, $JSONResponse, $wait, $retry, $maxRetries
+       );
+ 
+    logg "Configuring SSL for Grafana and InfluxDB";
+    
+    if ( $configureSSL eq 'enable' ) { 
+        $protocol = 'https';
+        $influxHTTPS = 'true';
+    }
+    elsif ( $configureSSL eq 'disable') { 
+        $protocol = 'http';
+        $influxHTTPS = 'false';
+    } 
+    else { 
+        $$errorRef = "Internal error : unhandled ssl argument value '$configureSSL' - expected 'enable' or 'disable'";
+        return 0;
+    }
+
+    # Update the datasource url protocols ...
+
+    # Create an agent object 
+    eval {
+        $userAgent = LWP::UserAgent->new( agent => $appName, timeout=> 60, ssl_opts => \%sslOptions);
+    };
+    if ($@) {
+        chomp $@;
+        $@ =~ s/^ERROR:\s+//i;
+        $$errorRef .= "\tCannot create a user agent for adding Grafana datasource: $@. "; 
+        return 0;
+    }
+    %grafanaProps = ( 'admin_user' => undef, 'admin_password' => undef, 'root_url' => undef );
+    if ( not getPropertyValues( "$installDir/grafana/conf/defaults.ini", \%grafanaProps, "Getting props protocal and http_port", $errorRef ) ) { 
+        return 0;
+    } 
+    # Create a new REST client pointing to Grafana via the root_url which is expected to be our GroundWork proxy http[s]://gwserver/grafana. 
+    $restClient = REST::Client->new( { host => $grafanaProps{root_url}, timeout => 10, useragent => $userAgent } );
+    if ( not defined $restClient ) { 
+       $$errorRef .= "\tCould not create REST::Client object for adding Grafana datasource. "; 
+       return 0;
+    }
+    $restClient->addHeader("Authorization", "Basic " . encode_base64("$grafanaProps{admin_user}:$grafanaProps{admin_password}") );
+    $restClient->addHeader( "Content-Type", "application/json" );
+    $restClient->addHeader( "Accept", "application/json" );
+
+    #DATASOURCE: foreach my $grafanaGroundWorkDataSourceName ( $gwDSName, $gwInternalsDSName ) {
+    DATASOURCE: foreach my $grafanaGroundWorkDataSourceName ( $gwDSName ) { # GWMON-13101
+
+        # First see if there's already a datasource called $grafanaGroundWorkDataSourceName and respect that if there is. 
+        # This should result in a 200.
+        $retry = 1 ;
+        $wait = 10; # seconds
+        $maxRetries = 3; 
+        $HTTPResponseCode = -1; # some invalid code
+        logg "\tChecking for existing $grafanaGroundWorkDataSourceName datasource";
+        while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+	    $restClient->GET( "/api/datasources" );
+            $HTTPResponseCode = $restClient->responseCode();
+            $responseContent = $restClient->responseContent();
+            if ( $HTTPResponseCode != 200 )  {
+                logg "\tUnable to get datasources from Grafana - try $retry/$maxRetries, trying again in $wait seconds";
+                sleep $wait;
+            }
+            $retry++;
+        }
+        if ( $retry > $maxRetries ) {
+            $$errorRef .= "\tCould not reach the Grafana API to check for existing datasources. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+            $$errorRef =~ s/\n/ /g;
+            return 0;
+        }
+        
+        # Decode the datasource results and search for the GroundWork one. This will be an array of hashes, each has a name prop
+        $JSONResponse = decode_json( $responseContent ) ;
+        my $dsJSON;
+        my $dsFound = 0;
+        foreach my $ds ( @$JSONResponse ) {
+            if ( $ds->{name} eq $grafanaGroundWorkDataSourceName ) {
+                $dsJSON = $ds; 
+                $dsFound = 1; 
+                last;
+            }
+        }
+
+        if ( not $dsFound ) { 
+            $$errorRef = "\tNo existing $grafanaGroundWorkDataSourceName datasource was found to update";
+            return 0;
+        }
+
+        logg "\tUpdating $grafanaGroundWorkDataSourceName datasource";
+        if ( $grafanaGroundWorkDataSourceName eq $gwDSName ) {
+            $dsJSON->{jsonData}{url} =~ s/^https?/$protocol/g;
+        }
+        elsif ( $grafanaGroundWorkDataSourceName eq $gwInternalsDSName ) {
+            $dsJSON->{url} =~ s/^https?/$protocol/g;
+        }
+
+        my $encodedJSON = encode_json( $dsJSON );
+ 
+        # update the datasource by id
+        $retry = 1 ;
+        $HTTPResponseCode = -1;
+        while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+            # see http://docs.grafana.org/http_api/data_source/#update-an-existing-data-source
+            $restClient->PUT( "/api/datasources/$dsJSON->{id}", $encodedJSON  );
+            $HTTPResponseCode = $restClient->responseCode();
+            $responseContent = $restClient->responseContent();
+            if ( $HTTPResponseCode != 200 )  {
+                logg "\tUnable to update $grafanaGroundWorkDataSourceName datasource - try $retry/$maxRetries, trying again in $wait seconds";
+                logg "\tDetails: HTTPResponseCode=$HTTPResponseCode, responseContent=$responseContent";
+                sleep $wait;
+            }
+            $retry++;
+        }
+        if ( $retry > $maxRetries ) { 
+                $$errorRef .= "\tFailed to update datasource $$grafanaGroundWorkDataSourceName. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+                $$errorRef =~ s/\n/ /g;
+                return 0;
+        }
+
+    } # end ds loop
+
+
+    # Update the config/properties files  ...
+
+    # ---- Configure Grafana ----
+    logg "\tConfiguring Grafana : setting root_url = $protocol";
+    # Adjust root_url protocol ... get, check, update ...
+    # Get ...
+    %grafanaProps = ( 'root_url' => undef );
+    if ( not getPropertyValues( "$installDir/grafana/conf/defaults.ini", \%grafanaProps, "Getting root_url prop", $errorRef ) ) {
+        return 0;
+    }
+    # check that the existing root_url prop begins with http or https - if it doesn't then this wasn't set up by us and it's a manual job
+    $grafanaRootURL = $grafanaProps{root_url};
+    if ( $grafanaRootURL !~ /^https?:\/\/.*$/ ) {
+        $$errorRef = "\tExpected root_url to begin with http[s] found '$grafanaRootURL'. You will need to configure SSL by hand.";
+        return 0;
+    }
+    # update the protocol in the root_url prop
+    $grafanaRootURL =~ s/^https?(:\/\/.*)$/$protocol$1/;
+    if ( not setPropertyValues( "$installDir/grafana/conf/defaults.ini", { 'root_url' => $grafanaRootURL }, "Setting root_url in defaults.ini", $errorRef ) ) {
+        return 0;
+    }
+
+
+    # ---- Configure InfluxDB ----
+    logg "\tConfiguring InfluxDB : setting https-enabled = $influxHTTPS";
+    # Adjust https-enabled ... get, check, update ...
+    # Get ...
+    %influxProps = ( 'https-enabled' => undef );
+    if ( not getPropertyValues( "$installDir/influxdb/etc/influxdb.conf", \%influxProps, "Getting https-enabled prop", $errorRef ) ) { 
+        return 0;
+    } 
+    # Check ...
+    # TODO need to check that the https-enabled prop is in the [http] section. It can occur in both [admin] and [http] and this just doesn't care right now.
+    if ( not defined $influxProps{"https-enabled"} ) {
+        $$errorRef = "\tExpected to find https-enabled property in $installDir/influxdb/etc/influxdb.conf. You will need to configure SSL by hand.";
+        return 0;
+    }
+    # Update ...
+    if ( not setPropertyValues( "$installDir/influxdb/etc/influxdb.conf", { 'https-enabled' => $influxHTTPS }, "Setting https-enabled in influxdb.conf", $errorRef ) ) {
+        return 0; 
+    }
+
+
+    # ---- Configure GroundWork influxdb.properties ---- 
+    logg "\tConfiguring GroundWork : setting protocol in url property in influxdb.properties ";
+    # Adjust url protocol ... get, check, update ...
+    # Get ...
+    %gwProps = ( 'url' => undef );
+    if ( not getPropertyValues( "$installDir/config/influxdb.properties", \%gwProps, "Getting url prop", $errorRef ) ) {
+        return 0;
+    }
+    if ( not defined $gwProps{url} ) { 
+        $$errorRef = "No url property was found in $installDir/config/influxdb.properties.";
+        return 0;
+    }
+    $gwUrl = $gwProps{url};
+    # update the protocol in the url prop. It's assumed that -server invocation of this script at install time has set the url properly ie with a fq hostname
+    # and all that needs to change is the protocol.
+    $gwUrl =~ s/^https?(:\/\/.*)$/$protocol$1/;
+    if ( not setPropertyValues( "$installDir/config/influxdb.properties", { 'url' => $gwUrl }, "Setting url in influxdb.properties", $errorRef ) ) {
+        return 0;
+    }
+
+
+    # ---- Configure GroundWork foundation.properties ---- 
+    logg "\tConfiguring GroundWork : setting protocol in collage.metrics.influxdb.url property in foundation.properties ";
+    # Adjust collage.metrics.influxdb.url protocol ... get, check, update ...
+    # Get ...
+    %gwProps = ( 'collage.metrics.influxdb.url' => undef );
+    if ( not getPropertyValues( "$installDir/config/foundation.properties", \%gwProps, "Getting collage.metrics.influxdb.url prop", $errorRef ) ) {
+        return 0;
+    }
+    if ( not defined $gwProps{'collage.metrics.influxdb.url'} ) { 
+        $$errorRef = "No collage.metrics.influxdb.url property was found in $installDir/config/foundation.properties.";
+        return 0;
+    }
+    $gwUrl = $gwProps{'collage.metrics.influxdb.url'};
+    # update the protocol in the url prop. It's assumed that -server invocation of this script at install time has set the url properly ie with a fq hostname
+    # and all that needs to change is the protocol.
+    $gwUrl =~ s/^https?(:\/\/.*)$/$protocol$1/;
+    if ( not setPropertyValues( "$installDir/config/foundation.properties", { 'collage.metrics.influxdb.url' => $gwUrl }, "Setting collage.metrics.influxdb.url in foundation.properties", $errorRef ) ) {
+        return 0;
+    }
+
+
+
+
+    # Note to user that need to restart stuff to make these changes effective
+    if ( not defined $restartGroundWork ) {     
+        logg "Please restart Grafana and InfluxDB to make these changes become effective.";
+    }
+
+    return 1;
+
+}
+
+# ---------------------------------------------------------------------------------
+sub listDashboards {
+    # Shows dashboards uids and titles 
+    # Returns 1 if ok, 0 and error by ref if not.
+
+    my ( $errorRef ) = @_;
+
+    my ( %uids, $uid, %titles, $title ) ;
+   
+    if ( not getDashboards( $errorRef, \%uids, \%titles ) ) {
+	return 0;
+    }
+
+    if ( not scalar keys %uids ) { 
+        logg "\tNo dashboards found.";
+        return 1; # thats ok.
+    }
+
+    logg "Grafana dashboard uids Titles:";
+    logg "\tuid: $titles{$_} \tTitle: $_" foreach (sort keys%titles);  
+
+  
+    return 1;
+
+}
+
+# ---------------------------------------------------------------------------------
+sub exportDashboards {
+
+    # Exports all or selected grafana dashboards : -delete can take no arg or a list of uids
+    # Also needs to export the perf config, and a dump of profiles
+    # Returns 1 if ok, 0 and error by ref if not.
+
+    my ( $errorRef ) = @_;
+
+    my ( %grafanaProps, %influxProps, %gwProps, $protocol, $grafanaRootURL, $influxHTTPS, $gwUrl,
+         $userAgent, $restClient, $HTTPResponseCode, $responseContent, $JSONResponse, $wait, $retry, $maxRetries);
+    my ( %uids, $uid, @uids, $JSONencoded, %titles, $title );
+
+    if ( not getDashboards( $errorRef, \%uids, \%titles ) ) {
+	return 0;
+    }
+
+    # If there's no dashboards, nothing to do
+    if ( not scalar keys %uids ) { 
+       logg "\tNo dashboards found to export.";
+    }
+
+
+    # export all uids
+    if ( $exportDashboards eq '' ) { 
+       @uids = keys %uids;
+    }
+    else {
+      # some list of one or more uids were given 
+      foreach $uid ( split ",", $exportDashboards ) {
+         if ( not exists $uids{ $uid } ) {
+            $$errorRef =  "Dashboard uid '$uid' doesn't exist - use -list_dashboards to see the uids";
+            return 0;
+         }
+         else {
+            push @uids, $uid;
+         }
+      }
+    }
+
+    logg "Exporting dashboards";
+
+    eval {
+        $userAgent = LWP::UserAgent->new( agent => $appName, timeout=> 60, ssl_opts => \%sslOptions);
+    };
+    if ($@) {
+        chomp $@;
+        $@ =~ s/^ERROR:\s+//i;
+        $$errorRef .= "\tCannot create a user agent for adding Grafana datasource: $@. "; 
+        return 0;
+    }
+    %grafanaProps = ( 'admin_user' => undef, 'admin_password' => undef, 'root_url' => undef );
+    if ( not getPropertyValues( "$installDir/grafana/conf/defaults.ini", \%grafanaProps, "Getting props protocal and http_port", $errorRef ) ) { 
+        return 0;
+    } 
+    # Create a new REST client pointing to Grafana via the root_url which is expected to be our GroundWork proxy http[s]://gwserver/grafana. 
+    $restClient = REST::Client->new( { host => $grafanaProps{root_url}, timeout => 10, useragent => $userAgent } );
+    if ( not defined $restClient ) { 
+       $$errorRef .= "\tCould not create REST::Client object for adding Grafana datasource. "; 
+       return 0;
+    }
+    $restClient->addHeader("Authorization", "Basic " . encode_base64("$grafanaProps{admin_user}:$grafanaProps{admin_password}") );
+    $restClient->addHeader( "Content-Type", "application/json" );
+    $restClient->addHeader( "Accept", "application/json" );
+
+    # get all of the uids. They eat my lettuce.
+    foreach $uid ( sort @uids )  {
+        #logg "\tExporting dashboard uid '$uid'";
+        $retry = 1 ;
+        $wait = 10; # seconds
+        $maxRetries = 3; 
+        $HTTPResponseCode = -1; # some invalid code
+        while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+            $restClient->GET( "/api/dashboards/uid/$uid" );
+            $HTTPResponseCode = $restClient->responseCode();
+            $responseContent = $restClient->responseContent();
+            if ( $HTTPResponseCode != 200 )  {
+                logg "\tUnable to get dashboard in Grafana - try $retry/$maxRetries, trying again in $wait seconds";
+                sleep $wait;
+            }
+            $retry++;
+        }
+        if ( $retry > $maxRetries ) {
+            $$errorRef .= "\tCould not get. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+            $$errorRef =~ s/\n/ /g;
+            return 0;
+        }
+        #logg "Get Dashboard for $uid returned: $responseContent";
+
+	# Need to reset it's id to null, and set dashboard->overwrite = true, dashboard->folderId = meta->folderId and write it out
+        $JSONResponse = decode_json( $responseContent ) ;
+        $JSONResponse->{dashboard}->{id} = "null";
+        $JSONResponse->{overwrite} = "true";
+        my $filename = $JSONResponse->{dashboard}->{title};
+        $filename =~s/ /-/g;;
+
+        $JSONencoded = encode_json($JSONResponse);
+        # replace: "overwrite":"true" with "overwrite":true,"folderId":0 => remove quotes around true and append ,"folderId":0
+        $JSONencoded =~ s/overwrite\":\"true\"/overwrite\":true,\"folderId\":0/ig;
+
+        #logg "WARNING: JSONencoded: $JSONencoded";
+        # Write the json back out to cwd
+        if ( not writeExportedDashboardJSON( $errorRef, $filename, \$JSONencoded) ) {
+	    return 0;
+        }
+
+    }
+
+    return 1;
+
+}
+
+# ---------------------------------------------------------------------------------
+sub writeExportedDashboardJSON {
+
+    # Writes json to a file
+    # Takes a grafana dashboard slug name, and json ref and writes it to a file 
+    # Returns usual.
+
+    my ( $errorRef, $slug, $JSONencodedRef ) = @_;
+
+    my ( $fh, $filename );
+
+    $filename = "./$slug.json";
+    logg "\tWriting dashboard slug '$slug' to $filename";
+
+    open $fh, ">", "$filename" or do {
+        $$errorRef = "Cannot open '$filename' for writing $!";
+        return 0;
+    };
+
+    print $fh $$JSONencodedRef or do {
+        $$errorRef = "Cannot write to '$filename' $!";
+        return 0;
+    };
+
+    close $fh;
+
+    return 1;
+    
+}
+
+# ---------------------------------------------------------------------------------
+sub writeFile {
+
+    my ( $errorRef, $file, $content ) = @_;
+    debug "\tWriting $file";
+
+    my ( $fh );
+    open $fh, ">", "$file" or do {
+        $$errorRef .= "Cannot open '$file' for writing $!. ";
+        return 0;
+    };
+
+    print $fh "$$content" or do {
+        $$errorRef = "Cannot write to '$file' $!";
+        return 0;
+    };
+
+    close $fh;
+
+    return 1;
+    
+
+}
+
+# ---------------------------------------------------------------------------------
+sub deleteDashboards {
+
+    # Deletes all or selected grafana dashboards : -delete can take no arg or a list of slugs
+    # Returns 1 if ok, 0 and error by ref if not.
+
+    my ( $errorRef ) = @_;
+
+    my ( %grafanaProps, %influxProps, %gwProps, $protocol, $grafanaRootURL, $influxHTTPS, $gwUrl,
+         $userAgent, $restClient, $HTTPResponseCode, $responseContent, $JSONResponse, $wait, $retry, $maxRetries);
+    my ( %uids, $uid, @uids, %titles, $title );
+
+    if ( not getDashboards( $errorRef, \%uids, \%titles ) ) {
+	return 0;
+    }
+
+    # delete all uids
+    if ( $deleteDashboards eq '' ) { 
+       @uids = keys %uids;
+    }
+    else {
+      # some list of one or more uids were given 
+      foreach $uid ( split ",", $deleteDashboards ) {
+         if ( not exists $uids{ $uid } ) {
+            $$errorRef =  "Dashboard uid '$uid' doesn't exist - use -list_dashboards to see the uids";
+            return 0;
+         }
+         else {
+            push @uids, $uid;
+         }
+      }
+    }
+
+    if ( not scalar @uids  ) { 
+       logg "\tNo dashboards to delete.";
+       return 1;
+    }
+
+    logg "Deleting dashboards";
+
+    eval {
+        $userAgent = LWP::UserAgent->new( agent => $appName, timeout=> 60, ssl_opts => \%sslOptions);
+    };
+    if ($@) {
+        chomp $@;
+        $@ =~ s/^ERROR:\s+//i;
+        $$errorRef .= "\tCannot create a user agent for adding Grafana datasource: $@. "; 
+        return 0;
+    }
+    %grafanaProps = ( 'admin_user' => undef, 'admin_password' => undef, 'root_url' => undef );
+    if ( not getPropertyValues( "$installDir/grafana/conf/defaults.ini", \%grafanaProps, "Getting props protocal and http_port", $errorRef ) ) { 
+        return 0;
+    } 
+    # Create a new REST client pointing to Grafana via the root_url which is expected to be our GroundWork proxy http[s]://gwserver/grafana. 
+    $restClient = REST::Client->new( { host => $grafanaProps{root_url}, timeout => 10, useragent => $userAgent } );
+    if ( not defined $restClient ) { 
+       $$errorRef .= "\tCould not create REST::Client object for adding Grafana datasource. "; 
+       return 0;
+    }
+    $restClient->addHeader("Authorization", "Basic " . encode_base64("$grafanaProps{admin_user}:$grafanaProps{admin_password}") );
+    $restClient->addHeader( "Content-Type", "application/json" );
+    $restClient->addHeader( "Accept", "application/json" );
+
+    # delete all of the uids. They eat my lettuce.
+    foreach $uid ( sort @uids )  {
+        logg "\tDeleting dashboard uid '$uid'";
+        $retry = 1 ;
+        $wait = 10; # seconds
+        $maxRetries = 3; 
+        $HTTPResponseCode = -1; # some invalid code
+        while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+            $restClient->DELETE( "/api/dashboards/uid/$uid" );
+            $HTTPResponseCode = $restClient->responseCode();
+            $responseContent = $restClient->responseContent();
+            if ( $HTTPResponseCode != 200 )  {
+                logg "\tUnable to delete dashboard in Grafana - try $retry/$maxRetries, trying again in $wait seconds";
+                sleep $wait;
+            }
+            $retry++;
+        }
+        if ( $retry > $maxRetries ) {
+            $$errorRef .= "\tCould not delete. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+            $$errorRef =~ s/\n/ /g;
+            return 0;
+        }
+    }
+   
+    return 1;
+
+}
+
+# ---------------------------------------------------------------------------------
+sub getDashboards {
+
+    # returns a hash by ref of grafana dashboard uid which are required when doing things like deleting also include title for list dashboards.
+    my ( $errorRef, $uidHashRef, $titleHashRef ) = @_;
+    my ( %grafanaProps, %influxProps, %gwProps, $protocol, $grafanaRootURL, $influxHTTPS, $gwUrl,
+         $userAgent, $restClient, $HTTPResponseCode, $responseContent, $JSONResponse, $wait, $retry, $maxRetries);
+
+    logg "Getting Grafana dashboards";
+
+    # Create an agent object 
+    eval {
+        $userAgent = LWP::UserAgent->new( agent => $appName, timeout=> 60, ssl_opts => \%sslOptions);
+    };
+    if ($@) {
+        chomp $@;
+        $@ =~ s/^ERROR:\s+//i;
+        $$errorRef .= "\tCannot create a user agent for adding Grafana datasource: $@. "; 
+        return 0;
+    }
+    %grafanaProps = ( 'admin_user' => undef, 'admin_password' => undef, 'root_url' => undef );
+    if ( not getPropertyValues( "$installDir/grafana/conf/defaults.ini", \%grafanaProps, "Getting props protocal and http_port", $errorRef ) ) { 
+        return 0;
+    } 
+    # Create a new REST client pointing to Grafana via the root_url which is expected to be our GroundWork proxy http[s]://gwserver/grafana. 
+    $restClient = REST::Client->new( { host => $grafanaProps{root_url}, timeout => 10, useragent => $userAgent } );
+    if ( not defined $restClient ) { 
+       $$errorRef .= "\tCould not create REST::Client object for adding Grafana datasource. "; 
+       return 0;
+    }
+    $restClient->addHeader("Authorization", "Basic " . encode_base64("$grafanaProps{admin_user}:$grafanaProps{admin_password}") );
+    $restClient->addHeader( "Content-Type", "application/json" );
+    $restClient->addHeader( "Accept", "application/json" );
+
+    $retry = 1 ;
+    $wait = 10; # seconds
+    $maxRetries = 3; 
+    $HTTPResponseCode = -1; # some invalid code
+    while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+        $restClient->GET( "/api/search?query=&type=dash-db" );
+        $HTTPResponseCode = $restClient->responseCode();
+        $responseContent = $restClient->responseContent();
+        if ( $HTTPResponseCode != 200 )  {
+            logg "\tUnable to search for dashboard in Grafana - try $retry/$maxRetries, trying again in $wait seconds";
+            sleep $wait;
+        }
+        $retry++;
+    }
+    if ( $retry > $maxRetries ) {
+        $$errorRef .= "\tCould not search. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+        $$errorRef =~ s/\n/ /g;
+        return 0;
+    }
+    
+    # Decode the datasource results and search for the GroundWork one. This will be an array of hashes, each has a name prop
+    $JSONResponse = decode_json( $responseContent ) ;
+    my $uid;
+    my $title;
+    foreach my $dashboard ( @$JSONResponse ) {
+       $uid = $dashboard->{uid};
+       $title = $dashboard->{title};
+       ${$uidHashRef}{ $uid } = 1;
+       ${$titleHashRef}{ $title } = $uid;
+    }
+
+    return 1;
+}
+
+
+# ---------------------------------------------------------------------------------
+sub importDashboards {
+
+    # Imports GroundWork grafana dashboards into Grafana
+    # Returns 1 if ok, 0 and error by ref if not.
+
+    my ( $errorRef ) = @_;
+    my ( %grafanaProps, %gwProps, $grafanaRootURL, $grafanaAPIJSON,
+         $userAgent, $restClient, $HTTPResponseCode, $responseContent, $JSONResponse, $wait, $retry, $maxRetries,
+         $dashboard, @dashboards, $folderFile );
+ 
+    $folderFile = "none"; 
+    logg "Importing GroundWork Grafana dashboards from '$importDashboards'";
+
+    # check location exists/readable
+    if ( ! -e $importDashboards or ! -r $importDashboards ) { 
+       $$errorRef = "\tImport file or directory '$importDashboards' does not exist or is not readable";
+       return 0;
+    }
+
+    # Create an agent object 
+    eval {
+        $userAgent = LWP::UserAgent->new( agent =>  $appName, timeout=> 60, ssl_opts => \%sslOptions);
+    };
+    if ($@) {
+        chomp $@;
+        $@ =~ s/^ERROR:\s+//i;
+        $$errorRef .= "\tCannot create a user agent for adding Grafana datasource: $@. "; 
+        return 0;
+    }
+    %grafanaProps = ( 'admin_user' => undef, 'admin_password' => undef, 'root_url' => undef );
+    if ( not getPropertyValues( "$installDir/grafana/conf/defaults.ini", \%grafanaProps, "Getting props protocal and http_port", $errorRef ) ) { 
+        return 0;
+    } 
+    # Create a new REST client pointing to Grafana via the root_url which is expected to be our GroundWork proxy http[s]://gwserver/grafana. 
+    $restClient = REST::Client->new( { host => $grafanaProps{root_url}, timeout => 10, useragent => $userAgent } );
+    if ( not defined $restClient ) { 
+       $$errorRef .= "\tCould not create REST::Client object for adding Grafana datasource. "; 
+       return 0;
+    }
+    $restClient->addHeader("Authorization", "Basic " . encode_base64("$grafanaProps{admin_user}:$grafanaProps{admin_password}") );
+    $restClient->addHeader( "Content-Type", "application/json" );
+    $restClient->addHeader( "Accept", "application/json" );
+
+    if ( -d $importDashboards ) {
+        my $dirh;
+        opendir( $dirh, $importDashboards) or do {
+           $$errorRef = "\tCould not open directory '$importDashboards' : $!";
+           return 0;
+        };
+
+       # construct a hopefully valid list of dashboards to attempt to import
+       while ( $dashboard = readdir($dirh)) {
+          next if $dashboard =~ /^(\.|\..)$/;
+          $dashboard = "$importDashboards/$dashboard";
+          if ( ! -f $dashboard or ! -r $dashboard ) {
+             logg "WARNING: $dashboard is not a file or is not readable - skipping it";
+          }
+          #elsif { 
+             # TODO validate file contains actual dashboard definition data
+          #}
+          else {
+             if (index($dashboard, "gwfolder-gwtemplates.json") != -1) {
+                logg "WARNING: $dashboard is a folder file";
+                $folderFile = $dashboard;
+             }
+             else {
+                logg "WARNING: $dashboard is a dashboard file";
+             # assume it's good enough to attempt to be imported 
+             push @dashboards, $dashboard;
+             }
+          }
+       }
+       closedir $dirh;
+    }
+    elsif ( -f $importDashboards ) {
+       if (index($importDashboards, "gwfolder-gwtemplates.json") != -1) {
+          logg "WARNING: $importDashboards is a folder file";
+          $folderFile = $importDashboards;
+       }
+       else {
+          logg "WARNING: $importDashboards is a dashboard file";
+       push @dashboards, $importDashboards;
+       }
+    }
+    else {
+       $$errorRef = "$importDashboards is not a file or directory - cannot import.";
+       return 0;
+    }
+    # if we have a folder file process it first
+    my $jsonFile;
+    my $JSONRecord;
+    my $folderId;
+    if ($folderFile ne "none") {
+       logg "\tImporting folder file $folderFile";
+       open ( $jsonFile, '<', $folderFile ) or do {
+           $$errorRef .= "\tError Failed to open folder file $folderFile.";
+           $$errorRef =~ s/\n/ /g;
+           return 0;
+       };
+       # slurp the json file in https://perlmaven.com/slurp
+       $grafanaAPIJSON = do { 
+           local $/ = undef; 
+           <$jsonFile>;
+       };
+       # If this POST fails, do some retying before giving up.
+       # If created ok, 200. If failed to create due to existing already, 412.
+       # TODO add an option to force refresh ?
+       logg "WARNING: process $folderFile";
+       $retry = 1 ;
+       $maxRetries = 3;
+       $wait = 10;
+       $HTTPResponseCode = -1;
+       while ( ( $HTTPResponseCode != 200 and $HTTPResponseCode != 412 ) and $retry <= $maxRetries ) { 
+           $restClient->POST( "/api/folders", $grafanaAPIJSON );
+           $HTTPResponseCode = $restClient->responseCode();
+           $responseContent = $restClient->responseContent();
+           if ( $HTTPResponseCode == 412 ) {
+               logg "\tDashboard already exists - need to get folderId";
+               # need to do a GET to get folderId
+               $restClient->GET( "/api/folders/gwfolder0001" );
+               $HTTPResponseCode = $restClient->responseCode();
+               $responseContent = $restClient->responseContent();
+               if ( $HTTPResponseCode != 200 )  {
+                  $$errorRef .= "\tFailed to get folder. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+                  $$errorRef =~ s/\n/ /g;
+                  return 0;
+               }
+           }
+           if ( $HTTPResponseCode != 200 )  {
+               logg "\tUnable to create new dashboard - try $retry/$maxRetries, trying again in $wait seconds";
+               logg "\tDetails: HTTPResponseCode=$HTTPResponseCode, responseContent=$responseContent";
+               sleep $wait;
+           }
+           $retry++;
+       }
+       if ( $retry > $maxRetries ) { 
+           $$errorRef .= "\tFailed to create new folder. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+           $$errorRef =~ s/\n/ /g;
+           return 0;
+       }
+    }
+    else {
+       # try to get existing folder
+       $restClient->GET( "/api/folders/gwfolder0001" );
+       $HTTPResponseCode = $restClient->responseCode();
+       $responseContent = $restClient->responseContent();
+       if ( $HTTPResponseCode != 200 )  {
+          $$errorRef .= "\tFailed to get folder. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+          $$errorRef =~ s/\n/ /g;
+          return 0;
+       }
+    }
+    # if we get here then we have a folder json get its folderId
+    logg "WARNING: folder response: $responseContent";
+    $JSONRecord = decode_json($responseContent);
+    $folderId = $JSONRecord->{id};
+    logg "WARNING: folderId: $folderId";
+    
+    logg "WARNING: now process dashboard files";
+    # Try to import each dashboard
+    my $dashboardFile;
+    my $JSONencoded;
+    # begin main loop
+    DASHBOARD: foreach $dashboard ( sort @dashboards ) {
+
+       logg "\tImporting $dashboard";
+
+       open ( $dashboardFile, '<', $dashboard ) or do {
+          logg "\tWARNING: could not open '$dashboard' for reading (skipping this one) : $!";
+          next DASHBOARD;
+       };
+
+       # slurp the json file in https://perlmaven.com/slurp
+       $grafanaAPIJSON = do { 
+           local $/ = undef; 
+           <$dashboardFile>;
+       };
+       # update dashboard->id to null
+       # if template file update folderId to current folderId
+       $JSONRecord = decode_json($grafanaAPIJSON);
+       $JSONRecord->{dashboard}->{id} = "null";
+       if (index($dashboard, "gwtemplate") != -1) {
+          $JSONRecord->{folderId} = $folderId;
+       }
+       $grafanaAPIJSON = encode_json($JSONRecord);
+       # if template file need to replace: "folderId":"$folderId" with "folderId":$folderID => remove quotes around $folderId
+       if (index($dashboard, "gwtemplate") != -1) {
+          $grafanaAPIJSON =~ s/folderId\":\"$folderId\"/folderId\":$folderId/ig;
+       }
+       #logg "WARNING: grafanaAPIJSON: $grafanaAPIJSON";
+       
+       # If this POST fails, do some retying before giving up.
+       # If created ok, 200. If failed to create due to existing already, 412.
+       # TODO add an option to force refresh ?
+       $retry = 1 ;
+       $maxRetries = 3;
+       $wait = 10;
+       $HTTPResponseCode = -1;
+       while ( ( $HTTPResponseCode != 200 and $HTTPResponseCode != 412 ) and $retry <= $maxRetries ) { 
+           $restClient->POST( "/api/dashboards/db", $grafanaAPIJSON );
+           $HTTPResponseCode = $restClient->responseCode();
+           $responseContent = $restClient->responseContent();
+           if ( $HTTPResponseCode == 412 ) {
+               logg "\tDashboard already exists - will leave as-is";
+               next DASHBOARD;
+           }
+           if ( $HTTPResponseCode != 200 )  {
+               logg "\tUnable to create new dashboard - try $retry/$maxRetries, trying again in $wait seconds";
+               logg "\tDetails: HTTPResponseCode=$HTTPResponseCode, responseContent=$responseContent";
+               sleep $wait;
+           }
+           $retry++;
+       }
+       if ( $retry > $maxRetries ) { 
+           $$errorRef .= "\tFailed to create new datasource. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+           $$errorRef =~ s/\n/ /g;
+           return 0;
+       }
+    
+       #logg "\tImported $dashboard"; 
+   }
+   
+   return 1;
+
+}
+
+# ---------------------------------------------------------------------------------
+sub generateDashboards {
+
+    # Generates GroundWork Grafana dashboards based on GroundWork service profiles.
+
+    my ( $errorRef ) = @_;
+  
+    my ( $dsn, $dbHandle, $query, $sqlQuery, $rv, $row,
+         %perfConfig, %serviceProfiles, %props,
+         $xmlObject, $serviceProfileXMLFile, $fullFilename, $xml, $profilesDir, $profilesFiles
+       );
+
+    logg "Generating Grafana dashboards under '$generateDashboards'";
+
+    # Get monarch performance config data
+    %props = ( 'monarch.database' => undef, 'monarch.dbhost' => undef,  'monarch.username' => undef, 'monarch.password' => undef );
+    if ( not getPropertyValues( "$installDir/config/db.properties", \%props, "Getting monarch database properties", $errorRef ) ) { 
+           return 0;
+    }
+
+    $dsn = "DBI:Pg:dbname=$props{'monarch.database'};host=$props{'monarch.dbhost'};port=5432";
+    $dbHandle = DBI->connect( $dsn, $props{'monarch.username'}, $props{'monarch.password'}, { 'AutoCommit' => 1 } );
+    if ( ! $dbHandle ) {
+        $$errorRef = "Cannot connect to database 'monarch'. Error: '$DBI::errstr'";
+        return 0;
+    }
+    $query = "select service,service_regx from performanceconfig order by service;";
+    eval { $sqlQuery  = $dbHandle->prepare($query); } ;
+    if ( $@ ) {
+        $$errorRef = "Cannot prepare $query: $@" ;
+        return 0;
+    };
+    $rv = $sqlQuery->execute() or do { 
+       $$errorRef = "Cannot execute the query: " . $sqlQuery->errstr; 
+       return 0; 
+    };
+
+    # build up %perfConfig which is a hash of <service>:<service_regx> elements
+    QUERYROW: while ( $row = $sqlQuery->fetchrow_hashref() )  {
+        $row->{service_regx} = 0 if ( not defined $row->{service_regx} or $row->{service_regx} eq '' );
+	$perfConfig{ $row->{service} } =  $row->{service_regx};
+    }
+
+    # get a list of service profile definition files
+    # There is useful meta data based on the structure of the profiles directory which needs to be extracted into dashboard tags.
+    # This find() constructs %serviceProfiles, with element structures like this :
+    #  <basename of service profile xml file> => {
+    #     'tags' => [ <list of tags> ]
+    #  }, ...
+    # where the tags are the subdir names under .../core/profiles.
+    #
+    # Eg:
+    #
+    # 'service-profile-wmi-mssql2005.xml' => {
+    #   'tags' => [
+    #     'Database',
+    #     'Windows-NRPE'
+    #   ]
+    # }
+
+    # TODO change this so can supply a non fully qualified path
+    find ( sub { 
+                    # $_ is the subdir name under .../core/profiles
+                    if ( -d $_ and $_ ne '.' and $_ ne 'All' ) { 
+                       my @files = <"$generateDashboards/$_/service-profile-*.xml">;
+                       if ( @files ) {
+                          foreach my $serviceProfile ( @files ) { 
+                             push  @{ $serviceProfiles{ basename( $serviceProfile) }{tags} }, "$_" ;
+                          }
+                       }
+                    }
+                }, 
+          $generateDashboards );
+  
+    # add in any profiles found for cloudhub (good case here is when upgrading customer; a fresh install won't have any)
+    my $cloudHubProfiles = "$installDir/config/cloudhub/profiles";
+    my $cloudHubDashboardTag = "CloudHub";
+    foreach my $chp ( <"$cloudHubProfiles/*.xml"> ) {
+       push  @{ $serviceProfiles{ basename( $chp) }{tags} }, $cloudHubDashboardTag ;
+    }
+
+    if ( not scalar keys %serviceProfiles ) {
+       logg "\tNo service profiles found under $generateDashboards or $cloudHubProfiles";
+       return 1;
+    }
+
+    # look at each xml file and parse its xml, then calc which services have a perfconfig entry, 
+    # and update the %serviceProfiles hash with that list - this list will be used for generating dashboards
+    $xmlObject = new XML::Simple ( ForceArray => 1 );
+    foreach $serviceProfileXMLFile ( sort keys %serviceProfiles ) { 
+
+       if ( grep /^$cloudHubDashboardTag$/, @{ $serviceProfiles{$serviceProfileXMLFile}{tags} } ) { 
+           $fullFilename = "$cloudHubProfiles/$serviceProfileXMLFile";
+       }
+       else {
+           $fullFilename = "$generateDashboards/$serviceProfileXMLFile";
+       }
+
+       if ( ! -e $fullFilename or ! -r $fullFilename ) { 
+           $$errorRef = "$fullFilename doesn't exist or is not readable";
+           return 0;
+       }
+       logg "\tAnalyzing $fullFilename for services that have perfconfig matches";
+
+       # turn off these warnings of which there will be a lot : 'Warning: <prop> element has non-unique value in 'name' key attribute: service at...'
+       no warnings;
+       $xml = $xmlObject->XMLin( $fullFilename, StrictMode => 0 );
+       use warnings;
+
+       if ( grep /^$cloudHubDashboardTag$/, @{ $serviceProfiles{$serviceProfileXMLFile}{tags} } ) { 
+           $serviceProfiles{$serviceProfileXMLFile}{profilename} = $serviceProfileXMLFile;
+           $serviceProfiles{$serviceProfileXMLFile}{profilename} = "Connector:" . ( split /-/, $serviceProfileXMLFile )[0];
+           $serviceProfiles{$serviceProfileXMLFile}{description} = $serviceProfiles{$serviceProfileXMLFile}{profilename};
+
+           # for CH, need to extract services per the structure of the xml. Per GWMON-13057, metrics in the sections
+           # <hypervisor>, <vm>, <custom> are required for extraction.
+           foreach my $section ( "hypervisor", "vm", "custom" ) {
+		foreach my $service ( sort keys(%{$xml->{$section}[0]{metric}}) ) {
+                    push  @{ $serviceProfiles{$serviceProfileXMLFile}{services} }, $service;
+                } 
+           }
+
+       }
+       else  {
+
+           $serviceProfiles{$serviceProfileXMLFile}{profilename} = $xml->{service_profile}[0]{prop}{name}{content};
+           $serviceProfiles{$serviceProfileXMLFile}{description} = $xml->{service_profile}[0]{prop}{description}{content};
+           foreach my $service ( @{$xml->{service_name}} ) {
+              if ( checkPerfConf ( $service->{prop}->{name}->{content}, \%perfConfig )  ) {
+                  push  @{ $serviceProfiles{$serviceProfileXMLFile}{services} }, $service->{prop}->{name}->{content} ;
+              }
+           }
+       }
+    }
+
+
+    # go through the build service profiles hash and generate dashbaoards for those that have services
+    foreach $serviceProfileXMLFile ( sort keys %serviceProfiles ) { 
+       if ( exists $serviceProfiles{$serviceProfileXMLFile}{services} ) { 
+           generateGrafanaServiceProfileStyleDashboard( $errorRef, $serviceProfiles{$serviceProfileXMLFile} );
+       }
+       else {
+          debug "\t$serviceProfileXMLFile didn't have any services that matched perf config entries - no dashboard will be generated for this profile";
+       }
+     
+    }
+
+    return 1;
+}
+
+# ---------------------------------------------------------------------------------
+sub checkPerfConf {
+
+    # This routine takes a service name, and a reference to the <service>:<service regex> hash
+    # and returns 1 if there's a match, 0 if not.
+    # Matching is done either via direct equality test when service regex = 0, or
+    # via a /regex/ when 1. 
+
+    my ( $serviceName, $perfConfigHashRef ) = @_;
+
+    foreach my $perfConfigService ( keys %{$perfConfigHashRef} ) {
+         # see if the incoming service name matches a perf config entry without service regex
+         if ( $perfConfigHashRef->{$perfConfigService} == 0 ) { 
+             if ( $serviceName eq $perfConfigService ) {
+             	debug "\t\tMATCH (non regex): $serviceName = $perfConfigService";
+		return 1;
+	     }
+	 }
+         # or see if the incoming service name matches a perf config entry WITH service regex
+         elsif ( $perfConfigHashRef->{$perfConfigService} == 1 ) {
+             if ( $serviceName =~ /$perfConfigService/ ) {
+             	debug "\t\tMATCH (regex): $serviceName = $perfConfigService";
+		return 1;
+             }
+	 }
+        else { 
+           fail "Internal error in checkPerfConf() - expected service regex to be 1 or 0 - got '$perfConfigHashRef->{$perfConfigService}'";
+        }
+    }
+    return 0;
+}
+
+
+# ---------------------------------------------------------------------------------
+sub generateGrafanaServiceProfileStyleDashboard {
+
+    # generates a grafana dashboard which uses template variables hgroup and host
+    # It creates a dashboard for a given set of services, passed in via $servicesArrayRef
+    # and creates a file called <profileName>.json which can be used with -import option.
+    #
+    # Example of expected $dataHashRef format :
+    # 
+    # {
+    #   'description' => 'Groundwork server (via ssh) 6.6.1-1',
+    #   'profilename' => 'ssh-groundwork-server',
+    #   'services' => [
+    #     'tcp_gw_listener',
+    #     'tcp_http',
+    #     'tcp_nsca'
+    #   ],
+    #   'tags' => [
+    #     'Self-Check',
+    #     'SSH'
+    #   ]
+    # }
+    # 
+    # Notes
+    # - even tho the "version" is set to 1, Grafana sets this to 0 on import, and each save increments it by 1
+
+    my ( $errorRef, $dataHashRef ) = @_;
+
+    my ( $dashboard, $rows, $now, $profileName, $description, @tags, $tags, @services, $tag, @quotedTags );
+    $now = POSIX::strftime("%Y-%m-%dT%H:%M:%S%z", localtime);
+    $profileName = $dataHashRef->{profilename};
+    $description = $dataHashRef->{description};
+    @tags = ( "Service Profile", "GroundWork", @{$dataHashRef->{tags}} );
+    foreach $tag ( @tags ) {
+       push @quotedTags, "\"$tag\"";
+    }
+    $tags = join ",", @quotedTags;
+
+    generateRowsForGrafanaServiceProfileStyleDashboard( $errorRef, $dataHashRef->{services}, \$rows );
+
+    $dashboard = <<END;
+{  
+   "meta":{  
+      "type":"db",
+      "canSave":true,
+      "canEdit":true,
+      "canStar":true,
+      "slug":"sptest",
+      "expires":"0001-01-01T00:00:00Z",
+      "created":"$now",
+      "updated":"$now",
+      "updatedBy":"admin",
+      "createdBy":"admin",
+      "version": 1
+   },
+   "dashboard":{ 
+     "annotations":{  
+         "list":[  
+
+         ]
+      },
+      "description": "$description",
+      "editable":true,
+      "gnetId":null,
+      "graphTooltip":0,
+      "hideControls":false,
+      "id":null,
+      "links":[  
+
+      ],
+      "refresh": "5m",
+      "rows":[  
+         $rows
+      ],
+      "schemaVersion":14,
+      "style":"dark",
+      "tags":[  
+         $tags
+      ],
+      "templating":{ 
+       "list":[  
+            {  
+               "allValue":null,
+               "current":{  
+               },
+               "datasource":"GroundWork",
+               "hide":0,
+               "includeAll":false,
+               "label":"Host Group",
+               "multi":false,
+               "name":"hgroup",
+               "options":[  
+
+               ],
+               "query":"groups",
+               "refresh":1,
+               "regex":"",
+               "sort":1,
+               "tagValuesQuery":"",
+               "tags":[  
+
+               ],
+               "tagsQuery":"",
+               "type":"query",
+               "useTags":false
+            },
+            {  
+               "allValue":null,
+               "current":{  
+               },
+               "datasource":"GroundWork",
+               "hide":0,
+               "includeAll":true,
+               "label":"Host",
+               "multi":true,
+               "name":"host",
+               "options":[  
+
+               ],
+               "query": "hosts( { \\"queryType\\": \\"byHost\\", \\"hostgroup\\": \\"\$hgroup\\" } )",
+               "refresh":1,
+               "regex":"",
+               "sort":1,
+               "tagValuesQuery":"",
+               "tags":[  
+
+               ],
+               "tagsQuery":"",
+               "type":"query",
+               "useTags":false
+            }
+         ]
+       },
+       "time": {
+          "from": "now-1h",
+          "to": "now"
+       },
+      "timepicker":{  
+         "refresh_intervals":[  
+            "5s",
+            "10s",
+            "30s",
+            "1m",
+            "5m",
+            "15m",
+            "30m",
+            "1h",
+            "2h",
+            "1d"
+         ],
+         "time_options":[  
+            "5m",
+            "15m",
+            "1h",
+            "6h",
+            "12h",
+            "24h",
+            "2d",
+            "7d",
+            "30d"
+         ]
+      },
+      "timezone":"browser",
+      "title": "$profileName",
+      "version":1
+   }
+}
+END
+ 
+    logg "\tGenerating Grafana service profile style dashboard $gwDashboardsDir/$profileName.json";
+    my $dbfh;
+    open( $dbfh, ">", "$gwDashboardsDir/$profileName.json" ) or do {
+       $$errorRef = "Failed to open $gwDashboardsDir/$profileName.json for writing $!"; 
+       return 0;
+    };
+
+    print $dbfh $dashboard or do {
+       $$errorRef = "Failed to write to $gwDashboardsDir/$profileName.json $!"; 
+       return 0;
+    };
+
+    close $dbfh;
+
+    return 1;
+}
+
+
+# ---------------------------------------------------------------------------------
+sub generateRowsForGrafanaServiceProfileStyleDashboard {
+
+    my ( $errorRef, $servicesArrayRef, $rowsRef ) = @_;
+
+    my ( $serviceName, @builtRows , $rowId ) ;
+
+    $rowId = 1; 
+    foreach $serviceName ( @{$servicesArrayRef} ) {
+
+        push @builtRows, <<ENDROWS;
+        {
+            "collapse":false,
+            "height":215,
+            "panels":[  
+               {  
+                  "aliasColors":{  
+
+                  },
+                  "bars":false,
+                  "dashLength":10,
+                  "dashes":false,
+                  "datasource":null,
+                  "fill":1,
+                  "id":$rowId,
+                  "legend":{  
+                     "avg":false,
+                     "current":false,
+                     "max":false,
+                     "min":false,
+                     "show":true,
+                     "total":false,
+                     "values":false
+                  },
+                  "lines":true,
+                  "linewidth":1,
+                  "links":[  
+
+                  ],
+                  "nullPointMode":"null",
+                  "percentage":false,
+                  "pointradius":5,
+                  "points":false,
+                  "renderer":"flot",
+                  "seriesOverrides":[  
+
+                  ],
+                  "spaceLength":10,
+                  "span":12,
+                  "stack":false,
+                  "steppedLine":false,
+                  "targets":[  
+                     {  
+                        "enableThresholds":false,
+                        "host":"\$host",
+                        "hostgroup":"\$host",
+                        "queryType":"byHost",
+                        "refId":"A",
+                        "service":"$serviceName",
+                        "servicegroup":"Select service group"
+                     }
+                  ],
+                  "thresholds":[  
+
+                  ],
+                  "timeFrom":null,
+                  "timeShift":null,
+                  "title":"Service: $serviceName",
+                  "tooltip":{  
+                     "shared":true,
+                     "sort":0,
+                     "value_type":"individual"
+                  },
+                  "type":"graph",
+                  "xaxis":{  
+                     "buckets":null,
+                     "mode":"time",
+                     "name":null,
+                     "show":true,
+                     "values":[  
+
+                     ]
+                  },
+                  "yaxes":[  
+                     {  
+                        "format":"short",
+                        "label":null,
+                        "logBase":1,
+                        "max":null,
+                        "min":null,
+                        "show":true
+                     },
+                     {  
+                        "format":"short",
+                        "label":null,
+                        "logBase":1,
+                        "max":null,
+                        "min":null,
+                        "show":true
+                     }
+                  ]
+               }
+            ],
+            "repeat":null,
+            "repeatIteration":null,
+            "repeatRowId":null,
+            "showTitle":true,
+            "title":"\$host",
+            "titleSize":"h5"
+        }
+ENDROWS
+
+        $rowId++;
+    }
+
+    $$rowsRef = join ',', @builtRows;
+
+    return 1;
+
+}
+
+# ---------------------------------------------------------------------------------
+sub upgradeNav {
+
+    # Updates GW portal by adding Dasbhoards -> Grafana 
+    # Assumes it hasn't been added ever already 
+    # In outline, the steps are  :
+    # - download the portal/classic navigation.xml
+    # - insert the Grafana page under Dashboards
+    # - zip up the new update and upload it 
+
+    my (  $errorRef ) = @_;
+    my ( %props, $proto );
+    my ( $userAgent, $retry, $maxRetries, $wait, $HTTPResponseCode, $responseContent, $restClient );
+
+    logg "Upgrading GroundWork Portal Navigation - adding Dashboards -> Grafana (this can take a few moments)";
+    
+    # rm -rf /tmp/portal && mkdir -p /tmp/portal/classic
+    system( " rm -rf /tmp/portal" );
+    system( " mkdir -p /tmp/portal/classic" );
+
+    # get the proto for jboss api call
+    %props = ( 'secure.access.enabled' => undef );
+    if ( not getPropertyValues( "$installDir/config/status-viewer.properties", \%props, "Getting secure.access.enabled", $errorRef ) ) { 
+        return 0;
+    }
+    if ( not defined $props{'secure.access.enabled'} ) { 
+       $$errorRef .= "\tCould not get 'secure.access.enabled' from $installDir/config/status-viewer.properties. ";
+       return 0;
+    }
+    if ( $props{'secure.access.enabled'} !~ /^(true|false)$/i ) { 
+       $$errorRef .= "\tUnexpected value for 'secure.access.enabled' in $installDir/config/status-viewer.properties - expected true/false";
+       return 0;
+    }
+    $proto = 'http';
+    $proto .= 's' if $props{'secure.access.enabled'} eq 'true';
+
+
+    # curl the nav down to /tmp/navigation.xml   : /usr/local/groundwork/common/bin/curl -l --user "$rootUser:$rootPassword" TBD://localhost/rest/private/managed-components/mop/portalsites/classic/navigation.xml
+    # echo "Fetching the full JBoss portal site navigation configuration ..."
+    #     /usr/local/groundwork/common/bin/curl --insecure --user "$rootUser:$rootPassword" \
+    #     $protocol://localhost/rest/private/managed-components/mop/portalsites/classic/navigation.xml > $navigation_xml_path
+    # If created ok, 200. If failed to create due to existing already, 412.
+
+    eval { $userAgent = LWP::UserAgent->new( agent => $appName, timeout=> 60, ssl_opts => \%sslOptions); };
+    if ($@) {
+        chomp $@;
+       $@ =~ s/^ERROR:\s+//i;
+        $$errorRef .= "\tCannot create a user agent for adding Grafana datasource: $@. "; 
+        return 0;
+    }
+
+    # TODO paramaterize localhost here. For now this is ok since localhost normally resolves 
+    $restClient = REST::Client->new( { host => "$proto://localhost", timeout => 10, useragent => $userAgent } );
+    $restClient->addHeader("Authorization", "Basic " . encode_base64("$rootUser:$rootPassword") );
+    $retry = 1 ;
+    $maxRetries = 3;
+    $wait = 10;
+    $HTTPResponseCode = -1;
+    while ( ( $HTTPResponseCode != 200 ) and $retry <= $maxRetries ) { 
+        $restClient->GET( "/rest/private/managed-components/mop/portalsites/classic/navigation.xml" );
+        $HTTPResponseCode = $restClient->responseCode();
+        $responseContent = $restClient->responseContent();
+        if ( $HTTPResponseCode != 200 )  {
+            logg "\tUnable to get navigation.xml - try $retry/$maxRetries, trying again in $wait seconds";
+            logg "\tDetails: HTTPResponseCode=$HTTPResponseCode, responseContent=$responseContent";
+            sleep $wait;
+        }
+        $retry++;
+    }
+    if ( $retry > $maxRetries ) { 
+        $$errorRef .= "\tFailed to get navigation.xml. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+        $$errorRef =~ s/\n/ /g;
+        return 0;
+    }
+
+    # The following section needs completely revising so that we don't need to write tmp files and zip files and use curl etc etc
+    # The problem is the underlying modify_navigation_objects. It should be smart enough to do this all in memory, and use PUT to
+    # upload the zip file. For now, we have this mess.
+
+    # prep the tmp dir and stuff the nav file in there
+    # TODO switch over to File::Path for removing and creating dirs 
+    my $tmpDirGB = '/tmp/grafbridge';
+    my $navXML = "navigation.xml";
+    my $tmpDirNav = "$tmpDirGB/portal/classic";
+    my $tmpNavXML = "$tmpDirGB/$navXML";
+    my $grafanaPortalNodeXML = "$installDir/core/migration/grafbridge/portal_grafana_node.xml"; 
+    my $modCommand = "/usr/local/groundwork/core/migration/modify_navigation_objects";
+    my $modCommandStatus;
+    my $zipFile = "$tmpDirGB/grafana-integration.zip";
+    my $zipCommand = "$installDir/common/bin/zip";
+    my $curlCommand = "$installDir/common/bin/curl";
+
+    if ( ! -e $grafanaPortalNodeXML or ! -r $grafanaPortalNodeXML ) {
+        $$errorRef = "\tFile '$grafanaPortalNodeXML' doesn't exist/not readable";
+        return 0;
+     }
+
+    if ( ! -e $modCommand or ! -r $modCommand or ! -x $modCommand) {
+        $$errorRef = "\tProgram '$modCommand' doesn't exist/not readable/executable";
+        return 0;
+     }
+
+    if ( ! -e $zipCommand or ! -r $zipCommand or ! -x $zipCommand) {
+        $$errorRef = "\tProgram '$zipCommand' doesn't exist/not readable/executable";
+        return 0;
+     }
+
+    if ( ! -e $curlCommand or ! -r $curlCommand or ! -x $curlCommand) {
+        $$errorRef = "\tProgram '$curlCommand' doesn't exist/not readable/executable";
+        return 0;
+     }
+
+    debug "\tRemoving $tmpDirGB";
+    return 0 if not runSystemCommand( " rm -rf $tmpDirGB", $errorRef ) ; 
+
+    if ( -d $tmpDirGB ) { 
+        $$errorRef = "\tFailed to remove temp dir '$tmpDirGB'";
+        return 0;
+    }
+
+    debug "\tCreating $tmpDirNav";
+    return 0 if not runSystemCommand( "mkdir -p $tmpDirNav", $errorRef ) ; 
+
+    debug "\tWriting portal config content to $tmpNavXML";
+    return 0 if not writeFile( $errorRef, $tmpNavXML, \$responseContent ) ;
+    
+    # upgrade the nav file to include the new Dashboards -> Grafana piece right before trouble-view
+    debug "\tRunning modify_navigation_objects to insert Dashboards -> Grafana page node";
+    return 0 if not runSystemCommand( "$installDir/core/migration/modify_navigation_objects $tmpNavXML dashboard/trouble-view $grafanaPortalNodeXML $tmpDirNav/$navXML", $errorRef, \$modCommandStatus, [ 0, 1, 2 ] ) ;
+    # check the mod command status - it will return 0 if ok
+    # modify_navigation_objects return stats : 0 => new node was added as requested, 1 => new ode was already present, 2 => failure
+    if ( $modCommandStatus == 2 ) { 
+       $$errorRef = "$installDir/core/migration/modify_navigation_objects error detected";
+       return 0;
+    } 
+    elsif ( $modCommandStatus == 1 ) { 
+       logg "\tNo changes required to jboss portal - the Grafana page node is already present";
+       return 1;
+    }
+
+    # only other stat that will get through here is 0 which means grafana page node was added, so carry on and import it
+ 
+    # zip stuff up : cd /tmp && zip -r grafana-integration-7.0.0.zip portal
+    debug "\tZip'ing up jboss import payload in $tmpDirGB to $zipFile";
+    return 0 if not runSystemCommand( "cd $tmpDirGB && $zipCommand -q -r $zipFile portal" );
+   
+    # import the zip'd new portal 
+    debug "\tImporting jboss import payload zip file - this may take a few moments";
+    if ( not runSystemCommand( "$curlCommand --insecure --user '$rootUser:$rootPassword' -H 'Content-Type: application/zip' --upload-file $zipFile http://localhost/rest/private/managed-components/mop",  $errorRef ) ) {
+        return 0;
+    }
+
+    logg "\tDone. If you are logged into the GroundWork application portal open, hit refresh in your browser to see Dashboard -> Grafana.";
+    # done.
+    return 1;
+
+}
+
+# ---------------------------------------------------------------------------------
+sub addServiceProfiles {
+
+    # Uses core/monarch/bin/monarch_assign_serviceprofile_to_host to add some service profiles to host
+    # Couple of cases: 
+    #   - fresh install : the installer will be calling -add_service_profiles with no arg, and so gw server hostname (in $addServiceProfiles) will be set to 'localhost'
+    #   - upgrade install : the installer will be calling add_service_profiles with no arg, and so gw server hostname (in $addServiceProfiles) will be set to 'localhost'
+    #                       but now also check localhost looks like a gw server  (see if it has some gw-server looking services attached to it like 
+    #                          - if it looks like localhost is a gw server, then good nothing else to do
+    #                          - otherwise, go look for hosts with the key services on them  - if find just one, then pick that. otherwise cannot figure it out.
+    #                       if it couldn't be calculated, then it's a manual job.
+    #      For now, automatic calc of gw server isn't really feasible until we have a better way of tagging in the system somehow the primary GW server(s).
+    #      Instead, instructions will be put in release notes about adding these profiles if you want them.
+
+    my (  $errorRef ) = @_;
+    my ( $command, @profiles, $restClient, $userAgent, $gwRESTApi, %outcome, %results, $query, $keyService );
+
+    @profiles = ( 'influxdb', 'grafana-server' );
+
+    logg "Adding service profiles @profiles to host $addServiceProfiles";
+
+    # TODO get list of services for the host and check for gw-y looking services
+    # Couple of notes:
+    # - the intention here is to automatically cover the simplest possibly most common config case (ws_client.props has REST creds, localhost is the gw server).
+    # - the worst case here is that the customer needs to manually add the profiles to their gw server by hand
+    # - it's pretty naff that we don't have a surefire way to determine which host in the system is our GW server
+    # - this is going to fail in all but the simplest configs - ws_client.properties might not be the correct location of REST API creds
+    # - log4perl logging is deliberately not used - some errors will squirt out about that but no biggee
+    # - timeout => 180 ie not just 60 since on large systems getting all services might take a bit longer - again this might also fail
+    # - even after figuring out a gw host based on a key service, that host could be a child host 
+    # - the key service isn't strong enough way to determine a gw server either
+    # - customer might not even want the profiles attached, or have the underlying services switched on
+
+    #if ( defined $upgradeNav ) { # this will be set during an upgrade installation 
+    if ( 0 ) {  # leaving this functionality off for now until have a better way of determining the master GW server automatically
+
+        logg "\tChecking host '$addServiceProfiles' looks like a GroundWork server";
+        $gwRESTApi = GW::RAPID->new( undef, undef, undef, undef, $appName, { timeout => 180, access => "/usr/local/groundwork/config/ws_client.properties" } );
+        if ( not $gwRESTApi ) {
+            $@ =~ s/\n//g if defined $@;
+            $$errorRef = "Failed to initialize Groundwork REST API. You'll need to manually add profiles influxdb and grafana-server profiles to your GroundWork server host. ($@)";
+            return 0; # TODO should this fail other operations this script might do later ?
+        }
+
+        # get all hosts with a very typical gw server profile service on it - local_process_gw_listener
+        $keyService = 'local_process_gw_listener';
+    
+        # get hosts to which service is attached
+        $query = "serviceStatuses.serviceDescription = '$keyService'"; # This will get hosts for which this service is attached
+        if ( not $gwRESTApi->get_hosts( [], { query => $query }, \%outcome, \%results ) ) {
+           $$errorRef = "Failed to get hosts via Groundwork REST API. You'll need to manually add profiles influxdb and grafana-server profiles to your GroundWork server host. ($@)";
+           $gwRESTApi = undef;
+           return 0; # TODO should this fail other operations this script might do later ? 
+        }
+        $gwRESTApi = undef;
+       
+        # %results will be a hash of hashes : <hostname>=>{ ... } entries.
+        # If there's exactly one host with the key service on it, just use that
+        # If there's zero, or more than 1, then can't figure it out.
+        if ( scalar keys %results == 0 ) { 
+           logg "No GroundWork hosts had service '$keyService' attached so a GroundWork server could not be determined. You'll need to manually add profiles influxdb and grafana-server profiles to your GroundWork server host.";
+           return 1; # Don't fail 
+        }
+        elsif ( scalar keys %results >= 2 ) { 
+           logg "More than one GroundWork hosts had service '$keyService' attached so a GroundWork parent server could not be determined. You'll need to manually add profiles influxdb and grafana-server profiles to your GroundWork server host.";
+           return 1; # Don't fail 
+        }
+        else {
+           $addServiceProfiles = (keys %results)[0];
+           logg "\tHost '$addServiceProfiles' was found to have service '$keyService' attached - assuming this is the GroundWork server to which influxdb and grafana-server service profiles need adding to.";
+        }
+    }
+
+    foreach my $profile ( @profiles ) {
+        logg "\tApplying profile $profile to host $addServiceProfiles";
+        if ( not runSystemCommand("$installDir/core/monarch/bin/monarch_assign_serviceprofile_to_host -d warning -H $addServiceProfiles -p $profile" ) ) {
+           $$errorRef = "Didn't add service profile $profile to host $addServiceProfiles";
+           return 0;
+        }
+    }
+
+    logg "\tThe applied profiles will be effective after the next configuration commit";
+
+    return 1;
+}
+
+# ---------------------------------------------------------------------------------
+sub deleteImportedRRDData {
+
+    # delete imported RRD data
+    # Does this by doing this influxql : delete from "groundwork" where "fromRRD" = 'true'
+    my ( $errorRef ) = @_;
+    my ( $userAgent, $restClient, %gwProps, $wait, $retry, $maxRetries, $HTTPResponseCode, $responseContent );
+
+    logg "You are about to delete all time series in InfluxDB which have tag 'fromRRD' = true. Are you sure ? Type in 'yes' and hit enter to confirm";
+    my $go = <STDIN>; chomp $go;
+    if ( $go ne 'yes' ) {
+       fail "Deleton aborted!";
+    }
+
+    eval { $userAgent = LWP::UserAgent->new( agent => $appName, timeout=> 60, ssl_opts => \%sslOptions ); };
+    if ($@) { chomp $@; $@ =~ s/^ERROR:\s+//i; $$errorRef .= "\tCannot create a user agent for deleting imported RRD data from InfluxDB : $@. "; return 0; }
+    # TODO at some point in the future when remote influxdb arch is required, need to param host and port for influxdb
+    %gwProps = ( 'url' => undef );
+    return 0 if not getPropertyValues( "$installDir/config/influxdb.properties", \%gwProps, "Getting url prop", $errorRef );
+    if ( not defined $gwProps{url} ) { 
+        $$errorRef = "No url property was found in $installDir/config/influxdb.properties.";
+        return 0;
+    }
+    $restClient = REST::Client->new( { host => $gwProps{url}, timeout => 10, useragent => $userAgent } ); 
+    if ( not defined $restClient ) { $$errorRef .= "\tCould not create REST::Client object for writing RRD data to InfluxDB. "; return 0; }
+
+    $retry = 1 ;
+    $wait = 10; # seconds
+    $maxRetries = 3; 
+    $HTTPResponseCode = -1; # some invalid code
+    logg "Deleting imported RRD data from InfluxDB";
+    while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+        $restClient->POST( "/query?db=$gwDBName&q=" . uri_escape("DELETE WHERE \"fromRRD\" = 'true'") );
+        $HTTPResponseCode = $restClient->responseCode();
+        $responseContent = $restClient->responseContent();
+        if ( $HTTPResponseCode != 200 )  {
+            logg "!!\tWARNING Unable to delete imported RRD data from InfluxDB - try $retry/$maxRetries, trying again in $wait seconds";
+            sleep $wait;
+        }
+        $retry++;
+    }
+    if ( $retry > $maxRetries ) { 
+        $$errorRef .= "Could not delete imported RRD from InfluxDB. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+        $$errorRef =~ s/\n/ /g;
+        return 0;
+    }
+    
+    # create an audit log event for the deletion 
+    if ( not createRRDImportAuditLogEntry ('DELETE', "Deleted RRD data imported into InfluxDB", $errorRef ) )  {
+       return 0 ;
+    }
+
+    return 1;
+}
+
+# ---------------------------------------------------------------------------------
+sub importRRDs {
+
+    # Get hosts/services from foundation
+    #   (notice its not 'get all rrds from a directory, because rrd name is <hostname>_<servicename>.rrd
+    #    so extracting the hostname and service name from the rrd name isn't possible since hostname and servicename
+    #    can have underscores in them.
+    # foreach host-service
+    #   if rrd for host_service:
+    #      extractRRD 
+    #      writeRrdToInflux
+    #         dump data into influx via http
+    #            measurement=<servicename>
+    #            tags: hostname=<hostname>, rrd=true
+    #            fields: <servicename>_<ds name>_rra<N> eg local_load_load1_rra0
+    # TODO To be ultra precise, should really stop gw, start influx and then do the import, to avoid rrd updates during the process (and then start gw)
+
+    my ( $dbName, $errorRef ) = @_;
+
+    my ( $rrd, $hostname, $service, %data, $gwRESTApi, %outcome, %results, @results, %hostsServices, $userAgent, 
+         $restClient, %gwProps, $RRDsCount, $HostServiceCount, $RRDsMatchedToHostService, $RRDsFilesProcessed, $retentionSecs );
+ 
+    logg "Migrating RRDs into InfluxDB ...";
+
+    # get list of all hosts and their services from foundation
+    Log::Log4perl->easy_init($ERROR); # RAPID errors will come out to stdout in their own format
+    $gwRESTApi = GW::RAPID->new( undef, undef, undef, undef, $appName, { timeout => 180, access => "$wsPropsFile" } );
+    if ( not $gwRESTApi ) {
+        $@ =~ s/\n//g if defined $@;
+        $$errorRef = "Failed to initialize Groundwork REST API. ($@)";
+        return 0; 
+    }
+
+    logg "\tGetting a list of all hosts and their services from GroundWork (this can take a while of very large systems) ...";
+    # get hosts to which service is attached
+    if ( not $gwRESTApi->get_services( [], { format => 'host,service' },  \%outcome, \%results ) ) {
+       $$errorRef = "Failed to get a list of all hosts and their services via Groundwork REST API. ($@)";
+       $gwRESTApi = undef; # this will invoke logout from API
+       return 0; 
+    }
+    $gwRESTApi = undef; # this will invoke logout from API
+
+    $HostServiceCount = 0;
+    $RRDsMatchedToHostService = 0;
+    $RRDsFilesProcessed = 0;
+    # build a hash of arrays to represent hosts and their services which have rrd's found 
+    %hostsServices = ( );
+    foreach $hostname ( keys %results ) {
+        foreach $service ( keys %{ $results{$hostname} } ) {
+           $HostServiceCount ++ ;
+           $rrd = "$rrdsDir/${hostname}_${service}.rrd";
+           # replace blanks with '_' $rrdsDir doesn't contain any blanks but hostname or service may
+           $rrd =~ s/\s/_/go;
+           if ( -e $rrd ) {
+               $RRDsMatchedToHostService ++;
+               if ( -r $rrd ) {
+                  push @{ $hostsServices{$hostname} }, $service;
+               } 
+               else {
+                  logg "\tRRD $rrd is not readable and will be skipped";
+               }
+           }
+        }
+    }
+
+    if ( scalar keys %hostsServices == 0 ) {
+       logg "No RRD files were found in $rrdsDir for the hosts and services in GroundWork.";
+       return 1;
+    }
+
+    if ( $debug ) { 
+        debug "The following hosts and services in GroundWork have associated RRD files in $rrdsDir:";
+        foreach $hostname ( sort keys %hostsServices ) {
+            logg "\t$hostname:";
+            foreach $service ( sort @{ $hostsServices{$hostname} } ) {
+                logg "\t\t$service";
+            }
+        }
+    }
+
+    # Import the found RRDS, for the found hosts and services, into InfluxDB
+
+    # create agent object 
+    eval { $userAgent = LWP::UserAgent->new( agent => $appName, timeout=> 60, ssl_opts => \%sslOptions ); };
+    if ($@) { chomp $@; $@ =~ s/^ERROR:\s+//i; $$errorRef .= "\tCannot create a user agent for writing RRD data to InfluxDB : $@. "; return 0; }
+    # TODO at some point in the future when remote influxdb arch is required, need to param host and port for influxdb
+    # get the influxdb url to connect to and ultimately write RRD data to
+    %gwProps = ( 'url' => undef );
+    return 0 if not getPropertyValues( "$installDir/config/influxdb.properties", \%gwProps, "Getting url prop", $errorRef );
+    if ( not defined $gwProps{url} ) { 
+        $$errorRef = "No url property was found in $installDir/config/influxdb.properties.";
+        return 0;
+    }
+    $restClient = REST::Client->new( { host => $gwProps{url}, timeout => 10, useragent => $userAgent } ); 
+    if ( not defined $restClient ) { $$errorRef .= "\tCould not create REST::Client object for writing RRD data to InfluxDB. "; return 0; }
+
+    # get cutoff time based on retention policy
+    $retentionSecs = 0;
+    if ( not getDefaultRetentionPolicy( $dbName, $restClient, \$retentionSecs, $errorRef ) ) {
+        return 0; 
+    }
+    $RRDsCount = 0;
+    HOST: foreach $hostname ( sort keys %hostsServices ) {
+        #logg "\tProcessing RRD's for host $hostname:";
+
+        SERVICE: foreach $service ( sort @{ $hostsServices{$hostname} } ) {
+            $RRDsFilesProcessed ++;
+            logg "\t************************************************************************************************************************************************";
+            logg "\tProcessing RRD's for host $hostname service $service";
+            $rrd = "$rrdsDir/${hostname}_${service}.rrd";
+            # replace blanks with '_' $rrdsDir doesn't contain any blanks but hostname or service may
+            $rrd =~ s/\s/_/go;
+            %data = ();
+
+            # extract the data from the RRD
+            if ( not extractRRD ( $dbName, $hostname, $service, $rrd, \%data, $restClient, $retentionSecs, $errorRef ) ) {
+               logg "ERROR extracting RRD data : $$errorRef";
+               next SERVICE;
+               # Carry on and see if can process the rest
+            }
+
+            # write the extracted data to InfluxDB
+            if ( not writeRrdToInflux ( $hostname, $service, \%data, $restClient, $errorRef) ) {
+               logg "!!!\t\t\tERROR writing RRD data to InfluxDB: $$errorRef";
+               #next SERVICE;
+            }
+            else {
+               $RRDsCount ++ ;
+            }
+        }
+    }
+
+    # create an audit log event for the import 
+    if ( not createRRDImportAuditLogEntry ('ADD', "Imported RRD data from $RRDsCount RRD files", $errorRef ) )  {
+       return 0 ;
+    }
+
+    logg "Total HostServiceCount: $HostServiceCount RRDsMatchedToHostService: $RRDsMatchedToHostService RRDsFilesProcessed: $RRDsFilesProcessed";
+    return 1;
+
+}
+
+
+# ---------------------------------------------------------------------------------
+sub createRRDImportAuditLogEntry {
+
+    my ( $action, $auditMessage, $errorRef, $timestamp, $service ) = @_;
+    my ( %outcome, @results, $gwRESTApi );
+
+    $gwRESTApi = GW::RAPID->new( undef, undef, undef, undef, $appName, { timeout => 180, access => "$wsPropsFile" } );
+    if ( not $gwRESTApi ) {
+        $@ =~ s/\n//g if defined $@; $$errorRef = "Failed to initialize Groundwork REST API prior to creating Audit Log for import action. ($@)";
+        return 0; 
+    }
+    
+    #die "LAST TIME $timestamp =" .  POSIX::strftime("%Y-%m-%dT%H:%M:%S%z", localtime($timestamp) ) . "\n";
+
+    my %auditEvent = ( 
+                        subsystem   => 'GrafBridge',
+                        hostName    => Sys::Hostname::hostname(),
+                        action      => $action,
+                        description => "$auditMessage",
+                        username    => 'admin'
+                    );
+    if ( defined $timestamp ) { 
+        $auditEvent{timestamp} = POSIX::strftime("%Y-%m-%dT%H:%M:%S%z", localtime($timestamp) );
+    }
+     
+    if ( defined $service ) { 
+        $auditEvent{serviceDescription} = $service;
+    }
+
+    if ( not $gwRESTApi->create_auditlogs( [ \%auditEvent ], { async => 'false' }, \%outcome, \@results ) ) { 
+       $$errorRef = "Failed to create auditlog entry for action '$auditMessage'.\nMore detail:\n" . Dumper \%outcome, \@results;
+       $gwRESTApi = undef; # this will invoke logout from API
+       return 0;
+    }
+    $gwRESTApi = undef;
+
+    return 1;
+}
+
+# ---------------------------------------------------------------------------------
+sub extractRRD {
+
+    # TODO clean up, and error checking
+
+    # rrdtool dump it
+    # extract it's ds's and CF's 
+    # extract and build data for each ds and rra in a easily consumable format for influxdb api
+    # 
+    # want data in format like this :
+    # <servicename>,hostname=hostname,fromRRDs=true  <servicename>_<metricname>=<value>,... timestamp
+    # The metric names need to have service prepended to maintain uniqueness across influx. This is
+    # consistent with the backend influxdb perf writer.
+     
+    my ( $dbName, $host, $service, $rrdFile, $builtDataHashRef, $restClient, $retentionSecs, $errorRef ) = @_;
+    my ( $cutofftime, $epocTime, $firstRejectedTime, $firstRejectedActualDate, $firstActual);
+
+    $epocTime = time();
+    $cutofftime = $epocTime - $retentionSecs;
+    #logg "\tcutoff date = " . strftime("%m/%d/%Y %H:%M:%S",localtime($cutofftime));
+
+    # get first actual date
+    $firstActual = 0;
+    if ( not getFirstActualDate( $dbName, $host, $service, $restClient, \$firstActual, $errorRef ) ) {
+        return 0;
+    }
+
+    #logg "\tExtracting RRD data from RRD $rrdFile";
+
+    # Notes from experimenting with the different ways import could be done.
+    # - could not get xport --step to work as expected wrt step, and fetch is easier
+    # - fetch : rrdtool fetch /root/rrd/localhost_local_memory.rrd AVERAGE -r 300 -s -1w 
+    #   this could be one option - 
+    #     - the res depends on -r and -s options and that gives customer flexibility
+    # - dump
+    #    did get dump to work via a file and them XMLin that file, but XMLin takes really long time
+    #    since going to be importing all lines from all databases in the rrd, a much faster/hackier way 
+    #    is to extract the <name> and <row> entries from the dump and use them directly
+    # 
+    # possible ways cli might work
+    # -import_rrds [specific rrd, or all in a path] , eg -migrate /some/path/the.rrd, -migrate /u/l/g/rrds
+    # -fetch res:at-time 
+    #    - default is to use rrdtool dump and import all RRA's and do own import processing rather than xml which is super slow
+    #      - dump is straightforward - no CF figuring out required
+    #    - if -fetch is used - add this later ?
+    #         it'll do an rrdtool fetch -r res -s at-time and give you back res it figures out is best
+    #         CF needs to be figured out by looking at RRD ?
+
+    if ( not open( DATA, "/usr/local/groundwork/common/bin/rrdtool dump $rrdFile |" )) {
+      logg("\t\tfailed to open $rrdFile\n");
+      return undef;
+    };
+    my @data;
+    if ( not @data = <DATA> ) {
+      logg("\t\tfailed to read data from $rrdFile\n");
+      close DATA;
+      return undef;
+    };
+    close DATA;
+    chomp @data;
+
+    my ( $cf, $pdpPerRow, $rraNumber, $timestamp, @vals, @dsNames, $dsName, 
+         $influxDataRow, @newvals, $val, $rowsProcessed , $rowsNaN );
+
+    $rraNumber = -1;
+    $firstRejectedTime = $cutofftime;
+    $firstRejectedActualDate = 0;
+    foreach my $data ( @data ) {
+
+        # extract the ds names - these will be all extracted before the rra's and row data show up
+        if ( $data =~ m#<name># ) {
+           $dsName = $data; 
+           $dsName =~ s#(<name>|</name>)##g;
+           $dsName =~ s#\s##g;
+           push @dsNames, $dsName;
+        }
+
+        # increment the rra number  when entering a new db
+        if ( $data =~ m#<rra># ) {
+           $rraNumber ++;
+           # reset rows processed counters
+           $rowsProcessed = $rowsNaN = 0;
+        }
+
+        # store stats
+        if ( $data =~ m#</rra># and $debug ) {
+           logg "\t\t\t\tRRA $rraNumber: Total rows processed: $rowsProcessed, Total excluded NaN rows : $rowsNaN";
+        }
+
+        # grab CF info - this will be used in creating the metric names later
+        if ( $data =~ m#<cf># ) {
+           $cf = $data; # eg <cf>AVERAGE</cf>
+           $cf =~ s#(<cf>|</cf>)##g;
+           $cf =~ s#\s##g;
+        }
+
+        # grab CF info - this will be used in creating the metric names later
+        if ( $data =~ m#<pdp_per_row># ) {
+           $pdpPerRow = $data; # eg <pdp_per_row>12</pdp_per_row> <!-- 3600 seconds -->
+           $pdpPerRow = (split( "--", $data))[1]; # 3600 seconds
+           $pdpPerRow =~ s/\s//g;
+           #print "$rraNumber : ${cf}_${pdpPerRow}\n";
+        }
+
+
+        # extract the data 
+        # %data = { 
+        #             <rra#> => [
+        #                            service, hostname=host,fromRRD=true, m1=v1, m2=v2, ..., timestamp=timestamp ,
+        #                            ...
+        #                       ], 
+        #             <rra#> => [  ... ],
+        #             ...
+        # }
+
+        if ( $data =~ m#<row># ) {
+           
+           # Example data rows
+           # <!-- 2017-07-01 15:30:00 EDT / 1498937400 --> <row><v>4.0200000000e+01</v><v>9.5000000000e+01</v><v>9.9000000000e+01</v></row>
+           # <!-- 2017-06-20 15:00:00 EDT / 1497985200 --> <row><v>NaN</v><v>NaN</v><v>NaN</v></row> --- NaN's seem to show up filling all of the values at once
+
+           # extract the values
+           @vals = split( '<v>', $data ); 
+           shift @vals; # don't need the first timestamp comment bit
+           @newvals = ( ); 
+
+           # build an array of timeseries data easily consumable by influxdb
+           for ( my $valIdx = 0; $valIdx <= $#vals; $valIdx++ ) {
+              $val = (split('<', $vals[$valIdx] ))[0] ;  # clean up the junk from the split, the </v> and </v><row> stuff
+              if ( $val ne 'NaN' ) {  # skip Not-A-Number's
+                  $rowsProcessed++;
+                  #push @newvals,  "${service}_$dsNames[$valIdx]_${cf}_${pdpPerRow}=" . # metric name, format is <servicename>_<ds name>_<cf>_<pdpPerRow>
+                  #                 sprintf("%.10f", $val); # convert scientific exponent format to float format
+                  push @newvals,  "${service}_RRD_${cf}_${pdpPerRow}_$dsNames[$valIdx]=" . # metric name, format is <servicename>_<cf>_<pdpPerRow>_<ds name> this ensures they don't clog up the embedded graphs too much
+                                   sprintf("%.10f", $val); # convert scientific exponent format to float format
+              }
+              else {
+                  $rowsNaN++;
+              }
+           }
+
+           # extract the timestamp
+           $timestamp = $data;
+           $timestamp =~ s#^.* / (.*) --> <row>.*$#$1#g;
+           #logg "\t\t input time = $timestamp";
+           if ( @newvals ) { # if there was data, ie not all NaN's 
+              # only input if $timestamp < $firstActual
+              if ( $timestamp < $firstActual ) {
+           if ( $timestamp > $cutofftime ) {
+              #$timestamp .= "000000000"; # convert to influxdb epoch nanoseconds
+
+                 $influxDataRow = "$service,hostname=$host,fromRRD=true " . join(",", @newvals) . " ${timestamp}000000000\n";
+                 push @{ $builtDataHashRef->{ "rra$rraNumber" } }, $influxDataRow;
+              }
+           elsif ( $timestamp < $firstRejectedTime ) {
+              $firstRejectedTime = $timestamp;
+                 }
+              }
+              elsif ( $firstRejectedActualDate == 0 || $timestamp < $firstRejectedActualDate ) {
+                 $firstRejectedActualDate = $timestamp;
+                 #logg "\tREJECTED input RRD match to existing actual data input date:" . strftime("%m/%d/%Y %H:%M:%S",localtime($timestamp));
+              }
+           }
+        }
+    }
+
+    if ( $firstRejectedActualDate != 0) {
+       logg "\tREJECTED input RRD data based on match to existing influxDB data from:" . strftime("%m/%d/%Y %H:%M:%S",localtime($firstRejectedActualDate));
+    }
+    if ( $firstRejectedTime != $cutofftime) {
+       logg "\tREJECTED input RRD data based on retention policy from:" . strftime("%m/%d/%Y %H:%M:%S",localtime($firstRejectedTime)) . " to:" . strftime("%m/%d/%Y %H:%M:%S",localtime($cutofftime));
+    }
+
+    #die "LAST TIME $timestamp =" .  POSIX::strftime("%Y-%m-%dT%H:%M:%S%z", localtime($timestamp) ) . "\n";
+    #if ( not createRRDImportServiceEvent ("test event", $service, $timestamp, $errorRef) )  { print "ERROR adding log\n"; } # TBD
+
+    return 1;
+}
+
+# ---------------------------------------------------------------------------------
+sub getDefaultRetentionPolicy {
+    my ( $dbName, $restClient, $retentionSecs, $errorRef ) = @_;
+    my ( $userAgent, $HTTPResponseCode, $responseContent, $JSONResponse, $retry, $maxRetries, $wait, $retentionValue, @values, $hr, $min, $sec );
+    
+    # create an agent object 
+    eval {
+        $userAgent = LWP::UserAgent->new( agent => $appName, timeout=> 60, );
+    };
+    if ($@) {
+        chomp $@;
+        $@ =~ s/^ERROR:\s+//i;
+        $$errorRef .= "\tCannot create a user agent for getting default InfluxDB retention policy: $@. "; 
+        return 0;
+    }
+
+    # Get the default rp
+    $retry = 1 ;
+    $wait = 10; # seconds
+    $maxRetries = 3; 
+    $HTTPResponseCode = -1; # some invalid code
+    #logg "\tChecking for Default Retention Policy on database '$gwDBName'";
+    while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+        $restClient->GET( '/query?db=' .$dbName . '&q=SHOW+RETENTION+POLICIES+ON+'.$dbName);
+        $HTTPResponseCode = $restClient->responseCode();
+        $responseContent = $restClient->responseContent();
+        if ( $HTTPResponseCode != 200 )  {
+            logg "\tUnable to get retention policies - try $retry/$maxRetries, trying again in $wait seconds";
+            sleep $wait;
+        }
+        $retry++;
+    }
+    if ( $retry > $maxRetries ) { 
+        $$errorRef .= "\tCould not get InfluxDB retention policies. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+        $$errorRef =~ s/\n/ /g;
+        return 0;
+    }
+
+    # get default RP
+    $JSONResponse = decode_json( $responseContent ) ;
+    $retentionValue = "0h0m0s";
+    foreach my $rpName ( @{ $JSONResponse->{results}[0]->{series}[0]->{values} } ) { 
+	# logg "\tRetention Policy Name:" . $rpName->[0];
+	# logg "\tduration:" . $rpName->[1] . " format: 9999h99m99s";
+	# logg "\tshardGroupDuration:" . $rpName->[2];
+	# logg "\treplicN:" . $rpName->[3];
+	# logg "\tdefault:" . $rpName->[4];
+        if ($rpName->[4] == '1') {
+            $retentionValue = $rpName->[1];
+        }
+    }
+    logg "\tretentionValue: $retentionValue";
+
+    # dump parts
+    @values = $retentionValue =~ /\d+/g;
+    $hr = $values[0];
+    $min = $values[1];
+    $sec = $values[2];
+    #logg "\t\thr: $hr min: $min sec: $sec";
+    $$retentionSecs = ($hr * 3600) + ($min * 60) + $sec;
+    #logg "\t\tretentionSecs = $$retentionSecs";
+
+    return 1;
+}
+
+# ---------------------------------------------------------------------------------
+sub getFirstActualDate {
+    my ( $dbName, $hostName, $serviceName, $restClient, $firstActual, $errorRef ) = @_;
+    my ( $userAgent, $HTTPResponseCode, $responseContent, $JSONResponse, $retry, $maxRetries, $wait );
+    # create an agent object 
+    eval {
+        $userAgent = LWP::UserAgent->new( agent => $appName, timeout=> 60, );
+    };
+    if ($@) {
+        chomp $@;
+        $@ =~ s/^ERROR:\s+//i;
+        $$errorRef .= "\tCannot create a user agent for getting default InfluxDB retention policy: $@. "; 
+        return 0;
+    }
+    # Get the first Actual Date
+    $retry = 1 ;
+    $wait = 10; # seconds
+    $maxRetries = 3; 
+    $HTTPResponseCode = -1; # some invalid code
+    #logg "\tGetting first existing actual date on database: '$gwDBName' for host: '$hostName' service: '$serviceName'";
+    while ( $HTTPResponseCode != 200 and $retry <= $maxRetries ) { 
+        $restClient->GET( '/query?db=' .$dbName . '&q=select+*+from+"' . $serviceName . '"+where+hostname=\'' . $hostName . '\'+order+by+time+LIMIT+1');
+        $HTTPResponseCode = $restClient->responseCode();
+        $responseContent = $restClient->responseContent();
+        if ( $HTTPResponseCode != 200 )  {
+            logg "\tUnable to get actual date - try $retry/$maxRetries, trying again in $wait seconds";
+            sleep $wait;
+        }
+        $retry++;
+    }
+    if ( $retry > $maxRetries ) { 
+        $$errorRef .= "\tCould not get first existing actual date. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+        $$errorRef =~ s/\n/ /g;
+        return 0;
+    }
+    # get date
+    $JSONResponse = decode_json( $responseContent );
+    foreach my $value ( @{ $JSONResponse->{results}[0]->{series}[0]->{values} } ) {
+        #logg "\tfirst existing actual:" . $value->[0];
+        #logg "\t\t converted to epoch:" . str2time($value->[0]);
+        $$firstActual = str2time($value->[0]);
+    }
+    return 1;
+}
+# ---------------------------------------------------------------------------------
+sub writeRrdToInflux {
+
+    my ( $host, $service, $builtDataHashRef, $restClient, $errorRef ) = @_;
+    my ( $userAgent, $HTTPResponseCode, $responseContent, $retry, $maxRetries, $wait);
+
+    $$errorRef = "";
+    $wait = 10; # seconds
+    $maxRetries = 3; 
+    foreach my $rra ( sort keys %{$builtDataHashRef} ) {
+
+        $retry = 1 ;
+        $HTTPResponseCode = -1; # some invalid code
+        #logg "\tWriting RRD data for host $host, service $service, RRD RRA $rra, to InfluxDB database $gwDBName";
+        #logg "\t\tWriting extracted RRD data for RRD RRA $rra to InfluxDB database $gwDBName";
+        while ( $HTTPResponseCode != 204 and $retry <= $maxRetries ) { 
+            $restClient->POST( "/write?db=$gwDBName",  "@{$builtDataHashRef->{$rra}}"   );  
+            $HTTPResponseCode = $restClient->responseCode();
+            $responseContent = $restClient->responseContent();
+            if ( $HTTPResponseCode != 204 )  {
+                logg "!!\t\t\tMOD WARNING Unable to write RRD data into InfluxDB - try $retry/$maxRetries, trying again in $wait seconds";
+                sleep $wait;
+            }
+            $retry++;
+        }
+        if ( $retry > $maxRetries ) { 
+            $$errorRef .= "Could not write RRD RRA $rra data to InfluxDB. Last status code:$HTTPResponseCode, last response:$responseContent. ";
+            logg "!!\t\t\tERROR Could not write RRD RRA $rra data to InfluxDB. Last status code:$HTTPResponseCode, last response:$responseContent.";
+            $$errorRef =~ s/\n/ /g;
+        }
+
+    }
+
+    return 0 if $$errorRef ; 
+
+    return 1;
+
+}
+

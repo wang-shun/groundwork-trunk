@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<portlet-app
+    xmlns="http://java.sun.com/xml/ns/portlet/portlet-app_2_0.xsd"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/portlet/portlet-app_2_0.xsd
+			http://java.sun.com/xml/ns/portlet/portlet-app_2_0.xsd"
+      version="2.0">
+
+    <!-- Ganglia Integration Starts -->
+
+    <portlet>
+	<description>This portlet allows the administrator to configure thresholds for Ganglia-collected metrics.  These thresholds are compared to the incoming metric values as the data is fed into Nagios, to tell whether the metrics are in a warning or critical condition.  Thresholds may be set at a global level, at a per-cluster level, or at an individual-host level.</description>
+	<portlet-name>GangliaThresholdConfiguration</portlet-name>
+	<display-name>Ganglia Metric Threshold Configuration Portlet</display-name>
+	<portlet-class>org.groundwork.portlet.iframe.GWOSIFramePortlet</portlet-class>
+	<init-param>
+	    <name>URL</name>
+	    <value>http://localhost:8080/ganglia-app/cgi-bin/GangliaConfigAdmin.cgi</value>
+	</init-param>
+	<!-- <init-param>
+	    <name>ATTACH_UID</name>
+	    <value>true</value>
+	</init-param> -->
+	<init-param>
+	    <name>allow_remote_url</name>
+	    <value>false</value>
+	</init-param>
+	<supports>
+	    <mime-type>text/html</mime-type>
+	    <portlet-mode>VIEW</portlet-mode>
+	</supports>
+	<portlet-info>
+	    <title>Ganglia Threshold Configuration</title>
+	</portlet-info>
+    </portlet>
+
+    <portlet>
+	<description>This portlet provides links to a locally configured set of Ganglia web servers, to make it easy to jump to those external pages from within GroundWork Monitor.</description>
+	<portlet-name>GangliaWebServerViews</portlet-name>
+	<display-name>Ganglia Web Server Views Portlet</display-name>
+	<portlet-class>org.groundwork.portlet.iframe.GWOSIFramePortlet</portlet-class>
+	<init-param>
+	    <name>URL</name>
+	    <value>http://localhost:8080/ganglia-app/cgi-bin/GangliaWebServers.cgi</value>
+	</init-param>
+	<!-- <init-param>
+	    <name>ATTACH_UID</name>
+	    <value>true</value>
+	</init-param> -->
+	<init-param>
+	    <name>allow_remote_url</name>
+	    <value>false</value>
+	</init-param>
+	<supports>
+	    <mime-type>text/html</mime-type>
+	    <portlet-mode>VIEW</portlet-mode>
+	</supports>
+	<portlet-info>
+	    <title>Ganglia Web Server Views</title>
+	</portlet-info>
+    </portlet>
+
+    <!-- Ganglia Integration Ends -->
+
+</portlet-app>

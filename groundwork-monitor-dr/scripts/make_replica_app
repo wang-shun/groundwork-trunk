@@ -1,0 +1,66 @@
+#!/bin/bash -e
+
+# make_replica_app
+
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+PATH=/bin:/usr/bin
+
+print_usage() {
+    echo "usage:  make_replica_app {staged_path} {replica_machine} {replica_user} {replica_path}"
+}
+
+if [ $# -ne 4 ]; then
+    print_usage
+    exit 1
+fi
+
+staged_path="$1"
+replica_machine="$2"
+replica_user="$3"
+replica_path="$4"
+
+if [[ ! ("$staged_path" =~ '/staged$') ]]; then
+    echo 'ERROR:  staged_path must end in "/staged"'
+    exit 1
+fi
+
+if [[ ! ("$replica_path" =~ '/replica$') ]]; then
+    echo 'ERROR:  replica_path must end in "/replica"'
+    exit 1
+fi
+
+# Make the remote replica area look exactly like the local staged area.
+# FIX LATER:  possibly, use rdist or rsync instead; that can be a later optimization,
+# if it's even necessary (since such programs usually use ssh anyway for the transport)
+
+# We make sure the $replica_path is not a symlink on the receiving side,
+# for basic security purposes.
+# FIX MINOR:  I'd prefer to check that the parent directory of the remote replica
+# directory already exists, and not allow "mkdir -p" to create it for us.
+trap "echo 'ERROR:  Cannot create clean replica on remote \"$replica_machine\" system; aborting!'; exit 1" ERR
+
+# We need to deal cleanly with possibly nothing matching the "rm" glob.
+# But the proper fix depends on which shell you are running on the remote end.
+# The present construction should allow for both bash and tcsh as possible
+# remote login shells.
+#
+# "shopt -s nullglob" is the proper syntax for this in bash.  This will be the
+# usual branch taken, when this is executed for the nagios user.
+#
+# "set nonomatch" is a workaround for the fact that I sometimes test this in an
+# environment where the remote user uses tcsh as the login shell rather than bash
+# (or dash or whatever).
+#
+commands="
+[ -n \"\$status\" ] && set nonomatch;
+[ -z \"\$status\" ] && shopt -s nullglob;
+[ ! -L $replica_path ] && mkdir -p $replica_path/ && rm -rf $replica_path/*
+"
+ssh $replica_user@$replica_machine "$commands"
+
+# We want a sibling-level relationship here between the source and target directories,
+# not a copy of the source directory underneath the target directory.
+trap "echo 'ERROR:  Cannot copy staged area to remote \"$replica_machine\" system; aborting!'; exit 1" ERR
+scp -pr $staged_path/* $replica_user@$replica_machine:$replica_path

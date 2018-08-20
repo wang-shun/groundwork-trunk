@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Collage - The ultimate data integration framework.
+Copyright (C) 2004-2017  GroundWork Open Source Solutions info@groundworkopensource.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of version 2 of the GNU General Public License
+    as published by the Free Software Foundation.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.groundwork</groupId>
+        <artifactId>gw-monitor-apps-pom</artifactId>
+        <version>7.2.2-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>grafana-server</artifactId>
+    <version>7.2.2-SNAPSHOT</version>
+    <name>Grafana installer</name>
+    <packaging>pom</packaging>
+
+    <properties>
+        <grafana-version>5.1.3</grafana-version>
+        <sourcedir>${project.build.directory}/grafana-${grafana-version}</sourcedir>
+        <installdir>${project.build.directory}/grafana</installdir>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.googlecode.maven-download-plugin</groupId>
+                <artifactId>download-maven-plugin</artifactId>
+                <version>1.3.0</version>
+                <executions>
+                    <execution>
+                        <id>download-grafana-server</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <configuration>
+                            <url>https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana-${grafana-version}.linux-x64.tar.gz</url>
+                            <unpack>true</unpack>
+                            <sha256>c438a7ef775dd64e2ebfc72bef1e5a69849f1802b1921f30d6904e8cf05281a6</sha256>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.8</version>
+                <executions>
+                    <execution>
+                        <phase>process-resources</phase>
+                        <configuration>
+                            <target>
+                                <move file="${sourcedir}" tofile="${installdir}"/>
+                                <copy todir="${installdir}">
+                                    <fileset dir="src"/>
+                                </copy>
+                                <chmod file="${installdir}/scripts/ctl.sh" perm="755"/>
+                            </target>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

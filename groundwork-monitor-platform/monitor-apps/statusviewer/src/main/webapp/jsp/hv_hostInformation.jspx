@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<ui:composition template="/templates/template.xhtml"
+	xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<ui:define name="content">
+		<!-- hidden filed which will initialize all the members  -->
+		<ice:inputHidden id="HIipHiddn"
+			value="#{informationPortletsHandler.informationHiddenField}"></ice:inputHidden>
+
+		<!-- error / info message -->
+		<ice:panelGroup rendered="#{informationPortletsHandler.message}"
+			id="HIpanelsSearchError">
+			<ice:column id="HIcolumnError"
+				rendered="#{informationPortletsHandler.error}">
+				<ui:include src="/jsp/error.jspx">
+					<ui:param name="errorMessage"
+						value="#{informationPortletsHandler.errorMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:column id="HIcolumninfo"
+				rendered="#{informationPortletsHandler.info}">
+				<ui:include src="/jsp/info.jspx">
+					<ui:param name="infoMessage"
+						value="#{informationPortletsHandler.infoMessage}" />
+				</ui:include>
+			</ice:column>
+			<ice:commandButton id="HIcmdRetryNow"
+				value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+				actionListener="#{informationPortletsHandler.reloadPage}">
+			</ice:commandButton>
+		</ice:panelGroup>
+
+		<!-- top level panel grid for supporting error message (render if not error) -->
+		<ice:panelGrid border="0" id="HIpanelgridHostInformationMain"
+			rendered="#{!informationPortletsHandler.message}">
+
+			<table width="100%" border="0" cellspacing="0" cellpadding="0">
+				<tr>
+					<td class="pad2952">
+					<table width="100%" border="0" cellspacing="0" cellpadding="0">
+						<!-- ######### Status Information ########## -->
+						<tr>
+							<td colspan="2" style="padding-bottom: 4px;"><span> <ice:outputText
+								style="font-size:11px; text-decoration:underline;"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_statusInformation']}"
+								id="HItxtStatusInformation"></ice:outputText> </span></td>
+						</tr>
+
+						<!-- Row == Status OK - 172.28.112.56: rta 3.451ms, lost 0% -->
+						<tr>
+							<td class="padbottom4 iceOutTxt "> <ice:outputLabel
+								for="HIpanelgrpHostStatus"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_status']}"
+								id="HIlblHostStatus">
+							</ice:outputLabel></td>
+							<td class="padbottom4 ">
+							<div style="padding:5px; overflow:auto; height:25px; width:400px;">
+									<ice:outputText
+										value="#{informationPortletsHandler.hostInformationBean.statusValue}"
+										id="HItxtHostStatusValue"
+										style="font-weight:normal;"
+										escape="false" />
+								</div>
+							</td>
+						</tr>
+
+						<!-- Row == Acknowledged: No Acknowledge <= link to the acknowledge action
+         										OR	Acknowledged: Yes. By <username> at YYYY-MM-DD HH:MM:SS. -->
+						<tr>
+							<td class="padbottom4 iceOutTxt "> <ice:outputLabel
+								for="HIpanelgrpAcknowledgementStatus"
+								value="#{message['com_groundwork_statusviewer_acknowledged']}"
+								id="HIlblAcknowledgementStatus">
+							</ice:outputLabel></td>
+							<td class="padbottom4 "><ice:outputText
+								id="HIoutputtxtacknowledged"
+								style="font-weight:normal;"
+								value="#{informationPortletsHandler.hostInformationBean.acknowledged}"></ice:outputText>
+							<ice:graphicImage id="HIimgacknowledged"
+								value="/images/host-ack.gif"
+								rendered="#{informationPortletsHandler.hostInformationBean.acknowledged=='No'}"
+								title="#{message['com_groundwork_portal_statusviewer_modelpopup_title_text']}"></ice:graphicImage>
+							<ice:commandLink id="HIlinkAcknowledge"
+								value="#{message['com_groundwork_portal_statusviewer_serviceList_linktext_Acknowledge']}"
+								rendered="#{informationPortletsHandler.hostInformationBean.acknowledged=='No' and informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole and informationPortletsHandler.hostInformationBean.applicationType=='NAGIOS'}"
+								actionListener="#{informationPortletsHandler.showHostAcknowledgementPopup}">
+								<f:attribute name="hostName"
+									value="#{informationPortletsHandler.hostInformationBean.hostName}" />
+							</ice:commandLink></td>
+						</tr>
+
+						<!-- Row == In Downtime Yes/No Schedule  -->
+						<tr>
+							<td class="padbottom4 iceOutTxt"> <ice:outputLabel
+								for="HIpanelgrpHostDowntime"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_inDowntime']}"
+								id="HIlblHostDowntime">
+							</ice:outputLabel></td>
+							<td class="padbottom4"><ice:outputText
+								value="#{informationPortletsHandler.hostInformationBean.scheduleDowntime}"
+								style="font-weight:normal;"
+								id="HItxtHostDowntimeValue">
+							</ice:outputText> <ice:commandLink id="HILinkSchedule"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_schedule']}"
+								rendered="#{informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole and informationPortletsHandler.hostInformationBean.applicationType=='Nagios'}"
+								action="#{popup.openPopup}"
+								actionListener="#{informationPortletsHandler.scheduleDowntimeForHost}">
+							</ice:commandLink></td>
+						</tr>
+
+						<!-- Row == Last Notification Date/Time (count) Temporarily Enable   -->
+						<tr>
+							<td class="padbottom10 iceOutTxt borderBottomdot_info">
+							<ice:outputLabel for="HIpanelgrpLastNotification"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_lastNotification']}"
+								id="HIlblLastNotification">
+							</ice:outputLabel></td>
+							<td class="padbottom10 borderBottomdot_info"><ice:outputText
+								value="#{informationPortletsHandler.hostInformationBean.lastNotificationTime}"
+								style="font-weight:normal;"
+								id="HItxtLastNotificationTime">
+							</ice:outputText> <ice:outputText
+								value="#{informationPortletsHandler.hostInformationBean.currentNotificationNumber}"
+								style="font-weight:normal;"
+								id="HItxtCurrentNotificationNumber">
+							</ice:outputText> <ice:commandLink
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_enableNotifications']}"
+								action="#{popup.openPopup}"
+								actionListener="#{informationPortletsHandler.enableNotificationForHost}"
+								rendered="#{!informationPortletsHandler.hostInformationBean.notificationsEnabled and informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole and informationPortletsHandler.hostInformationBean.applicationType=='Nagios'}"
+								id="HIcmdLinkEnableNotifications">
+							</ice:commandLink> <ice:commandLink
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_disableNotifications']}"
+								action="#{popup.openPopup}"
+								actionListener="#{informationPortletsHandler.disableNotificationForHost}"
+								rendered="#{informationPortletsHandler.hostInformationBean.notificationsEnabled and informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole and informationPortletsHandler.hostInformationBean.applicationType=='Nagios'}"
+								id="HIcmdLinkDisableNotifications">
+							</ice:commandLink></td>
+						</tr>
+
+						<!-- ######### Check Information ########## -->
+						<tr>
+                            <td style="padding-top: 4px; padding-bottom: 4px"><ice:outputText
+								style="font-size:11px; text-decoration:underline;"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_checkInformation']}"
+								id="HItxtCheckInformation">
+							</ice:outputText></td>
+							<td class="padbottom4 padtop4"></td>
+						</tr>
+
+						<!-- Last Check YYYY-MM-DD HH:MM:SS -->
+						<tr>
+							<td class="padbottom4 iceOutTxt"> <ice:outputLabel
+								for="HIpanelgrpLastCheck"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_lastCheck']}"
+								id="HIlblLastCheck">
+							</ice:outputLabel></td>
+							<td class="padbottom4">
+							<ice:outputText
+								value="#{informationPortletsHandler.hostInformationBean.lastCheckTime}"
+								style="font-weight:normal;"
+								id="HItxtLastCheckTime">
+							</ice:outputText> 
+							</td>
+						</tr>
+
+						<!-- Next Check YYYY-MM-DD HH:MM:SS (Active/Passive) Schedule -->
+						<tr>
+							<td class="padbottom4 iceOutTxt"> <ice:outputLabel
+								for="HIpanelgrpNextCheck"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_nextCheck']}"
+								id="HIlblNextCheck">
+							</ice:outputLabel></td>
+							<td class="padbottom4"><ice:outputText
+								value="#{informationPortletsHandler.hostInformationBean.nextCheckTime}"
+								style="font-weight:normal;"
+								id="HItxtNextCheckTime">
+							</ice:outputText> <ice:outputText
+								value=" #{informationPortletsHandler.hostInformationBean.checkType} "
+								style="font-weight:normal;"
+								id="HItxtCheckTypeValue">
+							</ice:outputText> <ice:commandLink id="HILinkReScdleNxtChkHst"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_schedule']}"
+								action="#{popup.openPopup}"
+								rendered="#{informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole and informationPortletsHandler.hostInformationBean.applicationType=='Nagios'}"
+								actionListener="#{informationPortletsHandler.rescheduleNextCheckForHost}">
+							</ice:commandLink></td>
+						</tr>
+
+						<!-- Check Attempt  2 of 3 (Soft) Disable Check -->
+						<tr>
+							<td class="padbottom4 iceOutTxt"> <ice:outputLabel
+								for="HIpanelgrpCheckAttempt"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_checkAttempt']}"
+								id="HIlblCheckAttempt">
+							</ice:outputLabel></td>
+							<td class="padbottom4"><ice:outputText
+								value="#{informationPortletsHandler.hostInformationBean.currentCheckAttempts} of #{informationPortletsHandler.hostInformationBean.maxCheckAttempts}"
+								style="font-weight:normal;"
+								id="HItxtCheckAttemptValue">
+							</ice:outputText> <ice:outputText
+								value=" #{informationPortletsHandler.hostInformationBean.stateType} "
+								style="font-weight:normal;"
+								id="HItxtHostStateType">
+							</ice:outputText> <ice:commandLink
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_disableCheck']}"
+								action="#{popup.openPopup}"
+								actionListener="#{informationPortletsHandler.disableActiveChecksForHost}"
+								rendered="#{informationPortletsHandler.hostInformationBean.activeChecksEnabled and informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole and informationPortletsHandler.hostInformationBean.applicationType=='Nagios'}"
+								id="HIcmdLinkDisableActiveChecks">
+							</ice:commandLink> <ice:commandLink
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_enableCheck']}"
+								action="#{popup.openPopup}"
+								actionListener="#{informationPortletsHandler.enableActiveChecksForHost}"
+								rendered="#{!informationPortletsHandler.hostInformationBean.activeChecksEnabled and informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole and informationPortletsHandler.hostInformationBean.applicationType=='Nagios'}"
+								id="HIcmdLinkEnableActiveChecks">
+							</ice:commandLink></td>
+						</tr>
+
+						<!-- Latency / Duration 123 / 456  Warning -->
+						<tr>
+							<td class="padbottom4 iceOutTxt"> <ice:outputLabel
+								for="HIpanelgrpLatencyAndDuration"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_latencyAndDuration']}"
+								id="HIlblLatencyAndDuration">
+							</ice:outputLabel></td>
+							<td class="padbottom4"><ice:outputText
+								value="#{informationPortletsHandler.hostInformationBean.latency} / #{informationPortletsHandler.hostInformationBean.duration}"
+								style="font-weight:normal;"
+								id="HItxtHostLatencyAndDuration">
+							</ice:outputText> <ice:panelGroup
+								rendered="#{informationPortletsHandler.hostInformationBean.showLatencyWarning}"
+								id="HIpanelLatencyWarning">
+								<ice:graphicImage id="HIimgWarning"
+									url="/images/icon_alert_yellow.gif">
+								</ice:graphicImage>
+								<ice:outputText style="color:#fe351d;"
+									value="#{informationPortletsHandler.hostInformationBean.latencyThresholdWarning}"
+									id="HItxtLatencyThresholdWarning">
+								</ice:outputText>
+							</ice:panelGroup></td>
+						</tr>
+
+						<!-- % State Change 10% -->
+						<tr>
+							<td class="padbottom10 iceOutTxt borderBottomdot_info">
+							<ice:outputLabel for="HIpanelgrpPercentageStateChange"
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_perecentageStateChange']}"
+								id="HIlblPercentageStateChange">
+							</ice:outputLabel></td>
+							<td class="padbottom10 borderBottomdot_info"><ice:outputText
+								value="#{informationPortletsHandler.hostInformationBean.percentageStateChange}%"
+								style="font-weight:normal;"
+								id="HItxtPercentageStateChangeValue">
+							</ice:outputText></td>
+						</tr>
+
+						<!-- ######### Related Links ########## -->
+						<tr>
+							<td style="padding-top: 4px; padding-bottom: 4px;"><ice:outputText
+								value="#{message['com_groundwork_portal_statusviewer_outputtext_relatedLinks']}"
+								id="HItxtRelatedLinks" style="font-size:11px;">
+							</ice:outputText>
+							</td>
+							<td class="padbottom4"></td>
+						</tr>
+						<tr>
+							<td colspan="2" style="height:20px"><ice:outputLink target="_blank"
+								id="HIlnkNagios"
+								value="#{informationPortletsHandler.hostInformationBean.nagiosLink}"
+								style="text-decoration: none"
+								rendered="#{informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole and informationPortletsHandler.hostInformationBean.applicationType=='NAGIOS'}">
+								<ice:outputText id="HIOutputTxtNagios" value="Nagios"
+									style="color:#666699;font-size:9px;font-weight:normal" />
+							</ice:outputLink> <ice:outputText id="HIOutputTxtFiller1" value=" | "
+								rendered="#{informationPortletsHandler.hostInformationBean.customLink1URLValue != null and
+								informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole}" />
+
+							<ice:outputLink target="_blank" id="HIlnkCustomLink1"
+								value="#{informationPortletsHandler.hostInformationBean.customLink1URL}"
+								rendered="#{informationPortletsHandler.hostInformationBean.customLink1URLValue != null and
+								informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole}"
+								style="text-decoration: none">
+								<ice:outputText id="HIOutputTxtCustomLink1"
+									title="Custom Link 1 : #{informationPortletsHandler.hostInformationBean.customLink1URL}"
+									value="#{informationPortletsHandler.hostInformationBean.customLink1URLValue}"
+									style="color:#666699;font-size:9px;font-weight:normal" />
+							</ice:outputLink> <ice:outputText id="HIOutputTxtFiller2" value=" | "
+								rendered="#{informationPortletsHandler.hostInformationBean.customLink2URLValue != null and
+								informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole}" />
+
+							<ice:outputLink target="_blank" id="HIlnkCustomLink2"
+								value="#{informationPortletsHandler.hostInformationBean.customLink2URL}"
+								rendered="#{informationPortletsHandler.hostInformationBean.customLink2URLValue != null and
+								informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole}"
+								style="text-decoration: none">
+								<ice:outputText id="HIOutputTxtCustomLink2"
+									title="Custom Link 2 : #{informationPortletsHandler.hostInformationBean.customLink2URL}"
+									value="#{informationPortletsHandler.hostInformationBean.customLink2URLValue}"
+									style="color:#666699;font-size:9px;font-weight:normal" />
+							</ice:outputLink> <ice:outputText id="HIOutputTxtFiller3" value=" | "
+								rendered="#{informationPortletsHandler.hostInformationBean.customLink3URLValue != null and
+								informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole}" />
+
+							<ice:outputLink target="_blank" id="HIlnkCustomLink3"
+								value="#{informationPortletsHandler.hostInformationBean.customLink3URL}"
+								rendered="#{informationPortletsHandler.hostInformationBean.customLink3URLValue != null and
+								informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole}"
+								style="text-decoration: none">
+								<ice:outputText id="HIOutputTxtCustomLink3"
+									title="Custom Link 3 : #{informationPortletsHandler.hostInformationBean.customLink3URL}"
+									value="#{informationPortletsHandler.hostInformationBean.customLink3URLValue}"
+									style="color:#666699;font-size:9px;font-weight:normal" />
+							</ice:outputLink> <ice:outputText id="HIOutputTxtFiller4" value=" | "
+								rendered="#{informationPortletsHandler.hostInformationBean.customLink4URLValue != null and
+								informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole}" />
+
+							<ice:outputLink target="_blank" id="HIlnkCustomLink4"
+								value="#{informationPortletsHandler.hostInformationBean.customLink4URL}"
+								rendered="#{informationPortletsHandler.hostInformationBean.customLink4URLValue != null and
+								informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole}"
+								style="text-decoration: none">
+								<ice:outputText id="HIOutputTxtCustomLink4"
+									title="Custom Link 4 : #{informationPortletsHandler.hostInformationBean.customLink4URL}"
+									value="#{informationPortletsHandler.hostInformationBean.customLink4URLValue}"
+									style="color:#666699;font-size:9px;font-weight:normal" />
+							</ice:outputLink> <ice:outputText id="HIOutputTxtFiller5" value=" | "
+								rendered="#{informationPortletsHandler.hostInformationBean.customLink5URLValue != null and
+								informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole}" />
+
+							<ice:outputLink target="_blank" id="HIlnkCustomLink5"
+								value="#{informationPortletsHandler.hostInformationBean.customLink5URL}"
+								rendered="#{informationPortletsHandler.hostInformationBean.customLink5URLValue != null and
+								informationPortletsHandler.hostInformationBean.userInAdminOrOperatorRole}"
+								style="text-decoration: none">
+								<ice:outputText id="HIOutputTxtCustomLink5"
+									title="Custom Link 5 : #{informationPortletsHandler.hostInformationBean.customLink5URL}"
+									value="#{informationPortletsHandler.hostInformationBean.customLink5URLValue}"
+									style="color:#666699;font-size:9px;font-weight:normal" />
+							</ice:outputLink></td>
+						</tr>
+					</table>
+
+					</td>
+				</tr>
+			</table>
+
+		</ice:panelGrid>
+	</ui:define>
+</ui:composition>

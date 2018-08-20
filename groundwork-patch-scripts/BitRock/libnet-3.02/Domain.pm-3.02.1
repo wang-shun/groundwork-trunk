@@ -1,0 +1,567 @@
+# Net::Domain.pm
+#
+# Versions up to 2.21 Copyright (c) 1995-1998 Graham Barr <gbarr@pobox.com>.
+# All rights reserved.
+# Changes in Version 2.22 onwards Copyright (C) 2013-2014 Steve Hay.  All rights
+# reserved.
+# This program is free software; you can redistribute it and/or
+# modify it under the same terms as Perl itself.
+
+package Net::Domain;
+
+use 5.008001;
+
+use strict;
+use warnings;
+
+use Carp;
+use Exporter;
+use Net::Config;
+
+our @ISA       = qw(Exporter);
+our @EXPORT_OK = qw(hostname hostdomain hostfqdn domainname clear_domain_cache debug_callback);
+our $VERSION = "3.02.1";
+
+use constant {
+  DEBUG_NONE    => 0,
+  DEBUG_RETURNS => 1,
+  DEBUG_TESTS   => 2,
+};
+
+my $callback = undef;
+my $level    = DEBUG_NONE;
+
+my ($host, $domain, $fqdn) = (undef, undef, undef);
+
+# Try every conceivable way to get hostname.
+
+
+sub _hostname {
+
+  # we already know it
+  if (defined $host) {
+    &$callback("Returning from _hostname() with cached hostname \"$host\".") if $callback and $level >= DEBUG_RETURNS();
+    return $host;
+  }
+
+  my $source = 'unknown source';
+  if ($^O eq 'MSWin32') {
+    require Socket;
+    my ($name, $alias, $type, $len, @addr) = gethostbyname($ENV{'COMPUTERNAME'} || 'localhost');
+    my $a;
+    while (@addr) {
+      $a = shift(@addr);
+      &$callback("Testing gethostbyaddr('$a', Socket::AF_INET()).") if $callback and $level >= DEBUG_TESTS;
+      $host = gethostbyaddr($a, Socket::AF_INET());
+      last if defined $host;
+    }
+    if (defined($host) && index($host, '.') > 0) {
+      &$callback("Constructing fqdn, host, and domain from host.") if $callback and $level >= DEBUG_TESTS;
+      $fqdn = $host;
+      ($host, $domain) = $fqdn =~ /^([^.]+)\.(.*)$/;
+    }
+    &$callback("Returning from _hostname() with hostname \"$host\" from gethostbyaddr($a).") if defined($host) and $callback and $level >= DEBUG_RETURNS();
+    return $host;
+  }
+  elsif ($^O eq 'MacOS') {
+    $source = 'hostname command';
+    &$callback("Testing $source.") if $callback and $level >= DEBUG_TESTS;
+    chomp($host = `hostname`);
+  }
+  elsif ($^O eq 'VMS') {    ## multiple varieties of net s/w makes this hard
+    if (defined($ENV{'UCX$INET_HOST'})) {
+      $source = 'UCX$INET_HOST variable';
+      &$callback("Assigning host from $source.") if $callback and $level >= DEBUG_TESTS;
+      $host = $ENV{'UCX$INET_HOST'};
+    }
+    if (defined($ENV{'MULTINET_HOST_NAME'})) {
+      $source = 'MULTINET_HOST_NAME variable';
+      &$callback("Assigning host from $source.") if $callback and $level >= DEBUG_TESTS;
+      $host = $ENV{'MULTINET_HOST_NAME'};
+    }
+    if (index($host, '.') > 0) {
+      &$callback("Constructing fqdn, host, and domain from host.") if $callback and $level >= DEBUG_TESTS;
+      $fqdn = $host;
+      ($host, $domain) = $fqdn =~ /^([^.]+)\.(.*)$/;
+    }
+    &$callback( "Returning from _hostname() with hostname \"$host\" from $source." ) if defined($host) and $callback and $level >= DEBUG_RETURNS();
+    return $host;
+  }
+  else {
+    local $SIG{'__DIE__'};
+
+    # syscall is preferred since it avoids tainting problems
+    eval {
+      $source = 'gethostname() syscall';
+      &$callback("Testing $source.") if $callback and $level >= DEBUG_TESTS;
+      my $tmp = "\0" x 256;    ## preload scalar
+      eval {
+        package main;
+        require "syscall.ph"; ## no critic (Modules::RequireBarewordIncludes)
+        defined(&main::SYS_gethostname);
+        }
+        || eval {
+        package main;
+        require "sys/syscall.ph"; ## no critic (Modules::RequireBarewordIncludes)
+        defined(&main::SYS_gethostname);
+        }
+        and $host =
+        (syscall(&main::SYS_gethostname, $tmp, 256) == 0)
+        ? $tmp
+        : undef;
+      }
+
+      # POSIX
+      || eval {
+	$source = 'POSIX::uname() call';
+	&$callback("Testing $source.") if $callback and $level >= DEBUG_TESTS;
+	require POSIX;
+	$host = (POSIX::uname())[1];
+      }
+
+      # trusty old hostname command
+      || eval {
+	$source = 'hostname command';
+	&$callback("Testing $source.") if $callback and $level >= DEBUG_TESTS;
+	chop($host = `(hostname) 2>/dev/null`);    # BSD'ish
+      }
+
+      # sysV/POSIX uname command (may truncate)
+      || eval {
+	$source = 'uname -n command';
+	&$callback("Testing $source.") if $callback and $level >= DEBUG_TESTS;
+	chop($host = `uname -n 2>/dev/null`);      ## SYSV'ish && POSIX'ish
+      }
+
+      # Apollo pre-SR10
+      || eval {
+	&$callback("Testing $source.") if $callback and $level >= DEBUG_TESTS;
+	$source = '/com/host';
+	$host = (split(/[:. ]/, `/com/host`, 6))[0];
+      }
+
+      || eval {
+	$source = 'empty string';
+	&$callback("Assigning host from $source.") if $callback and $level >= DEBUG_TESTS;
+	$host = "";
+      };
+  }
+
+  # remove garbage
+  $host =~ s/[\0\r\n]+//go;
+  $host =~ s/(\A\.+|\.+\Z)//go;
+  $host =~ s/\.\.+/\./go;
+
+  &$callback("Returning from _hostname() with hostname \"$host\" from $source.") if defined($host) and $callback and $level >= DEBUG_RETURNS();
+  $host;
+}
+
+
+sub _hostdomain {
+
+  # we already know it
+  if (defined $domain) {
+    &$callback("Returning from _hostdomain() with cached domain \"$domain\".") if $callback and $level >= DEBUG_RETURNS();
+    return $domain;
+  }
+
+  local $SIG{'__DIE__'};
+
+  if (defined $NetConfig{'inet_domain'}) {
+    &$callback("Returning from _hostdomain() with domain \"$domain\" from \$NetConfig{inet_domain}.") if $callback and $level >= DEBUG_RETURNS();
+    return $domain = $NetConfig{'inet_domain'};
+  }
+
+  # try looking in /etc/resolv.conf
+  # putting this here and assuming that it is correct, eliminates
+  # calls to gethostbyname, and therefore DNS lookups. This helps
+  # those on dialup systems.
+
+  local ($_);
+
+  my @search_domains = ();
+
+  # From resolv.conf(5):
+  #   The search keyword of a system's resolv.conf file can be overridden on
+  #   a per-process basis by setting the environment variable "LOCALDOMAIN"
+  #   to a space-separated list of search domains.
+  # In fact, it also overrides any domain keyword in resolv.conf.
+  # LOCALDOMAIN may contain a list of domains to search.
+  if (defined $ENV{LOCALDOMAIN}) {
+    @search_domains = split(' ', $ENV{LOCALDOMAIN});
+  }
+  elsif (open(my $res, '<', "/etc/resolv.conf")) {
+    while (<$res>) {
+      # From resolv.conf(5):
+      #   The domain and search keywords are mutually exclusive.  If more than
+      #   one instance of these keywords is present, the last instance wins.
+      if (/\A\s*domain\s+(\S+)/) {
+	&$callback("Assigning domain from /etc/resolv.conf value.") if $callback and $level >= DEBUG_TESTS;
+        $domain = $1;
+        @search_domains = ();
+      }
+      elsif (/\A\s*search\s+(\S.*)/) {
+        @search_domains = split(' ', $1);
+	&$callback("Unassigning domain because search keyword in /etc/resolv.conf overrides.") if $callback and $level >= DEBUG_TESTS;
+        $domain = undef;
+      }
+    }
+    close($res);
+
+    if (defined $domain) {
+      &$callback("Returning from _hostdomain() with domain \"$domain\" from /etc/resolv.conf domain value.") if $callback and $level >= DEBUG_RETURNS();
+      return $domain;
+    }
+  }
+
+  my $host = _hostname();
+
+  if (defined($host) && @search_domains) {
+    foreach my $s_dom (@search_domains) {
+      my $hostname = $host =~ /\.\Q$s_dom\E$/ ? $host : "$host.$s_dom";
+      &$callback("Testing hostname \"$hostname\" for domain.") if $callback and $level >= DEBUG_TESTS;
+      my @info = gethostbyname($hostname);
+      next unless @info;
+
+      # Look at real name and aliases.
+      foreach my $site ($info[0], split(/ /, $info[1])) {
+	&$callback("Testing host alias \"$site\" for domain.") if $callback and $level >= DEBUG_TESTS;
+        if (rindex($site, '.') > 0) {
+          ## Extract domain from FQDN.
+          ($domain = $site) =~ s/\A[^.]+\.//;
+          &$callback( "Returning from _hostdomain() with domain \"$domain\" based on match to "
+              . ( defined( $ENV{LOCALDOMAIN} ) ? 'LOCALDOMAIN variable' : '/etc/resolv.conf' )
+              . " search $s_dom value." )
+            if $callback and $level >= DEBUG_RETURNS();
+          return $domain;
+        }
+      }
+    }
+  }
+
+  # just try hostname and system calls
+
+  my (@hosts);
+
+  @hosts = ($host, "localhost");
+
+  unless (!defined($host) || $host =~ /\./) {
+    my $dom = undef;
+    eval {
+      &$callback("Checking getdomainname() syscall.") if $callback and $level >= DEBUG_TESTS;
+      my $tmp = "\0" x 256;    ## preload scalar
+      eval {
+        package main;
+        require "syscall.ph"; ## no critic (Modules::RequireBarewordIncludes)
+        }
+        || eval {
+        package main;
+        require "sys/syscall.ph"; ## no critic (Modules::RequireBarewordIncludes)
+        }
+        and $dom =
+        (syscall(&main::SYS_getdomainname, $tmp, 256) == 0)
+        ? $tmp
+        : undef;
+    };
+
+    if ($^O eq 'VMS') {
+      &$callback('Checking TCPIP$INET_DOMAIN variable.') if $callback and $level >= DEBUG_TESTS;
+      $dom ||= $ENV{'TCPIP$INET_DOMAIN'};
+      &$callback('Checking UCX$INET_DOMAIN variable.') if $callback and $level >= DEBUG_TESTS;
+      $dom ||= $ENV{'UCX$INET_DOMAIN'};
+    }
+
+    unless (defined $dom || $^O =~ /^(?:cygwin|MSWin32|android)/) {
+      &$callback("Checking domainname command.") if $callback and $level >= DEBUG_TESTS;
+      chop($dom = `domainname 2>/dev/null`);
+    }
+
+    # This strategy of testing against truncated domains is not reliable, because calls
+    # to gethostbyname() may depend on network resources.  If the gethostbyname() call
+    # below fails on some transient outage when trying to test the actual hostname, the
+    # loop can continue on and match some other hostname completely outside your actual
+    # domain, say if a subsequent call resolves to some general Internet site.  For
+    # example, if my machine is foobar.mydomain.com and that call fails, it will test
+    # foobar.com and that will likely succeed.
+    if (defined $dom) {
+      my @h = ();
+      $dom =~ s/^\.+//;
+      while (length($dom)) {
+        push(@h, "$host.$dom");
+        $dom =~ s/^[^.]+.+// or last;
+      }
+      unshift(@hosts, @h);
+    }
+  }
+
+  # Attempt to locate FQDN
+
+  foreach (grep { defined $_ } @hosts) {
+    &$callback("Testing hostname \"$_\" for domain.") if $callback and $level >= DEBUG_TESTS;
+    my @info = gethostbyname($_);
+
+    next unless @info;
+
+    # look at real name & aliases
+    foreach my $site ($info[0], split(/ /, $info[1])) {
+      &$callback("Testing host alias \"$site\" for domain.") if $callback and $level >= DEBUG_TESTS;
+      if (rindex($site, ".") > 0) {
+
+        # Extract domain from FQDN
+
+        ($domain = $site) =~ s/\A[^.]+\.//;
+        &$callback("Returning from _hostdomain() with domain \"$domain\" based on gethostbyname($_) match.") if $callback and $level >= DEBUG_RETURNS();
+        return $domain;
+      }
+    }
+  }
+
+  # Look for environment variable
+
+  &$callback("Testing DOMAIN variable for domain.") if $callback and $level >= DEBUG_TESTS;
+  $domain ||= $ENV{DOMAIN};
+
+  if (defined $domain) {
+    $domain =~ s/[\r\n\0]+//g;
+    $domain =~ s/(\A\.+|\.+\Z)//g;
+    $domain =~ s/\.\.+/\./g;
+  }
+
+  &$callback("Returning from _hostdomain() with domain \"$domain\" based on DOMAIN variable match.") if defined($domain) and $callback and $level >= DEBUG_RETURNS();
+  $domain;
+}
+
+
+sub domainname {
+
+  if (defined $fqdn) {
+    &$callback("Returning from domainname() with cached fqdn \"$fqdn\".") if $callback and $level >= DEBUG_RETURNS();
+    return $fqdn;
+  }
+
+  _hostname();
+
+  # *.local names are special on darwin. If we call gethostbyname below, it
+  # may hang while waiting for another, non-existent computer to respond.
+  if($^O eq 'darwin' && $host =~ /\.local$/) {
+    &$callback("Returning from domainname() with *.local host \"$host\".") if $callback and $level >= DEBUG_RETURNS();
+    return $host;
+  }
+
+  _hostdomain();
+
+  # Assumption: If the host name does not contain a period
+  # and the domain name does, then assume that they are correct
+  # this helps to eliminate calls to gethostbyname, and therefore
+  # eliminate DNS lookups
+
+  if ( defined $host and defined $domain and $host !~ /\./ and $domain =~ /\./ ) {
+    $fqdn = $host . "." . $domain;
+    &$callback("Returning from domainname() with constructed fqdn \"$fqdn\".") if $callback and $level >= DEBUG_RETURNS();
+    return $fqdn;
+  }
+
+  # For hosts that have no name, just an IP address
+  if (defined $host and $host =~ /^\d+(\.\d+){3}$/) {
+    &$callback("Returning from domainname with IP address \"$host\".") if $callback and $level >= DEBUG_RETURNS();
+    return $fqdn = $host;
+  }
+
+  my @host   = defined $host   ? split(/\./, $host)   : ('localhost');
+  my @domain = defined $domain ? split(/\./, $domain) : ();
+  my @fqdn   = ();
+
+  # Determine from @host & @domain the FQDN
+
+  my @d = @domain;
+
+LOOP:
+  while (1) {
+    my @h = @host;
+    while (@h) {
+      my $tmp = join(".", @h, @d);
+      &$callback("Testing hostname \"$tmp\" for fqdn.") if $callback and $level >= DEBUG_TESTS;
+      if ((gethostbyname($tmp))[0]) {
+        @fqdn = (@h, @d);
+        $fqdn = $tmp;
+        last LOOP;
+      }
+      pop @h;
+    }
+    last unless shift @d;
+  }
+
+  if (@fqdn) {
+    $host = shift @fqdn;
+    &$callback("Assigning/testing host \"$host\".") if $callback and $level >= DEBUG_TESTS;
+    until ((gethostbyname($host))[0]) {
+      $host .= "." . shift @fqdn;
+      &$callback("Assigning/testing host \"$host\".") if $callback and $level >= DEBUG_TESTS;
+    }
+    &$callback("Assigning domain from remaining fqdn components.") if $callback and $level >= DEBUG_TESTS;
+    $domain = join(".", @fqdn);
+  }
+  else {
+    undef $host;
+    undef $domain;
+    undef $fqdn;
+  }
+
+  &$callback("Returning from domainname() with fqdn \"$fqdn\" determined from host and domain.") if defined($fqdn) and $callback and $level >= DEBUG_RETURNS();
+  $fqdn;
+}
+
+
+sub hostfqdn { domainname() }
+
+
+sub hostname {
+  domainname()
+    unless (defined $host);
+  return $host;
+}
+
+
+sub hostdomain {
+  domainname()
+    unless (defined $domain);
+  return $domain;
+}
+
+sub clear_domain_cache {
+  $host = undef;
+  $domain = undef;
+  $fqdn = undef;
+}
+
+sub debug_callback {
+    my $old_level = $level;
+    my $old_cb    = $callback;
+    my $new_level = shift;
+    my $new_cb    = shift;
+    $level    = $new_level if defined $new_level;
+    $callback = $new_cb    if defined $new_cb;
+    return wantarray ? ( $old_level, $old_cb ) : $old_level;
+}
+
+1;    # Keep require happy
+
+__END__
+
+=head1 NAME
+
+Net::Domain - Attempt to evaluate the current host's internet name and domain
+
+=head1 SYNOPSIS
+
+    use Net::Domain qw(hostname hostfqdn hostdomain domainname);
+
+=head1 DESCRIPTION
+
+Using various methods B<attempt> to find the Fully Qualified Domain Name (FQDN)
+of the current host. From this determine the host-name and the host-domain.
+
+Each of the functions will return I<undef> if the FQDN cannot be determined.
+
+=over 4
+
+=item hostfqdn ()
+
+Identify and return the FQDN of the current host.
+
+=item domainname ()
+
+An alias for hostfqdn ().
+
+=item hostname ()
+
+Returns the smallest part of the FQDN which can be used to identify the host.
+
+=item hostdomain ()
+
+Returns the remainder of the FQDN after the I<hostname> has been removed.
+
+=item clear_domain_cache ()
+
+Net::Domain caches the results of apparently successful calls, and
+subsequent calls just return the precomputed data.  However, it operates
+by using a series of heuristics, which might fail (say, due to transient
+network outages).  This can result in incorrect cached values, which would
+then be impossible to reset.  If you suspect the cache is contaminated,
+you can call clear_domain_cache() to empty it so the next call is forced to
+recompute its result from scratch.  Without this routine, you would need
+to restart your entire application process to clear the cache.
+
+=item debug_callback ($level, \&callback)
+
+This routine accepts optional debug level and subroutine reference
+parameters, to control the ability to log messages on how particular
+values are determined by Net::Domain routines.  In list context, the
+old values of the debug level and callback parameter are returned.
+In scalar context, only the old value of the debug level is returned.
+Passing in undefined values will leave the existing values unchanged.
+
+The purpose of providing a callback routine is to debug infuriatingly
+wrong decisions made by the Net::Domain heuristics, so you have some
+visibility into the execution of the decision tree and can determine
+what might need fixing in your infrastructure.
+
+The debug level determines which test points cause the debug callback
+routine to be called.  Currently supported values are:
+
+    Net::Domain::DEBUG_NONE()    (the default) disables the callback
+    Net::Domain::DEBUG_RETURNS() generates messages for successful tests
+    Net::Domain::DEBUG_TESTS()   generates messages for internal tests
+
+The callback routine, if set, is called periodically when certain internal
+decisions are made as to the value of a hostname, domainname, or fqdn.
+It is passed a single string argument, which the callback can log or
+choose to ignore.  Messages provided to the callback do not end with a
+newline, so it is up to the callback to decide what type of line ending
+or other formatting is appropriate for logging.
+
+=back
+
+=head1 BUGS
+
+The implementation of domainname() tests against truncated domain strings in a
+manner which is not reliable, because calls to gethostbyname() may depend on
+network resources.  If a gethostbyname() call fails on some transient outage
+when trying to test the actual hostname, the code can continue on and match
+some other hostname completely outside your actual domain, say if a subsequent
+call resolves to some general Internet site.  For example, if my machine is
+foobar.mydomain.com and that call fails, it will test foobar.com and that will
+likely succeed.  This will not only return an inappropriate result, it will
+cache that result and continue to return it until you call clear_domain_cache().
+
+Ideally, these routines would use the SIOCGLIFCONF ioctl() [supporting
+both IPv4 and IPv6] or the SIOCGIFCONF ioctl() [IPv4 only] to prove
+the discovered hostname is accurate, by checking its address against
+those supported by the actual network interfaces currently active on
+the machine.  However, those ioctls only list the addresses supported
+by the physical network interfaces, and will not find a VPN address.
+
+A host may have multiple names, especially if it resides on multiple networks.
+Those names might exist in multiple domains.  Which particular hostname and
+domainname is selected is somewhat arbitrary, and may depend on (for instance)
+the order of evaluation of C</etc/resolv.conf> search domains and C</etc/hosts>
+aliases.
+
+=head1 AUTHOR
+
+Graham Barr E<lt>F<gbarr@pobox.com>E<gt>.
+Adapted from Sys::Hostname by David Sundstrom E<lt>F<sunds@asictest.sc.ti.com>E<gt>
+
+Steve Hay E<lt>F<shay@cpan.org>E<gt> is now maintaining libnet as of version
+1.22_02
+
+=head1 COPYRIGHT
+
+Versions up to 2.21 Copyright (c) 1995-1998 Graham Barr. All rights reserved.
+Changes in Version 2.22 onwards Copyright (C) 2013-2014 Steve Hay.  All rights
+reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

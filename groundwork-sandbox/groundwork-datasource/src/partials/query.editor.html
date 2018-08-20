@@ -1,0 +1,23 @@
+<query-editor-row query-ctrl="ctrl" class="generic-datasource-query-row">
+  <div class="gf-form-inline">
+    <div class="gf-form">
+      <select name="queryType" ng-model="ctrl.target.queryType" class="tight-form-input">
+        <option value="byHostGroup">Query By host group</option>
+        <option value="byHost">Query By host</option>
+      </select>
+    </div>
+    <div class="gf-form" ng-show="ctrl.target.queryType == 'byHostGroup'">
+      <metric-segment-model property="ctrl.target.hostgroup" get-options="ctrl.getHostGroupOptions()" on-change="ctrl.onChangeInternal()" css-class="tight-form-item-xxlarge"></metric-segment-model>
+    </div>
+    <div class="gf-form" ng-show="ctrl.target.queryType == 'byHost'">
+      <metric-segment-model property="ctrl.target.host" get-options="ctrl.getHostOptions()" on-change="ctrl.onChangeInternal()" css-class="tight-form-item-xxlarge"></metric-segment-model>
+    </div>
+    <div class="gf-form">
+      <metric-segment-model property="ctrl.target.service" get-options="ctrl.getServiceOptions()" on-change="ctrl.onChangeInternal()" css-class="tight-form-item-xxlarge"></metric-segment-model>
+    </div>
+    <div class="gf-form">
+      Thresholds <editor-checkbox text="" model="ctrl.target.enableThresholds" change="ctrl.onChangeInternal()" css-class="tight-form-item-xxlarge last"></editor-checkbox>
+    </div>
+  </div>
+</query-editor-row>
+

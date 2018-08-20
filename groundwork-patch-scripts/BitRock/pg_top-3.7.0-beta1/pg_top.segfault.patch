@@ -1,0 +1,56 @@
+diff -u pg_top.orig/display.c pg_top/display.c
+--- pg_top.orig/display.c	2012-01-14 16:26:23.000000000 -0800
++++ pg_top/display.c	2012-01-13 23:42:19.000000000 -0800
+@@ -313,8 +313,11 @@
+ 		}
+ 
+ 		/* write */
+-		fputs(new, stdout);
+-		curr_x += strlen(new);
++		if (new != NULL)
++		{
++			fputs(new, stdout);
++			curr_x += strlen(new);
++		}
+ 
+ 		return;
+ 	}
+diff -u pg_top.orig/screen.c pg_top/screen.c
+--- pg_top.orig/screen.c	2012-01-14 16:26:23.000000000 -0800
++++ pg_top/screen.c	2012-01-13 23:36:49.000000000 -0800
+@@ -141,7 +141,19 @@
+ #endif   /* TIOCGSIZE */
+ #endif   /* TIOCGWINSZ */
+ 
+-	(void) strcpy(lower_left, tgoto(cursor_motion, 0, screen_length - 1));
++	char *lower_left_motion = "";
++	// get_screensize() can be called from main() without cursor_motion
++	// having been set, so we protect against that possibility.
++	if (smart_terminal == Yes)
++	{
++		// We need to account for the fact that tgoto() might return NULL.
++		lower_left_motion = tgoto(cursor_motion, 0, screen_length - 1);
++		if (lower_left_motion == NULL)
++		{
++			lower_left_motion = "";
++		}
++	}
++	(void) strcpy(lower_left, lower_left_motion);
+ }
+ 
+ void
+@@ -252,7 +264,13 @@
+ 	PC = (PCptr = tgetstr("pc", &bufptr)) ? *PCptr : 0;
+ 
+ 	/* set convenience strings */
+-	(void) strcpy(home, tgoto(cursor_motion, 0, 0));
++	// We need to account for the fact that tgoto() might return NULL.
++	char *home_motion = tgoto(cursor_motion, 0, 0);
++	if (home_motion == NULL)
++	{
++		home_motion = "";
++	}
++	(void) strcpy(home, home_motion);
+ 	/* (lower_left is set in get_screensize) */
+ 
+ 	/* get the actual screen size with an ioctl, if needed */

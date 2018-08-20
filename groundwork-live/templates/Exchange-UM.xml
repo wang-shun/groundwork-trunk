@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+<profile>
+ <time_period>
+  <prop name="comment"><![CDATA[All day, every day.]]></prop>
+  <prop name="name"><![CDATA[24x7]]></prop>
+  <prop name="alias"><![CDATA[24 Hours A Day, 7 Days A Week]]></prop>
+  <prop name="tuesday"><![CDATA[00:00-24:00]]></prop>
+  <prop name="friday"><![CDATA[00:00-24:00]]></prop>
+  <prop name="sunday"><![CDATA[00:00-24:00]]></prop>
+  <prop name="saturday"><![CDATA[00:00-24:00]]></prop>
+  <prop name="wednesday"><![CDATA[00:00-24:00]]></prop>
+  <prop name="monday"><![CDATA[00:00-24:00]]></prop>
+  <prop name="thursday"><![CDATA[00:00-24:00]]></prop>
+ </time_period>
+ <command>
+  <prop name="name"><![CDATA[check-host-alive]]></prop>
+  <prop name="type"><![CDATA[check]]></prop>
+  <prop name="command_line"><![CDATA[$USER1$/check_icmp -H $HOSTADDRESS$ -w 3000.0,80% -c 5000.0,100% -n 1]]></prop>
+ </command>
+ <host_template>
+  <prop name="flap_detection_enabled"><![CDATA[1]]></prop>
+  <prop name="check_freshness"><![CDATA[-zero-]]></prop>
+  <prop name="notifications_enabled"><![CDATA[1]]></prop>
+  <prop name="event_handler_enabled"><![CDATA[1]]></prop>
+  <prop name="process_perf_data"><![CDATA[1]]></prop>
+  <prop name="active_checks_enabled"><![CDATA[1]]></prop>
+  <prop name="check_period"><![CDATA[24x7]]></prop>
+  <prop name="passive_checks_enabled"><![CDATA[1]]></prop>
+  <prop name="notification_period"><![CDATA[24x7]]></prop>
+  <prop name="retain_status_information"><![CDATA[1]]></prop>
+  <prop name="max_check_attempts"><![CDATA[3]]></prop>
+  <prop name="notification_options"><![CDATA[d,u,r]]></prop>
+  <prop name="name"><![CDATA[gdma-windows-host]]></prop>
+  <prop name="retain_nonstatus_information"><![CDATA[1]]></prop>
+  <prop name="check_command"><![CDATA[check-host-alive]]></prop>
+  <prop name="comment"><![CDATA[# host_templates gdma-windows-host]]></prop>
+  <prop name="obsess_over_host"><![CDATA[-zero-]]></prop>
+  <prop name="notification_interval"><![CDATA[15]]></prop>
+ </host_template>
+ <service_profile>
+  <prop name="name"><![CDATA[exch_std]]></prop>
+  <prop name="description"><![CDATA[Exchange Standard Checks for All Roles]]></prop>
+  <prop name="service"><![CDATA[exch_ad_topology]]></prop>
+  <prop name="service"><![CDATA[exch_imap4svc]]></prop>
+  <prop name="service"><![CDATA[exch_pop3svc]]></prop>
+  <prop name="service"><![CDATA[exch_std_ad_ldap]]></prop>
+  <prop name="service"><![CDATA[exch_std_exch_ad_ldap]]></prop>
+  <prop name="service"><![CDATA[exch_std_mem_avail]]></prop>
+  <prop name="service"><![CDATA[exch_std_mem_page_leak]]></prop>
+  <prop name="service"><![CDATA[exch_std_mem_page_rate]]></prop>
+  <prop name="service"><![CDATA[exch_std_mem_page_used]]></prop>
+  <prop name="service"><![CDATA[exch_std_mount_point]]></prop>
+  <prop name="service"><![CDATA[exch_std_net_bw]]></prop>
+  <prop name="service"><![CDATA[exch_std_net_error_rate]]></prop>
+  <prop name="service"><![CDATA[exch_std_net_web_exc]]></prop>
+  <prop name="service"><![CDATA[exch_std_proc_que]]></prop>
+  <prop name="service"><![CDATA[exch_std_proc_time]]></prop>
+  <prop name="service"><![CDATA[exch_w3svc]]></prop>
+ </service_profile>
+ <command>
+  <prop name="name"><![CDATA[check_gdma_fresh]]></prop>
+  <prop name="type"><![CDATA[check]]></prop>
+  <prop name="command_line"><![CDATA[$USER1$/check_dummy 3 $ARG1$]]></prop>
+ </command>
+ <service_template>
+  <prop name="flap_detection_enabled"><![CDATA[1]]></prop>
+  <prop name="retry_check_interval"><![CDATA[1]]></prop>
+  <prop name="check_freshness"><![CDATA[1]]></prop>
+  <prop name="notifications_enabled"><![CDATA[1]]></prop>
+  <prop name="event_handler_enabled"><![CDATA[1]]></prop>
+  <prop name="command_line"><![CDATA[check_gdma_fresh!"Stale Status"]]></prop>
+  <prop name="process_perf_data"><![CDATA[1]]></prop>
+  <prop name="active_checks_enabled"><![CDATA[0]]></prop>
+  <prop name="check_period"><![CDATA[24x7]]></prop>
+  <prop name="is_volatile"><![CDATA[0]]></prop>
+  <prop name="freshness_threshold"><![CDATA[900]]></prop>
+  <prop name="passive_checks_enabled"><![CDATA[1]]></prop>
+  <prop name="notification_period"><![CDATA[24x7]]></prop>
+  <prop name="retain_status_information"><![CDATA[1]]></prop>
+  <prop name="max_check_attempts"><![CDATA[1]]></prop>
+  <prop name="notification_options"><![CDATA[u,c,w,r]]></prop>
+  <prop name="retain_nonstatus_information"><![CDATA[1]]></prop>
+  <prop name="name"><![CDATA[gdma]]></prop>
+  <prop name="check_command"><![CDATA[check_gdma_fresh]]></prop>
+  <prop name="normal_check_interval"><![CDATA[10]]></prop>
+  <prop name="notification_interval"><![CDATA[15]]></prop>
+  <prop name="obsess_over_service"><![CDATA[1]]></prop>
+ </service_template>
+ <extended_service_info_template>
+  <prop name="script"><![CDATA[]]></prop>
+  <prop name="comment"><![CDATA[]]></prop>
+  <prop name="icon_image"><![CDATA[services.gif]]></prop>
+  <prop name="name"><![CDATA[percent_graph]]></prop>
+  <prop name="notes_url"><![CDATA[/graphs/cgi-bin/label_graph.cgi?host=$HOSTNAME$&service=$SERVICENAME$]]></prop>
+  <prop name="icon_image_alt"><![CDATA[Service Detail]]></prop>
+ </extended_service_info_template>
+ <service_external>
+  <prop name="name"><![CDATA[exch_ad_topology]]></prop>
+  <prop name="type"><![CDATA[service]]></prop>
+  <prop name="data"><![CDATA[Check_gdma_exch_ad_topology[1]_Enable="ON"
+Check_gdma_exch_ad_topology[1]_Service="exch_ad_topology"
+Check_gdma_exch_ad_topology[1]_Command="cmd /c powershell.exe -noprofile -command $Plugin_Directory$\v3\exch_ad_topology_services.ps1 ; exit $LASTEXITCODE"
+Check_gdma_exch_ad_topology[1]_Check_Interval="1"
+]]></prop>
+ </service_external>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_ad_topology]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+  <prop name="service_external"><![CDATA[exch_ad_topology]]></prop>
+ </service_name>
+ <service_external>
+  <prop name="name"><![CDATA[exch_imap4svc]]></prop>
+  <prop name="type"><![CDATA[service]]></prop>
+  <prop name="data"><![CDATA[Check_gdma_exch_imap4[1]_Enable="ON"
+Check_gdma_exch_imap4[1]_Service="exch_imap4svc"
+Check_gdma_exch_imap4[1]_Command="cmd /c powershell.exe -noprofile -command $Plugin_Directory$\v3\ps_service.ps1 -service MSExchangeIMAP4 ; exit $LASTEXITCODE"
+Check_gdma_exch_imap4[1]_Check_Interval="1"]]></prop>
+ </service_external>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_imap4svc]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+  <prop name="service_external"><![CDATA[exch_imap4svc]]></prop>
+ </service_name>
+ <service_external>
+  <prop name="name"><![CDATA[exch_pop3svc]]></prop>
+  <prop name="type"><![CDATA[service]]></prop>
+  <prop name="data"><![CDATA[Check_gdma_exch_pop3[1]_Enable="ON"
+Check_gdma_exch_pop3[1]_Service="exch_pop3"
+Check_gdma_exch_pop3[1]_Command="cmd /c powershell.exe -noprofile -command $Plugin_Directory$\v3\ps_service.ps1 -service MSExchangePOP3 ; exit $LASTEXITCODE"
+Check_gdma_exch_pop3[1]_Check_Interval="1"]]></prop>
+ </service_external>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_pop3svc]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+  <prop name="service_external"><![CDATA[exch_pop3svc]]></prop>
+ </service_name>
+ <service_external>
+  <prop name="name"><![CDATA[exch_std_ad_ldap]]></prop>
+  <prop name="type"><![CDATA[service]]></prop>
+  <prop name="data"><![CDATA[Check_gdma_exch_std_ad_ldap[1]_Enable="ON"
+Check_gdma_exch_std_ad_ldap[1]_Service="exch_std_ad_ldap"
+Check_gdma_exch_std_ad_ldap[1]_Command="cmd /c powershell.exe -noprofile -command $Plugin_Directory$\v3\exch_ad.ps1 -warning 50 -critical 100  -waittime 2 ; exit $LASTEXITCODE "
+Check_gdma_exch_std_ad_ldap[1]_Check_Interval="1"
+]]></prop>
+ </service_external>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_std_ad_ldap]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+  <prop name="service_external"><![CDATA[exch_std_ad_ldap]]></prop>
+ </service_name>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_std_exch_ad_ldap]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_std_mem_avail]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_std_mem_page_leak]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_std_mem_page_rate]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_std_mem_page_used]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_std_mount_point]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_std_net_bw]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_std_net_error_rate]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_std_net_web_exc]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_std_proc_que]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_std_proc_time]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_external>
+  <prop name="name"><![CDATA[exch_w3svc]]></prop>
+  <prop name="type"><![CDATA[service]]></prop>
+  <prop name="data"><![CDATA[Check_gdma_exch_w3svc[1]_Enable="ON"
+Check_gdma_exch_w3svc[1]_Service="exch_w3svc"
+Check_gdma_exch_w3svc[1]_Command="cmd /c powershell.exe -noprofile -command $Plugin_Directory$\v3\ps_service.ps1 -service w3svc ; exit $LASTEXITCODE"
+Check_gdma_exch_w3svc[1]_Check_Interval="1"]]></prop>
+ </service_external>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_w3svc]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+  <prop name="service_external"><![CDATA[exch_w3svc]]></prop>
+ </service_name>
+ <service_profile>
+  <prop name="name"><![CDATA[exch_um]]></prop>
+  <prop name="description"><![CDATA[Exchange Universl Messaging Role Services]]></prop>
+  <prop name="service"><![CDATA[exch_um_attendant_call_avg]]></prop>
+  <prop name="service"><![CDATA[exch_um_call_hour_totals]]></prop>
+  <prop name="service"><![CDATA[exch_um_dial_attempts]]></prop>
+  <prop name="service"><![CDATA[exch_um_disallowed]]></prop>
+  <prop name="service"><![CDATA[exch_um_error_disconnect]]></prop>
+  <prop name="service"><![CDATA[exch_um_success_rate]]></prop>
+ </service_profile>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_um_attendant_call_avg]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_um_call_hour_totals]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_um_dial_attempts]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_um_disallowed]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_um_error_disconnect]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <service_name>
+  <prop name="template"><![CDATA[gdma]]></prop>
+  <prop name="extinfo"><![CDATA[percent_graph]]></prop>
+  <prop name="name"><![CDATA[exch_um_success_rate]]></prop>
+  <prop name="description"><![CDATA[desc-gdma_wmi_cpu]]></prop>
+ </service_name>
+ <host_profile>
+  <prop name="host_template"><![CDATA[gdma-windows-host]]></prop>
+  <prop name="name"><![CDATA[Exchange-UM]]></prop>
+  <prop name="description"><![CDATA[Exchange Universal Messaging Role]]></prop>
+  <prop name="service_profile"><![CDATA[exch_std]]></prop>
+  <prop name="service_profile"><![CDATA[exch_um]]></prop>
+ </host_profile>
+</profile>

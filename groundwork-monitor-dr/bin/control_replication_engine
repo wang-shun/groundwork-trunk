@@ -1,0 +1,163 @@
+#!/bin/bash
+
+# Replication state engine control for Disaster Recovery.
+# Copyright 2010 GroundWork Open Source, Inc. ("GroundWork").  All rights
+# reserved.  Use is subject to GroundWork commercial license terms.
+
+# ================================================================
+
+# To adapt this script to control some new program,
+# just modify the items in this section.
+
+# A script to start and stop the Replication State Engine.
+
+# The ordinary use of this control script is as a cron job to start the program
+# and to periodically re-start it should it fail.  For example, you could use:
+#
+#     */5 * * * * /usr/local/groundwork/replication/bin/control_replication_engine start
+#
+# to run this control script every 5 minutes.  This script is
+# smart enough to detect if the target program is already running,
+# and not try to start it again if that is so.
+
+# This alternate path is just for development use.
+# program_path=/home/gherteg/svn/monitor-dr/bin/replication_state_engine
+program_path=/usr/local/groundwork/replication/bin/replication_state_engine
+
+program_name="Replication State Engine"
+
+# ================================================================
+
+# The adjustments here are to fix a problem with PATH in the GW6.1.X nagios crontab.
+# The complexity here is to avoid altering $PATH if it already contains the path
+# component of interest.
+if [ `/usr/bin/expr match ":${PATH}:" ".*:/bin:" || /bin/true` -eq 0 ]; then
+    export PATH=$PATH:/bin
+fi
+if [ `/usr/bin/expr match ":${PATH}:" ".*:/usr/bin:" || /bin/true` -eq 0 ]; then
+    export PATH=$PATH:/usr/bin
+fi
+
+script_name=`basename $0`
+find_pids="/bin/ps --no-headers -o pid -C replication_state_engine"
+
+print_usage() {
+    echo "usage:  $script_name [start|restart|stop|status|help]"
+}
+
+if [ $# != 1 ]; then
+    print_usage
+    exit 1
+fi
+
+action="$1"
+
+# Note:  The man page for test says the -t option defaults the
+# file descriptor to 1, but actual testing shows otherwise.
+if test -t 1; then
+    stdout_is_tty=1
+    log_to_stderr=-s
+else
+    stdout_is_tty=0
+    log_to_stderr=
+fi
+
+start() {
+    pids=`$find_pids`
+    if [ -z "$pids" ]; then
+	if [ $stdout_is_tty -ne 0 ]; then
+	    :
+	    # This message has been superseded by the one just below.
+	    # echo "Starting the $program_name ..."
+	fi
+
+	# We emit this log message before attempting to start the program, because
+	# if we wait until afterward, it might have started and then died before
+	# we have a chance to emit a similar message, making it appear out of order.
+	logger $log_to_stderr -p user.notice -- "$script_name:  starting the $program_name."
+
+	# This construction assumes the program will go into daemon mode
+	# on its own, so we don't need to put it in the background.
+	$program_path
+	if [ $? -ne 0 ]; then
+	    logger $log_to_stderr -p user.warning -- "$script_name:  Cannot start the $program_name."
+	fi
+    else
+	# Convert newlines to spaces, so we can easily test for
+	# multiple processes and print all the PIDs on one line.
+	allpids=`echo $pids`
+	if [ `expr index "$allpids" ' '` -ne 0 ]; then
+	    processes="processes: $allpids"
+	else
+	    processes="process $pids"
+	fi
+	if [ $stdout_is_tty -ne 0 ]; then
+	    echo "The $program_name is already up ($processes)."
+	fi
+    fi
+}
+
+stop() {
+    pids=`$find_pids`
+    if [ -z "$pids" ]; then
+	echo "The $program_name is already down."
+    else
+	echo "Stopping the $program_name ..."
+	allpids=`echo $pids`
+	kill -TERM $allpids
+	if [ $? -ne 0 ]; then
+	    logger $log_to_stderr -p user.warning -- "$script_name:  Cannot kill the $program_name."
+	else
+	    logger $log_to_stderr -p user.notice -- "$script_name:  The $program_name has been told to stop."
+	fi
+    fi
+}
+
+status() {
+    pids=`$find_pids`
+    if [ -z "$pids" ]; then
+	if [ $stdout_is_tty -ne 0 ]; then
+	    echo "The $program_name is down."
+	fi
+    else
+	allpids=`echo $pids`
+	if [ `expr index "$allpids" ' '` -ne 0 ]; then
+	    processes="processes: $allpids"
+	else
+	    processes="process $pids"
+	fi
+	if [ $stdout_is_tty -ne 0 ]; then
+	    echo "The $program_name is up ($processes)."
+	fi
+    fi
+}
+
+case "$action" in
+    start)
+	start
+	;;
+    restart)
+	stop
+	# Allow a brief time for a graceful shutdown before we try to start,
+	# so (hopefully) we don't confuse the prior process with the one we
+	# want to start now.  This period should be slightly longer than any
+	# sleep interval built into the program when it shuts down, or any
+	# time it may take for the program to wind down whatever resources
+	# it is actively using when it receives the shutdown request.
+	sleep 15
+	start
+	;;
+    stop)
+	stop
+	;;
+    status)
+	status
+	;;
+    help)
+	print_usage
+	;;
+    *)
+	print_usage
+	exit 1
+	;;
+esac

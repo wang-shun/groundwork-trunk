@@ -1,0 +1,332 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="en">
+  <head>
+<title>Configuring Profiles</title>
+<link rel="stylesheet" type="text/css" href="/monarch/groundwork.css"/>
+  </head>
+  <body>
+<!-- Start Main table-->
+<table class="main" border="0" cellpadding="1" cellspacing="0">
+  <tbody>
+  <tr>
+    <td valign="top">
+    <h1 class="chapter"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> Configuring Profiles</h1>
+    <h4>Copyright 2006 GroundWork Open Source, Inc. ("GroundWork").<br />
+    All rights reserved. Use is subject to GroundWork commercial license.</h4>
+<!-- Start Main Contents -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+  <tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader">Contents</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- TOC -->
+    <ul class="level01">
+        <li><a href="#s5chapter4a">How Do I Define a Host Profile?</a></li>
+        <li><a href="#s5chapter4b">How Do I Define a Service Profile?</a></li>
+        <li><a href="#s5chapter4c">How Do I Import a Profile?</a></li>
+    </ul>
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Section 1 -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+<tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader"><a name="section1"></a>Configuring Profiles</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- How do I define a new Service -->
+    <a name="s5chapter4a"></a><h1 class="chapter"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> How Do I Define a Host Profile?</h1>
+<hr />
+    <p>The use of Profiles provides a way to save Host specific settings and Services so you can apply them to more that one Host. For example, what if you have 20 or say 200 more Hosts just like the one Host on the same network segment, you can utilize Host Profiles to apply these specific settings to all Hosts. Once the Host Profile is define you may want to change one of the parameters which then would be applied to all of the specified Hosts.</p>
+    <h2 class="smMargin">Step 1 - New Host Profile</h2>
+    <ol>
+      <li>Select <b>Profiles</b> from the Configuration menu options.</li>
+      <li>Select <b>Host Profiles</b>.</li>
+      <li>Select <b>New</b>.</li>
+      <li>In the <b>New Host Profile</b> screen, enter the properties (see <b>Table 5.4.1a.</b> below).</li>
+      <li>Select <b>Add</b> to go to the <b>Host Profile</b> screen.
+    <h4>Figure 5.4.1a. New Host Profile</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter4_1a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      <h4>Table 5.4.1a. New Host Profile</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>[Required] Name of the Host Profile (e.g. linus_base).</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Description</b></td>
+    <td>[Optional] Store comments or instructions here.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Host Template</b></td>
+    <td>[Required] Select the Host Template most suitable for this Host Profile (e.g. generic-host).</td>
+  </tr>
+</tbody>
+</table>
+      </li>
+    </ol>
+    <h2 class="smMargin"><a name="s5chapter4a2">Step 2 - Host Profile - Host Detail</a></h2>
+    <p>Now you can configure just about everything that the Nagios&#174; engine can know about the Host with this form. The good part is that you can change this data at any time, and the Hosts that use this Profile will be updated with the new settings. This is similar to using templates in Nagios&#174;, but the difference is that Nagios&#174; templates do not support adding Services. In fact, all we really need to do here is to add a Service Profile to this Host Profile to move on.</p>
+    <p>You can then select the <i>Service Profiles</i> tab, and select a Profile from the list, save the Host Profile, and you are ready to import Hosts.</p>
+    <ol>
+      <li>In the <b>Host Detail</b> tab, enter the properties (see <b>Table 5.4.1b.</b> below).</li>
+      <li>Select <b>Save</b> to save the new Host Profile. You will be prompted in the next screen that the Profile has been save. Select <b>Close</b>. <b>Delete</b> removes the current Host Profile, <b>Rename</b> is used to change the name of the current Host Profile, <b>Export</b> is used to save the current Host Profile to the directory /tmp/host_profile_&#60;hostprofilename&#62;.xml., and <b>Close</b> is used to exit the current Host Profile screen without saving.</li>
+      <li>The other listed tabs within the Host Profile screen including Parents, Host Groups, Escalations, Assign Hosts, Assign Host Groups, and Apply are optional. The apply option determines how the Profile is used. You may choose whether or not to manage Parents or Host Groups from a Profile. Also, the apply settings are saved, so how the Profiles are applied remains the same from one session to the next.
+    <h4>Figure 5.4.1b. Host Detail</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter4_1b.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+    <h4>Table 5.4.1b. Host Detail</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>[Required] Name of the new Host Profile.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Description</b></td>
+    <td>[Optional] Store comments or instructions here.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Host Template</b></td>
+    <td>[Required] Select the Host Template most suitable for this Host. Note inheritance (left check box) on directives below. To override the template value, uncheck the left check box.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Inherit All Values From Template</b></td>
+    <td>Checked = sets all directives to inherit values from the selected template. Uncheck left checkbox on directives below to override template values.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Process Performance Data</b></td>
+    <td>[Optional] This directive is used to determine whether or not the processing of performance data is enabled for Hosts using this template. Values:  unchecked = disable performance data processing, checked = enable performance data processing.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Retain Status Information</b></td>
+    <td>[Optional] This directive is used to determine whether or not status-related information about the Host is retained across program restarts. This is only useful if you have enabled state retention using the retain_state_information directive. Value:  unchecked = disable status information retention, checked = enable status information retention.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Flap Detection Enabled</b></td>
+    <td>[Optional] This directive is used to determine whether or not flap detection is enabled for Hosts using this template. Values:  unchecked = Disable Host Flap Detection, checked = enable Host Flap Detection.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Low Flap Threshold</b></td>
+    <td>[Optional] This directive is used to specify the low state change threshold used in flap detection for Hosts using this template. If you set this directive to a value of 0, the program-wide value specified by the low_host_flap_threshold directive will be used.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>High Flap Threshold</b></td>
+    <td>[Optional] This directive is used to specify the high state change threshold used in flap detection for Hosts using this template. If you set this directive to a value of 0, the program-wide value specified by the high_host_flap_threshold directive will be used.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Retain Nonstatus Information</b></td>
+    <td>[Optional] This directive is used to determine whether or not non-status information about the Host is retained across program restarts. This is only useful if you have enabled state retention using the retain_state_information directive. Value:  unchecked = disable non-status information retention, checked = enable non-status information retention.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Active Checks Enabled</b></td>
+    <td>This directive is used to determine whether or not active checks (either regularly scheduled or on-demand) of this Host are enabled. Values: unchecked = Disable Active Host Checks, checked = Enable Active Host Checks.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Passive Checkes Enabled</b></td>
+    <td>This directive is used to determine whether or not passive checks are enabled for this Host. Values: uncehcked = Disable Passive Host Checks, checked = Enable Passive Host Checks.</td>
+  </tr>
+<tr>
+    <td valign="top" class="row1"><b>Obsess Over Host</b></td>
+    <td>This directive determines whether or not checks for the Host will be <i>obsessed</i> over using the ochp_command (defined in Nagios&#174; main configuration). Checked = enabled</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Check Freshness</b></td>
+    <td>This directive is used to determine whether or not freshness checks are enabled for Hosts using this template. Checked = enable freshness checks.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Freshness Threshold</b></td>
+    <td>This directive is used to specify the freshness threshold (in seconds) for Hosts using this template. If you set this directive to a value of 0, Nagios&#174; will determine a freshness threshold to use automatically.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Check Command</b></td>
+    <td>[Optional] This directive is used to specify the short name of the command that should be used to check if the Host is up or down. Typically, this command would try and ping the Host to see if it is 'alive'. The command must return a status of OK (0) or Nagios&#174; will assume the Host is down. If you leave this argument blank, the Host will not be checked - Nagios&#174; will always assume the Host is up. This is useful if you are monitoring printers or other devices that are frequently turned off. The maximum amount of time that the notification command can run is controlled by the host_check_timeout option.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Max Check Attempts</b></td>
+    <td>[Required] This directive is used to define the number of times that Nagios&#174; will retry the Host Check Command if it returns any state other than an OK state. Setting this value to 1 will cause Nagios&#174; to generate an alert without retrying the Host check again. Note:  If you do not want to check the status of the Host, you must still set this to a minimum value of 1. To bypass the Host check, just leave the check_command option blank.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Check Interval</b></td>
+    <td>[Optional] NOTE: Do NOT enable regularly scheduled checks of a Host unless you absolutely need to! Host checks are already performed on-demand when necessary, so there are few times when regularly scheduled checks would be needed. Regularly scheduled Host checks can negatively impact performance. This directive is used to define the number of "time units" between regularly scheduled checks of the Host. Unless you've changed the interval_length directive from the default value of 60, this number will mean minutes.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Event Handler Enabled</b></td>
+    <td>[Optional] This directive is used to determine whether or not the event handler for Hosts using this template is enabled. Values:  unchecked = Disable Host Event Handler, checked = Enable Host Event Handler.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Event Handler</b></td>
+    <td>[Optional] This directive is used to specify the short name of the command that should be run whenever a change in the state of the Host is detected (i.e. whenever it goes down or recovers). The maximum amount of time that the event handler command can run is controlled by the event_handler_timeout option.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Notifications Enabled</b></td>
+    <td>[Optional] This directive is used to determine whether or not notifications for Hosts using this template are enabled. Values:  unchecked = Disable Host Notifications, checked = Enable Host Notifications.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Notification Interval</b></td>
+    <td>[Required] This directive is used to define the number of 'time units' to wait before re-notifying a contact that this server is still down or unreachable. Unless you've changed the interval_length directive from the default value of 60, this number will mean minutes. If you set this value to 0, Nagios&#174; will not re-notify contacts about problems for Hosts using this template - only one problem notification will be sent out.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Notification Period</b></td>
+    <td>[Required] This directive is used to specify the short name of the time period during which notifications of events for Hosts using this template can be sent out to contacts. If a Host goes down, becomes unreachable, or recoveries during a time which is not covered by the time period, no notifications will be sent out.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Notification Options</b></td>
+    <td>[Required] This directive is used to determine when notifications for the Host should be sent out. Valid options are a combination of one or more of the following:  Down checked = send notifications on a DOWN state, Unreachable checked = send notifications on an UNREACHABLE state, and Recovery checked = send notifications on recoveries (OK state). If you specify n (none) as an option, no Host notifications will be sent out. Example:  If you specify Down and Recovery, notifications will only be sent out when the Host goes DOWN and when it recovers from a DOWN state.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Stalking Options</b></td>
+    <td>[Optional] This directive determines which Host states 'stalking' is enabled for. Valid options are a combination of one or more of the following:  Up checked = stalk on UP states, Down checked = stalk on DOWN states, and Unreachable checked = stalk on UNREACHABLE states.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Contact Groups</b></td>
+    <td>This is a list of the short names of the contact groups that should be notified whenever there are problems (or recoveries) with this Host.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Extended Host Info Template</b></td>
+    <td>[Optional] Defines extended Host information for this Host profile. The template controls the icon and url link as seen in Nagios&#174;.</td>
+  </tr>
+</tbody>
+</table>
+      </li>
+    </ol>
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Section 2 -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+  <tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader"><a name="section6"></a>Configuring Profiles</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- How do I define a Service Profile -->
+    <a name="s5chapter4b"></a><h1 class="chapter"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> How Do I Define a Service Profile?</h1>
+    <p>Service Profiles are a collection of multiple Services. For example, you would typically want to check more than just disk space on a Linux Host. Some measure of memory use is also a good idea, and CPU load is also interesting. GroundWork Monitor contains several Commands and Services for checking these and many other parameters on Linux Hosts. These Services are grouped into Service Profiles, which you can use as is or modify to fit your needs. Select Profiles under the Configuration tab, and select Service Profiles to see what you have to choose from. Select ssh_unix to see a Linux Service Profile.</p>
+    <h2 class="smMargin"><a name="s5chapter4b1">Step 1 - New Service Profile</a></h2>
+    <ol>
+      <li>Select <b>Profiles</b> from the Configuration menu options.</li>
+      <li>Select <b>Service Profiles</b>.</li>
+      <li>Select <b>New</b>.</li>
+      <li>In the <b>New Service Profile</b> screen, enter the properties (see <b>Table 5.4.2a.</b> below).</li>
+      <li>Select <b>Add</b>, the <b>Service Profile</b> screen will be displayed.
+    <h4>Figure 5.4.2a. New Service Profile</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter4_2a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+    <h4>Table 5.4.2a. New Service Profile</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>[Required] Name of the New Service Profile.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Description</b></td>
+    <td>[Optional] Store comments or instructions here.</td>
+  </tr>
+</tbody>
+</table>
+      </li>
+    </ol>
+    <h2 class="smMargin"><a name="s5chapter4b1">Step 2 - Service Profile Properties</a></h2>
+    <ol>
+      <li>In the <b>Service Profile</b> screen, enter the properties (see <b>Table 5.4.2b.</b> below).</li>
+      <li>Select <b>Save</b> to add and save the new Service. If you do not select Save and go to another tab you will lose your changes. After saving, you will be prompted in the next screen that the Service has been save. Select <b>Close</b>. Other options in addition to saving include <b>Delete</b> which removes the current Service Profile, <b>Rename</b> changes the name of the current Service Profile, <b>Export</b> exports the current Service Profile to <code class="bookshelfcode">/tmp/service_profile_ssh_unix.xml</code> for example, and <b>Close</b> to exit the current Service Profile screen without saving.
+    <h4>Figure 5.4.2b. Service Profile Properties</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter4_2b.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+    <h4>Table 5.4.2b. Service Profile Properties</h4>
+<table class="window" cellpadding="5" cellspacing="1" width="698">
+<tbody>
+  <tr>
+    <td valign="top" width="30%" class="row1"><b>Name</b></td>
+    <td>[Required] Name of the New Service Profile.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Description</b></td>
+    <td>[Optional] Store comments or instructions here.</td>
+  </tr>
+  <tr>
+    <td valign="top" class="row1"><b>Services</b></td>
+    <td>[Required] Select Services from the right hand list to be included in this profile. Where Service dependencies have been assigned to Service names, be careful to include the parent Service names as defined in the dependency templates.</td>
+  </tr>
+</tbody>
+</table>
+      </li>
+    </ol>
+    <a name="s5chapter4b2"></a><h2 class="smMargin">OTHER SERVICE PROFILE OPTIONS</h2>
+    <a name="s5chapter4b3"></a><h2 class="smMargin">Assign Hosts</h2>
+    <p>The <b>Assign Hosts</b> tab within the Service Profiles screen enables you to add or remove Hosts to be managed by this Service Profile. Removing a Host means the Host is no longer managed by this Service Profile. After saving, you will need to use the <b>Apply</b> tab to instantiate changes to the Host. The Host will retain its properties until the Host is assigned and applied to another Profile, or modified individually.</p>
+    <h4>Figure 5.4.2c. Assign Hosts</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter4_2c.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+
+    <a name="s5chapter4b4"></a><h2 class="smMargin">Assign Host Groups</h2>
+    <p>The <b>Assign Host Groups</b> tab within the Service Profiles screen enables you to add or remove Host Groups to be managed by this Service Profile. Removing a Host Group means the Host Group is no longer managed by this Service Profile. After saving, you will need to use the <b>Apply</b> tab to instantiate changes to the member Hosts. The member Hosts will retain their properties until the Host Group is assigned and applied to another Service Profile, or the member Hosts are modified individually.</p>
+    <h4>Figure 5.4.2d. Assign Host Groups</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter4_2d.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+
+    <a name="s5chapter4b5"></a><h2 class="smMargin">Host Profiles</h2>
+    <p>The <b>Host Profiles</b> tab within the Service Profiles screen enables you to add or remove Host Profiles to which this Service Profile is assigned. Adding or removing a Host Profile here has no effect the Host Profile's member Hosts until the <b>Apply</b> tab is used on the Host Profile, or the Profile is applied on the individual Hosts.</p>
+    <h4>Figure 5.4.2e. Host Profiles</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter4_2e.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+
+    <a name="s5chapter4b6"></a><h2 class="smMargin">Apply</h2>
+    <p>The <b>Apply</b> tab within the Service Profiles screen enables you to select <b>Apply to Host Groups</b> and/or <b>Apply to Hosts</b> to push changes to Hosts, and select from the options what to apply. If you select replace existing Services, all Services are removed from the Host and new ones are added from the Profile. Merge with existing services means any existing Service on the Host remains unchanged.</p>
+    <h4>Figure 5.4.2f. Apply</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter4_2f.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+<!-- Start Section 3 -->
+<table class="window" cellpadding="5" cellspacing="1" width="100%">
+  <tbody>
+  <tr class="windowHeader">
+    <td class="windowHeader"><a name="section6"></a>Configuring Profiles</td>
+  </tr>
+  <tr>
+    <td class="bookshelf_textBg">
+<!-- How do I import a Profile -->
+    <a name="s5chapter4c"></a><h1 class="chapter"><img src="/monarch/doc/images/square.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" /> How Do I Import Profiles?</h1>
+<hr />
+    <p>The Profile Importer tool is used to re-import, update modifications, or import customized Profiles into the Monarch database. You can also select to remove unwanted Profiles. The Importer will list the available XML Profiles that are in the <code class="bookshelfcode">/usr/local/groundwork/profiles</code> folder. The Importer will import the XML file and automatically search and import its Performance Configuration companion file (if there is one). Any associated Plugins will need to be copied to the GroundWork Server.</p>
+    <p>Several Profiles are included in the GroundWork Monitor product. Refer to the Bookshelf for a list of distributed Profiles and detailed definitions under <b>GroundWork Reference</b>><b>Administrator</b>><b>GroundWork Profiles</b>.</p>
+    <h2 class="smMargin"><a name="s5chapter4c1">Profile Importer</a></h2>
+    <ol>
+      <li>Select <b>Profiles</b> from the Configuration menu options.</li>
+      <li>Select <b>Profile Importer</b>.</li>
+      <li>In the <b>Profile Importer</b> screen the <b>Import Folder</b> listed indicates the location of the profile files. You will see a list of all eligible files in this directory. Click the radio button next to the Profiles you wish to import.</li>
+      <li>To overwrite existing objects and replace all matching Time Periods, Commands, Templates, Services, and Profiles check the <b>Overwrite Existing Objects</b> option before selecting <b>Import</b>.</li>
+      <li>Use the <b>Upload</b> option to upload Profiles from your desktop and then use Import. Also, Profile files can be generated from the <b>Export</b> option found on the main Host Profile page or the main Service Profile page.
+    <h4>Figure 5.4.3a. Profile Importer</h4>
+    <img src="/monarch/doc/images/OSPadm_s5chapter4_3a.gif" border="0" alt="--- GW IMAGE NOT DISPLAYED ---" />
+      </li>
+    </ol>
+    </td>
+  </tr>
+</tbody>
+</table>
+    </td>
+  </tr>
+<!-- End -->
+</tbody>
+</table>
+  </body>
+</html>

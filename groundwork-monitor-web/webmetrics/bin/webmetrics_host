@@ -1,0 +1,58 @@
+#!/usr/local/groundwork/perl/bin/perl -w --
+
+# Convert a Webmetrics service name to its equivalent Nagios host name.
+
+# Copyright (c) 2011 GroundWork Open Source, Inc.  All rights reserved.
+# Use of this software is subject to commercial license terms.
+
+# ================================================================
+# Perl setup.
+# ================================================================
+
+use strict;
+use warnings;
+
+# This is where we'll pick up any Perl packages not in the standard Perl
+# distribution, to make this a self-contained add-on package.
+use FindBin qw($Bin);
+use lib "$Bin/../perl/lib";
+
+# GW:: packages are deemed to be either in-development and therefore potentially
+# containing unstable APIs, or application-specific.  Once we stabilize their
+# respective APIs and formally release them as part of the base GWMEE product,
+# they will be changed to corresponding GroundWork:: packages.
+use GW::Webmetrics;
+
+my $PROGNAME = "webmetrics_host";
+
+# Be sure to update this as changes are made to this script!
+my $VERSION = '0.0.1';
+
+# ================================================================
+# Program.
+# ================================================================
+
+# Success has opposite polarity in the outside world.
+exit (main() ? 0 : 1);
+
+# ================================================================
+# Supporting subroutines.
+# ================================================================
+
+sub main {
+    if (not @ARGV) {
+        print_usage();
+	return 0;
+    }
+    foreach my $webmetrics_service (@ARGV) {
+	my $host = GW::Webmetrics::host_name ($webmetrics_service);
+	print "Webmetrics service \"$webmetrics_service\" => Nagios host \"$host\"\n";
+    }
+
+    return 1;
+}
+
+sub print_usage {
+    print "usage:  $PROGNAME \"{servicename}\" ...\n";
+    print "where:  {servicename} is the name of the service known by Webmetrics\n";
+}

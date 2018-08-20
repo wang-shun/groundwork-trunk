@@ -1,0 +1,1 @@
+../../../../../../../../monitor-ganglia/scripts/GangliaConfigAdmin.cgi

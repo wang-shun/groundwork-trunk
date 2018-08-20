@@ -1,0 +1,37 @@
+#!/bin/bash
+number=0   
+while [ "$number" -le 0 ]
+do
+  number=$RANDOM
+  let "number %= 5"  
+done
+case "$2" in
+	"R" ) let "stat=$number-1"
+;;
+	[0123] ) stat=$2
+;;
+esac
+
+number=0
+state="OK"
+case "$stat" in 
+ "0" ) state="OK"
+;;
+ "1" ) state="Warning"
+;;
+ "2" ) state="Critical"
+;;
+ * ) state="Unknown"
+;;
+esac
+
+start=$1
+let "end=$start+60"
+#echo "end $end"
+now=`date +%s`
+#echo "now $now"
+let "delta=$end-$now"
+#echo "sleeping $delta"
+sleep $delta
+echo "$state $stat | time=$delta"
+exit $stat

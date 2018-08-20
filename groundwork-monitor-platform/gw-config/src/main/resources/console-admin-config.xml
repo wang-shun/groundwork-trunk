@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- All public filters are configured here.
+	PublicFilters can have multiple filters.
+	Name:Name of the filter.Just for identification here.Not referenced anywhere.
+	Label:Label displayed in the UI on the navigation panel.Required.
+	AppType: Application type.Valid values are SYSTEM, NAGIOS, SNMPTRAP,SYSLOG only.Optional.
+	HostGroup: HostGroup.Case sensitive and optional.
+	MonitorStatus: Status of a message delimited by colon with operator. valid values are WARNING,CRITICAL,UNKNOWN,OK,UP,UNREACHABLE,DOWN,PENDING. Valid values for operator are EQ & NE.
+	Supports multiple monitor status delimited by comma.For ex, <MonitorStatus>OK:NE,UP:NE</MonitorStatus>.Optional.
+	Severity: Severity of the message.For ex, FATAL, NORMAL etc.Optional. Multiple Severity can	be supplied with 
+	comma delimiters..For ex, <Severity>FATAL:EQ,NORMAL:NE</Severity>
+	Fetch: Sets the fetch size and order.Optional
+	Size:Sets the fetch size.If set, it should be greater than 0.
+	Order:Sets the fetch order.Valid values are ASC and DESC.
+	Time:Maps to reportDate attribute on the server.Optional
+	Unit:Unit.Always referenced from the current time.For ex, to represent last 10 minutes, say
+	Unit as -10 and Measurement as MIN.
+	Measurement: Measurement unit for time.Valid values are MIN and SEC only.
+	OpStatus:Operation status of the message.Valid values are NOTIFY,ACCEPT,OPEN,CLOSED.Optional.Multiple operation statuses can
+	be supported with comma delimiters.
+	DynaProperty:Dynamic Property. PropName should be same as the one defined in the PropertyType database table.
+	DataType : DataType for the dynamic property. Valid values are STRING,BOOLEAN,LONG,INT, DATE or DOUBLE.Mandatory if dynamic property is specified.
+	PropValue : Value for the dynamic property. Prop value is 	TRUE or FALSE for DataType BOOLEAN.For DataType DATE, format is MM/DD/YYYY.
+	Operator: Operator for the dynamic property. Mandatory if dynamic property specified. Valid values are LT,LE,GT,GE,EQ,NE,LIKE,IN.For String DataType, system recognizes only LIKE.
+	For boolean system recognizes only EQ.
+	Note:Changes to this file doesnot require any restart gwservices. Just refresh the Reload button(near the public filters) in the console.
+-->
+
+<PublicFilters>
+	<Filter>
+		<Name>All Open Events</Name>
+		<Label>All Open Events</Label>
+		<AppType></AppType>
+		<HostGroup></HostGroup>
+		<MonitorStatus></MonitorStatus>
+		<Severity></Severity>
+		<Fetch>
+			<Size></Size>
+			<Order>DESC</Order>
+		</Fetch>
+		<Time>
+			<Unit></Unit>
+			<Measurement></Measurement>
+		</Time>
+		<OpStatus>OPEN</OpStatus>
+		<DynaProperty>
+			<PropName></PropName>
+			<PropValue> </PropValue>
+			<DataType></DataType>
+			<Operator></Operator>
+		</DynaProperty>
+	</Filter>
+	<Filter>
+		<Name>Critical Events</Name>
+		<Label>Critical</Label>
+		<AppType></AppType>
+		<HostGroup></HostGroup>
+		<MonitorStatus>CRITICAL:EQ</MonitorStatus>
+		<Severity></Severity>
+		<Fetch>
+			<Size></Size>
+			<Order>DESC</Order>
+		</Fetch>
+		<Time>
+			<Unit></Unit>
+			<Measurement></Measurement>
+		</Time>
+		<OpStatus></OpStatus>
+		<DynaProperty>
+			<PropName></PropName>
+			<PropValue> </PropValue>
+			<DataType></DataType>
+			<Operator></Operator>
+		</DynaProperty>
+	</Filter>
+	<Filter>
+		<Name>Warning Events</Name>
+		<Label>Warning</Label>
+		<AppType></AppType>
+		<HostGroup></HostGroup>
+		<MonitorStatus>WARNING:EQ</MonitorStatus>
+		<Severity></Severity>
+		<Fetch>
+			<Size></Size>
+			<Order>DESC</Order>
+		</Fetch>
+		<Time>
+			<Unit></Unit>
+			<Measurement></Measurement>
+		</Time>
+		<OpStatus></OpStatus>
+		<DynaProperty>
+			<PropName></PropName>
+			<PropValue> </PropValue>
+			<DataType></DataType>
+			<Operator></Operator>
+		</DynaProperty>
+	</Filter>
+	<Filter>
+		<Name>Nagios Warning Events</Name>
+		<Label>Nagios Warning</Label>
+		<AppType>NAGIOS</AppType>
+		<HostGroup></HostGroup>
+		<MonitorStatus>WARNING:EQ</MonitorStatus>
+		<Severity></Severity>
+		<Fetch>
+			<Size></Size>
+			<Order>DESC</Order>
+		</Fetch>
+		<Time>
+			<Unit></Unit>
+			<Measurement></Measurement>
+		</Time>
+		<OpStatus></OpStatus>
+		<DynaProperty>
+			<PropName></PropName>
+			<PropValue> </PropValue>
+			<DataType></DataType>
+			<Operator></Operator>
+		</DynaProperty>
+	</Filter>
+	<Filter>
+		<Name>Last 5 SNMPTRAPs of MonitorStatus Warning Events</Name>
+		<Label>Last 5 SNMPTRAP Warning</Label>
+		<AppType>SNMPTRAP</AppType>
+		<HostGroup></HostGroup>
+		<MonitorStatus>WARNING:EQ</MonitorStatus>
+		<Severity></Severity>
+		<Fetch>
+			<Size>5</Size>
+			<Order>DESC</Order>
+		</Fetch>
+		<Time>
+			<Unit></Unit>
+			<Measurement></Measurement>
+		</Time>
+		<OpStatus></OpStatus>
+		<DynaProperty>
+			<PropName></PropName>
+			<PropValue> </PropValue>
+			<DataType></DataType>
+			<Operator></Operator>
+		</DynaProperty>
+	</Filter>
+	<Filter>
+		<Name>Last 10 Minutes worth of NAGIOS Critical Events</Name>
+		<Label>Last 10 Minutes NAGIOS Critical</Label>
+		<AppType>NAGIOS</AppType>
+		<HostGroup></HostGroup>
+		<MonitorStatus>CRITICAL:EQ</MonitorStatus>
+		<Severity></Severity>
+		<Fetch>
+			<Size></Size>
+			<Order>DESC</Order>
+		</Fetch>
+		<Time>
+			<Unit>-10</Unit>
+			<Measurement>MIN</Measurement>
+		</Time>
+		<OpStatus></OpStatus>
+		<DynaProperty>
+			<PropName></PropName>
+			<PropValue> </PropValue>
+			<DataType></DataType>
+			<Operator></Operator>
+		</DynaProperty>
+	</Filter>	
+	<Filter>
+		<Name>Current Troubled Open Events</Name>
+		<Label>Current Troubled Open Events</Label>
+		<AppType>NAGIOS</AppType>
+		<HostGroup></HostGroup>
+		<MonitorStatus>OK:NE,UP:NE</MonitorStatus>
+		<Severity></Severity>
+		<Fetch>
+			<Size></Size>
+			<Order>DESC</Order>
+		</Fetch>
+		<Time>
+			<Unit></Unit>
+			<Measurement></Measurement>
+		</Time>
+		<OpStatus>OPEN</OpStatus>
+		<DynaProperty>
+			<PropName></PropName>
+			<PropValue> </PropValue>
+			<DataType></DataType>
+			<Operator></Operator>
+		</DynaProperty>
+	</Filter>	
+</PublicFilters>

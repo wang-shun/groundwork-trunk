@@ -1,0 +1,223 @@
+================================================================
+Pending Improvements to the Ganglia Integration Module
+================================================================
+
+----------------------------------------------------------------
+Scripting Issues:
+----------------------------------------------------------------
+
+(*) In the Host settings screen of the Ganglia Configuration Administration
+    application, the Description field ought to be dynamically sized to fully
+    display the entire existing content of the field.  We should also check
+    to ensure that we are using some kind of textarea widget that the user
+    can resize in their own browser, in case the displayed text gets to be
+    even larger than we naturally show on-screen.
+
+(*) Look at the efficiency with which the XML stream is read from the
+    gmetad socket.  This code:
+
+    1020         # Read the XML stream and time the operation
+    1021         my $xml_string = '';
+    1022         $startTime = Time::HiRes::time();
+    1023         while (my $line=<$socket>) { $xml_string .= $line; }
+    1024         $stopTime = Time::HiRes::time();
+    1025         close $socket;
+
+    in check_ganglia.pl can perhaps be significantly improved by array
+    pushes and a final join, depending on how many iterations of socket
+    reading are currently taking place.
+
+    (Note:  Actual testing with slightly altered code reading from a disk
+    file shows that the code above that we already have in place is the
+    fastest construction, when considering it against array pushes or
+    against a simple "@array = <$socket>;" construction.  This is quite
+    a surprise, and ought to be understood in detail.)
+
+    We might also test the full-file-read action in slurp mode, which we
+    likely haven't done yet:
+
+	do {
+	    local $/;  # slurp mode
+	    $all_content = <$handle>;
+	};
+
+(*) Look at XML parsing speed.  Roger suggests that a SAX-like parsing
+    model that recognizes BNF productions and deals with them individually
+    as the input is parsed may be much faster than building up the entire
+    DOM in memory and then separately walking that tree.  One issue with
+    such a change is that you will be trying to process the input before
+    the parser has recognized that is a fully valid XML stream.
+
+(*) Use the large real-world XML streams we have captured from customers
+    for timing tests when code changes are made.
+
+(*) Why does check_ganglia.pl sometimes survive a gwservices stop?  Fix it.
+
+    This is an issue of whether the check_ganglia.pl script is properly
+    sensed and stopped by the gwservices script, or whether it somehow
+    gets restarted by supervise after being stopped.  We are providing
+    a specially modified copy of the gwservices script as part of the
+    Ganglia Integration Module; that's the first place to look.  Any
+    work on this issue will need to be done by first testing to see
+    whether the problem still manifests, and instrumenting to see how
+    that happens.
+
+(*) We sometimes see error messages appearing when going from host to
+    Default and browser-back again, with a host metric defined.
+    What's that about?
+
+(*) What is shown for host metrics if the Threshold Cluster is set wrong?
+    Is this misleading?  Clean up this area of the UI interaction and
+    display.
+
+(*) Implement more Validate Configuration checks.  For instance, validate
+    the Threshold Cluster settings for all hosts.
+
+(*) There are still a number of places where repeated traversals of long
+    hash chains is happening in check_ganglia.pl, notably when updating
+    the "ganglia" database with state and metric value data.  Clean this
+    up and make it more efficient.
+
+(*) We need to disable the HTTP/browser cache in GangliaWebServers.cgi,
+    and deal with redirect if browser cache or other history is emptied.
+
+    Note that we do have these lines output by the script:
+
+	<META HTTP-EQUIV='Expires' CONTENT='0'>
+	<META HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+
+    so the question is whether any additional work is needed for this item.
+
+(*) Add display of current metric values for a specific host, both
+    from the "ganglia" database and also pulling the RRD graph from the
+    corresponding Ganglia web server to show historical data and range
+    of values, to make sensible settings for metric threshold values
+    more obvious.  Perhaps provide a UI link to the entire Ganglia web
+    server page for each host.
+
+(*) Possibly, collect feedback from our customers who are using this
+    package as to what other features might be useful.
+
+(*) If all the auto-import script does is to assign service profiles:
+
+	Applied ganglia service profile 'Ganglia Hosts' to hyh8045.
+
+    then it concludes that no changes have been made, and it does not
+    commit the changes:
+
+	No new or deleted hosts found.  No change to Nagios configuration required.
+
+    This logic should be changed to understand when any changes were made
+    to Monarch, not just addition or deletion of hosts.  (I believe this
+    has now been done, at least for application of this specific service
+    profile.  It just awaits testing of the particular case.  We should
+    perhaps also do a more-general analysis to see if there are other
+    types of changes that are still escaping the attention of the script.)
+
+(*) Consider modifying check_ganglia.pl to send results to Nagios
+    via Bronx rather than stuffing them into the Nagios command pipe.
+    Test to see the relative performance and robustness characteristics
+    of the two approaches.  Even if we do make this change, we will want
+    to leave the existing mechanism in place as a fallback.
+
+(*) Move log rotation of the autoimport.log file out of the
+    /etc/logrotate.d/groundwork-ganglia config file and into a separate
+    /etc/logrotate.d/groundwork-autoimport file, shipped as part of the
+    auto-import RPM instead of the ganglia-integration RPM (GWMON-7361).
+
+(*) Before we release any new version of the Ganglia Integration Module,
+    check to see if there have been any changes to the base-product
+    core/services/gwservices script that ought to be incorporated
+    into the version of that script that we include in this RPM, and
+    fold them into the customized version we ship here that understands
+    how to deal with the check_ganglia processes.
+
+(*) Before we release any new version of the Ganglia Integration Module
+    or the Auto-Import Module, run the following command on each RPM:
+
+        rpm -q -p --requires {rpm-file}
+
+    to see whether any additional unwanted Perl dependencies or perhaps
+    even other dependencies have crept into the product.  Deal with them
+    appropriately, perhaps by filtering in the specfile as we currently
+    do for lots of Perl dependencies which are in fact satisfied by (but
+    not declared by) the GroundWork Monitor base product.  See GWMON-5466
+    for more detail on this issue.
+
+----------------------------------------------------------------
+Database Issues:
+----------------------------------------------------------------
+
+(*) Understand the difference between Actual Cluster and Threshold Cluster
+    as implemented in the "ganglia" database, and simplify the model and
+    the code if possible.
+
+(*) Add database backup/restore capabilities to the Ganglia Configuration
+    Administration tool.  Make this a kind of testbed for the facilities
+    we would like to see in the base GroundWork Monitor product, such as
+    the ability to identify particular old backup files and restore from
+    them.
+
+(*) Rename the metricvalue table to be metricthreshold instead (along
+    with changing the MetricValidID to MetricThresholdID), and adjust
+    the scripting to match.  Make this an idempotent operation during
+    an upgrade, with a successful clearly-marked backup in place before
+    applying the change.  We can perhaps do this more readily once we
+    no longer have any customers running the Ganglia Integration Module
+    on MySQL, so we don't have to deal with the MySQL-to-PostgreSQL
+    transition issues at the same time.
+
+(*) Fix the "text" columns in the database to be varchar instead, for
+    better database-access efficiency.  (That was an issue under MySQL.
+    PostgreSQL, on the other hand, claims there is no performance
+    difference when using the "text" type.)
+
+(*) Look at all the indexes on the "ganglia" database tables, both to
+    make sure we have all the indexes we need for efficient access, and
+    to make sure we automatically enforce all the uniqueness constraints
+    we ought to have in play.  For instance, should clusterhost.HostID
+    be unique?  (We have looked at this issue in the PostgreSQL version
+    of the database, and added extra constraints that looked like they
+    would be useful.  clusterhost.hostid doesn't look like it should
+    necessarily be unique, but we how have a unique constraint on the
+    {clusterhost.hostid, clusterhost.clusterid} fields, as well as other
+    sensible unique contraints for other tables.)
+
+(*) Look at how often we need to VACUUM tables in the "ganglia" database.
+    Here are some sizes of the tables in a possible large-customer setup:
+
+	table       # of rows
+	---------------------
+	cluster            20
+	clusterhost         2
+	host            14298
+	hostinstance    14721
+	location            1
+	metric              6
+	metricinstance  84788
+	metricvalue        54
+
+    Note that it is the metricinstance table on which we do frequent
+    massive updates, so this will generate huge numbers of dead rows
+    very quickly.  Possibly, we need to run a VACUUM command on that
+    particular table more or less as soon as we run all the updates
+    in a given cycle.
+
+    A further look at this type of garbage collection shows that the
+    autovacuum daemon which we run will probably take care of this
+    in a timely fashion, so we don't need any special code to do so
+    ourselves.  See comments in the check_ganglia.pl code for more
+    detail.
+
+----------------------------------------------------------------
+Future Features:
+----------------------------------------------------------------
+
+(*) Someday, merge the capabilities of the companion auto-import module
+    with those that now appear in auto-discovery in the base product.
+
+----------------------------------------------------------------
+Documentation Issues:
+----------------------------------------------------------------
+
+None at this time.

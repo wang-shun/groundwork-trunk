@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!--
+    Coopyright (C) 2009 GroundWork Open Source, Inc. (GroundWork)
+    All rights reserved. This program is free software; you can redistribute
+    it and/or modify it under the terms of the GNU General Public License
+    version 2 as published by the Free Software Foundation.
+   
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+  
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-->
+<jsp:root version="1.2" xmlns:jsp="http://java.sun.com/JSP/Page"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:ice="http://www.icesoft.com/icefaces/component"
+	xmlns:ui="http://java.sun.com/jsf/facelets">
+	<jsp:directive.page contentType="text/html;charset=ISO-8859-1"
+		pageEncoding="ISO-8859-1" />
+	<f:view>
+		<html>
+		<body>
+		<ice:outputDeclaration doctypeRoot="HTML"
+			doctypePublic="-//W3C//DTD HTML 4.01 Transitional//EN"
+			doctypeSystem="http://www.w3.org/TR/html4/loose.dtd" />
+		<ice:portlet>
+			<ui:composition template="/templates/template.xhtml">
+				<ui:define name="content">
+					<f:loadBundle basename="#{localeBean.baseName}" var="message" />
+					<ice:form partialSubmit="true">
+
+						<!-- error / info message -->
+						<ice:panelGroup rendered="#{monitoringPerformanceBean.message}"
+								id="MPpanelgroupERROR">
+							<ice:column id="MPcolumnError"
+								rendered="#{monitoringPerformanceBean.error}">
+								<ui:include src="/jsp/error.jspx">
+									<ui:param name="errorMessage"
+										value="#{monitoringPerformanceBean.errorMessage}" />
+								</ui:include>
+							</ice:column>
+							<ice:column id="MPcolumninfo"
+								rendered="#{monitoringPerformanceBean.info}">
+								<ui:include src="/jsp/info.jspx">
+									<ui:param name="infoMessage"
+										value="#{monitoringPerformanceBean.infoMessage}" />
+								</ui:include>
+							</ice:column>
+							<ice:commandButton id="MPcmdRetryNow"
+								value="#{message['com_groundwork_portal_statusviewer_error_retryNow']}"
+								actionListener="#{monitoringPerformanceBean.reloadPage}">
+							</ice:commandButton>
+						</ice:panelGroup>
+						
+						<ice:panelGroup id="MPpanelgroupPORTLET"
+							rendered="#{!monitoringPerformanceBean.message}">
+							<ice:panelGrid
+								id="MPpanelgridMonitoringPerformance"
+								columns="3">
+								<ice:column
+									id="MPpanelgridMonitoringPerfCol1">
+									<ice:panelGrid
+										id="MPpanelgridAllColumns"
+										columns="5"
+										columnClasses="cust_orange_body padleft3 cust_orange_body padleft3">
+										<!-- Column 1 Service Latency -->
+										<ice:column id="MPpanelgridAllCol1">
+											<ice:panelGrid
+												id="MPpanelgridServiceLatency"
+												columns="1" style="height:175px;width:154px;">
+
+												<!-- Label associated with Service Latency Dial Chart -->
+												<ice:outputLabel
+													for="MPimgServiceLatencyDialChart"
+													id="MPlblServiceLatency"
+													value="#{message['com_groundwork_portal_statusviewer_label_service_latency']}"
+													styleClass="cust_font_monitoring_portal">
+												</ice:outputLabel>
+
+												<!--  Dial chart for Service Latency Check -->
+												<ice:graphicImage
+													id="MPimgServiceLatencyDialChart"
+													value="#{monitoringPerformanceBean.latencyChartImage}"
+													rendered="#{monitoringPerformanceBean.latencyChartImage != null}"></ice:graphicImage>
+												<ice:graphicImage
+													id="MPimgServiceLatencyDialChart"
+													value="/images/connect_active.gif"
+													rendered="#{monitoringPerformanceBean.latencyChartImage == null}"></ice:graphicImage>
+
+											</ice:panelGrid>
+										</ice:column>
+										<ice:column id="MPpanelgridAllCol2">
+											<!-- Added Spacer -->
+										</ice:column>
+										<ice:column id="MPpanelgridAllCol3">
+											<!-- Column 2 Service Execution -->
+											<ice:panelGrid
+												id="MPpanelgridServiceExecution"
+												columns="1" style="height:175px;width:154px;">
+
+												<!-- Label associated with Service Execution Dial Chart -->
+												<ice:outputLabel
+													for="MPimgServiceExecutionDialChart"
+													id="MPlblServiceExecution"
+													value="#{message['com_groundwork_portal_statusviewer_label_service_execution']}"
+													styleClass="cust_font_monitoring_portal">
+												</ice:outputLabel>
+
+												<!--  Dial chart for Service Execution -->
+												<ice:graphicImage
+													id="MPimgServiceExecutionDialChart"
+													value="#{monitoringPerformanceBean.executionChartImage}"
+													rendered="#{monitoringPerformanceBean.executionChartImage != null}"></ice:graphicImage>
+												<ice:graphicImage
+													id="MPimgServiceExecutionDialChart"
+													value="/images/connect_active.gif"
+													rendered="#{monitoringPerformanceBean.executionChartImage == null}"></ice:graphicImage>
+											</ice:panelGrid>
+										</ice:column>
+										<ice:column id="MPpanelgridAllCol4">
+											<!-- Added Spacer -->
+										</ice:column>
+										<ice:column id="MPpanelgridAllCol5">
+											<!-- Column 3 Service Checks -->
+											<ice:panelGrid
+												id="MPpanelgridStatisticsTable"
+												columns="1" style=" width:315px;">
+
+
+												<!-- Data Table associated with Statistics Table -->
+												<ice:dataTable
+													id="MPtblStatistics"
+													var="eachItemVariable" title="Statistics" cellpadding="0"
+													cellspacing="0" border="0"
+													value="#{monitoringPerformanceBean.statisticChecks}"
+													headerClass="iceDatTblColHdr1_typC"
+													columnClasses="iceDatTblCol1_typC"
+													styleClass="iceDatTbl_typC"
+													rowClasses="iceDatTblRow1_typA_PerformStats">
+
+													<!-- Column associated with each kind of check - Has no heading -->
+													<ice:column
+														id="MPtblStatisticsCol1"
+														style="width:60%">
+														<f:facet name="header">
+															<ice:outputText
+																value="#{message['com_groundwork_portal_statusviewer_label_statistics']}" />
+														</f:facet>
+														<ice:outputText
+															id="MPTxtNameOfChk"
+															styleClass="iceOutTxt_B txtleft"
+															value="#{eachItemVariable.nameOfCheck}" />
+													</ice:column>
+
+													<!-- Column associated with min value of check -->
+													<ice:column
+														id="MPtblStatisticsCol2"
+														style="text-align:center;padding-right:3px;padding-left:5px">
+														<f:facet name="header" >
+															<ice:outputText value="Min" />
+														</f:facet>
+														<ice:outputText id="MPminVal"
+															styleClass="iceOutTxt"
+															value="#{eachItemVariable.minValue}" />
+													</ice:column>
+
+													<!-- Column associated with average value of check -->
+													<ice:column
+														id="MPtblStatisticsCol3" style="text-align:center;padding-right:5px;padding-left:5px">
+														<f:facet name="header">
+															<ice:outputText value="Avg" />
+														</f:facet>
+														<ice:outputText
+															id="MPTxtAvgVal"
+															styleClass="iceOutTxt"
+															value="#{eachItemVariable.avgValue}" />
+													</ice:column>
+
+													<!-- Column associated with max value of check -->
+													<ice:column
+														id="MPtblStatisticsCol4" style="text-align:center;padding-right:5px;padding-left:5px">
+														<f:facet name="header">
+															<ice:outputText value="Max" />
+														</f:facet>
+														<ice:outputText
+															id="MPTxtMaxVal"
+															styleClass="iceOutTxt"
+															value="#{eachItemVariable.maxValue}" />
+													</ice:column>
+
+													<!-- Column associated with seconds label for each value in table -->
+													<ice:column
+														id="MPtblStatisticsCol5">
+														<f:facet name="header">
+															<ice:outputText value="" />
+														</f:facet>
+														<ice:outputText
+															id="MPTxtseconds"
+															styleClass="iceOutTxt" value="sec" />
+													</ice:column>
+												</ice:dataTable>
+											</ice:panelGrid>
+										</ice:column>
+									</ice:panelGrid>
+								</ice:column>
+								<ice:column
+									id="MPpanelgridMonitoringPerfCol2">
+									<!-- Added Spacer -->
+								</ice:column>
+								<ice:column
+									id="MPpanelgridMonitoringPerfCol3">
+									<ice:panelGrid
+										id="MPpanelgridMonitoringPerfStatsTbl"
+										columns="3"
+										columnClasses="cust_orange_body_L padleft3 cust_orange_body_L">
+										<ice:column
+											id="MPpanelgridMonitoringPerfStatsTblCol1">
+											<!-- Column 4 Statistics Table -->
+											<ice:panelGrid
+												id="MPpanelgridServiceChecks"
+												columns="1" style="height:175px;width:154px;">
+
+												<!-- Label associated with Service Checks Dial Chart -->
+												<ice:outputLabel
+													for="MPimgServiceChecksDialChart"
+													id="MPlblServiceChecks"
+													value="Service Checks"
+													styleClass="cust_font_monitoring_portal">
+												</ice:outputLabel>
+
+												<!--  Dial chart for Service Checks -->
+												<ice:graphicImage
+													id="MPimgServiceChecksDialChart"
+													value="#{monitoringPerformanceBean.checksChartImage}"
+													rendered="#{monitoringPerformanceBean.checksChartImage != null}"></ice:graphicImage>
+												<ice:graphicImage
+													id="MPimgServiceChecksDialChart"
+													value="/images/connect_active.gif"
+													rendered="#{monitoringPerformanceBean.checksChartImage == null}"></ice:graphicImage>
+											</ice:panelGrid>
+										</ice:column>
+										<ice:column
+											id="MPpanelgridMonitoringPerfStatsTblCol2">
+										</ice:column>
+										<ice:column
+											id="MPpanelgridMonitoringPerfStatsTblCol3">
+											<!-- Column 5 Service Checks Table -->
+											<ice:panelGrid
+												id="MPpanelgridServiceChecksTable"
+												columns="1" style=" width:220px;">
+												<!-- Data Table associated with Service Checks Table -->
+												<ice:dataTable
+													id="MPtblServiceChecks"
+													var="eachItemVariable" title="Service Checks"
+													cellpadding="2" cellspacing="0" border="0"
+													value="#{monitoringPerformanceBean.serviceChecks}"
+													headerClass="iceDatTblColHdr1_typC"
+													columnClasses="iceDatTblCol1_typC"
+													styleClass="iceDatTbl_typC"
+													rowClasses="iceDatTblRow1_typA_PerSerChks">
+
+													<!-- Column associated with each kind of check - Has no heading -->
+													<ice:column
+														id="MPtblServiceChecksCol1"
+														style="width:60%">
+														<f:facet name="header">
+															<ice:outputText
+																id="MPtblSrvcChkHdrNameChk"
+																value="#{message['com_groundwork_portal_statusviewer_label_service_checks']}" />
+														</f:facet>
+														<ice:outputText
+															id="MPtblSrvcChkNameChkVal"
+															styleClass="iceOutTxt_B txtleft"
+															value="#{eachItemVariable.nameOfCheck}" />
+													</ice:column>
+
+													<!-- Column associated with 5 min value of check -->
+													<ice:column
+														id="MPtblServiceChecksCol2" style="text-align:center;padding-right:5px;padding-left:5px">
+														<f:facet name="header">
+															<ice:outputText
+																id="MPtblSrvcChkHdr5Min"
+																value="#{message['com_groundwork_portal_statusviewer_label_one_minute']}" />
+														</f:facet>
+														<ice:outputText
+															id="MPtblSrvcChk5MinVal"
+															styleClass="iceOutTxt"
+															value="#{eachItemVariable.fiveMinValue}" />
+													</ice:column>
+
+													<!-- Column associated with 15 min value of check -->
+													<ice:column
+														id="MPtblServiceChecksCol3" style="text-align:center;padding-right:5px;padding-left:5px">
+														<f:facet name="header">
+															<ice:outputText
+																id="MPtblSrvcChkHdr15Min"
+																value="#{message['com_groundwork_portal_statusviewer_label_five_minutes']}" />
+														</f:facet>
+														<ice:outputText
+															id="MPtblSrvcChk15MinVal"
+															styleClass="iceOutTxt"
+															value="#{eachItemVariable.fifteenMinValue}" />
+													</ice:column>
+
+													<!-- Column associated with 60 min value of check -->
+													<ice:column
+														id="MPtblServiceChecksCol4" style="text-align:center;padding-right:3px;padding-left:5px">
+														<f:facet name="header">
+															<ice:outputText
+																id="MPtblSrvcChkHdr60Min"
+																value="#{message['com_groundwork_portal_statusviewer_label_fifteen_minutes']}" />
+														</f:facet>
+														<ice:outputText
+															id="MPtblSrvcChk60MinVal"
+															styleClass="iceOutTxt"
+															value="#{eachItemVariable.sixtyMinValue}" />
+													</ice:column>
+
+												</ice:dataTable>
+											</ice:panelGrid>
+										</ice:column>
+									</ice:panelGrid>
+								</ice:column>
+							</ice:panelGrid>
+						</ice:panelGroup>
+					</ice:form>
+				</ui:define>
+			</ui:composition>
+		</ice:portlet>
+		</body>
+		</html>
+	</f:view>
+</jsp:root>
+

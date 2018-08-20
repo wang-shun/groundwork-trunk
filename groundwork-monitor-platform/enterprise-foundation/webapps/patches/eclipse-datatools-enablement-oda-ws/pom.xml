@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.groundwork</groupId>
+        <artifactId>gw-webapps-pom</artifactId>
+        <version>7.2.2-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>org.eclipse.datatools.enablement.oda.ws</artifactId>
+    <version>7.2.2-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <description>Eclipse Datatools Enablement ODA WS Patch for WSClientConfiguration HTTP Basic Authorization</description>
+    <name>Eclipse Datatools Enablement ODA WS Patch</name>
+
+    <dependencies>
+        <!--
+            Note: these artifacts have been extracted from org.eclipse.birt:birtviewer:2.5.2
+            and loaded into Nexus. See the org.groundwork:birtviewer build overlay for details.
+        -->
+        <dependency>
+            <groupId>org.eclipse.datatools</groupId>
+            <artifactId>org.eclipse.datatools.enablement.oda.ws</artifactId>
+            <version>1.2.2.v201001131420</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.datatools</groupId>
+            <artifactId>org.eclipse.datatools.connectivity.oda</artifactId>
+            <version>3.2.2.v201001270833</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>codec</artifactId>
+            <version>1.3.0.v20080530-1600</version>
+        </dependency>
+        <dependency>
+            <groupId>com.ibm</groupId>
+            <artifactId>javax.wsdl</artifactId>
+            <version>1.5.1.v200806030408</version>
+        </dependency>
+
+        <!--
+            WSClientConfiguration Patch dependencies
+        -->
+        <dependency>
+            <groupId>org.jasypt</groupId>
+            <artifactId>jasypt</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.chrylis</groupId>
+            <artifactId>base58-codec</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <inherited>true</inherited>
+                <configuration>
+                    <source>1.5</source>
+                    <target>1.5</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <artifactSet>
+                                <!--
+                                    Include patch runtime dependencies to make standalone
+                                -->
+                                <includes>
+                                    <include>org.eclipse.datatools:org.eclipse.datatools.enablement.oda.ws</include>
+                                    <include>org.jasypt:jasypt</include>
+                                    <include>com.chrylis:base58-codec</include>
+                                    <include>org.apache.commons:commons-lang3</include>
+                                </includes>
+                            </artifactSet>
+                            <filters>
+                                <!--
+                                    Merge patched classes
+                                -->
+                                <filter>
+                                    <artifact>org.eclipse.datatools:org.eclipse.datatools.enablement.oda.ws</artifact>
+                                    <excludes>
+                                        <exclude>org/eclipse/datatools/enablement/oda/ws/util/CompositeInputStream.class</exclude>
+                                        <exclude>org/eclipse/datatools/enablement/oda/ws/util/RawMessageSender.class</exclude>
+                                        <exclude>org/eclipse/datatools/enablement/oda/ws/util/RawMessageSender$SOAPResponseCollector.class</exclude>
+                                    </excludes>
+                                </filter>
+                                <!--
+                                    Preserve original META-INF/MANIFEST.MF
+                                -->
+                                <filter>
+                                    <artifact>org.groundwork:org.eclipse.datatools.enablement.oda.ws</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/MANIFEST.MF</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.jasypt:jasypt</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/MANIFEST.MF</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>com.chrylis:base58-codec</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/MANIFEST.MF</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.apache.commons:commons-lang3</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/MANIFEST.MF</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
